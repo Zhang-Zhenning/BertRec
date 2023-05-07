@@ -1,0 +1,2124 @@
+
+
+
+
+
+Introduction	to	Information	Retrieval
+
+
+
+
+
+Introduction	to
+
+
+
+Information	Retrieval
+
+Probabilistic	Information	Retrieval
+
+Christopher	Manning and	Pandu	Nayak
+
+
+
+
+
+
+Introduction	to	Information	Retrieval
+
+
+
+
+
+FROM	BOOLEAN	TO	RANKED	
+
+RETRIEVAL	…	IN	TWO	STEPS
+
+
+
+
+
+
+Introduction	to	Information	Retrieval
+
+
+
+
+
+
+
+Ranked	retrieval
+
+§ Thus	far,	our	queries	have	all	been	Boolean
+
+§ Documents	either	match	or	don’t
+
+§ Can	be	good	for	expert	users	with	precise	
+
+understanding	of	their	needs	and	the	collection
+
+§ Can	also	be	good	for	applications:	Applications	can	easily	
+
+consume	1000s	of	results
+
+§ Not	good	for	the	majority	of	users
+
+§ Most	users	incapable	of	writing	Boolean	queries	
+
+§ Or	they	are,	but	they	think	it’s	too	much	work
+
+§ Most	users	don’t	want	to	wade	through	1000s	of	results.
+
+§ This	is	particularly	true	of	web	search
+
+Ch. 6
+
+
+
+
+
+
+Introduction	to	Information	Retrieval
+
+
+
+
+
+
+
+Problem	with	Boolean	search:
+
+feast	or	famine
+
+§ Boolean	queries	often	result	in	either	too	few	(=0)	or	
+
+too	many	(1000s)	results.
+
+§ Query	1:	“standard	user	dlink 650”	→	200,000	hits
+
+§ Query	2:	“standard	user	dlink 650	no	card	found”:	0	
+
+hits
+
+§ It	takes	a	lot	of	skill	to	come	up	with	a	query	that	
+
+produces	a	manageable	number	of	hits.
+
+§ AND	gives	too	few;	OR	gives	too	many
+
+Ch. 6
+
+
+
+
+
+
+Introduction	to	Information	Retrieval
+
+
+
+
+
+
+
+Who are these people?
+
+
+
+
+
+
+
+Stephen Robertson
+
+Keith van Rijsbergen
+
+Karen Spärck Jones
+
+
+
+
+
+
+Introduction	to	Information	Retrieval
+
+
+
+
+
+
+
+Why	probabilities	in	IR?
+
+
+
+User 
+
+Information Need
+
+
+
+
+
+Documents
+
+
+
+
+
+Document
+
+Representation
+
+
+
+
+
+Query
+
+Representation
+
+How to match?
+
+In traditional IR systems, matching between each document and
+
+query is attempted in a semantically imprecise space of index terms.
+
+Probabilities provide a principled foundation for uncertain reasoning.
+
+Can we use probabilities to quantify our uncertainties?
+
+Uncertain guess of
+
+whether document 
+
+has relevant content
+
+Understanding
+
+of user need is
+
+uncertain
+
+
+
+
+
+
+Introduction	to	Information	Retrieval
+
+
+
+
+
+
+
+
+
+Probabilistic	IR	topics
+
+1. Classical	probabilistic	retrieval	model
+
+§ Probability	ranking	principle,	etc.
+
+§ Binary	independence	model	(≈	Naïve	Bayes	text	cat)
+
+§ (Okapi)	BM25
+
+2. Bayesian	networks	for	text	retrieval
+
+3. Language	model	approach	to	IR
+
+§ An	important	emphasis	in	recent	work
+
+Probabilistic	methods	are	one	of	the	oldest	but	also	
+
+one	of	the	currently	hot	topics	in	IR
+
+§ Traditionally:	neat	ideas,	but	didn’t	win	on	performance
+
+§ It	seems	to	be	different	now
+
+
+
+
+
+
+Introduction	to	Information	Retrieval
+
+
+
+
+
+
+
+The	document	ranking	problem
+
+§ We	have	a	collection	of	documents
+
+§ User	issues	a	query
+
+§ A	list	of	documents	needs	to	be	returned
+
+
+
+§
+
+
+
+Ranking	method	is	
+
+
+
+the	core	
+
+
+
+of	
+
+
+
+modern	
+
+
+
+IR	
+
+
+
+systems:
+
+
+
+§
+
+
+
+In	what	order	do	we	present	documents	to	the	user?
+
+§ We	want	the	“best”	document	to	be	first,	second	best	
+
+second,	etc….
+
+
+
+§
+
+
+
+Idea:	Rank	by	probability	of	relevance	of	the	
+
+
+
+document	
+
+
+
+w.r.t
+
+
+
+.	information	need
+
+§ P(R=1|documenti,	query)
+
+
+
+
+
+
+Introduction	to	Information	Retrieval
+
+
+
+
+
+
+
+§ For	events	A	and	B:
+
+§ Bayes’ Rule
+
+§ Odds:
+
+Prior
+
+p(A, B) = p(A∩B) = p(A | B)p(B) = p(B | A)p(A)
+
+p(A | B) = p(B | A)p(A)
+
+p(B)
+
+=
+
+p(B | A)p(A)
+
+p(B | X)p(X)
+
+X=A,A
+
+∑
+
+Recall	a	few	probability	basics
+
+O(A) = p(A)
+
+p(A) =
+
+p(A)
+
+1− p(A)
+
+Posterior
+
+
+
+
+
+
+Introduction	to	Information	Retrieval
+
+
+
+
+
+
+
+“If	a	reference	retrieval	system’s	response	to	each	request	is	a	
+
+ranking	of	the	documents	in	the	collection	in	order	of	decreasing	
+
+probability	of	relevance	to	the	user	who	submitted	the	request,	
+
+where	the	probabilities	are	estimated	as	accurately	as	possible	on	
+
+the	basis	of	whatever	data	have	been	made	available	to	the	system	
+
+for	this	purpose,	the	overall	effectiveness	of	the	system	to	its	user	
+
+will	be	the	best	that	is	obtainable	on	the	basis	of	those	data.”
+
+§ [1960s/1970s]	S.	Robertson,	W.S.	Cooper,	M.E.	Maron;	
+
+van Rijsbergen (1979:113);	Manning	&amp;	Schütze (1999:538)
+
+The	Probability	Ranking	Principle
+
+
+
+
+
+
+Introduction	to	Information	Retrieval
+
+
+
+
+
+
+
+Probability	Ranking	Principle
+
+Let	x represent	a	document	in	the	collection.	
+
+Let	R represent	relevance	of	a	document	w.r.t.	given	(fixed)	
+
+query	and	let	R=1 represent	relevant	and	R=0 not	relevant.
+
+p(R =1| x) = p(x | R =1)p(R =1)
+
+p(x)
+
+p(R = 0 | x) = p(x | R = 0)p(R = 0)
+
+p(x)
+
+p(x|R=1), p(x|R=0) - probability that if a 
+
+relevant (not relevant) document is 
+
+retrieved, it is x.
+
+Need	to	find	p(R=1|x) – probability	that	a	document	x is	relevant.
+
+p(R=1),p(R=0) - prior probability
+
+of retrieving a relevant or non-relevant
+
+document
+
+p(R = 0 | x)+ p(R =1| x) =1
+
+
+
+
+
+
+Introduction	to	Information	Retrieval
+
+
+
+
+
+
+
+Probability	Ranking	Principle	(PRP)
+
+§ Simple	case:	no	selection	costs	or	other	utility	
+
+concerns	that	would	differentially	weight	errors
+
+§ PRP	in	action:	Rank	all	documents	by	p(R=1|x)
+
+§ Theorem:	Using	the	PRP	is	optimal,	in	that	it	
+
+minimizes	the	loss	(Bayes	risk)	under	1/0	loss
+
+§ Provable	if	all	probabilities	correct,	etc.		[e.g.,	Ripley	1996]
+
+
+
+
+
+
+Introduction	to	Information	Retrieval
+
+
+
+
+
+
+
+Probability	Ranking	Principle
+
+§ More	complex	case:	retrieval	costs.
+
+§ Let	d be	a	document
+
+§ C	– cost	of	not	retrieving	a	relevant document
+
+§ C’ – cost	of	retrieving	a	non-relevant document
+
+§ Probability	Ranking	Principle:	if
+
+for	all	d’	not	yet	retrieved,	then	d is	the	next	document	
+
+to	be	retrieved
+
+§ We	won’t	further	consider	cost/utility	from	now	on
+
+!
+
+C ⋅ p(R = 0 | d)−C⋅ p(R =1| d) ≤
+
+!
+
+C ⋅ p(R = 0 | !d )−C⋅ p(R =1| !d )
+
+
+
+
+
+
+Introduction	to	Information	Retrieval
+
+
+
+
+
+
+
+Probability	Ranking	Principle
+
+§ How	do	we	compute	all	those	probabilities?
+
+§ Do	not	know	exact	probabilities,	have	to	use	estimates	
+
+§ Binary	Independence	Model	(BIM)	– which	we	discuss	
+
+next	– is	the	simplest	model
+
+§ Questionable	assumptions
+
+§ “Relevance”	of	each	document	is	independent	of	
+
+relevance	of	other	documents.
+
+§ Really,	it’s	bad	to	keep	on	returning	duplicates
+
+§ Boolean	model	of	relevance
+
+§ That	one	has	a	single	step	information	need
+
+§ Seeing	a	range	of	results	might	let	user	refine	query
+
+
+
+
+
+
+Introduction	to	Information	Retrieval
+
+
+
+
+
+
+
+Probabilistic	Retrieval	Strategy
+
+§ Estimate	how	terms	contribute	to	relevance
+
+§ How	do	other	things	like	term	frequency	and	document	
+
+length	influence	your	judgments	about	document	
+
+relevance?	
+
+§ Not	at	all	in	BIM
+
+§ A	more	nuanced	answer	is	the	Okapi	(BM25)	formulae	[next	time]
+
+§ Spärck Jones	/	Robertson
+
+§ Combine	to	find	document	relevance	probability
+
+§ Order	documents	by	decreasing	probability	
+
+
+
+
+
+
+Introduction	to	Information	Retrieval
+
+
+
+
+
+
+
+Probabilistic	Ranking
+
+Basic concept:
+
+“For a given query, if we know some documents that are 
+
+relevant, terms that occur in those documents should be 
+
+given greater weighting in searching for other relevant 
+
+documents.
+
+By making assumptions about the distribution of terms 
+
+and applying Bayes Theorem, it is possible to derive 
+
+weights theoretically.”
+
+Van Rijsbergen
+
+
+
+
+
+
+Introduction	to	Information	Retrieval
+
+
+
+
+
+
+
+Binary	Independence	Model
+
+§ Traditionally	used	in	conjunction	with	PRP
+
+§ “Binary”	=	Boolean:	documents	are	represented	as	binary	
+
+incidence	vectors	of	terms	(cf.	IIR	Chapter	1):
+
+§
+
+§
+
+iff term	i is	present	in	document	x.
+
+§ “Independence”: terms	occur	in	documents	independently		
+
+§ Different	documents	can	be	modeled	as	the	same	vector
+
+)
+
+,
+
+,
+
+( 1
+
+nx
+
+x
+
+x
+
+!
+
+" =
+
+1
+
+=
+
+ix
+
+
+
+
+
+
+Introduction	to	Information	Retrieval
+
+
+
+
+
+
+
+Binary	Independence	Model
+
+§ Queries:	binary	term	incidence	vectors
+
+§ Given	query	q,	
+
+§ for	each	document	d need	to	compute	p(R|q,d).
+
+§ replace	with	computing	p(R|q,x) where x is	binary	term	
+
+incidence	vector	representing	d.
+
+§ Interested	only	in	ranking
+
+§ Will	use	odds	and	Bayes’	Rule:
+
+O(R | q, x) = p(R =1| q, x)
+
+p(R = 0 | q, x) =
+
+p(R =1| q)p(x | R =1,q)
+
+p(x | q)
+
+p(R = 0 | q)p(x | R = 0,q)
+
+p(x | q)
+
+
+
+
+
+
+Introduction	to	Information	Retrieval
+
+
+
+
+
+
+
+Binary	Independence	Model
+
+• Using Independence Assumption:
+
+O(R | q, x) = O(R | q)⋅
+
+p(xi | R =1,q)
+
+p(xi | R = 0,q)
+
+i=1
+
+n
+
+∏
+
+p(x | R =1,q)
+
+p(x | R = 0,q) =
+
+p(xi | R =1,q)
+
+p(xi | R = 0,q)
+
+i=1
+
+n
+
+∏
+
+O(R | q, x) = p(R =1| q, x)
+
+p(R = 0 | q, x) = p(R =1| q)
+
+p(R = 0 | q) ⋅ p(x | R =1,q)
+
+p(x | R = 0,q)
+
+Constant for a 
+
+given query
+
+Needs estimation
+
+
+
+
+
+
+Introduction	to	Information	Retrieval
+
+
+
+
+
+
+
+Binary	Independence	Model
+
+• Since xi is either 0 or 1:
+
+O(R | q, x) = O(R | q)⋅
+
+p(xi =1| R =1,q)
+
+p(xi =1| R = 0,q)
+
+xi=1∏
+
+⋅
+
+p(xi = 0 | R =1,q)
+
+p(xi = 0 | R = 0,q)
+
+xi=0∏
+
+• Let pi = p(xi =1| R =1,q); ri = p(xi =1| R = 0,q);
+
+• Assume, for all terms not occurring in the query (qi=0)
+
+i
+
+i
+
+r
+
+p =
+
+O(R | q, x) = O(R | q)⋅
+
+p(xi | R =1,q)
+
+p(xi | R = 0,q)
+
+i=1
+
+n
+
+∏
+
+O(R | q, x) = O(R | q)⋅
+
+pi
+
+ri
+
+xi=1
+
+qi=1
+
+∏
+
+⋅
+
+(1− pi)
+
+(1−ri)
+
+xi=0
+
+qi=1
+
+∏
+
+
+
+
+
+
+Introduction	to	Information	Retrieval
+
+
+
+
+
+
+
+document
+
+relevant	(R=1)
+
+not	relevant	(R=0)
+
+term	present
+
+xi =	1
+
+pi
+
+ri
+
+term	absent
+
+xi =	0
+
+(1	– pi)
+
+(1 – ri)
+
+
+
+
+
+
+Introduction	to	Information	Retrieval
+
+
+
+
+
+
+
+All matching terms
+
+Non-matching 
+
+query terms
+
+Binary	Independence	Model
+
+All matching terms
+
+All query terms
+
+O(R | q, x) = O(R | q)⋅
+
+pi
+
+ri
+
+xi=1
+
+qi=1
+
+∏
+
+⋅
+
+1− ri
+
+1− pi
+
+⋅1− pi
+
+1− ri
+
+$
+
+%
+
+&amp;
+
+'
+
+(
+
+)
+
+xi=1
+
+qi=1
+
+∏
+
+1− pi
+
+1− ri
+
+xi=0
+
+qi=1
+
+∏
+
+O(R | q, x) = O(R | q)⋅
+
+pi(1− ri)
+
+ri(1− pi)
+
+xi=qi=1
+
+∏
+
+⋅
+
+1− pi
+
+1− ri
+
+qi=1∏
+
+O(R | q, x) = O(R | q)⋅
+
+pi
+
+ri
+
+xi=qi=1
+
+∏
+
+⋅
+
+1− pi
+
+1− ri
+
+xi=0
+
+qi=1
+
+∏
+
+
+
+
+
+
+Introduction	to	Information	Retrieval
+
+
+
+
+
+
+
+Binary	Independence	Model
+
+Constant for
+
+each query
+
+Only quantity to be estimated 
+
+for rankings
+
+Õ
+
+Õ
+
+=
+
+=
+
+=
+
+-
+
+-
+
+×
+
+-
+
+-
+
+×
+
+=
+
+1
+
+1
+
+1
+
+1
+
+)
+
+1(
+
+)
+
+1(
+
+)
+
+|
+
+(
+
+)
+
+,
+
+|
+
+(
+
+i
+
+i
+
+i
+
+q
+
+i
+
+i
+
+q
+
+x
+
+i
+
+i
+
+i
+
+i
+
+r
+
+p
+
+p
+
+r
+
+r
+
+p
+
+q
+
+R
+
+O
+
+x
+
+q
+
+R
+
+O
+
+!
+
+Retrieval	Status	Value:
+
+å
+
+Õ
+
+=
+
+=
+
+=
+
+=
+
+-
+
+-
+
+=
+
+-
+
+-
+
+=
+
+1
+
+1
+
+)
+
+1(
+
+)
+
+1(
+
+log
+
+)
+
+1(
+
+)
+
+1(
+
+log
+
+i
+
+i
+
+i
+
+i
+
+q
+
+x
+
+i
+
+i
+
+i
+
+i
+
+q
+
+x
+
+i
+
+i
+
+i
+
+i
+
+p
+
+r
+
+r
+
+p
+
+p
+
+r
+
+r
+
+p
+
+RSV
+
+
+
+
+
+
+Introduction	to	Information	Retrieval
+
+
+
+
+
+
+
+Binary	Independence	Model
+
+All	boils	down	to	computing	RSV.
+
+å
+
+Õ
+
+=
+
+=
+
+=
+
+=
+
+-
+
+-
+
+=
+
+-
+
+-
+
+=
+
+1
+
+1
+
+)
+
+1(
+
+)
+
+1(
+
+log
+
+)
+
+1(
+
+)
+
+1(
+
+log
+
+i
+
+i
+
+i
+
+i
+
+q
+
+x
+
+i
+
+i
+
+i
+
+i
+
+q
+
+x
+
+i
+
+i
+
+i
+
+i
+
+p
+
+r
+
+r
+
+p
+
+p
+
+r
+
+r
+
+p
+
+RSV
+
+å
+
+=
+
+=
+
+=
+
+1
+
+;
+
+i
+
+i q
+
+x
+
+ic
+
+RSV
+
+)
+
+1(
+
+)
+
+1(
+
+log
+
+i
+
+i
+
+i
+
+i
+
+i
+
+p
+
+r
+
+r
+
+p
+
+c
+
+-
+
+-
+
+=
+
+So,	how	do	we	compute	ci’s from	our	data	?
+
+The	ci are	log	odds	ratios
+
+They	function	as	the	term	weights	in	this	model
+
+
+
+
+
+
+Introduction	to	Information	Retrieval
+
+
+
+
+
+
+
+Binary	Independence	Model
+
+• Estimating	RSV	coefficients in	theory
+
+• For	each	term	i look	at	this	table	of	document	counts:
+
+Documents 
+
+ 
+
+Relevant 
+
+Non-Relevant Total 
+
+xi=1 
+
+s 
+
+n-s 
+
+n 
+
+xi=0 
+
+S-s 
+
+N-n-S+s 
+
+N-n 
+
+Total 
+
+S 
+
+N-S 
+
+N 
+
+ 
+
+ 
+
+S
+
+s
+
+pi »
+
+)
+
+(
+
+)
+
+(
+
+S
+
+N
+
+s
+
+n
+
+ri
+
+-
+
+-
+
+»
+
+)
+
+(
+
+)
+
+(
+
+)
+
+(
+
+log
+
+)
+
+,
+
+,
+
+,
+
+(
+
+s
+
+S
+
+n
+
+N
+
+s
+
+n
+
+s
+
+S
+
+s
+
+s
+
+S
+
+n
+
+N
+
+K
+
+ci
+
++
+
+-
+
+-
+
+-
+
+-
+
+=
+
+»
+
+• Estimates:
+
+For now,
+
+assume no
+
+zero terms.
+
+Remember
+
+smoothing.
+
+)
+
+1(
+
+)
+
+1(
+
+log
+
+i
+
+i
+
+i
+
+i
+
+i
+
+p
+
+r
+
+r
+
+p
+
+c
+
+-
+
+-
+
+=
+
+
+
+
+
+
+Introduction	to	Information	Retrieval
+
+
+
+
+
+
+
+Estimation	– key	challenge
+
+§ If	non-relevant	documents	are	approximated	by	
+
+the	whole	collection,	then	ri (prob.	of	occurrence	
+
+in	non-relevant	documents	for	query)	is	n/N	and
+
+log1−ri
+
+ri
+
+= log N − n − S + s
+
+n − s
+
+≈ log N − n
+
+n
+
+≈ log N
+
+n = IDF!
+
+
+
+
+
+
+Introduction	to	Information	Retrieval
+
+
+
+
+
+
+
+Collection	vs.	Document	frequency
+
+§ Collection	frequency	of	t is	the	total number	of	
+
+occurrences	of	t in	the	collection	(incl.	multiples)
+
+§ Document	frequency	is	number	of	docs	t	is	in
+
+§ Example:
+
+§ Which	word	is	a	better	search	term	(and	should	
+
+get	a	higher	weight)?
+
+Word
+
+Collection frequency
+
+Document frequency
+
+insurance
+
+10440
+
+3997
+
+try
+
+10422
+
+8760
+
+Sec. 6.2.1
+
+
+
+
+
+
+Introduction	to	Information	Retrieval
+
+
+
+
+
+
+
+Estimation	– key	challenge
+
+§ pi (probability	of	occurrence	in	relevant	
+
+documents)	cannot	be	approximated	as	easily
+
+§ pi can	be	estimated	in	various	ways:
+
+§ from	relevant	documents	if	you	know	some
+
+§ Relevance	weighting	can	be	used	in	a	feedback	loop
+
+§ constant	(Croft	and	Harper	combination	match)	– then	
+
+just	get	idf weighting	of	terms	(with	pi=0.5)
+
+§ proportional	to	prob.	of	occurrence	in	collection
+
+§ Greiff (SIGIR	1998)	argues	for	1/3	+	2/3	dfi/N
+
+RSV =
+
+log N
+
+ni
+
+xi=qi=1
+
+∑
+
+
+
+
+
+
+Introduction	to	Information	Retrieval
+
+
+
+
+
+
+
+Probabilistic	Relevance	Feedback
+
+1. Guess	a	preliminary	probabilistic	description	of	R=1
+
+documents;	use	it	to	retrieve	a	set	of	documents
+
+2. Interact	with	the	user	to	refine	the	description:	
+
+learn	some	definite	members	with	R	=	1	and	R	=	0
+
+3. Re-estimate	pi and	ri on	the	basis	of	these
+
+§
+
+If	i appears	in	Vi within	set	of	documents	V:	pi =	|Vi|/|V|
+
+§
+
+Or	can	combine	new	information	with	original	guess	(use	
+
+Bayesian	prior):
+
+4. Repeat,	thus	generating	a	succession	of	
+
+approximations	to	relevant	documents	
+
+k
+
+k
+
++
+
++
+
+=
+
+|
+
+|
+
+|
+
+|
+
+)1
+
+(
+
+)
+
+2
+
+(
+
+V
+
+p
+
+V
+
+p
+
+i
+
+i
+
+i
+
+κ is 
+
+prior
+
+weight
+
+
+
+
+
+
+Introduction	to	Information	Retrieval
+
+
+
+
+
+
+
+30
+
+Iteratively	estimating	pi and ri
+
+(=	Pseudo-relevance	feedback)
+
+1. Assume	that	pi is	constant	over	all	xi in	query	and	ri
+
+as	before
+
+§
+
+pi =	0.5	(even	odds)	for	any	given	doc
+
+2. Determine	guess	of	relevant	document	set:
+
+§
+
+V is	fixed	size	set	of	highest	ranked	documents	on	this	
+
+model
+
+3. We	need	to	improve	our	guesses	for	pi and	ri,	so
+
+§
+
+Use	distribution	of	xi in	docs	in	V.	Let	Vi be	set	of	
+
+documents	containing	xi
+
+§
+
+pi =	|Vi|	/	|V|
+
+§
+
+Assume	if	not	retrieved	then	not	relevant	
+
+§
+
+ri =	(ni – |Vi|)	/	(N	– |V|)
+
+4. Go	to	2.	until	converges	then	return	ranking
+
+
+
+
+
+
+Introduction	to	Information	Retrieval
+
+
+
+
+
+
+
+PRP	and	BIM
+
+§ Getting	reasonable	approximations	of	probabilities	
+
+is	possible.
+
+§ Requires	restrictive	assumptions:
+
+§ Term	independence
+
+§ Terms	not	in	query	don’t	affect	the	outcome
+
+§ Boolean	representation	of	
+
+documents/queries/relevance
+
+§ Document	relevance	values	are	independent
+
+§ Some	of	these	assumptions	can	be	removed
+
+§ Problem:	either	require	partial	relevance	information	or	
+
+seemingly	only	can	derive	somewhat	inferior	term	weights
+
+
+
+
+
+
+Introduction	to	Information	Retrieval
+
+
+
+
+
+
+
+Removing	term	independence
+
+§
+
+In	general,	index	terms	aren’t	
+
+independent
+
+§
+
+Dependencies	can	be	complex
+
+§
+
+van	Rijsbergen (1979)	proposed	
+
+simple	model	of	dependencies	as	
+
+a	tree
+
+§ Exactly	Friedman	and	
+
+Goldszmidt’s Tree	Augmented	
+
+Naive		Bayes	(AAAI	13,	1996)
+
+§
+
+Each	term	dependent	on	one	
+
+other
+
+§
+
+In	1970s,	estimation	problems	
+
+held	back	success	of	this	model
+
+
+
+
+
+
+
+
+Introduction	to	Information	Retrieval
+
+
+
+
+
+
+
+Second	step:	Term	frequency
+
+§ Right	in	the	first	lecture,	we	said	that	a	page	should	
+
+rank	higher	if	it	mentions	a	word	more
+
+§ Perhaps	modulated	by	things	like	page	length
+
+§ We	might	want	a	model	with	term	frequency	in	it.
+
+§ We’ll	see	a	probabilistic	one	next	time	– BM25
+
+§ Quick	summary	of	vector	space	model
+
+
+
+
+
+
+Introduction	to	Information	Retrieval
+
+
+
+
+
+
+
+Summary	– vector	space	ranking
+
+§ Represent	the	query	as	a	weighted	term	
+
+frequency/inverse	document	frequency	(tf-idf)	vector
+
+§ Represent	each	document	as	a	weighted	tf-idf vector
+
+§ Compute	the	cosine	similarity	score	for	the	query	
+
+vector	and	each	document	vector
+
+§ Rank	documents	with	respect	to	the	query	by	score
+
+§ Return	the	top	K (e.g.,	K =	10)	to	the	user
+
+
+
+
+
+
+Introduction	to	Information	Retrieval
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Introduction	to	Information	Retrieval
+
+
+
+
+
+Cosine	similarity
+
+
+
+Sec. 6.3
+
+
+
+
+
+
+Introduction	to	Information	Retrieval
+
+
+
+
+
+
+
+tf-idf	weighting	has	many	variants
+
+
+
+Sec. 6.4
+
+
+
+
+
+
+Introduction	to	Information	Retrieval
+
+
+
+
+
+
+
+Resources
+
+S.	E.	Robertson	and	K.	Spärck Jones.	1976.	Relevance	Weighting	of	Search	
+
+Terms.	Journal	of	the	American	Society	for	Information	Sciences	27(3):	
+
+129–146.
+
+C.	J.	van	Rijsbergen.	1979.	Information	Retrieval. 2nd	ed.	London:	
+
+Butterworths,	chapter	6.		[Most	details	of	math]	
+
+http://www.dcs.gla.ac.uk/Keith/Preface.html
+
+N.	Fuhr.	1992.	Probabilistic	Models	in	Information	Retrieval.	The	Computer	
+
+Journal,	35(3),243–255.		[Easiest	read,	with	BNs]
+
+F.	Crestani,	M.	Lalmas,	C.	J.	van	Rijsbergen,	and	I.	Campbell.	1998.	Is	This	
+
+Document	Relevant?	…	Probably:	A	Survey	of	Probabilistic	Models	in	
+
+Information	Retrieval.	ACM	Computing	Surveys 30(4):	528–552.	
+
+http://www.acm.org/pubs/citations/journals/surveys/1998-30-4/p528-crestani/
+
+[Adds	very	little	material	that	isn’t	in	van	Rijsbergen or	Fuhr ]
+

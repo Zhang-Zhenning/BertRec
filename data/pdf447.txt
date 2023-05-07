@@ -1,0 +1,418 @@
+
+Hidden Markov Models
+
+Baum Welch Algorithm
+
+Introduction to Natural Language Processing
+
+CS 585
+
+Andrew McCallum
+
+March 9, 2004
+
+
+Administration
+
+• If you give me your quiz #2, I will give you feedback.
+
+• I’m now giving you quiz #3. Hand it in next class, and we’ll give you
+
+feedback before the midterm.
+
+• I’m now giving you homework #3. Due one week after Spring Break
+
+ends: March 30th; assignment gives many hints about implementation.
+
+Everyone should be subscribed to class mailing list.
+
+To: majordomo@cs.umass.edu
+
+subscribe cs585
+
+
+Standard HMM formalism
+
+• (X, O, A, B), µ = (A, B)
+
+• X is hidden state sequence, O is observation sequence
+
+Probability of starting in some state is folded into A, let x0 always be
+
+the starting state
+
+A is matrix of transition probabilities
+
+B is matrix of output probabilities
+
+P(X, O|µ) =
+
+N
+
+�
+
+t=1
+
+a[xt−1, xt]b[ot, xt]
+
+• HMM is a probabilistic ﬁnite state automaton, with probabilistic outputs
+
+(from vertices, not arcs, in the simple case; book describes more complex
+
+”outputs on arcs”.)
+
+
+Probabilistic Inference in an HMM
+
+Three fundamental questions for an HMM:
+
+• Compute the probability of a given observation sequence, when the tag
+
+sequence is hidden (language modeling)
+
+• Given an observation sequence, ﬁnd the most likely hidden state sequence
+
+(tagging)
+
+• Given observation sequence(s) and a set of states, ﬁnd the parameters
+
+that would make the observations most likely (parameter estimation)
+
+
+Calculating the probability of an observation sequence
+
+Given a model µ = (A, B)
+
+we want to ﬁnd P(O|µ)
+
+P(X, O|µ) =
+
+N
+
+�
+
+t=1
+
+a[xt−1, xt]b[ot, xt]
+
+P(O|µ) =
+
+�
+
+X
+
+P(O, X|µ)
+
+Problem: sum is exponential in sequence length!
+
+
+Finding probability of observation sequence using
+
+dynamic programming
+
+Eﬃcient computation of total probability: forward procedure
+
+Intuition: Probability of the ﬁrst t observations is the same for all possible
+
+t + 1 length sequences
+
+Deﬁne forward probability
+
+αi(t) = P(o1o2...ot, xt|µ)
+
+αj(t + 1) =
+
+N
+
+�
+
+i=1
+
+αi(t)a[xi, xj]b[xj, ot+1]
+
+Compute it recursively from the beginning.
+
+(This is a version of variable elimination algorithm for Bayes Net inference.)
+
+
+Forward Procedure Recipe
+
+Initialization
+
+αi(1) = a[x0, xi]b[xi, o1]
+
+Induction
+
+αj(t + 1) =
+
+N
+
+�
+
+i=1
+
+αi(t)a[xi, xj]b[xj, ot+1]
+
+Termination
+
+(Note that αi(T) = P(o1...oT, xT = i|µ)
+
+P(o1...oT|µ) =
+
+N
+
+�
+
+i=1
+
+αi(T)
+
+This is the solution to Problem #1
+
+
+Problem #3: Parameter Estimation
+
+We want to ﬁnd the most likely model parameters given the data (using
+
+MLE):
+
+arg max
+
+µ
+
+P(Otraining|µ)
+
+This would let us learn model probabilities from raw data
+
+Can’t determine these probabilities analytically.
+
+Use iterative hill-climbing algorithm to try to ﬁnd good model
+
+
+HMM training: Baum-Welch reestimation
+
+Used to automatically estimate parameters of an HMM
+
+a.k.a. the Forward-Backward algorithm
+
+A special case of the Expectation Maximization (EM) algorithm
+
+1. Start with initial probability estimates
+
+2. Compute expectations of how often each transition/emission is used
+
+3. Re-estimate the probabilities based on those expectations
+
+...and repeat until convergence
+
+
+HMM training: Baum-Welch reestimation
+
+Needed because the state paths are hidden, and the equations cannot be
+
+solved analytically.
+
+Provides a maximum likelihood estimates: attempts to ﬁnd the model that
+
+assigns the training data the highest likelihood.
+
+Hill-climbing algorithm that can get stuck in local maxima
+
+Not so eﬀective for inductive POS tagging (the ML re-estimation procedure
+
+doesn’t know the meaning we have given to the hidden states) But good in
+
+many other tasks (speech...)
+
+We need “expected counts” for the E-step!
+
+
+Calculating the probability of the observations and a
+
+state i at time t
+
+Given model µ = (A, B)
+
+we want to ﬁnd P(xt = i, O|µ)
+
+P(P(xt = i, O|µ) = P(o1o2...ot, xt = i|µ)P(ot+1ot+2...oT|xt = i, µ)
+
+(Why is this true?)
+
+Remember we have the ﬁrst part αi(t) = P(o1o2...ot, xt = i|µ).
+
+We need something for the second part:
+
+mirror image of the “forward
+
+procedure”, called “backward procedure.”
+
+
+Backward procedure recipe
+
+Deﬁnition
+
+βi(t) = P(ot+1ot+2...oT|xt = i, µ)
+
+Initialization
+
+βi(T) = 1
+
+Induction
+
+βi(t) =
+
+N
+
+�
+
+j=1
+
+a[xi, xj]b[xj, ot+1)βj(t + 1)
+
+
+Probability of a state i at time t
+
+P(xt = i, O|µ)
+
+=
+
+P(o1o2...ot, xt = i|µ)P(ot+1ot+2...oT|xt = i, µ)
+
+=
+
+αi(t)βi(t)
+
+P(xt = i|O, µ) = P(xt = i, O|µ)
+
+P(O|µ)
+
+= γi(t)
+
+
+Probability of a transition from state i to state j
+
+at time t
+
+The probability of a trajectory being in state xi at time t and making the
+
+transition to sj at t + 1 given the observation sequence and model.
+
+ξt(i, j) = P(xt = i, xt+1 = j|O, µ)
+
+We compute these probabilities using the forward and backward variables.
+
+ξt(i, j) = αi(t)a[xixj]b[xj, ot+1]βj(t + 1)
+
+Pr(O|µ)
+
+
+Expected transition and emission counts
+
+Note that (E-step)
+
+T
+
+�
+
+t=1
+
+γi(t)
+
+=
+
+expected number of transitions from xi
+
+T
+
+�
+
+t=1
+
+ξt(i, j)
+
+=
+
+expected number of transitions from xi to xj
+
+Then we can estimate parameters by ratio of expected counts (M-step)
+
+¯a[xi, xj] =
+
+�T −1
+
+t=1 ξt(i, j)
+
+�
+
+t=1 T − 1γj(t)
+
+¯b[xi, ok]
+
+�T −1
+
+t=1 γj(t) 1(ot = k)
+
+�T −1
+
+t=1 γj(t)
+
+
+Baum-Welch training algorithm
+
+• Begin with some model µ (perhaps random, perhaps preselected)
+
+• Run O through the current model to estimate the expectations of each
+
+model parameter.
+
+• Change the model to maximize the values of the paths that are used a
+
+lot (while still repsecting the stochastic constraints).
+
+• Repeat, hoping to converge on optimal values for the model parameters,
+
+µ.
+
+
+Baum-Welch tips and tricks: normalization
+
+α and β values can get very small.
+
+On-the-ﬂy re-normalization badly
+
+needed.
+
+Normalize α, β using the same normalization factor
+
+Z(t) =
+
+N
+
+�
+
+i=1
+
+αi(t)
+
+Then adjust the α, β across all states after each time step
+
+αi(t)∗ = αi(t)/Z(t)
+
+βi(t)∗ = βi(t)/Z(t)
+
+
+HMM ﬁnal remarks
+
+• Parameter ”tying” (keep just one counter and parameter across several
+
+states or transitions.
+
+Any combination possible.
+
+Reduces capacity, and thus over-ﬁtting
+
+• Real number output: Emissions represented by a Gaussian distribution.
+
+• Empty (epsilon) transitions, do not generate output.
+

@@ -1,0 +1,1271 @@
+
+N-gram Language models 
+
+and Smoothing
+
+Mittul Singh 
+
+16.11.2015
+
+1
+
+LT1
+
+Slides inspired by Philipp Koehn's slides available at:  
+
+http://www.statmt.org/book/slides/07-language-models.pdf
+
+
+Recap
+
+• Language modelling applications 
+
+• Perplexity (PPL) : 2H, where H is cross entropy 
+
+• MLE: P(w2|w1) = count(w2,w1)/count(w1)
+
+2
+
+LT1
+
+
+Language Models
+
+•
+
+Language models answer the question: 
+
+    How likely is it that a string of English words is good English? 
+
+•
+
+Help with reordering 
+
+pLM(the house is small) &gt; pLM(small is the house) 
+
+•
+
+Help the with word choice 
+
+pLM(easy to recognise speech) &gt; pLM(easy to wreck a nice beach) 
+
+• They deﬁne the probability of a string of words
+
+3
+
+LT1
+
+
+N-Gram Language Models
+
+•
+
+Given: a string of English Words W= w1, w2, w3,…, wn 
+
+•
+
+Question: what is p(W) ? 
+
+•
+
+Sparse data: Many perfectly good English sentences might not have been 
+
+recorded (or written) 
+
+—&gt; Decomposing p(W) using the chain rule: 
+
+p(w1, w2, w3,…, wn) = p(w1)p(w2|w1)p(w3|w1,w2)…p(wn| w1, w2, w3,…, wn-1) 
+
+(not much gained yet, p(wn| w1, w2, w3,…, wn-1) is equally sparse)
+
+4
+
+LT1
+
+
+Markov Chain
+
+•
+
+Markov Assumption: 
+
+✴
+
+only recent history matters 
+
+✴
+
+limited memory: only last k words are included in history (older words 
+
+less relevant) 
+
+
+
+kth order Markov model 
+
+•
+
+For instance 2-gram language model: 
+
+p(w1, w2, w3,…, wn) ≃ p(w1)p(w2|w1)p(w3|w2)…p(wn| wn-1) 
+
+• What is conditioned on, here wi-1 is called the history
+
+5
+
+LT1
+
+
+Estimating N-Gram 
+
+Probabilities
+
+•
+
+Maximum likelihood estimation 
+
+p(w2|w1)= count (w1,w2)/count(w1) 
+
+•
+
+Collect counts over a large text corpus 
+
+•
+
+Millions to billions of words are easy to get 
+
+    (trillions of English words available on the web)
+
+6
+
+LT1
+
+
+Example: 3-Gram
+
+•
+
+Counts for trigrams and estimated word probabilities 
+
+ — 225 trigrams in the Europarl corpus start with the red 
+
+ — 123 of them end with cross 
+
+ —&gt; maximum likelihood probability is 123/225 = 0,547
+
+the green (total: 1748)
+
+the red (total: 225)
+
+the blue (total: 54)
+
+word
+
+c.
+
+prob.
+
+paper
+
+801
+
+0,458
+
+group
+
+640
+
+0,367
+
+light
+
+110
+
+0,063
+
+party
+
+27
+
+0,015
+
+word
+
+c.
+
+prob.
+
+cross
+
+123
+
+0,547
+
+tape
+
+31
+
+0,138
+
+army
+
+9
+
+0,040
+
+card
+
+7
+
+0,031
+
+word
+
+c.
+
+prob.
+
+box
+
+16
+
+0,296
+
+.
+
+6
+
+0,111
+
+army
+
+6
+
+0,111
+
+card
+
+3
+
+0,056
+
+7
+
+LT1
+
+
+Example: 3-Gram
+
+prediction
+
+pLM
+
+-log2pLM
+
+pLM(i |&lt;/s&gt;&lt;s&gt;)
+
+0,109
+
+3,197
+
+pLM(would |&lt;s&gt; i)
+
+0,144
+
+2,791
+
+pLM(like | i would)
+
+0,489
+
+1,031
+
+pLM(to | would like)
+
+0,905
+
+0,144
+
+pLM(commend | like to)
+
+0,002
+
+8,794
+
+pLM(him | to commend)
+
+0,472
+
+2,367
+
+pLM(. | commend him)
+
+0,290
+
+1,785
+
+pLM(&lt;/s&gt; | him .)
+
+0,999
+
+0,000
+
+average
+
+2,513
+
+8
+
+LT1
+
+
+Perplexity
+
+PPL =  2^(- —Σi log2 p(wi|wi-1…)) 
+
+• where N is the number of tokens in data D, wi ∈ D 
+
+• Shannon-McMillan-Breiman theorem
+
+9
+
+1
+
+N
+
+
+Comparison 1 to 4-Gram
+
+word
+
+unigram
+
+bigram
+
+trigram
+
+4-gram
+
+i
+
+6,684
+
+3,197
+
+3,197
+
+3,197
+
+would
+
+8,342
+
+2,884
+
+2,791
+
+2,791
+
+like
+
+9,129
+
+2,026
+
+1,031
+
+1,290
+
+to 
+
+5,081
+
+0,402
+
+0,144
+
+0,113
+
+commend
+
+15,487
+
+12,335
+
+8,794
+
+8,633
+
+him
+
+10,678
+
+7,316
+
+2,367
+
+0,880
+
+.
+
+4,896
+
+3,020
+
+1,785
+
+1,510
+
+&lt;/s&gt;
+
+4,828
+
+0,005
+
+0,000
+
+0,000
+
+average
+
+7,613
+
+3,898
+
+2,513
+
+2,302
+
+perplexity
+
+195,768
+
+14,907
+
+5,708
+
+4,913
+
+10
+
+LT1
+
+
+Unseen N-Grams
+
+•
+
+We have seen i like to in our corpus 
+
+•
+
+We have never seen i like to smooth in our corpus 
+
+—&gt; p(smooth | i like to) = 0 
+
+•
+
+Any sentence that includes i like to smooth will be assigned probability 0
+
+11
+
+LT1
+
+
+Seen N-Grams
+
+•
+
+p(I like to commend) computed on training set  
+
+•
+
+Is it representative on test set? 
+
+•
+
+Does it overﬁt ?
+
+12
+
+LT1
+
+
+Add-One Smoothing
+
+•
+
+For all possible n-grams, add the count of one 
+
+•   c = count of n-gram in corpus 
+
+•   N = count of history 
+
+•   v = vocabulary size 
+
+•
+
+But there are many more unseen n-grams than seen n-grams 
+
+•
+
+Example: Europarl bigrams: 
+
+•
+
+86700 distinct words 
+
+•
+
+86700
+
+2 = 7516890000 possible bigrams (~ 7,517 billion ) 
+
+•
+
+but only about 30000000 bigrams (~30 million) in corpus
+
+p = —— &lt; —
+
+c+1
+
+N+vn
+
+c
+
+N
+
+13
+
+LT1
+
+
+Add-α Smoothing
+
+•
+
+Add α &lt; 1 to each count 
+
+•
+
+What is a good value of α ? 
+
+•
+
+Could be optimised on held-out set
+
+p = ——
+
+c+α
+
+N+αvn
+
+14
+
+LT1
+
+
+Example: 2-Grams in Europarl
+
+•
+
+Add-α smoothing with α=0,00017 
+
+•
+
+tc are average counts of n-grams in test set that occurred c times in 
+
+corpus
+
+c
+
+(c+1)———
+
+(c+α)———
+
+tc
+
+0
+
+0,00378
+
+0,00016
+
+0,00016
+
+1
+
+0,00755
+
+0,95725
+
+0,46235
+
+5
+
+0,02266
+
+4,78558
+
+4,35234
+
+8
+
+0,03399
+
+7,65683
+
+7,15074
+
+10
+
+0,04155
+
+9,57100
+
+9,11927
+
+20
+
+0,07931
+
+19,14183
+
+18,95948
+
+N
+
+N+v2
+
+N
+
+N+αv2
+
+ ——
+
+——
+
+15
+
+LT1
+
+
+Deleted Estimation
+
+•
+
+Estimate true counts in held-out data 
+
+•
+
+split corpus in two halves: training and held-out 
+
+•
+
+counts in training Ct(w1,…, wn) 
+
+•
+
+number of n-grams with training count r: Nr 
+
+•
+
+total times n-grams of training count r  seen in held-out data: Tr 
+
+•
+
+Held-out estimator: 
+
+• Both halves can be switched and results combined
+
+ph(w1,…, wn) = —— where count(w1,…, wn) = r
+
+Tr
+
+NrN
+
+ph(w1,…, wn) = ———   where count(w1,…, wn) = r
+
+T1r+T2r
+
+N(N1r+N2r)16
+
+LT1
+
+
+Good-Turing Smoothing
+
+•
+
+Adjust actual counts r to expected counts r* with formula 
+
+• Nr number of n-grams that occur exactly r times in corpus 
+
+• N0 total number of n-grams 
+
+• This smoothing works well for low r 
+
+• It fails for high r, as Nr = 0
+
+r* =(r+1) ——
+
+Nr+1
+
+Nr
+
+17
+
+LT1
+
+
+Good-Turing for 2-Grams in Europarl
+
+adjusted count fairly accurate when compared against the test count
+
+Count
+
+Count of counts
+
+Adjusted count
+
+Test count
+
+r
+
+Nr
+
+r*
+
+t
+
+0
+
+7514941065
+
+0,00015
+
+0,00016
+
+1
+
+1132844
+
+0,46539
+
+0,46235
+
+5
+
+49254
+
+4,36967
+
+4,35234
+
+8
+
+21693
+
+7,43798
+
+7,15074
+
+10
+
+14880
+
+9,31304
+
+9,11927
+
+20
+
+4546
+
+19,54487
+
+18,95948
+
+18
+
+LT1
+
+
+Back-Off
+
+• In given corpus, we may never observe 
+
+• Scottish beer drinkers 
+
+• Scottish beer eaters 
+
+• Both have count 0 
+
+• our smoothing methods will assign then same probability 
+
+• Better: back-off to bigrams: 
+
+• beer drinkers 
+
+• beer eaters
+
+19
+
+LT1
+
+
+Interpolation
+
+•
+
+Higher and lower order n-gram models have different strengths and 
+
+weaknesses 
+
+•
+
+high-order n-grams are sensitive to more context, but have sparse 
+
+counts 
+
+•
+
+low-order n-grams consider only very limited context, but have robust 
+
+counts 
+
+•
+
+Combine them 
+
+pI(w3|w1,w2) = λ1p1(w3) + λ2p2(w3|w2) + λ3p3(w3|w1,w2) 
+
+ λ1 + λ2 + λ3 = 1
+
+20
+
+LT1
+
+
+Recursive Interpolation
+
+•
+
+We can trust some histories wi-n+1,…,wi-1 more than others 
+
+•
+
+Condition interpolation weights on history: λ(wi-n+1,…,wi-1) 
+
+•
+
+Recursive deﬁnition of interpolation 
+
+pIn(wi|wi-n+1,…,wi-1) = λ(wi-n+1,…,wi-1) p(wi|wi-n+1,…,wi-1) +                             
+
+(1-λ(wi-n+1,…,wi-1))pIn(wi|wi-n+2,…,wi-1) 
+
+21
+
+LT1
+
+
+Example: Recursive 
+
+Interpolation
+
+Consider a trigram: in spite of  (BTW: GT = Good Turing) 
+
+pI(of | in spite) = λin spite pGT(of | in spite) + (1- λin spite )pI(of | spite) 
+
+                        = λin spite pGT(of | in spite)  
+
+                        + (1- λin spite ) { λspite pGT(of | spite) + (1-λspite )pI(of )} 
+
+                        = λin spite pGT(of | in spite)  
+
+                        + (1- λin spite ) { λspite pGT(of | spite) + (1-λspite )pGT(of )}
+
+22
+
+(∵ expanding pI(of | spite) )
+
+(∵ pI(of ) = pGT(of ) )
+
+
+Back-Off
+
+•
+
+Trust the highest order language model that contains the n-gram 
+
+pBOn(wi|wi-n+1,…,wi-1) = 
+
+αn(wi|wi-n+1,…,wi-1) if countn(wi-n+1,…,wi) &gt; 0 ——- 
+
+dn(wi-n+1,…,wi-1) pBOn(wi|wi-n+2,…,wi-1) else —————— 
+
+• Requires 
+
+• adjusted prediction model αn(wi|wi-n+1,…,wi-1) 
+
+• discounting function dn(wi-n+1,…,wi-1) :left over mass from the adjusted 
+
+predicted model
+
+{
+
+23
+
+LT1
+
+
+Back-Off with Good-Turing 
+
+Smoothing
+
+•
+
+Previously, we computed n-gram probabilities based on relative frequency 
+
+• Good Turing smoothing adjusts counts c to expected counts c* 
+
+• We use the expected counts for the prediction model (but 0* remains 0) 
+
+• This leaves probability mass for the discounting function
+
+p(w2|w1) = ——————
+
+count(w1,w2)
+
+count(w1)
+
+count*(w1,w2) ≤ count(w1,w2)
+
+α(w2|w1) = ——————
+
+count*(w1,w2)
+
+count(w1)
+
+d2(w1) = 1- Σw2 α(w2|w1)
+
+24
+
+LT1
+
+
+Example: Back-Off with GT 
+
+Smoothing
+
+• pBO( of | spite ) = αGT( of | spite )  [∵ c(spite of) &gt; 0 ] 
+
+• pBO( . | spite ) = αGT( . | spite ) [∵ c(spite .) &gt; 0 ] 
+
+• αGT &lt; pMLE , to allow for unseen words 
+
+• d(spite) = 1 - αGT( of | spite ) + αGT( . | spite ) [ a piece of the pie left for 
+
+unseen words] 
+
+• Test set: Cut your nose to spite your face 
+
+• pBO( your | spite ) = d(spite) x pGT(your)
+
+25
+
+
+Diversity of Histories
+
+•
+
+Consider the word York 
+
+•
+
+fairly frequent word in Europarl, occurs 477 times 
+
+•
+
+as frequent as foods, indicates and provides 
+
+•
+
+in unigram language model: a respectable probability 
+
+•
+
+However, it almost always directly follows New (473 times) 
+
+•
+
+Recall: unigram model only used, if the bigram model inconclusive 
+
+•
+
+York unlikely second word in unseen bigram 
+
+•
+
+in back-off unigram model, York should have low probability 
+
+26
+
+LT1
+
+
+Kneser-Ney Smoothing
+
+•
+
+Kneser-Ney smoothing takes diversity of histories into account 
+
+•
+
+Count of histories for a word 
+
+N1+(  w ) = |{wi : c( wi,w) &gt; 0 }| 
+
+• Recall: maximum likelihood estimation of unigram language model 
+
+pML(w) = ——— 
+
+• In Kneser-Ney smoothing, replace raw counts with count of histories 
+
+pKN(w) = ———————
+
+
+
+
+
+c(w)
+
+Σi c(wi)
+
+N1+(  w )
+
+Σi N1+(  wi )
+
+27
+
+LT1
+
+
+
+
+
+
+
+
+
+
+Example: Kneser-Ney 
+
+Smoothing
+
+I can’t see without my _______ 
+
+p(York | my) = αGT(my York) + dmy x αGT(York) 
+
+                       = c*(my York) + dmy x c*(York) 
+
+=&gt; p(York | my ) &gt; p(glasses | my) 
+
+Applying Kneser-Ney … 
+
+p(York | my) = αKN(my York) + dmy x αKN(York) 
+
+                      = c*(my York) + dmy x N1+(*York)  
+
+=&gt;  p(York | my ) &lt; p(glasses | my) 
+
+28
+
+c(my)
+
+N
+
+c(my)
+
+
+
+N1+(**) 
+
+
+
+
+
+
+Modiﬁed Kneser Ney 
+
+Smoothing
+
+•
+
+Absolute discounting: subtract a ﬁxed D from all non-zero counts 
+
+• Reﬁnement: three different discount values 
+
+D1 if c=1 
+
+D2 if c= 2 
+
+D3+ if c&gt;= 3
+
+α(wn|w1,…,wn-1) = ————————
+
+c(w1,…,wn)- D
+
+Σwc(w1,…,wn-1,w)
+
+{
+
+D(c)
+
+29
+
+LT1
+
+
+Discount Parameters
+
+•
+
+Optimal discounting parameters D1,D2,D3+can be computed quite easily 
+
+Y= ————— 
+
+D1=1-2Y—— 
+
+D2=2-3Y—— 
+
+D3+=3-4Y—— 
+
+• Values Nc are the counts of n-grams with exactly count c
+
+N1
+
+N1+2N2
+
+N2
+
+N1
+
+N3
+
+N2
+
+N4
+
+N3
+
+30
+
+LT1
+
+
+Interpolated Back-Off
+
+•
+
+Back-off models use only highest order n-gram 
+
+•
+
+if sparse, not very reliable 
+
+•
+
+two different n-grams with same history occur once —&gt; same 
+
+probability 
+
+•
+
+one may be an outlier, the other under-represented in training 
+
+•
+
+To remedy this, always consider the lower-order back-off models 
+
+•
+
+Adapting the α function into interpolated αI function by adding back-off 
+
+αI(wn|w1,…,wn-1) = α(wn|w1,…,wn-1) + d(w1,…,wn-1)pI(wn|w2,…,wn-1) 
+
+• Note that d function needs to adapted as well
+
+31
+
+LT1
+
+
+Evaluation
+
+Evaluation of smoothing methods: 
+
+Perplexity for language models trained on the Europarl corpus
+
+Smoothing method
+
+bigram
+
+trigram
+
+4-gram
+
+Good-Turing
+
+96,2
+
+62,9
+
+59,9
+
+Modiﬁed Kneser-Ney
+
+95,4
+
+61,6
+
+58,6
+
+Interpolated Modiﬁed Kneser Ney
+
+94,5
+
+59,3
+
+54,0
+
+32
+
+LT1
+
+
+Summary
+
+• Language models: How likely is a string of English words good English ? 
+
+• N-Gram models (Markov Assumption) 
+
+• Count smoothing 
+
+• add-one, add-α 
+
+• deleted estimation 
+
+• Good Turing 
+
+• Interpolation and back off 
+
+• Good Turing 
+
+• Kneser-Ney
+
+33
+
+LT1
+

@@ -1,0 +1,349 @@
+
+Return to Main 
+
+Objectives 
+
+Introduction:
+
+ Noisy Channel Model 
+
+ Chomsky Hierarchy 
+
+ Motivation 
+
+Techniques:
+
+ Simple 
+
+ Generalized Interpolation 
+
+ Deleted Interpolation 
+
+ Good-Turing Estimates 
+
+ Katz Smoothing 
+
+ Knesser-Ney Bigram Smoothing 
+
+ Class N-grams 
+
+On-Line Resources:
+
+ LM Overview 
+
+ Ngram Smoothing 
+
+ Turing Intro 
+
+ Good Turing Smoothing 
+
+LECTURE 33: SMOOTHING N-GRAM LANGUAGE MODELS 
+
+G Objectives: 
+
+H Why do we need N-gram smoothing? 
+
+H Deleted interpolation 
+
+H Backoff language models 
+
+H Discounting 
+
+This lecture combines material from the course textbook: 
+
+X. Huang, A. Acero, and H.W. Hon, Spoken Language Processing - A Guide to 
+
+Theory, Algorithm, and System Development, Prentice Hall, Upper Saddle River, 
+
+New Jersey, USA, ISBN: 0-13-022616-5, 2001. 
+
+and from this source: 
+
+F. Jelinek, Statistical Methods for Speech Recognition, MIT Press, Boston, 
+
+Massachusetts, USA, ISBN: 0-262-10066-5, 1998. 
+
+
+A NOISY COMMUNICATION CHANNEL MODEL
+
+OF SPEECH RECOGNITION 
+
+
+
+ 
+
+
+THE CHOMSKY HIERARCHY 
+
+We can categorize language models by their generative capacity: 
+
+Type of Grammar
+
+Constraints
+
+Automata
+
+Phrase Structure 
+
+A -&gt; B 
+
+Turing Machine
+
+(Unrestricted) 
+
+Context Sensitive aAb -&gt; aBb 
+
+Linear Bounded 
+
+Automata
+
+(N-grams, Unification) 
+
+Context Free 
+
+A -&gt; B
+
+Constraint:
+
+  A is a non-terminal.
+
+Equivalent to:
+
+  A -&gt; w
+
+  A -&gt; BC
+
+  where "w" is a 
+
+terminal;
+
+  B,C are non-
+
+terminals
+
+  (Chomsky normal 
+
+form) 
+
+Push down automata
+
+(JSGF, RTN, Chart 
+
+Parsing) 
+
+Regular 
+
+A -&gt; w
+
+A -&gt; wB
+
+(Subset of CFG) 
+
+Finite-state automata
+
+(Network decoding) 
+
+G CFGs offer a good compromise between parsing efficiency and representational power. 
+
+G CFGs provide a natural bridge between speech recognition and natural language processing. 
+
+
+WHY IS SMOOTHING SO IMPORTANT? 
+
+G A key problem in N-gram modeling is the inherent data sparseness. 
+
+G For example, in several million words of English text, more than 50% of the trigrams occur only once; 80% of the 
+
+trigrams occur less than five times (see SWB data also). 
+
+G Higher order N-gram models tend to be domain or application specific. Smoothing provides a way of generating 
+
+generalized language models. 
+
+G If an N-gram is never observed in the training data, can it occur in the evaluation data set? 
+
+G Solution: Smoothing is the process of flattening a probability distribution implied by a language model so that all 
+
+reasonable word sequences can occur with some probability. This often involves broadening the distribution by 
+
+redistributing weight from high probability regions to zero probability regions. 
+
+
+SMOOTHING IS AN INTUITIVELY SIMPLE CONCEPT 
+
+G Simple smoothing: pretend each bigram occurs once more than it actually does in the training data set 
+
+
+
+ 
+
+G Note that the probability density function must be balanced to that it still sums to one. 
+
+
+THE BACKOFF MODEL: A
+
+FLEXIBLE TRADE-OFF BETWEEN ACCURACY AND COMPLEXITY 
+
+G Backoff smoothing: Approximate the probability of an unobserved N-gram using more frequently occuring lower order N-
+
+grams 
+
+
+
+ 
+
+G If an N-gram count is zero, we approximate its probability using a lower order N-gram. 
+
+G The scaling factor is chosen to make the conditional distribution sum to one. 
+
+G Extremely popular for N-gram modeling in speech recognition because you can control complexity as well as generalization. 
+
+
+DELETED INTERPOLATION SMOOTHING 
+
+G We can linearly interpolate a bigram and a unigram model as follows: 
+
+
+
+ 
+
+G We can generalize this to interpolating an N-gram model using and (N-1)-gram model: 
+
+
+
+ 
+
+Note that this leads to a recursive procedure if the lower order N-gram probability also doesn't exist. If necessary, everything can be 
+
+estimated in terms of a unigram model. 
+
+G A scaling factor is used to make sure that the conditional distribution will sum to one. 
+
+G An N-gram specific weight is used. In practice, this would lead to far too many parameters to estimate. Hence, we need to cluster such 
+
+weights (by word class perhaps), or in the extreme, use a single weight. 
+
+G The optimal value of the interpolation weight can be found using Baum's reestimation algorithm. However, Bahl et al suggest a simpler 
+
+procedure that produces a comparable result. We demonstrate the procedure here for the case of a bigram laanguage model: 
+
+1.  Divide the total training data into kept and held-out data sets. 
+
+2.  Compute the relative frequency for the bigram and the unigram from the kept data. 
+
+3.  Compute the count for the bigram in the held-out data set. 
+
+4.  Find a weight by maximizing the likelihood: 
+
+
+
+ 
+
+This is equivalent to solving this equation: 
+
+
+
+ 
+
+
+GOOD-TURING ESTIMATES 
+
+
+
+ 
+
+
+
+ 
+
+
+
+ 
+
+
+KATZ SMOOTHING BASED ON GOOD-TURING ESTIMATES 
+
+G Katz smoothing applies Good-Turing estimates to the problem of backoff language models. 
+
+G Katz smoothing uses a form of discounting in which the amount of discounting is proportional to that predicted by the 
+
+Good-Turing estimate. 
+
+G The total number of counts discounted in the global distribution is equal to the total number of counts that should be 
+
+assigned to N-grams with zero counts according to the Good-Turing estimate (preserving the unit area constraint for 
+
+the pdf). 
+
+G Katz Smoothing: 
+
+
+
+ 
+
+
+KNESER-NEY BIGRAM SMOOTHING 
+
+G Absolute discounting involves subtracting a fixed discount, D, from each nonzero count, an redistributing this 
+
+probability mass to N-grams with zero counts. 
+
+G We implement absolute discounting using an interpolated model: 
+
+
+
+ 
+
+G Kneser-Ney smoothing combines notions of discounting with a backoff model. Here is an algorithm for bigram 
+
+smoothing: 
+
+
+
+ 
+
+G Knesser-Ney smoothing constructs a lower order distribution that is consistent with the smoothed higher order 
+
+distribution. 
+
+
+CLASS N-GRAMS 
+
+G Recall we previously discussed defining equivalence classes for words that exhibit similar semantic and 
+
+grammatical behavior. 
+
+G Class based language models have been shown to be effective for reducing memory requirements for real-time 
+
+speech applications, and supporting rapid adaption of language models. 
+
+G A word probability can be conditioned on the previous N-1 word classes: 
+
+
+
+ 
+
+G We can express the probability of a word sequence in terms of class N-grams: 
+
+
+
+ 
+
+G If the classes are non-overlapping: 
+
+
+
+ 
+
+G If we consider the case of a bigram language model, we can derive a simple estimate for a bigram probability in 
+
+terms of word and class counts: 
+
+
+
+ 
+
+G Class N-grams have not provided significant improvements in performance, but have provided a simple means of 
+
+integrating linguistic knowledge and data-driven statistical knowledge. 
+

@@ -1,0 +1,1519 @@
+
+
+
+Log in
+
+Sign up
+
+
+
+kjetil b halvorsen ♦
+
+71.4k
+
+30
+
+163
+
+526
+
+
+
+StatsUser
+
+1,749
+
+4
+
+14
+
+13
+
+user82135
+
+
+
+generic_user
+
+12.8k
+
+10
+
+45
+
+66
+
+Maximum Likelihood Estimation (MLE) in layman terms
+
+Asked 8 years, 8 months ago
+
+Modified 1 year ago
+
+Viewed 76k times
+
+127
+
+ 
+
+ 
+
+Could anyone explain to me in detail about maximum likelihood estimation (MLE) in layman's terms? I would like to know the underlying concept before going into mathematical derivation or equation.
+
+Share
+
+Improve this question
+
+edited Feb 4, 2018 at 8:15
+
+asked Aug 19, 2014 at 12:46
+
+9
+
+It's unclear what kind of answer you're after. Do you know what likelihood is, for example? If not, better to find out that first.
+
+– Glen_b
+
+Aug 19, 2014 at 12:56 
+
+4
+
+In addition, I think any answer that doesn't involve math at some level will be inadequate.
+
+– gregmacfarlane
+
+Aug 19, 2014 at 13:17
+
+1
+
+Try this link. It has pretty crisp explanation about MLE, MAP, EM. I think it covers basic idea of MLE in simple terms.
+
+– Nimish Kulkarni
+
+Nov 7, 2014 at 7:34
+
+2
+
+I think that this provides a very intuitive explanation of MLE. I would say that if the concepts are still unclear, it would be ideal to brush up on some basic statistics.
+
+– KartikKannapur
+
+Jul 26, 2018 at 13:02
+
+14 Answers
+
+Sorted by:
+
+93
+
+ 
+
+Say you have some data. Say you're willing to assume that the data comes from some distribution -- perhaps Gaussian. There are an infinite number of different Gaussians that the data could have come from (which correspond to the
+
+combination of the infinite number of means and variances that a Gaussian distribution can have). MLE will pick the Gaussian (i.e., the mean and variance) that is "most consistent" with your data (the precise meaning of consistent
+
+is explained below).
+
+So, say you've got a data set of y ={−1,3,7}. The most consistent Gaussian from which that data could have come has a mean of 3 and a variance of 16. It could have been sampled from some other Gaussian. But one with a mean
+
+of 3 and variance of 16 is most consistent with the data in the following sense: the probability of getting the particular y values you observed is greater with this choice of mean and variance, than it is with any other choice.
+
+Moving to regression: instead of the mean being a constant, the mean is a linear function of the data, as specified by the regression equation. So, say you've got data like x ={2,4,10} along with y from before. The mean of that
+
+Gaussian is now the fitted regression model X′ ˆβ, where ˆβ=[−1.9,.9]
+
+Moving to GLMs: replace Gaussian with some other distribution (from the exponential family). The mean is now a linear function of the data, as specified by the regression equation, transformed by the link function. So, it's g(X′β),
+
+where g(x) =ex/(1+ex) for logit (with binomial data).
+
+Share
+
+Improve this answer
+
+edited Nov 5, 2018 at 20:53
+
+answered Aug 19, 2014 at 13:34
+
+30
+
+"MLE will pick the Gaussian that is the most likely one, given your data." Hmmm, isn't it actually: MLE will pick the Gaussian under which your data are most likely? Which is slightly different from picking the "most likely
+
+Gaussian"... wouldn't picking the most likely Gaussian require a consideration of prior beliefs?
+
+– Jake Westfall
+
+Aug 20, 2014 at 1:01 
+
+9
+
+@ACD I don't think this is just incomplete but provides the correct intuition. For example, I don't see any problem with not discussing special cases like the likelihood function have more than one maximum. But the difference
+
+between the distribution most likely to produce the observed data and the most likely distribution given the data is the very fundamental difference between frequentist and bayesian inference. So if you explain it like that, you are
+
+just creating a stumbling block for the future.
+
+– Erik
+
+Aug 25, 2014 at 11:30
+
+6
+
+Sure okay, but is the more correct conceptual explanation any harder to understand than the one you've written? I don't think so. I think most of your answer is just fine, but I would just urge you, for the sake of posterity, to just
+
+slightly edit some of the phrasing to avoid discussing "the most likely Gaussian" and instead point out that the thing that we want to be "likely" (in colloquial terms) under ML is not the hypothesis but the data. I think this can be
+
+Ask Question
+
+mathematical-statistics maximum-likelihood intuition
+
+definition
+
+philosophical
+
+Cite
+
+Follow
+
+
+
+
+
+
+
+Highest score (default)
+
+Cite
+
+Follow
+
+
+
+
+a minor but important edit to your otherwise nice answer.
+
+– Jake Westfall
+
+Aug 25, 2014 at 16:16 
+
+7
+
+@Max: Thanks a lot for finally going ahead and fixing this answer! I think it might make sense to explicitly write here for the future readers: the critique expressed in the above upvoted comments by Erik and Jake does not apply
+
+anymore, after the answer has been edited.
+
+– amoeba
+
+Oct 7, 2015 at 22:38 
+
+7
+
+Just to jump in: I appreciate all the attention and improvements given to my answer. Apologies for being initially hesitant about the edits (which are good) -- I was reluctant to see the simplicity of my answer eroded. That largely
+
+didn't happen.
+
+– generic_user
+
+Oct 8, 2015 at 18:22 
+
+Show 6 more comments
+
+83
+
+ 
+
+ 
+
+Maximum Likelihood Estimation (MLE) is a technique to find the most likely function that explains observed data. I think math is necessary, but don't let it scare you!
+
+Let's say that we have a set of points in the x,y plane, and we want to know the function parameters β and σ that most likely fit the data (in this case we know the function because I specified it to create this example, but bear with
+
+me).
+
+data   &lt;- data.frame(x = runif(200, 1, 10))
+
+data$y &lt;- 0 + beta*data$x + rnorm(200, 0, sigma)
+
+plot(data$x, data$y)
+
+
+
+In order to do a MLE, we need to make assumptions about the form of the function. In a linear model, we assume that the points follow a normal (Gaussian) probability distribution, with mean xβ and variance σ2: y =N(xβ,σ2). The
+
+equation of this probability density function is:
+
+1
+
+√2πσ2
+
+exp −
+
+(yi −xiβ)2
+
+2σ2
+
+What we want to find is the parameters β and σ that maximize this probability for all points (xi,yi). This is the "likelihood" function, L
+
+L =
+
+n
+
+∏
+
+i=1yi =
+
+n
+
+∏
+
+i=1
+
+1
+
+√2πσ2
+
+exp −
+
+(yi −xiβ)2
+
+2σ2
+
+For various reasons, it's easier to use the log of the likelihood function:
+
+log(L) =
+
+n
+
+∑
+
+i=1−
+
+n
+
+2log(2π)−
+
+n
+
+2log(σ2)−
+
+1
+
+2σ2(yi −xiβ)2
+
+We can code this as a function in R with θ=(β,σ).
+
+linear.lik &lt;- function(theta, y, X){
+
+  n      &lt;- nrow(X)
+
+  k      &lt;- ncol(X)
+
+  beta   &lt;- theta[1:k]
+
+  sigma2 &lt;- theta[k+1]^2
+
+  e      &lt;- y - X%*%beta
+
+  logl   &lt;- -.5*n*log(2*pi)-.5*n*log(sigma2) - ( (t(e) %*% e)/ (2*sigma2) )
+
+  return(-logl)
+
+}
+
+This function, at different values of β and σ, creates a surface.
+
+surface &lt;- list()
+
+k &lt;- 0
+
+for(beta in seq(0, 5, 0.1)){
+
+  for(sigma in seq(0.1, 5, 0.1)){
+
+    k &lt;- k + 1
+
+    logL &lt;- linear.lik(theta = c(0, beta, sigma), y = data$y, X = cbind(1, data$x))
+
+    surface[[k]] &lt;- data.frame(beta = beta, sigma = sigma, logL = -logL)
+
+  }
+
+}surface &lt;- do.call(rbind, surface)
+
+library(lattice)
+
+wireframe(logL ~ beta*sigma, surface, shade = TRUE)
+
+
+
+
+
+
+
+(
+
+)
+
+(
+
+)
+
+
+
+
+gregmacfarlane
+
+3,362
+
+24
+
+35
+
+
+
+As you can see, there is a maximum point somewhere on this surface. We can find parameters that specify this point with R's built-in optimization commands. This comes reasonably close to uncovering the true parameters 
+
+0,β=2.7,σ=1.3
+
+linear.MLE &lt;- optim(fn=linear.lik, par=c(1,1,1), lower = c(-Inf, -Inf, 1e-8), 
+
+                    upper = c(Inf, Inf, Inf), hessian=TRUE, 
+
+                    y=data$y, X=cbind(1, data$x), method = "L-BFGS-B")
+
+linear.MLE$par
+
+## [1] -0.1303868  2.7286616  1.3446534
+
+Ordinary least squares is the maximum likelihood for a linear model, so it makes sense that lm  would give us the same answers. (Note that σ2 is used in determining the standard errors).
+
+summary(lm(y ~ x, data))
+
+## 
+
+## Call:
+
+## lm(formula = y ~ x, data = data)
+
+## 
+
+## Residuals:
+
+##     Min      1Q  Median      3Q     Max 
+
+## -3.3616 -0.9898  0.1345  0.9967  3.8364 
+
+## 
+
+## Coefficients:
+
+##             Estimate Std. Error t value Pr(&gt;|t|)    
+
+## (Intercept) -0.13038    0.21298  -0.612    0.541    
+
+## x            2.72866    0.03621  75.363   &lt;2e-16 ***
+
+## ---
+
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+## 
+
+## Residual standard error: 1.351 on 198 degrees of freedom
+
+## Multiple R-squared:  0.9663, Adjusted R-squared:  0.9661 
+
+## F-statistic:  5680 on 1 and 198 DF,  p-value: &lt; 2.2e-16
+
+Share
+
+Improve this answer
+
+edited Mar 15, 2017 at 21:02
+
+answered Aug 19, 2014 at 14:30
+
+Thanks @gregmacfarlane for this nice and useful answer. A minor point: should we not first define beta and sigma2 in the line R code data$y &lt;- 0 + beta*data$x + rnorm(200, 0, sigma2) ? And is 0 +  useful?
+
+– emeryville
+
+Dec 10, 2015 at 6:07 
+
+1
+
+Yes beta  and sigma2  would need to be defined for this code to run. I hid them so that we could "discover" the parameters, which are almost always unknown when you run MLE.
+
+– gregmacfarlane
+
+Dec 10, 2015 at 17:58
+
+You're also right that 0 +  anything doesn't actually do anything; I merely included it because regression models usually have an intercept. And if the MLE were trying to optimize beta , sigma2  and alpha , I couldn't show
+
+the pretty surface plot (unless you know of an R package that will plot in four dimensions!)
+
+– gregmacfarlane
+
+Dec 10, 2015 at 17:59
+
+2
+
+@gregmacfarlane great answer and helped me a lot. But there are some errors on variance vs. standard deviation. Please see here. stats.stackexchange.com/questions/267534/…
+
+– Haitao Du
+
+Mar 15, 2017 at 3:02
+
+3
+
+@hxd1011 Thanks for pointing out this mistake; I have corrected the error.
+
+– gregmacfarlane
+
+Mar 15, 2017 at 21:04
+
+Show 6 more comments
+
+39
+
+ 
+
+ 
+
+The maximum likelihood (ML) estimate of a parameter is the value of that parameter under which your actual observed data are most likely, relative to any other possible values of the parameter.
+
+The idea is that there are any number of "true" parameter values that could have led to your actually observed data with some non-zero (albeit perhaps small) probability. But the ML estimate gives the parameter value that would
+
+have led to your observed data with the highest probability.
+
+This must not be confused with the value of the parameter that is most likely to have actually produced your data!
+
+I like the following passage from Sober (2008, pp. 9-10) on this distinction. In this passage, we have some observed data denoted O and a hypothesis denoted H.
+
+In terms of the example above, ML would favor the gremlin hypothesis. In this particular comical example, that is clearly a bad choice. But in a lot of other more realistic cases, the ML estimate might be a very reasonable one.
+
+Reference
+
+Cite
+
+Follow
+
+
+
+You need to remember that "likelihood" is a technical term. The likelihood of H, Pr(O|H), and the posterior probability of H, Pr(H|O), are different quantities and they can have different values. The likelihood of H is the
+
+probability that H confers on O, not the probability that O confers on H. Suppose you hear a noise coming from the attic of your house. You consider the hypothesis that there are gremlins up there bowling. The likelihood of
+
+this hypothesis is very high, since if there are gremlins bowling in the attic, there probably will be noise. But surely you don’t think that the noise makes it very probable that there are gremlins up there bowling. In this example,
+
+Pr(O|H) is high and Pr(H|O) is low. The gremlin hypothesis has a high likelihood (in the technical sense) but a low probability.
+
+
+
+
+Jake Westfall
+
+12.1k
+
+2
+
+51
+
+100
+
+
+
+kjetil b halvorsen ♦
+
+71.4k
+
+30
+
+163
+
+526
+
+
+
+TrynnaDoStat
+
+7,734
+
+3
+
+27
+
+40
+
+Sober, E. (2008). Evidence and Evolution: the Logic Behind the Science. Cambridge University Press.
+
+Share
+
+Improve this answer
+
+edited Aug 20, 2014 at 2:03
+
+answered Aug 20, 2014 at 1:37
+
+11
+
+This seems to me to be the first answer that makes this crucial point clearly and simply. Note however, that it only "would have led to your observed data with the highest probability" if your data are discrete (like binomial data),
+
+but 'would have led to your observed data with the highest joint density' if your data are continuous (like normal data).
+
+– gung - Reinstate Monica
+
+Aug 20, 2014 at 2:43
+
+7
+
+Thanks @gung. I am aware of the technicality that you mention but I was slightly concerned that any discussion of "joint densities" would be a bit of a stretch for "layman's terms"...
+
+– Jake Westfall
+
+Aug 20, 2014 at 2:46
+
+I agree w/ you, &amp; I figured you knew about this. I just thought I'd mention it since it came up elsewhere on this thread.
+
+– gung - Reinstate Monica
+
+Aug 20, 2014 at 15:16
+
+19
+
+ 
+
+ 
+
+It is possible to say something without using (much) math, but for actual statistical applications of maximum likelihood you need mathematics.
+
+Maximum likelihood estimation is related to what philosophers call inference to the best explanation, or abduction. We use this all the time! Note, I do not say that maximum likelihood is abduction, that term is much wider,
+
+and some cases of Bayesian estimation (with an empirical prior) can probably also be seen as abduction.
+
+Some examples (the first taken from http://plato.stanford.edu/entries/abduction/#Aca). See also https://en.wikipedia.org/wiki/Abductive_reasoning (In computer science "abduction" is also used in the context of non-probabilistic
+
+models.)
+
+1. "You happen to know that Tim and Harry have recently had a terrible row that ended their friendship. Now someone tells you that she just saw Tim and Harry jogging together. The best explanation for this that you can
+
+think of is that they made up. You conclude that they are friends again." This because that conclusion makes the observation you try to explain more probable than under the alternative, that they are still not talking.
+
+2. You work in a kindergarten, and one day a child starts to walk in a strange way, and saying he broke his legs. You examine and find nothing wrong. Then you can reasonably infer that one of his parents broke their legs, since
+
+children then often actuate as described, so that is an "inference to the best explanation" and an instance of (informal) maximum likelihood. (and, of course, that explanation might be wrong, it is only probable, not sure.
+
+Abduction/maximum likelihood cannot give sure conclusions).
+
+Abduction is about finding pattern in data, and then searching for possible theories that can possibly make those patterns probable. Then choosing the possible explanation, which makes the observed pattern maximally probable, is
+
+just maximum likelihood!
+
+The prime example of abduction in science is evolution. There is no one single observation that implies evolution, but evolution makes observed patterns more probable than other explanations.
+
+Another typical example is medical diagnosis? Which possible medical condition makes the observed pattern of symptoms the most probable? Again, this is also maximum likelihood! (Or, in this case, maybe bayesian estimation is a
+
+better fit, we must take into account the prior probability of the various possible explanations). But that is a technicality, in this case we can have empirical priors which can be seen as a natural part of the statistical model, and what
+
+we call model, what we call prior is some arbitrary(*) statistical convention.
+
+To get back to the original question about layman term explanation of MLE, here is one simple example: When my daughters where 6 and 7 years old, I asked them this. We made two urns (two shoe-boxes), in one we put 2 black
+
+balls, 8 red, in the other the numbers where switched. Then we mixed the urns, and we draw one urn randomly. Then we took at random one ball from that urn. It was red.
+
+Then I asked : From which urn do you think that red ball was drawn? After about one seconds thinking, they answered (in choir): From the one with 8 red balls!
+
+Then I asked: Why do you think so? And anew, after about one second (in choir again): "Because then it is easier to draw a red ball!". That is, easier=more probable. That was maximum likelihood (it is an easy exercise to write up
+
+the probability model), and it is "inference to the best explanation", that is, abduction.
+
+(*) Why do I say "arbitrary?" To continue the medical diagnosis problem, say the patient is a man with some difficult to diagnose condition the physician didn't see earlier. Then, say, in the talk with the patient it arises that he
+
+visited someplace in tropical Africa short time ago. That is a new piece of data, but its effect in the typical models (used in this kind of situation, be it formal or informal) will be to change the prior of the difficult possible
+
+explanations, as tropical diseases like malaria now will get higher prior probability. So the new data enters the analysis in the prior.
+
+Share
+
+Improve this answer
+
+edited Apr 20, 2022 at 13:53
+
+answered Aug 19, 2014 at 15:14
+
+googling for "abductive reasoning and maximum likelihood estimation" gives a lot of relevant hits.
+
+– kjetil b halvorsen ♦
+
+Aug 19, 2014 at 15:29
+
+1
+
+(1/2) Hi kjetil, this is a fantastic answer, and I appreciate it. (Also the blurb about your daughters is cute. :) ) At any rate, I am struggling in building my own robust understanding of "The likelihood", and I have formalized my
+
+question over here.
+
+– Creatron
+
+Jul 17, 2016 at 18:37 
+
+1
+
+(2/2) In particular, I am trying to understand i) If the correct way to state a likelihood is always as: "The likelihood of the PARAMETERS", (and never "The likelihood of the DATA"), and ii) I am trying to understand if 
+
+L(θ|x) =P(x|θ) is read, in English, as: "The likelihood of the parameter=theta GIVEN the data=x, is equal to the probability of the data=x, GIVEN the parameter=theta)." Is this the correct parsing in English? Or, is the left hand
+
+side read as "The probability of the data=x, PARAMETERIZED on params=theta"? Thank you in advance!
+
+– Creatron
+
+Jul 17, 2016 at 18:41
+
+18
+
+ 
+
+ 
+
+The MLE is the value of the parameter of interest that maximizes the probability of observing the data that you observed. In other words, it is the value of the parameter that makes the observed data most likely to have been
+
+observed.
+
+Share
+
+Improve this answer
+
+answered Aug 19, 2014 at 13:18
+
+2
+
+And what if the likelihood function that is thus maximized, is, on its flip-side, the probability density function from a continuous random variable? Does the MLE still maximizes a probability? And if not, what does it do?
+
+– Alecos Papadopoulos
+
+Cite
+
+Follow
+
+
+
+Cite
+
+Follow
+
+
+
+
+
+Cite
+
+Follow
+
+
+
+
+Scortchi - Reinstate Monica ♦
+
+28.6k
+
+8
+
+87
+
+267
+
+
+
+Jacques Wainer
+
+5,317
+
+1
+
+22
+
+33
+
+user83346
+
+Aug 19, 2014 at 13:29
+
+@AlecosPapadopoulos It is my understanding that the likelihood function can be considered a probability function of the parameter, and the MLE is parameter value that maximizes that probability function. However your
+
+question suggests that there is more nuances?
+
+– Heisenberg
+
+Aug 19, 2014 at 15:27
+
+4
+
+@Heisenberg The answer treated the likelihood function as the joint probability function of the sample (for which the ML provides the max w.r.t the parameters, and so maximizes probability for any sample). And this is correct
+
+when the r.v's are discrete, but not when they are continuous, since the joint density, by construction is not a joint probability. I wouldn't characterize this as a "nuance", it is a fundamental difference between the discrete and the
+
+continuous worlds.
+
+– Alecos Papadopoulos
+
+Aug 19, 2014 at 15:46
+
+@AlecosPapadopoulos I see. So you take issue with the use of the word "probability function" vs "density function." That is correct.
+
+– Heisenberg
+
+Aug 19, 2014 at 15:54 
+
+@ Alecos Papadopoulos: The real&lt;point here is, maybe, that to justify MLE in the discrete case is direct, while the continuous case needs an extra argument, we can find the joint probability for some ϵ-cube around the data point,
+
+and then observe that for small enough ϵ, the concrete value of ϵ do not matter.
+
+– kjetil b halvorsen ♦
+
+Sep 8, 2015 at 12:02
+
+11
+
+ 
+
+ 
+
+If your data come from a probability distribution with an unknown parameter θ, the maximum likelihood estimate of θ is that which makes the data you actually observed most probable.
+
+In the case where your data are independent samples from that probability distribution, the likelihood (for a given value of θ) is calculated by multiplying together the probabilities of all observations (for that given value of θ) - it's
+
+just the joint probability of the whole sample. And the value of θ for which it's a maximum is the maximum likelihood estimate.
+
+(If the data are continuous read 'probability density' for 'probability'. So if they're measured in inches the density would be measured in probability per inch.)
+
+Share
+
+Improve this answer
+
+edited Dec 4, 2012 at 12:18
+
+answered Dec 3, 2012 at 23:52
+
+3
+
+One quibble. I don't think you can think of them as probabilities when y is continuous.
+
+– dimitriy
+
+Dec 4, 2012 at 1:07
+
+1
+
+@DimitriyV.Masterov Indeed, they're not. Even when you can, if I remember right, likelihood was only defined (by Fisher, I think) 'up to a multiplicative constant'.
+
+– Glen_b
+
+Dec 4, 2012 at 3:03
+
+@Dimitriy, good point; I've added it.
+
+– Scortchi - Reinstate Monica ♦
+
+Dec 4, 2012 at 9:11
+
+1
+
+@Glen, For most purposes - likelihood ratio tests, maximum likelihood estimation - you can drop the constant. For comparing AIC between non-nested models you can't. Don't think it need enter into a layman's definition
+
+anyway.
+
+– Scortchi - Reinstate Monica ♦
+
+Dec 4, 2012 at 9:14
+
+2
+
+As long as you drop the same constant, you still can.
+
+– Glen_b
+
+Dec 4, 2012 at 9:32
+
+8
+
+ 
+
+ 
+
+Let's play a game: I am in a dark room, no one can see what I do but you know that either (a) I throw a dice and count the number of '1's as 'success' or (b) I toss a coin and I count the number of heads as 'success'.
+
+As I said, you can not see which of the two I do but I give you just one single piece of information: I tell you that I have thrown a dice 100 times or I have tossed the coin 100 times and that I had 17 successes.
+
+The question is to guess whether I have thrown a dice or tossed a coin.
+
+You will probably answer that I tossed a dice.
+
+If you do, then you probably have 'made a guess by maximizing the likelihood' because if I observe 17 successes out 100 experiments, it is more likely that I have thrown a dice than that I have tossed a coin.
+
+So what you have done is taking that value of the 'probability of success' (1/6 for a dice and 1/2 for a coin) that makes it most likely to observe 17 successes in 100. 'More likely' meaning that the chance that you have 17 times a '1'
+
+in 100 throws of a dice is higher than the chance of having 17 heads out of 100 coin tosses.
+
+Share
+
+Improve this answer
+
+edited Feb 24, 2016 at 6:23
+
+answered Sep 7, 2015 at 17:04
+
+As I said in my answer, 'abduction' or 'inference to the best explanation'.
+
+– kjetil b halvorsen ♦
+
+Sep 8, 2015 at 19:53
+
+1
+
+@kjetil b halvorsen: I don't understand what you want to say?
+
+
+
+
+
+Cite
+
+Follow
+
+
+
+Cite
+
+Follow
+
+
+
+
+kjetil b halvorsen ♦
+
+71.4k
+
+30
+
+163
+
+526
+
+
+
+Tim ♦
+
+129k
+
+22
+
+241
+
+461
+
+– user83346
+
+Sep 8, 2015 at 20:05
+
+I only try to compare to my answer above. Those terms are used in other fields (philosoph, CS) for more or less the same idea: Choose the explanation which overall fits best to the facts, with a probabilistic model that leads to
+
+maximum likelihood.
+
+– kjetil b halvorsen ♦
+
+Sep 8, 2015 at 20:14
+
+1
+
+@kjetil b halvorsen: can I then conclude that my example is ok ? To say the same in layman's terms :-) ?
+
+– user83346
+
+Sep 8, 2015 at 20:22 
+
+4
+
+ 
+
+ 
+
+Say you have some data X that comes from Normal distribution with unknown mean μ. You want to find what is the value of μ, however you have no idea how to achieve it. One thing you could do is to try several values of μ and
+
+check which of them is the best one. To do this you need however some method for checking which of the values is "better" then others. The likelihood function, L, lets you to check which values of μ are most likely given the data
+
+you have. For this purpose it uses probabilities of your data-points estimated under a probability function f with a given value of μ:
+
+L(μ|X) =
+
+N
+
+∏
+
+i=1f(xi,μ)
+
+or log-likelihood:
+
+lnL(μ|X) =
+
+N
+
+∑
+
+i=1lnf(xi,μ)
+
+You use this function to check which value of μ maximizes the likelihood, i.e. which is the most likely given the data you have. As you can see, this can be achieved with product of probabilities or with sum of log-probabilities (log-
+
+likelihood). In our example f would be probability density function for normal distribution, but the approach can be extended into much more complicated problems.
+
+In practice you do not plug-in some guessed values of μ into the likelihood function but rather use different statistical approaches that are known to provide maximum likelihood estimates of the parameters of interest. There are lots
+
+of such approaches that are problem-specific - some are simple, some complicated (check Wikipedia for more information). Below I provide a simple example of how ML works in practice.
+
+Example
+
+First lets generate some fake data:
+
+    set.seed(123)
+
+    x &lt;- rnorm(1000, 1.78)
+
+and define a likelihood function that we want to maximize (the likelihood of Normal distribution with different values of μ given the data X):
+
+    llik &lt;- function(mu) sum(log(dnorm(x, mu)))
+
+next, what we do is we check different values of μ using our function:
+
+    ll &lt;- vapply(seq(-6, 6, by=0.001), llik, numeric(1))
+
+    plot(seq(-6, 6, by=0.001), ll, type="l", ylab="Log-Likelihood", 
+
+              xlab=expression(mu))
+
+    abline(v=mean(x), col="red")
+
+The same could be achieved faster with an optimization algorithm that looks for the maximum value of a function in a more clever way that going brute force. There are multiple such examples, e.g. one of the most basic in R is 
+
+optimize :
+
+    optimize(llik, interval=c(-6, 6), maximum=TRUE)$maximum
+
+
+
+The black line shows estimates of log-likelihood function under different values of μ. The red line on the plot marks the 1.78 value that is exactly the same as the arithmetic average (that actually is maximum likelihood estimator of
+
+μ), the highest point of log-likelihood function estimated with brute force search and with optimize  algorithm.
+
+This example shows how you can use multiple approaches to find the value that maximizes the likelihood function to find the "best" value of your parameter.
+
+Share
+
+Improve this answer
+
+edited Dec 24, 2021 at 2:07
+
+answered Feb 10, 2015 at 13:15
+
+2
+
+ 
+
+ 
+
+One task in statistics is to fit a distribution function to a set of data points to generalize what's intrinsic about the data. When one is fitting a distribution a)choose an appropriate distribution b)set the movable parts (parameters), for
+
+example mean, variance, etc. When doing all this one also needs an objective, aka objective function/error function. This is required to define the meaning of "best" or "best in what sense". MLE is the procedure where this objective
+
+function is set as the maximum of the probability mass/density function of the chosen distribution. Other techniques differ how they choose this objective function. For example ordinary least squares (OLS) takes the minimum sum
+
+of squared errors. For the Gaussian case OLS and MLE are equivalent because the Gaussian distribution has that (x-m)^2 term in the density function that makes the objectives of OLS and MLE coincide. You can see that it is a
+
+
+
+
+
+Cite
+
+Follow
+
+
+
+
+
+
+gung - Reinstate Monica
+
+140k
+
+85
+
+382
+
+680
+
+
+
+Cagdas Ozgenc
+
+4,026
+
+4
+
+30
+
+62
+
+
+
+Blain Waan
+
+3,495
+
+2
+
+31
+
+38
+
+
+
+Newb
+
+309
+
+3
+
+12
+
+squared difference term like OLS.
+
+Of course one can choose any objective function. However the intuitive meaning will not be always clear. MLE assumes that we know the distribution to start with. In other techniques, this assumption is relaxed. Especially in those
+
+cases it is more common to have a custom objective function.
+
+Share
+
+Improve this answer
+
+edited Aug 20, 2014 at 2:37
+
+answered Aug 19, 2014 at 14:03
+
+0
+
+ 
+
+ 
+
+As you wanted, I will use very naive terms. Suppose you have collected some data {y1,y2,…,yn} and have reasonable assumption that they follow some probability distribution. But you don't usually know the parameter(s) of that
+
+distribution from such samples. Parameters are the "population characteristics" of the probability distribution that you have assumed for the data. Say, your plotting or prior knowledge suggests you to consider the data as being
+
+Normally distributed. Mean and variance are the two parameters that represent a Normal distribution. Let, θ={μ,σ2} be the set of parameters. So the joint probability of observing the data {y1,y2,…,yn} given the set of parameters 
+
+θ={μ,σ2} is given by, p(y1,y2,…,yn|θ).
+
+Likelihood is "the probability of observing the data" so equivalent to the joint pdf (for discrete distribution joint pmf). But it is expressed as a function of the parameters or L(θ|y1,y2,…,yn). So that for this particular data set you
+
+may find the value of θ for which L(θ) is maximum. In words, you find θ for which the probability of observing this particular set of data is maximum. Thus comes the term "Maximum Likelihood". Now you find the set of {μ,σ2} for
+
+which L is maximized. That set of {μ,σ2} for which L(θ) is maximum is called the Maximum Likelihood Estimate.
+
+Share
+
+Improve this answer
+
+answered Dec 4, 2012 at 13:09
+
+0
+
+ 
+
+ 
+
+Suppose you have a coin. Tossing it can give either heads or tails. But you don't know if it's a fair coin. So you toss it 1000 times. It comes up as heads 1000 times, and never as tails.
+
+Now, it's possible that this is actually a fair coin with a 50/50 chance for heads/tails, but it doesn't seem likely, does it? The chance of tossing a fair coin 1000 times and heads never coming up is 0.52000, very small indeed.
+
+The MLE tries to help you find the best explanation in a situation like this -- when you have some result, and you want to figure out what the value of the parameter is that is most likely to give that result. Here, we have 2000 heads
+
+out of 2000 tosses -- so we would use an MLE to find out what probability of getting a head best explains getting 2000 heads out of 2000 tosses.
+
+It's the Maximum Likelihood Estimator. It estimates the parameter (here, it's a probability distribution function) that is most likely to have produced the result you are currently looking at.
+
+To finish up our example, taking the MLE would return that the probability of getting a head that best explains getting 2000 heads out of 2000 tosses is 1.
+
+Share
+
+Improve this answer
+
+answered Aug 21, 2014 at 0:30
+
+0
+
+ 
+
+ 
+
+Just to show very simple graphics and R code for MLEs in binomial and Poisson models.
+
+Binomial. Suppose you know there are n =50 trials of which x =19 are Successes. Then for what value of p is the binomial PDF maximized? This PDF considered as a function of p and (possibly) without its norming constant) is
+
+called a likelihood function. Then the MLE of p is ˆp =x/n =19/50 =0.32.
+
+p = seq(0,1, by=.01)
+
+like = dbinom(19, 59, p)
+
+mle = mean(p[like==max(like)]);  mle
+
+      # 'mean' in case two values of 'like' at max
+
+[1] 0.38
+
+hdr = "MLE of Binomial Success, Probability"
+
+plot(p, like, type="l", lwd=2, main=hdr)
+
+ abline(h=0, col="green2")
+
+ abline(v = mle, lwd=2, lty="dotted", col="red")
+
+
+
+Poisson. Suppose the model is Poisson with mean λ in a domain of time, area, or volume. We observe x =13 Poisson events in the domain. Then the MLE of λ is ˆλ =13.
+
+lam = seq(0, 50, by = .01)
+
+like = dpois(13, lam)
+
+mle = mean(lam[like==max(like)]);  mle
+
+[1] 13
+
+hdr="MLE of Poisson Mean"
+
+plot(lam, like, type="l", lwd=2, main=hdr)
+
+ abline(h=0, col="green2")
+
+ abline(v = mle, lwd=2, lty="dotted", col="red")
+
+Cite
+
+Follow
+
+
+
+Cite
+
+Follow
+
+
+
+Cite
+
+Follow
+
+
+
+
+
+
+BruceET
+
+53.4k
+
+2
+
+32
+
+88
+
+
+
+majeed simaan
+
+166
+
+4
+
+
+
+Kingz
+
+149
+
+4
+
+
+
+Share
+
+Improve this answer
+
+answered Dec 23, 2021 at 21:50
+
+0
+
+ 
+
+ 
+
+You have a model, which you impose that the data comes from. In a way, you wanna reconcile between the model and reality. To do so, you wanna minimize the discrepancy between the two. How would you do that? You have Θ
+
+vector of parameters that you can tune in order to achieve so. Minimizing the discrepancy between reality and the model is similar to choosing the parameters that make it most likely that the true data came from the model.
+
+Hence, the idea of maximum likelihood. Hope it makes sense!
+
+Share
+
+Improve this answer
+
+answered Dec 23, 2021 at 22:13
+
+-1
+
+ 
+
+ 
+
+The way I understand MLE is this: You only get to see what the nature wants you to see. Things you see are facts. These facts have an underlying process that generated it. These process are hidden, unknown, needs to be discovered.
+
+Then the question is: Given the observed fact, what is the likelihood that process P1 generated it? What is the likelihood that process P2 generated it? And so on... One of these likelihoods is going to be max of all. MLE is a
+
+function that extracts that max likelihood.
+
+Think of a coin toss; coin is biased. No one knows the degree of bias. It could range from o(all tails) to 1 (all heads). A fair coin will be 0.5 (head/tail equally likely). When you do 10 tosses, and you observe 7 Heads, then the MLE is
+
+that degree of bias which is more likely to produce the observed fact of 7 heads in 10 tosses.
+
+Share
+
+Improve this answer
+
+answered Apr 17, 2015 at 6:11
+
+
+
+Highly active question. Earn 10 reputation (not counting the association bonus) in order to answer this question. The reputation requirement helps protect this question from spam and non-answer activity.
+
+Not the answer you're looking for? Browse other questions tagged mathematical-statistics maximum-likelihood intuition
+
+definition
+
+philosophical  or ask your own question.
+
+Linked
+
+2
+
+Why maximize the likelihood?
+
+3
+
+why maximize likelihood, rather than maximizing the inverse of the likelihood?
+
+4
+
+Maximum Likelihood Estimation
+
+1
+
+Parameter estimation problem: maximum likelihood
+
+1
+
+What is the meaning of maximum likelihood estimation?
+
+0
+
+What is maximum likelihood estimation in logistic regression?
+
+0
+
+Maximum likelihood estimation of parameters
+
+1
+
+Intuition Maximum likelihood
+
+69
+
+Statistics interview questions
+
+64
+
+If we fail to reject the null hypothesis in a large study, isn't it evidence for the null?
+
+See more linked questions
+
+Related
+
+3
+
+Cite
+
+Follow
+
+
+
+Cite
+
+Follow
+
+
+
+Cite
+
+Follow
+
+
+
+Featured on Meta
+
+
+
+New blog post from our CEO Prashanth: Community is the future of AI
+
+
+
+Improving the copy in the close modal and post notices - 2023 edition
+
+
+CROSS VALIDATED
+
+Tour
+
+Help
+
+Chat
+
+Contact
+
+Feedback
+
+COMPANY
+
+Stack Overflow
+
+Teams
+
+Advertising
+
+Collectives
+
+Talent
+
+About
+
+Press
+
+Legal
+
+Privacy Policy
+
+Terms of Service
+
+Cookie Settings
+
+Cookie Policy
+
+STACK EXCHANGE NETWORK
+
+Technology
+
+Culture &amp; recreation
+
+Life &amp; arts
+
+Science
+
+Professional
+
+Business
+
+API
+
+Data
+
+Blog
+
+Facebook
+
+Twitter
+
+LinkedIn
+
+Instagram
+
+Site design / logo © 2023 Stack Exchange Inc; user contributions licensed under CC BY-SA. rev 2023.4.21.43403
+
+Maximum Likelihood estimation of a function
+
+8
+
+Is Maximum Likelihood Estimation (MLE) a parametric approach?
+
+5
+
+Connection between MLE (Maximum Likelihood Estimation) and introductory Inferential Statistics?
+
+21
+
+Idea and intuition behind quasi maximum likelihood estimation (QMLE)
+
+13
+
+Markov chain Monte Carlo (MCMC) for Maximum Likelihood Estimation (MLE)
+
+5
+
+MLE in context: why is maximum likelihood estimation a thing?
+
+3
+
+Simple explanation of maximum likelihood estimation
+
+3
+
+What is meant by divergence in statistics?
+
+0
+
+Does "Ordinary Least Squares" (OLS) have any inherent relationship with "Maximum Likelihood Estimation" (MLE)?
+
+Hot Network Questions
+
+
+
+There exists an element in a group whose order is at most the number of conjugacy classes
+
+
+
+How to combine several legends in one frame?
+
+
+
+verb "ausmachen" goes to the end
+
+
+
+VASPKIT and SeeK-path recommend different paths. Which one to choose?
+
+
+
+Would you ever say "eat pig" instead of "eat pork"?
+
+more hot questions
+
+ Question feed
+
+Your privacy
+
+By clicking “Accept all cookies”, you agree Stack Exchange can store cookies on your device and disclose information in accordance with our Cookie Policy.
+
+ 
+
+Accept all cookies
+
+Necessary cookies only
+
+Customize settings
+

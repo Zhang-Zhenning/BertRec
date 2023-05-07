@@ -1,0 +1,1123 @@
+
+The Expectation Maximization Algorithm
+
+A short tutorial
+
+Sean Borman
+
+Comments and corrections to: em-tut@seanborman.com
+
+July 18 2004
+
+Last updated June 28, 2006
+
+
+
+
+
+Revision history
+
+
+
+
+
+
+
+07/18/2004
+
+
+
+Initial revision.
+
+
+
+
+
+
+
+08/26/2005
+
+
+
+Minor corrections.
+
+
+
+
+
+
+
+06/28/2006
+
+
+
+Added Figure (1). Corrected typo above Equation (5). Minor
+
+corrections. Added hyperlinks.
+
+
+
+
+
+1
+
+Introduction
+
+This tutorial discusses the Expectation Maximization (EM) algorithm of Demp-
+
+ster, Laird and Rubin [1]. The approach taken follows that of an unpublished
+
+note by Stuart Russel, but ﬂeshes out some of the gory details. In order to
+
+ensure that the presentation is reasonably self-contained, some of the results on
+
+which the derivation of the algorithm is based are presented prior to the pre-
+
+sentation of the main results. The EM algorithm has become a popular tool in
+
+statistical estimation problems involving incomplete data, or in problems which
+
+can be posed in a similar form, such as mixture estimation [3, 4]. The EM
+
+algorithm has also been used in various motion estimation frameworks [5] and
+
+variants of it have been used in multiframe superresolution restoration methods
+
+which combine motion estimation along the lines of [2].
+
+2
+
+Convex Functions
+
+Deﬁnition 1 Let f be a real valued function deﬁned on an interval I = [a, b].
+
+f is said to be convex on I if ∀x1, x2 ∈ I, λ ∈ [0, 1],
+
+f(λx1 + (1 − λ)x2) ≤ λf(x1) + (1 − λ)f(x2).
+
+f is said to be strictly convex if the inequality is strict. Intuitively, this deﬁnition
+
+states that the function falls below (strictly convex) or is never above (convex) the
+
+straight line (the secant) from points (x1, f(x1)) to (x2, f(x2)). See Figure (1).
+
+1
+
+
+
+
+a
+
+b
+
+x1
+
+x2
+
+λx1 + (1 − λ)x2
+
+f(λx1 + (1 − λ)x2)
+
+λf(x1) + (1 − λ)f(x2)
+
+Figure 1: f is convex on [a, b] if f(λx1 + (1 − λ)x2) ≤ λf(x1) + (1 − λ)f(x2)
+
+∀x1, x2 ∈ [a, b],
+
+λ ∈ [0, 1].
+
+Deﬁnition 2 f is concave (strictly concave) if −f is convex (strictly convex).
+
+Theorem 1 If f(x) is twice diﬀerentiable on [a, b] and f ′′(x) ≥ 0 on [a, b] then
+
+f(x) is convex on [a, b].
+
+Proof:
+
+For x ≤ y ∈ [a, b] and λ ∈ [0, 1] let z = λy+(1−λ)x. By deﬁnition, f is
+
+convex iﬀ f(λy+(1−λ)x) ≤ λf(y)+(1−λ)f(x). Writing z = λy+(1−λ)x, and
+
+noting that f(z) = λf(z)+(1−λ)f(z) we have that f(z) = λf(z)+(1−λ)f(z) ≤
+
+λf(y)+(1−λ)f(x). By rearranging terms, an equivalent deﬁnition for convexity
+
+can be obtained: f is convex if
+
+λ [f(y) − f(z)] ≥ (1 − λ) [f(z) − f(x)]
+
+(1)
+
+By the mean value theorem, ∃s, x ≤ s ≤ z s.t.
+
+f(z) − f(x) = f ′(s)(z − x)
+
+(2)
+
+Similarly, applying the mean value theorem to f(y) − f(z), ∃t, z ≤ t ≤ y s.t.
+
+f(y) − f(z) = f ′(t)(y − z)
+
+(3)
+
+Thus we have the situation, x ≤ s ≤ z ≤ t ≤ y. By assumption, f ′′(x) ≥ 0 on
+
+[a, b] so
+
+f ′(s) ≤ f ′(t) since s ≤ t.
+
+(4)
+
+Also note that we may rewrite z = λy + (1 − λ)x in the form
+
+(1 − λ)(z − x) = λ(y − z).
+
+(5)
+
+2
+
+
+Finally, combining the above we have,
+
+(1 − λ)[f(z) − f(x)]
+
+=
+
+(1 − λ)f ′(s)(z − x)
+
+by Equation (2)
+
+≤
+
+f ′(t)(1 − λ)(z − x)
+
+by Equation (4)
+
+=
+
+λf ′(t)(y − z)
+
+by Equation (5)
+
+=
+
+λ[f(y) − f(z)]
+
+by Equation (3).
+
+
+
+Proposition 1 − ln(x) is strictly convex on (0, ∞).
+
+Proof:
+
+With f(x) = −ln(x), we have f ′′(x) =
+
+1
+
+
+
+x2 &gt; 0 for x ∈ (0, ∞). By
+
+Theorem (1), − ln(x) is strictly convex on (0, ∞). Also, by Deﬁnition (2) ln(x)
+
+is strictly concave on (0, ∞).
+
+
+
+The notion of convexity can be extended to apply to n points. This result
+
+is known as Jensen’s inequality.
+
+Theorem 2 (Jensen’s inequality) Let f be a convex function deﬁned on an
+
+interval I. If x1, x2, . . . , xn ∈ I and λ1, λ2, . . . , λn ≥ 0 with �n
+
+i=1 λi = 1,
+
+f
+
+� n
+
+�
+
+i=1
+
+λixi
+
+�
+
+≤
+
+n
+
+�
+
+i=1
+
+λif(xi)
+
+Proof:
+
+For n = 1 this is trivial. The case n = 2 corresponds to the deﬁnition
+
+of convexity. To show that this is true for all natural numbers, we proceed by
+
+induction. Assume the theorem is true for some n then,
+
+f
+
+�n+1
+
+�
+
+i=1
+
+λixi
+
+�
+
+=
+
+f
+
+�
+
+λn+1xn+1 +
+
+n
+
+�
+
+i=1
+
+λixi
+
+�
+
+=
+
+f
+
+�
+
+λn+1xn+1 + (1 − λn+1)
+
+1
+
+
+
+1 − λn+1
+
+n
+
+�
+
+i=1
+
+λixi
+
+�
+
+≤
+
+λn+1f (xn+1) + (1 − λn+1)f
+
+�
+
+1
+
+
+
+1 − λn+1
+
+n
+
+�
+
+i=1
+
+λixi
+
+�
+
+=
+
+λn+1f (xn+1) + (1 − λn+1)f
+
+� n
+
+�
+
+i=1
+
+λi
+
+
+
+1 − λn+1
+
+xi
+
+�
+
+≤
+
+λn+1f (xn+1) + (1 − λn+1)
+
+n
+
+�
+
+i=1
+
+λi
+
+
+
+1 − λn+1
+
+f (xi)
+
+=
+
+λn+1f (xn+1) +
+
+n
+
+�
+
+i=1
+
+λif (xi)
+
+3
+
+
+=
+
+n+1
+
+�
+
+i=1
+
+λif (xi)
+
+
+
+Since ln(x) is concave, we may apply Jensen’s inequality to obtain the useful
+
+result,
+
+ln
+
+n
+
+�
+
+i=1
+
+λixi ≥
+
+n
+
+�
+
+i=1
+
+λi ln(xi).
+
+(6)
+
+This allows us to lower-bound a logarithm of a sum, a result that is used in the
+
+derivation of the EM algorithm.
+
+Jensen’s inequality provides a simple proof that the arithmetic mean is
+
+greater than or equal to the geometric mean.
+
+Proposition 2
+
+1
+
+
+
+n
+
+n
+
+�
+
+i=1
+
+xi ≥
+
+n√
+
+
+
+x1x2 · · · xn.
+
+Proof:
+
+If x1, x2, . . . , xn ≥ 0 then, since ln(x) is concave we have
+
+ln
+
+�
+
+1
+
+
+
+n
+
+n
+
+�
+
+i=1
+
+xi
+
+�
+
+≥
+
+n
+
+�
+
+i=1
+
+1
+
+
+
+n ln(xi)
+
+=
+
+1
+
+
+
+n ln(x1x2 · · · xn)
+
+=
+
+ln(x1x2 · · · xn)
+
+1
+
+
+
+n
+
+Thus, we have
+
+1
+
+
+
+n
+
+n
+
+�
+
+i=1
+
+xi ≥
+
+n√
+
+
+
+x1x2 · · · xn
+
+
+
+3
+
+The Expectation-Maximization Algorithm
+
+The EM algorithm is an eﬃcient iterative procedure to compute the Maximum
+
+Likelihood (ML) estimate in the presence of missing or hidden data. In ML
+
+estimation, we wish to estimate the model parameter(s) for which the observed
+
+data are the most likely.
+
+Each iteration of the EM algorithm consists of two processes: The E-step,
+
+and the M-step. In the expectation, or E-step, the missing data are estimated
+
+given the observed data and current estimate of the model parameters. This is
+
+4
+
+
+achieved using the conditional expectation, explaining the choice of terminology.
+
+In the M-step, the likelihood function is maximized under the assumption that
+
+the missing data are known. The estimate of the missing data from the E-step
+
+are used in lieu of the actual missing data.
+
+Convergence is assured since the algorithm is guaranteed to increase the
+
+likelihood at each iteration.
+
+3.1
+
+Derivation of the EM-algorithm
+
+Let X be random vector which results from a parameterized family. We wish
+
+to ﬁnd θ such that P(X|θ) is a maximum. This is known as the Maximum
+
+Likelihood (ML) estimate for θ. In order to estimate θ, it is typical to introduce
+
+the log likelihood function deﬁned as,
+
+L(θ) = ln P(X|θ).
+
+(7)
+
+The likelihood function is considered to be a function of the parameter θ given
+
+the data X. Since ln(x) is a strictly increasing function, the value of θ which
+
+maximizes P(X|θ) also maximizes L(θ).
+
+The EM algorithm is an iterative procedure for maximizing L(θ). Assume
+
+that after the nth iteration the current estimate for θ is given by θn. Since the
+
+objective is to maximize L(θ), we wish to compute an updated estimate θ such
+
+that,
+
+L(θ) &gt; L(θn)
+
+(8)
+
+Equivalently we want to maximize the diﬀerence,
+
+L(θ) − L(θn) = ln P(X|θ) − ln P(X|θn).
+
+(9)
+
+So far, we have not considered any unobserved or missing variables.
+
+In
+
+problems where such data exist, the EM algorithm provides a natural framework
+
+for their inclusion. Alternately, hidden variables may be introduced purely as
+
+an artiﬁce for making the maximum likelihood estimation of θ tractable. In
+
+this case, it is assumed that knowledge of the hidden variables will make the
+
+maximization of the likelihood function easier. Either way, denote the hidden
+
+random vector by Z and a given realization by z. The total probability P(X|θ)
+
+may be written in terms of the hidden variables z as,
+
+P(X|θ) =
+
+�
+
+z
+
+P(X|z, θ)P(z|θ).
+
+(10)
+
+We may then rewrite Equation (9) as,
+
+L(θ) − L(θn) = ln
+
+�
+
+z
+
+P(X|z, θ)P(z|θ) − ln P(X|θn).
+
+(11)
+
+Notice that this expression involves the logarithm of a sum. In Section (2) using
+
+Jensen’s inequality, it was shown that,
+
+ln
+
+n
+
+�
+
+i=1
+
+λixi ≥
+
+n
+
+�
+
+i=1
+
+λi ln(xi)
+
+5
+
+
+for constants λi ≥ 0 with �n
+
+i=1 λi = 1. This result may be applied to Equa-
+
+tion (11) which involves the logarithm of a sum provided that the constants
+
+λi can be identiﬁed. Consider letting the constants be of the form P(z|X, θn).
+
+Since P(z|X, θn) is a probability measure, we have that P(z|X, θn) ≥ 0 and
+
+that �
+
+z P(z|X, θn) = 1 as required.
+
+Then starting with Equation (11) the constants P(z|X, θn) are introduced
+
+as,
+
+L(θ) − L(θn)
+
+=
+
+ln
+
+�
+
+z
+
+P(X|z, θ)P(z|θ) − ln P(X|θn)
+
+=
+
+ln
+
+�
+
+z
+
+P(X|z, θ)P(z|θ) · P(z|X, θn)
+
+
+
+P(z|X, θn) − ln P(X|θn)
+
+=
+
+ln
+
+�
+
+z
+
+P(z|X, θn)
+
+�P(X|z, θ)P(z|θ)
+
+
+
+P(z|X, θn)
+
+�
+
+− ln P(X|θn)
+
+≥
+
+�
+
+z
+
+P(z|X, θn) ln
+
+�P(X|z, θ)P(z|θ)
+
+
+
+P(z|X, θn)
+
+�
+
+− ln P(X|θn)
+
+=
+
+�
+
+z
+
+P(z|X, θn) ln
+
+�
+
+P(X|z, θ)P(z|θ)
+
+
+
+P(z|X, θn)P(X|θn)
+
+�
+
+∆=
+
+∆(θ|θn)
+
+(12)
+
+Equivalently we may write,
+
+L(θ) ≥ L(θn) + ∆(θ|θn)
+
+(13)
+
+and for convenience deﬁne,
+
+l(θ|θn)
+
+∆= L(θn) + ∆(θ|θn)
+
+so that the relationship in Equation (13) can be made explicit as,
+
+L(θ) ≥ l(θ|θn).
+
+We have now a function, l(θ|θn) which is bounded above by the likelihood
+
+function L(θ). Additionally, observe that,
+
+l(θn|θn)
+
+=
+
+L(θn) + ∆(θn|θn)
+
+=
+
+L(θn) +
+
+�
+
+z
+
+P(z|X, θn) ln P(X|z, θn)P(z|θn)
+
+
+
+P(z|X, θn)P(X|θn)
+
+=
+
+L(θn) +
+
+�
+
+z
+
+P(z|X, θn) ln P(X, z|θn)
+
+
+
+P(X, z|θn)
+
+=
+
+L(θn) +
+
+�
+
+z
+
+P(z|X, θn) ln 1
+
+=
+
+L(θn),
+
+(14)
+
+6
+
+
+
+
+L(θ)
+
+l(θ|θn)
+
+θn
+
+θn+1
+
+L(θn) = l(θn|θn)
+
+l(θn+1|θn)
+
+L(θn+1)
+
+L(θ)
+
+l(θ|θn)
+
+θ
+
+Figure 2: Graphical interpretation of a single iteration of the EM algorithm:
+
+The function L(θ|θn) is upper-bounded by the likelihood function L(θ). The
+
+functions are equal at θ = θn. The EM algorithm chooses θn+1 as the value of θ
+
+for which l(θ|θn) is a maximum. Since L(θ) ≥ l(θ|θn) increasing l(θ|θn) ensures
+
+that the value of the likelihood function L(θ) is increased at each step.
+
+so for θ = θn the functions l(θ|θn) and L(θ) are equal.
+
+Our objective is to choose a values of θ so that L(θ) is maximized. We have
+
+shown that the function l(θ|θn) is bounded above by the likelihood function L(θ)
+
+and that the value of the functions l(θ|θn) and L(θ) are equal at the current
+
+estimate for θ = θn. Therefore, any θ which increases l(θ|θn) in turn increase
+
+the L(θ). In order to achieve the greatest possible increase in the value of L(θ),
+
+the EM algorithm calls for selecting θ such that l(θ|θn) is maximized. We denote
+
+this updated value as θn+1. This process is illustrated in Figure (2).
+
+Formally we have,
+
+θn+1
+
+=
+
+arg max
+
+θ
+
+{l(θ|θn)}
+
+=
+
+arg max
+
+θ
+
+�
+
+L(θn) +
+
+�
+
+z
+
+P(z|X, θn) ln
+
+P(X|z, θ)P(z|θ)
+
+
+
+P(X|θn)P(z|X, θn)
+
+�
+
+Now drop terms which are constant w.r.t. θ
+
+=
+
+arg max
+
+θ
+
+��
+
+z
+
+P(z|X, θn) ln P(X|z, θ)P(z|θ)
+
+�
+
+=
+
+arg max
+
+θ
+
+��
+
+z
+
+P(z|X, θn) ln P(X, z, θ)
+
+
+
+P(z, θ)
+
+P(z, θ)
+
+
+
+P(θ)
+
+�
+
+=
+
+arg max
+
+θ
+
+��
+
+z
+
+P(z|X, θn) ln P(X, z|θ)
+
+�
+
+=
+
+arg max
+
+θ
+
+�
+
+EZ|X,θn {ln P(X, z|θ)}
+
+�
+
+(15)
+
+7
+
+
+In Equation (15) the expectation and maximization steps are apparent. The
+
+EM algorithm thus consists of iterating the:
+
+1. E-step: Determine the conditional expectation EZ|X,θn{ln P(X, z|θ)}
+
+2. M-step: Maximize this expression with respect to θ.
+
+At this point it is fair to ask what has been gained given that we have simply
+
+traded the maximization of L(θ) for the maximization of l(θ|θn). The answer
+
+lies in the fact that l(θ|θn) takes into account the unobserved or missing data
+
+Z. In the case where we wish to estimate these variables the EM algorithms
+
+provides a framework for doing so. Also, as alluded to earlier, it may be conve-
+
+nient to introduce such hidden variables so that the maximization of L(θ|θn) is
+
+simpliﬁed given knowledge of the hidden variables. (as compared with a direct
+
+maximization of L(θ))
+
+3.2
+
+Convergence of the EM Algorithm
+
+The convergence properties of the EM algorithm are discussed in detail by
+
+McLachlan and Krishnan [3]. In this section we discuss the general convergence
+
+of the algorithm. Recall that θn+1 is the estimate for θ which maximizes the
+
+diﬀerence ∆(θ|θn). Starting with the current estimate for θ, that is, θn we had
+
+that ∆(θn|θn) = 0. Since θn+1 is chosen to maximize ∆(θ|θn), we then have
+
+that ∆(θn+1|θn) ≥ ∆(θn|θn) = 0, so for each iteration the likelihood L(θ) is
+
+nondecreasing.
+
+When the algorithm reaches a ﬁxed point for some θn the value θn maximizes
+
+l(θ). Since L and l are equal at θn if L and l are diﬀerentiable at θn, then θn
+
+must be a stationary point of L. The stationary point need not, however, be
+
+a local maximum. In [3] it is shown that it is possible for the algorithm to
+
+converge to local minima or saddle points in unusual cases.
+
+3.3
+
+The Generalized EM Algorithm
+
+In the formulation of the EM algorithm described above, θn+1 was chosen as
+
+the value of θ for which ∆(θ|θn) was maximized. While this ensures the greatest
+
+increase in L(θ), it is however possible to relax the requirement of maximization
+
+to one of simply increasing ∆(θ|θn) so that ∆(θn+1|θn) ≥ ∆(θn|θn). This ap-
+
+proach, to simply increase and not necessarily maximize ∆(θn+1|θn) is known as
+
+the Generalized Expectation Maximization (GEM) algorithm and is often use-
+
+ful in cases where the maximization is diﬃcult. The convergence of the GEM
+
+algorithm can be argued as above.
+
+References
+
+[1] A. P. Dempster, N. M. Laird, and D. B. Rubin. Maximum likelihood from in-
+
+complete data via the em algorithm. Journal of the Royal Statistical Society:
+
+Series B, 39(1):1–38, November 1977.
+
+8
+
+
+[2] R. C. Hardie, K. J. Barnard, and E. E. Armstrong. Joint MAP registration
+
+and high-resolution image estimation using a sequence of undersampled im-
+
+ages. IEEE Transactions on Image Processing, 6(12):1621–1633, December
+
+1997.
+
+[3] Geoﬀrey McLachlan and Thriyambakam Krishnan. The EM Algorithm and
+
+Extensions. John Wiley &amp; Sons, New York, 1996.
+
+[4] Geoﬀrey McLachlan and David Peel. Finite Mixture Models. John Wiley &amp;
+
+Sons, New York, 2000.
+
+[5] Yair Weiss.
+
+Bayesian motion estimation and segmentation.
+
+PhD thesis,
+
+Massachusetts Institute of Technology, May 1998.
+
+9
+

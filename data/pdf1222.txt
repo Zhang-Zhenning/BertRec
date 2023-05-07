@@ -1,0 +1,5097 @@
+
+Online edition (c)�2009 Cambridge UP
+
+DRAFT! © April 1, 2009 Cambridge University Press. Feedback welcome.
+
+253
+
+13
+
+Text classiﬁcation and Naive
+
+Bayes
+
+Thus far, this book has mainly discussed the process of ad hoc retrieval, where
+
+users have transient information needs that they try to address by posing
+
+one or more queries to a search engine. However, many users have ongoing
+
+information needs. For example, you might need to track developments in
+
+multicore computer chips. One way of doing this is to issue the query multi-
+
+core AND computer AND chip against an index of recent newswire articles each
+
+morning. In this and the following two chapters we examine the question:
+
+How can this repetitive task be automated? To this end, many systems sup-
+
+port standing queries. A standing query is like any other query except that it
+
+STANDING QUERY
+
+is periodically executed on a collection to which new documents are incre-
+
+mentally added over time.
+
+If your standing query is just multicore AND computer AND chip, you will tend
+
+to miss many relevant new articles which use other terms such as multicore
+
+processors. To achieve good recall, standing queries thus have to be reﬁned
+
+over time and can gradually become quite complex. In this example, using a
+
+Boolean search engine with stemming, you might end up with a query like
+
+(multicore OR multi-core) AND (chip OR processor OR microprocessor).
+
+To capture the generality and scope of the problem space to which stand-
+
+ing queries belong, we now introduce the general notion of a classiﬁcation
+
+CLASSIFICATION
+
+problem. Given a set of classes, we seek to determine which class(es) a given
+
+object belongs to. In the example, the standing query serves to divide new
+
+newswire articles into the two classes: documents about multicore computer chips
+
+and documents not about multicore computer chips. We refer to this as two-class
+
+classiﬁcation. Classiﬁcation using standing queries is also called routing or
+
+ROUTING
+
+ﬁlteringand will be discussed further in Section 15.3.1 (page 335).
+
+FILTERING
+
+A class need not be as narrowly focused as the standing query multicore
+
+computer chips. Often, a class is a more general subject area like China or coffee.
+
+Such more general classes are usually referred to as topics, and the classiﬁca-
+
+tion task is then called text classiﬁcation, text categorization, topic classiﬁcation,
+
+TEXT CLASSIFICATION
+
+or topic spotting. An example for China appears in Figure 13.1. Standing
+
+queries and topics differ in their degree of speciﬁcity, but the methods for
+
+
+Online edition (c)�2009 Cambridge UP
+
+254
+
+13
+
+Text classiﬁcation and Naive Bayes
+
+solving routing, ﬁltering, and text classiﬁcation are essentially the same. We
+
+therefore include routing and ﬁltering under the rubric of text classiﬁcation
+
+in this and the following chapters.
+
+The notion of classiﬁcation is very general and has many applications within
+
+and beyond information retrieval (IR). For instance, in computer vision, a
+
+classiﬁer may be used to divide images into classes such as landscape, por-
+
+trait, and neither. We focus here on examples from information retrieval such
+
+as:
+
+• Several of the preprocessing steps necessary for indexing as discussed in
+
+Chapter 2: detecting a document’s encoding (ASCII, Unicode UTF-8 etc;
+
+page 20); word segmentation (Is the white space between two letters a
+
+word boundary or not? page 24 ) ; truecasing (page 30); and identifying
+
+the language of a document (page 46).
+
+• The automatic detection of spam pages (which then are not included in
+
+the search engine index).
+
+• The automatic detection of sexually explicit content (which is included in
+
+search results only if the user turns an option such as SafeSearch off).
+
+• Sentiment detection or the automatic classiﬁcation of a movie or product
+
+SENTIMENT DETECTION
+
+review as positive or negative. An example application is a user search-
+
+ing for negative reviews before buying a camera to make sure it has no
+
+undesirable features or quality problems.
+
+• Personal email sorting. A user may have folders like talk announcements,
+
+EMAIL SORTING
+
+electronic bills, email from family and friends, and so on, and may want a
+
+classiﬁer to classify each incoming email and automatically move it to the
+
+appropriate folder. It is easier to ﬁnd messages in sorted folders than in
+
+a very large inbox. The most common case of this application is a spam
+
+folder that holds all suspected spam messages.
+
+• Topic-speciﬁc or vertical search. Vertical search engines restrict searches to
+
+VERTICAL SEARCH
+
+ENGINE
+
+a particular topic. For example, the query computer science on a vertical
+
+search engine for the topic China will return a list of Chinese computer
+
+science departments with higher precision and recall than the query com-
+
+puter science China on a general purpose search engine. This is because the
+
+vertical search engine does not include web pages in its index that contain
+
+the term china in a different sense (e.g., referring to a hard white ceramic),
+
+but does include relevant pages even if they do not explicitly mention the
+
+term China.
+
+• Finally, the ranking function in ad hoc information retrieval can also be
+
+based on a document classiﬁer as we will explain in Section 15.4 (page 341).
+
+
+Online edition (c)�2009 Cambridge UP
+
+255
+
+This list shows the general importance of classiﬁcation in IR. Most retrieval
+
+systems today contain multiple components that use some form of classiﬁer.
+
+The classiﬁcation task we will use as an example in this book is text classiﬁ-
+
+cation.
+
+A computer is not essential for classiﬁcation. Many classiﬁcation tasks
+
+have traditionally been solved manually. Books in a library are assigned
+
+Library of Congress categories by a librarian. But manual classiﬁcation is
+
+expensive to scale. The multicore computer chips example illustrates one al-
+
+ternative approach: classiﬁcation by the use of standing queries – which can
+
+be thought of as rules – most commonly written by hand. As in our exam-
+
+RULES IN TEXT
+
+CLASSIFICATION
+
+ple (multicore OR multi-core) AND (chip OR processor OR microprocessor), rules are
+
+sometimes equivalent to Boolean expressions.
+
+A rule captures a certain combination of keywords that indicates a class.
+
+Hand-coded rules have good scaling properties, but creating and maintain-
+
+ing them over time is labor intensive. A technically skilled person (e.g., a
+
+domain expert who is good at writing regular expressions) can create rule
+
+sets that will rival or exceed the accuracy of the automatically generated clas-
+
+siﬁers we will discuss shortly; however, it can be hard to ﬁnd someone with
+
+this specialized skill.
+
+Apart from manual classiﬁcation and hand-crafted rules, there is a third
+
+approach to text classiﬁcation, namely, machine learning-based text classiﬁ-
+
+cation. It is the approach that we focus on in the next several chapters. In
+
+machine learning, the set of rules or, more generally, the decision criterion of
+
+the text classiﬁer, is learned automatically from training data. This approach
+
+is also called statistical text classiﬁcation if the learning method is statistical.
+
+STATISTICAL TEXT
+
+CLASSIFICATION
+
+In statistical text classiﬁcation, we require a number of good example docu-
+
+ments (or training documents) for each class. The need for manual classiﬁ-
+
+cation is not eliminated because the training documents come from a person
+
+who has labeled them – where labeling refers to the process of annotating
+
+LABELING
+
+each document with its class. But labeling is arguably an easier task than
+
+writing rules. Almost anybody can look at a document and decide whether
+
+or not it is related to China. Sometimes such labeling is already implicitly
+
+part of an existing workﬂow. For instance, you may go through the news
+
+articles returned by a standing query each morning and give relevance feed-
+
+back (cf. Chapter 9) by moving the relevant articles to a special folder like
+
+multicore-processors.
+
+We begin this chapter with a general introduction to the text classiﬁcation
+
+problem including a formal deﬁnition (Section 13.1); we then cover Naive
+
+Bayes, a particularly simple and effective classiﬁcation method (Sections 13.2–
+
+13.4). All of the classiﬁcation algorithms we study represent documents in
+
+high-dimensional spaces. To improve the efﬁciency of these algorithms, it
+
+is generally desirable to reduce the dimensionality of these spaces; to this
+
+end, a technique known as feature selection is commonly applied in text clas-
+
+
+Online edition (c)�2009 Cambridge UP
+
+256
+
+13
+
+Text classiﬁcation and Naive Bayes
+
+siﬁcation as discussed in Section 13.5. Section 13.6 covers evaluation of text
+
+classiﬁcation. In the following chapters, Chapters 14 and 15, we look at two
+
+other families of classiﬁcation methods, vector space classiﬁers and support
+
+vector machines.
+
+13.1
+
+The text classiﬁcation problem
+
+In text classiﬁcation, we are given a description d ∈ X of a document, where
+
+X is the document space; and a ﬁxed set of classes C = {c1, c2, . . . , cJ}. Classes
+
+DOCUMENT SPACE
+
+CLASS
+
+are also called categories or labels. Typically, the document space X is some
+
+type of high-dimensional space, and the classes are human deﬁned for the
+
+needs of an application, as in the examples China and documents that talk
+
+about multicore computer chips above. We are given a training set D of labeled
+
+TRAINING SET
+
+documents ⟨d, c⟩,where ⟨d, c⟩ ∈ X × C. For example:
+
+⟨d, c⟩ = ⟨Beijing joins the World Trade Organization, China⟩
+
+for the one-sentence document Beijing joins the World Trade Organization and
+
+the class (or label) China.
+
+Using a learning method or learning algorithm, we then wish to learn a clas-
+
+LEARNING METHOD
+
+siﬁer or classiﬁcation function γ that maps documents to classes:
+
+CLASSIFIER
+
+γ : X → C
+
+(13.1)
+
+This type of learning is called supervised learning because a supervisor (the
+
+SUPERVISED LEARNING
+
+human who deﬁnes the classes and labels training documents) serves as a
+
+teacher directing the learning process. We denote the supervised learning
+
+method by Γ and write Γ(D) = γ. The learning method Γ takes the training
+
+set D as input and returns the learned classiﬁcation function γ.
+
+Most names for learning methods Γ are also used for classiﬁers γ. We
+
+talk about the Naive Bayes (NB) learning method Γ when we say that “Naive
+
+Bayes is robust,” meaning that it can be applied to many different learning
+
+problems and is unlikely to produce classiﬁers that fail catastrophically. But
+
+when we say that “Naive Bayes had an error rate of 20%,” we are describing
+
+an experiment in which a particular NB classiﬁer γ (which was produced by
+
+the NB learning method) had a 20% error rate in an application.
+
+Figure 13.1 shows an example of text classiﬁcation from the Reuters-RCV1
+
+collection, introduced in Section 4.2, page 69. There are six classes (UK, China,
+
+..., sports), each with three training documents. We show a few mnemonic
+
+words for each document’s content. The training set provides some typical
+
+examples for each class, so that we can learn the classiﬁcation function γ.
+
+Once we have learned γ, we can apply it to the test set (or test data), for ex-
+
+TEST SET
+
+ample, the new document ﬁrst private Chinese airline whose class is unknown.
+
+
+Online edition (c)�2009 Cambridge UP
+
+13.1
+
+The text classiﬁcation problem
+
+257
+
+classes:
+
+training
+
+set:
+
+test
+
+set:
+
+regions
+
+industries
+
+subject areas
+
+γ(d′) =China
+
+ﬁrst
+
+private
+
+Chinese
+
+airline
+
+UK
+
+China
+
+poultry
+
+coffee
+
+elections
+
+sports
+
+London
+
+congestion
+
+Big Ben
+
+Parliament
+
+the Queen
+
+Windsor
+
+Beijing
+
+Olympics
+
+Great Wall
+
+tourism
+
+communist
+
+Mao
+
+chicken
+
+feed
+
+ducks
+
+pate
+
+turkey
+
+bird ﬂu
+
+beans
+
+roasting
+
+robusta
+
+arabica
+
+harvest
+
+Kenya
+
+votes
+
+recount
+
+run-off
+
+seat
+
+campaign
+
+TV ads
+
+baseball
+
+diamond
+
+soccer
+
+forward
+
+captain
+
+team
+
+d′
+
+◮ Figure 13.1
+
+Classes, training set, and test set in text classiﬁcation .
+
+
+
+In Figure 13.1, the classiﬁcation function assigns the new document to class
+
+γ(d) = China, which is the correct assignment.
+
+The classes in text classiﬁcation often have some interesting structure such
+
+as the hierarchy in Figure 13.1. There are two instances each of region cate-
+
+gories, industry categories, and subject area categories. A hierarchy can be
+
+an important aid in solving a classiﬁcation problem; see Section 15.3.2 for
+
+further discussion. Until then, we will make the assumption in the text clas-
+
+siﬁcation chapters that the classes form a set with no subset relationships
+
+between them.
+
+Deﬁnition (13.1) stipulates that a document is a member of exactly one
+
+class. This is not the most appropriate model for the hierarchy in Figure 13.1.
+
+For instance, a document about the 2008 Olympics should be a member of
+
+two classes: the China class and the sports class. This type of classiﬁcation
+
+problem is referred to as an any-of problem and we will return to it in Sec-
+
+tion 14.5 (page 306). For the time being, we only consider one-of problems
+
+where a document is a member of exactly one class.
+
+Our goal in text classiﬁcation is high accuracy on test data or new data – for
+
+example, the newswire articles that we will encounter tomorrow morning
+
+in the multicore chip example. It is easy to achieve high accuracy on the
+
+training set (e.g., we can simply memorize the labels). But high accuracy on
+
+the training set in general does not mean that the classiﬁer will work well on
+
+
+Online edition (c)�2009 Cambridge UP
+
+258
+
+13
+
+Text classiﬁcation and Naive Bayes
+
+new data in an application. When we use the training set to learn a classiﬁer
+
+for test data, we make the assumption that training data and test data are
+
+similar or from the same distribution. We defer a precise deﬁnition of this
+
+notion to Section 14.6 (page 308).
+
+13.2
+
+Naive Bayes text classiﬁcation
+
+The ﬁrst supervised learning method we introduce is the multinomial Naive
+
+MULTINOMIAL NAIVE
+
+BAYES
+
+Bayes or multinomial NB model, a probabilistic learning method. The proba-
+
+bility of a document d being in class c is computed as
+
+P(c|d) ∝ P(c) ∏
+
+1≤k≤nd
+
+P(tk|c)
+
+(13.2)
+
+where P(tk|c) is the conditional probability of term tk occurring in a docu-
+
+ment of class c.1 We interpret P(tk|c) as a measure of how much evidence
+
+tk contributes that c is the correct class. P(c) is the prior probability of a
+
+document occurring in class c. If a document’s terms do not provide clear
+
+evidence for one class versus another, we choose the one that has a higher
+
+prior probability. ⟨t1, t2, . . . , tnd⟩ are the tokens in d that are part of the vocab-
+
+ulary we use for classiﬁcation and nd is the number of such tokens in d. For
+
+example, ⟨t1, t2, . . . , tnd⟩ for the one-sentence document Beijing and Taipei join
+
+the WTO might be ⟨Beijing, Taipei, join, WTO⟩, with nd = 4, if we treat the terms
+
+and and the as stop words.
+
+In text classiﬁcation, our goal is to ﬁnd the best class for the document. The
+
+best class in NB classiﬁcation is the most likely or maximum a posteriori (MAP)
+
+MAXIMUM A
+
+POSTERIORI CLASS
+
+class cmap:
+
+cmap = arg max
+
+c∈C
+
+ˆP(c|d) = arg max
+
+c∈C
+
+ˆP(c) ∏
+
+1≤k≤nd
+
+ˆP(tk|c).
+
+(13.3)
+
+We write ˆP for P because we do not know the true values of the parameters
+
+P(c) and P(tk|c), but estimate them from the training set as we will see in a
+
+moment.
+
+In Equation (13.3), many conditional probabilities are multiplied, one for
+
+each position 1 ≤ k ≤ nd. This can result in a ﬂoating point underﬂow.
+
+It is therefore better to perform the computation by adding logarithms of
+
+probabilities instead of multiplying probabilities. The class with the highest
+
+log probability score is still the most probable; log(xy) = log(x) + log(y)
+
+and the logarithm function is monotonic. Hence, the maximization that is
+
+
+
+1. We will explain in the next section why P(c|d) is proportional to (∝), not equal to the quantity
+
+on the right.
+
+
+Online edition (c)�2009 Cambridge UP
+
+13.2
+
+Naive Bayes text classiﬁcation
+
+259
+
+actually done in most implementations of NB is:
+
+cmap = arg max
+
+c∈C
+
+[log ˆP(c) + ∑
+
+1≤k≤nd
+
+log ˆP(tk|c)].
+
+(13.4)
+
+Equation (13.4) has a simple interpretation. Each conditional parameter
+
+log ˆP(tk|c) is a weight that indicates how good an indicator tk is for c. Sim-
+
+ilarly, the prior log ˆP(c) is a weight that indicates the relative frequency of
+
+c. More frequent classes are more likely to be the correct class than infre-
+
+quent classes. The sum of log prior and term weights is then a measure of
+
+how much evidence there is for the document being in the class, and Equa-
+
+tion (13.4) selects the class for which we have the most evidence.
+
+We will initially work with this intuitive interpretation of the multinomial
+
+NB model and defer a formal derivation to Section 13.4.
+
+How do we estimate the parameters ˆP(c) and ˆP(tk|c)? We ﬁrst try the
+
+maximum likelihood estimate (MLE; Section 11.3.2, page 226), which is sim-
+
+ply the relative frequency and corresponds to the most likely value of each
+
+parameter given the training data. For the priors this estimate is:
+
+ˆP(c) = Nc
+
+
+
+N ,
+
+(13.5)
+
+where Nc is the number of documents in class c and N is the total number of
+
+documents.
+
+We estimate the conditional probability ˆP(t|c) as the relative frequency of
+
+term t in documents belonging to class c:
+
+ˆP(t|c) =
+
+Tct
+
+
+
+∑t′∈V Tct′ ,
+
+(13.6)
+
+where Tct is the number of occurrences of t in training documents from class
+
+c, including multiple occurrences of a term in a document. We have made the
+
+positional independence assumption here, which we will discuss in more detail
+
+in the next section: Tct is a count of occurrences in all positions k in the doc-
+
+uments in the training set. Thus, we do not compute different estimates for
+
+different positions and, for example, if a word occurs twice in a document,
+
+in positions k1 and k2, then ˆP(tk1|c) = ˆP(tk2|c).
+
+The problem with the MLE estimate is that it is zero for a term–class combi-
+
+nation that did not occur in the training data. If the term WTO in the training
+
+data only occurred in China documents, then the MLE estimates for the other
+
+classes, for example UK, will be zero:
+
+ˆP(WTO|UK) = 0.
+
+Now, the one-sentence document Britain is a member of the WTO will get a
+
+conditional probability of zero for UK because we are multiplying the condi-
+
+tional probabilities for all terms in Equation (13.2). Clearly, the model should
+
+
+Online edition (c)�2009 Cambridge UP
+
+260
+
+13
+
+Text classiﬁcation and Naive Bayes
+
+TRAINMULTINOMIALNB(C, D)
+
+1
+
+V ← EXTRACTVOCABULARY(D)
+
+2
+
+N ← COUNTDOCS(D)
+
+3
+
+for each c ∈ C
+
+4
+
+do Nc ← COUNTDOCSINCLASS(D, c)
+
+5
+
+prior[c] ← Nc/N
+
+6
+
+textc ← CONCATENATETEXTOFALLDOCSINCLASS(D, c)
+
+7
+
+for each t ∈ V
+
+8
+
+do Tct ← COUNTTOKENSOFTERM(textc, t)
+
+9
+
+for each t ∈ V
+
+10
+
+do condprob[t][c] ←
+
+Tct+1
+
+
+
+∑t′(Tct′+1)
+
+11
+
+return V, prior, condprob
+
+APPLYMULTINOMIALNB(C, V, prior, condprob, d)
+
+1
+
+W ← EXTRACTTOKENSFROMDOC(V, d)
+
+2
+
+for each c ∈ C
+
+3
+
+do score[c] ← log prior[c]
+
+4
+
+for each t ∈ W
+
+5
+
+do score[c] += log condprob[t][c]
+
+6
+
+return arg maxc∈C score[c]
+
+◮ Figure 13.2
+
+Naive Bayes algorithm (multinomial model): Training and testing.
+
+
+
+assign a high probability to the UK class because the term Britain occurs. The
+
+problem is that the zero probability for WTO cannot be “conditioned away,”
+
+no matter how strong the evidence for the class UK from other features. The
+
+estimate is 0 because of sparseness: The training data are never large enough
+
+SPARSENESS
+
+to represent the frequency of rare events adequately, for example, the fre-
+
+quency of WTO occurring in UK documents.
+
+To eliminate zeros, we use add-one or Laplace smoothing, which simply adds
+
+ADD-ONE SMOOTHING
+
+one to each count (cf. Section 11.3.2):
+
+ˆP(t|c) =
+
+Tct + 1
+
+
+
+∑t′∈V(Tct′ + 1) =
+
+Tct + 1
+
+
+
+(∑t′∈V Tct′) + B,
+
+(13.7)
+
+where B = |V| is the number of terms in the vocabulary. Add-one smoothing
+
+can be interpreted as a uniform prior (each term occurs once for each class)
+
+that is then updated as evidence from the training data comes in. Note that
+
+this is a prior probability for the occurrence of a term as opposed to the prior
+
+probability of a class which we estimate in Equation (13.5) on the document
+
+level.
+
+
+Online edition (c)�2009 Cambridge UP
+
+13.2
+
+Naive Bayes text classiﬁcation
+
+261
+
+◮ Table 13.1
+
+Data for parameter estimation examples.
+
+docID
+
+words in document
+
+in c = China?
+
+
+
+training set
+
+1
+
+Chinese Beijing Chinese
+
+yes
+
+2
+
+Chinese Chinese Shanghai
+
+yes
+
+3
+
+Chinese Macao
+
+yes
+
+4
+
+Tokyo Japan Chinese
+
+no
+
+
+
+test set
+
+5
+
+Chinese Chinese Chinese Tokyo Japan
+
+?
+
+◮ Table 13.2
+
+Training and test times for NB.
+
+mode
+
+time complexity
+
+
+
+training
+
+Θ(|D|Lave + |C||V|)
+
+testing
+
+Θ(La + |C|Ma) = Θ(|C|Ma)
+
+
+
+We have now introduced all the elements we need for training and apply-
+
+ing an NB classiﬁer. The complete algorithm is described in Figure 13.2.
+
+
+
+Example 13.1:
+
+For the example in Table 13.1, the multinomial parameters we
+
+need to classify the test document are the priors ˆP(c) = 3/4 and ˆP(
+
+
+
+c) = 1/4 and the
+
+following conditional probabilities:
+
+ˆP(Chinese|c)
+
+=
+
+(5 + 1)/(8 + 6) = 6/14 = 3/7
+
+ˆP(Tokyo|c) = ˆP(Japan|c)
+
+=
+
+(0 + 1)/(8 + 6) = 1/14
+
+ˆP(Chinese|
+
+
+
+c)
+
+=
+
+(1 + 1)/(3 + 6) = 2/9
+
+ˆP(Tokyo|
+
+
+
+c) = ˆP(Japan|
+
+
+
+c)
+
+=
+
+(1 + 1)/(3 + 6) = 2/9
+
+The denominators are (8 + 6) and (3 + 6) because the lengths of textc and text
+
+
+
+c are 8
+
+and 3, respectively, and because the constant B in Equation (13.7) is 6 as the vocabu-
+
+lary consists of six terms.
+
+We then get:
+
+ˆP(c|d5)
+
+∝
+
+3/4 · (3/7)3 · 1/14 · 1/14 ≈ 0.0003.
+
+ˆP(
+
+
+
+c|d5)
+
+∝
+
+1/4 · (2/9)3 · 2/9 · 2/9 ≈ 0.0001.
+
+Thus, the classiﬁer assigns the test document to c = China. The reason for this clas-
+
+siﬁcation decision is that the three occurrences of the positive indicator Chinese in d5
+
+outweigh the occurrences of the two negative indicators Japan and Tokyo.
+
+What is the time complexity of NB? The complexity of computing the pa-
+
+rameters is Θ(|C||V|) because the set of parameters consists of |C||V| con-
+
+ditional probabilities and |C| priors. The preprocessing necessary for com-
+
+puting the parameters (extracting the vocabulary, counting terms, etc.) can
+
+be done in one pass through the training data. The time complexity of this
+
+
+Online edition (c)�2009 Cambridge UP
+
+262
+
+13
+
+Text classiﬁcation and Naive Bayes
+
+component is therefore Θ(|D|Lave), where |D| is the number of documents
+
+and Lave is the average length of a document.
+
+We use Θ(|D|Lave) as a notation for Θ(T) here, where T is the length of the
+
+training collection. This is nonstandard; Θ(.) is not deﬁned for an average.
+
+We prefer expressing the time complexity in terms of D and Lave because
+
+these are the primary statistics used to characterize training collections.
+
+The time complexity of APPLYMULTINOMIALNB in Figure 13.2 is Θ(|C|La).
+
+La and Ma are the numbers of tokens and types, respectively, in the test doc-
+
+ument. APPLYMULTINOMIALNB can be modiﬁed to be Θ(La + |C|Ma) (Ex-
+
+ercise 13.8). Finally, assuming that the length of test documents is bounded,
+
+Θ(La + |C|Ma) = Θ(|C|Ma) because La &lt; b|C|Ma for a ﬁxed constant b.2
+
+Table 13.2 summarizes the time complexities. In general, we have |C||V| &lt;
+
+|D|Lave, so both training and testing complexity are linear in the time it takes
+
+to scan the data. Because we have to look at the data at least once, NB can be
+
+said to have optimal time complexity. Its efﬁciency is one reason why NB is
+
+a popular text classiﬁcation method.
+
+13.2.1
+
+Relation to multinomial unigram language model
+
+The multinomial NB model is formally identical to the multinomial unigram
+
+language model (Section 12.2.1, page 242). In particular, Equation (13.2) is
+
+a special case of Equation (12.12) from page 243, which we repeat here for
+
+λ = 1:
+
+P(d|q) ∝ P(d)∏
+
+t∈q
+
+P(t|Md).
+
+(13.8)
+
+The document d in text classiﬁcation (Equation (13.2)) takes the role of the
+
+query in language modeling (Equation (13.8)) and the classes c in text clas-
+
+siﬁcation take the role of the documents d in language modeling. We used
+
+Equation (13.8) to rank documents according to the probability that they are
+
+relevant to the query q. In NB classiﬁcation, we are usually only interested
+
+in the top-ranked class.
+
+We also used MLE estimates in Section 12.2.2 (page 243) and encountered
+
+the problem of zero estimates owing to sparse data (page 244); but instead
+
+of add-one smoothing, we used a mixture of two distributions to address the
+
+problem there. Add-one smoothing is closely related to add- 1
+
+
+
+2 smoothing in
+
+Section 11.3.4 (page 228).
+
+?
+
+Exercise 13.1
+
+Why is |C||V| &lt; |D|Lave in Table 13.2 expected to hold for most text collections?
+
+
+
+2. Our assumption here is that the length of test documents is bounded. La would exceed
+
+b|C|Ma for extremely long test documents.
+
+
+Online edition (c)�2009 Cambridge UP
+
+13.3
+
+The Bernoulli model
+
+263
+
+TRAINBERNOULLINB(C, D)
+
+1
+
+V ← EXTRACTVOCABULARY(D)
+
+2
+
+N ← COUNTDOCS(D)
+
+3
+
+for each c ∈ C
+
+4
+
+do Nc ← COUNTDOCSINCLASS(D, c)
+
+5
+
+prior[c] ← Nc/N
+
+6
+
+for each t ∈ V
+
+7
+
+do Nct ← COUNTDOCSINCLASSCONTAININGTERM(D, c, t)
+
+8
+
+condprob[t][c] ← (Nct + 1)/(Nc + 2)
+
+9
+
+return V, prior, condprob
+
+APPLYBERNOULLINB(C, V, prior, condprob, d)
+
+1
+
+Vd ← EXTRACTTERMSFROMDOC(V, d)
+
+2
+
+for each c ∈ C
+
+3
+
+do score[c] ← log prior[c]
+
+4
+
+for each t ∈ V
+
+5
+
+do if t ∈ Vd
+
+6
+
+then score[c] += log condprob[t][c]
+
+7
+
+else score[c] += log(1 − condprob[t][c])
+
+8
+
+return arg maxc∈C score[c]
+
+◮ Figure 13.3
+
+NB algorithm (Bernoulli model): Training and testing. The add-one
+
+smoothing in Line 8 (top) is in analogy to Equation (13.7) with B = 2.
+
+
+
+13.3
+
+The Bernoulli model
+
+There are two different ways we can set up an NB classiﬁer. The model we in-
+
+troduced in the previous section is the multinomial model. It generates one
+
+term from the vocabulary in each position of the document, where we as-
+
+sume a generative model that will be discussed in more detail in Section 13.4
+
+(see also page 237).
+
+An alternative to the multinomial model is the multivariate Bernoulli model
+
+or Bernoulli model. It is equivalent to the binary independence model of Sec-
+
+BERNOULLI MODEL
+
+tion 11.3 (page 222), which generates an indicator for each term of the vo-
+
+cabulary, either 1 indicating presence of the term in the document or 0 indi-
+
+cating absence. Figure 13.3 presents training and testing algorithms for the
+
+Bernoulli model. The Bernoulli model has the same time complexity as the
+
+multinomial model.
+
+The different generation models imply different estimation strategies and
+
+different classiﬁcation rules. The Bernoulli model estimates ˆP(t|c) as the frac-
+
+tion of documents of class c that contain term t (Figure 13.3, TRAINBERNOULLI-
+
+
+Online edition (c)�2009 Cambridge UP
+
+264
+
+13
+
+Text classiﬁcation and Naive Bayes
+
+NB, line 8). In contrast, the multinomial model estimates ˆP(t|c) as the frac-
+
+tion of tokens or fraction of positions in documents of class c that contain term
+
+t (Equation (13.7)). When classifying a test document, the Bernoulli model
+
+uses binary occurrence information, ignoring the number of occurrences,
+
+whereas the multinomial model keeps track of multiple occurrences. As a
+
+result, the Bernoulli model typically makes many mistakes when classifying
+
+long documents. For example, it may assign an entire book to the class China
+
+because of a single occurrence of the term China.
+
+The models also differ in how nonoccurring terms are used in classiﬁca-
+
+tion. They do not affect the classiﬁcation decision in the multinomial model;
+
+but in the Bernoulli model the probability of nonoccurrence is factored in
+
+when computing P(c|d) (Figure 13.3, APPLYBERNOULLINB, Line 7). This is
+
+because only the Bernoulli NB model models absence of terms explicitly.
+
+
+
+Example 13.2:
+
+Applying the Bernoulli model to the example in Table 13.1, we
+
+have the same estimates for the priors as before:
+
+ˆP(c) = 3/4, ˆP(
+
+
+
+c) = 1/4. The
+
+conditional probabilities are:
+
+ˆP(Chinese|c)
+
+=
+
+(3 + 1)/(3 + 2) = 4/5
+
+ˆP(Japan|c) = ˆP(Tokyo|c)
+
+=
+
+(0 + 1)/(3 + 2) = 1/5
+
+ˆP(Beijing|c) = ˆP(Macao|c) = ˆP(Shanghai|c)
+
+=
+
+(1 + 1)/(3 + 2) = 2/5
+
+ˆP(Chinese|
+
+
+
+c)
+
+=
+
+(1 + 1)/(1 + 2) = 2/3
+
+ˆP(Japan|
+
+
+
+c) = ˆP(Tokyo|
+
+
+
+c)
+
+=
+
+(1 + 1)/(1 + 2) = 2/3
+
+ˆP(Beijing|
+
+
+
+c) = ˆP(Macao|
+
+
+
+c) = ˆP(Shanghai|
+
+
+
+c)
+
+=
+
+(0 + 1)/(1 + 2) = 1/3
+
+The denominators are (3 + 2) and (1 + 2) because there are three documents in c
+
+and one document in
+
+
+
+c and because the constant B in Equation (13.7) is 2 – there are
+
+two cases to consider for each term, occurrence and nonoccurrence.
+
+The scores of the test document for the two classes are
+
+ˆP(c|d5)
+
+∝
+
+ˆP(c) · ˆP(Chinese|c) · ˆP(Japan|c) · ˆP(Tokyo|c)
+
+· (1 − ˆP(Beijing|c)) · (1 − ˆP(Shanghai|c)) · (1 − ˆP(Macao|c))
+
+=
+
+3/4 · 4/5 · 1/5 · 1/5 · (1−2/5) · (1−2/5) · (1−2/5)
+
+≈
+
+0.005
+
+and, analogously,
+
+ˆP(
+
+
+
+c|d5)
+
+∝
+
+1/4 · 2/3 · 2/3 · 2/3 · (1−1/3) · (1−1/3) · (1−1/3)
+
+≈
+
+0.022
+
+Thus, the classiﬁer assigns the test document to
+
+
+
+c = not-China. When looking only
+
+at binary occurrence and not at term frequency, Japan and Tokyo are indicators for
+
+
+
+c
+
+(2/3 &gt; 1/5) and the conditional probabilities of Chinese for c and
+
+
+
+c are not different
+
+enough (4/5 vs. 2/3) to affect the classiﬁcation decision.
+
+
+Online edition (c)�2009 Cambridge UP
+
+13.4
+
+Properties of Naive Bayes
+
+265
+
+13.4
+
+Properties of Naive Bayes
+
+To gain a better understanding of the two models and the assumptions they
+
+make, let us go back and examine how we derived their classiﬁcation rules in
+
+Chapters 11 and 12. We decide class membership of a document by assigning
+
+it to the class with the maximum a posteriori probability (cf. Section 11.3.2,
+
+page 226), which we compute as follows:
+
+cmap
+
+=
+
+arg max
+
+c∈C
+
+P(c|d)
+
+=
+
+arg max
+
+c∈C
+
+P(d|c)P(c)
+
+
+
+P(d)
+
+(13.9)
+
+=
+
+arg max
+
+c∈C
+
+P(d|c)P(c),
+
+(13.10)
+
+where Bayes’ rule (Equation (11.4), page 220) is applied in (13.9) and we drop
+
+the denominator in the last step because P(d) is the same for all classes and
+
+does not affect the argmax.
+
+We can interpret Equation (13.10) as a description of the generative process
+
+we assume in Bayesian text classiﬁcation. To generate a document, we ﬁrst
+
+choose class c with probability P(c) (top nodes in Figures 13.4 and 13.5). The
+
+two models differ in the formalization of the second step, the generation of
+
+the document given the class, corresponding to the conditional distribution
+
+P(d|c):
+
+Multinomial
+
+P(d|c)
+
+=
+
+P(⟨t1, . . . , tk, . . . , tnd⟩|c)
+
+(13.11)
+
+Bernoulli
+
+P(d|c)
+
+=
+
+P(⟨e1, . . . , ei, . . . , eM⟩|c),
+
+(13.12)
+
+where ⟨t1, . . . , tnd⟩ is the sequence of terms as it occurs in d (minus terms
+
+that were excluded from the vocabulary) and ⟨e1, . . . , ei, . . . , eM⟩ is a binary
+
+vector of dimensionality M that indicates for each term whether it occurs in
+
+d or not.
+
+It should now be clearer why we introduced the document space X in
+
+Equation (13.1) when we deﬁned the classiﬁcation problem. A critical step
+
+in solving a text classiﬁcation problem is to choose the document represen-
+
+tation. ⟨t1, . . . , tnd⟩ and ⟨e1, . . . , eM⟩ are two different document representa-
+
+tions. In the ﬁrst case, X is the set of all term sequences (or, more precisely,
+
+sequences of term tokens). In the second case, X is {0, 1}M.
+
+We cannot use Equations (13.11) and (13.12) for text classiﬁcation directly.
+
+For the Bernoulli model, we would have to estimate 2M|C| different param-
+
+eters, one for each possible combination of M values ei and a class. The
+
+number of parameters in the multinomial case has the same order of magni-
+
+
+Online edition (c)�2009 Cambridge UP
+
+266
+
+13
+
+Text classiﬁcation and Naive Bayes
+
+C=China
+
+X1=Beijing
+
+X2=and
+
+X3=Taipei
+
+X4=join
+
+X5=WTO
+
+◮ Figure 13.4
+
+The multinomial NB model.
+
+
+
+tude.3 This being a very large quantity, estimating these parameters reliably
+
+is infeasible.
+
+To reduce the number of parameters, we make the Naive Bayes conditional
+
+CONDITIONAL
+
+INDEPENDENCE
+
+ASSUMPTION
+
+independence assumption. We assume that attribute values are independent of
+
+each other given the class:
+
+Multinomial
+
+P(d|c)
+
+=
+
+P(⟨t1, . . . , tnd⟩|c) = ∏
+
+1≤k≤nd
+
+P(Xk = tk|c)
+
+(13.13)
+
+Bernoulli
+
+P(d|c)
+
+=
+
+P(⟨e1, . . . , eM⟩|c) = ∏
+
+1≤i≤M
+
+P(Ui = ei|c).
+
+(13.14)
+
+We have introduced two random variables here to make the two different
+
+generative models explicit. Xk is the random variable for position k in the
+
+RANDOM VARIABLE X
+
+document and takes as values terms from the vocabulary. P(Xk = t|c) is the
+
+probability that in a document of class c the term t will occur in position k. Ui
+
+RANDOM VARIABLE U
+
+is the random variable for vocabulary term i and takes as values 0 (absence)
+
+and 1 (presence). ˆP(Ui = 1|c) is the probability that in a document of class c
+
+the term ti will occur – in any position and possibly multiple times.
+
+We illustrate the conditional independence assumption in Figures 13.4 and 13.5.
+
+The class China generates values for each of the ﬁve term attributes (multi-
+
+nomial) or six binary attributes (Bernoulli) with a certain probability, inde-
+
+pendent of the values of the other attributes. The fact that a document in the
+
+class China contains the term Taipei does not make it more likely or less likely
+
+that it also contains Beijing.
+
+In reality, the conditional independence assumption does not hold for text
+
+data. Terms are conditionally dependent on each other. But as we will dis-
+
+cuss shortly, NB models perform well despite the conditional independence
+
+assumption.
+
+
+
+3. In fact, if the length of documents is not bounded, the number of parameters in the multino-
+
+mial case is inﬁnite.
+
+
+Online edition (c)�2009 Cambridge UP
+
+13.4
+
+Properties of Naive Bayes
+
+267
+
+UAlaska=0
+
+UBeijing=1
+
+UIndia=0
+
+Ujoin=1
+
+UTaipei=1
+
+UWTO=1
+
+C=China
+
+◮ Figure 13.5
+
+The Bernoulli NB model.
+
+
+
+Even when assuming conditional independence, we still have too many
+
+parameters for the multinomial model if we assume a different probability
+
+distribution for each position k in the document. The position of a term in a
+
+document by itself does not carry information about the class. Although
+
+there is a difference between China sues France and France sues China, the
+
+occurrence of China in position 1 versus position 3 of the document is not
+
+useful in NB classiﬁcation because we look at each term separately. The con-
+
+ditional independence assumption commits us to this way of processing the
+
+evidence.
+
+Also, if we assumed different term distributions for each position k, we
+
+would have to estimate a different set of parameters for each k. The probabil-
+
+ity of bean appearing as the ﬁrst term of a coffee document could be different
+
+from it appearing as the second term, and so on. This again causes problems
+
+in estimation owing to data sparseness.
+
+For these reasons, we make a second independence assumption for the
+
+multinomial model, positional independence: The conditional probabilities for
+
+POSITIONAL
+
+INDEPENDENCE
+
+a term are the same independent of position in the document.
+
+P(Xk1 = t|c) = P(Xk2 = t|c)
+
+for all positions k1, k2, terms t and classes c. Thus, we have a single dis-
+
+tribution of terms that is valid for all positions ki and we can use X as its
+
+symbol.4 Positional independence is equivalent to adopting the bag of words
+
+model, which we introduced in the context of ad hoc retrieval in Chapter 6
+
+(page 117).
+
+With conditional and positional independence assumptions, we only need
+
+to estimate Θ(M|C|) parameters P(tk|c) (multinomial model) or P(ei|c) (Bernoulli
+
+
+
+4. Our terminology is nonstandard. The random variable X is a categorical variable, not a multi-
+
+nomial variable, and the corresponding NB model should perhaps be called a sequence model. We
+
+have chosen to present this sequence model and the multinomial model in Section 13.4.1 as the
+
+same model because they are computationally identical.
+
+
+Online edition (c)�2009 Cambridge UP
+
+268
+
+13
+
+Text classiﬁcation and Naive Bayes
+
+◮ Table 13.3
+
+Multinomial versus Bernoulli model.
+
+multinomial model
+
+Bernoulli model
+
+
+
+event model
+
+generation of token
+
+generation of document
+
+random variable(s)
+
+X = t iff t occurs at given pos
+
+Ut = 1 iff t occurs in doc
+
+document representation
+
+d = ⟨t1, . . . , tk, . . . , tnd⟩, tk ∈ V
+
+d = ⟨e1, . . . , ei, . . . , eM⟩,
+
+ei ∈ {0, 1}
+
+parameter estimation
+
+ˆP(X = t|c)
+
+ˆP(Ui = e|c)
+
+decision rule: maximize
+
+ˆP(c) ∏1≤k≤nd ˆP(X = tk|c)
+
+ˆP(c) ∏ti∈V ˆP(Ui = ei|c)
+
+multiple occurrences
+
+taken into account
+
+ignored
+
+length of docs
+
+can handle longer docs
+
+works best for short docs
+
+# features
+
+can handle more
+
+works best with fewer
+
+estimate for term the
+
+ˆP(X = the|c) ≈ 0.05
+
+ˆP(Uthe = 1|c) ≈ 1.0
+
+
+
+model), one for each term–class combination, rather than a number that is
+
+at least exponential in M, the size of the vocabulary.
+
+The independence
+
+assumptions reduce the number of parameters to be estimated by several
+
+orders of magnitude.
+
+To summarize, we generate a document in the multinomial model (Fig-
+
+ure 13.4) by ﬁrst picking a class C = c with P(c) where C is a random variable
+
+RANDOM VARIABLE C
+
+taking values from C as values. Next we generate term tk in position k with
+
+P(Xk = tk|c) for each of the nd positions of the document. The Xk all have
+
+the same distribution over terms for a given c. In the example in Figure 13.4,
+
+we show the generation of ⟨t1, t2, t3, t4, t5⟩ = ⟨Beijing, and, Taipei, join, WTO⟩,
+
+corresponding to the one-sentence document Beijing and Taipei join WTO.
+
+For a completely speciﬁed document generation model, we would also
+
+have to deﬁne a distribution P(nd|c) over lengths. Without it, the multino-
+
+mial model is a token generation model rather than a document generation
+
+model.
+
+We generate a document in the Bernoulli model (Figure 13.5) by ﬁrst pick-
+
+ing a class C = c with P(c) and then generating a binary indicator ei for each
+
+term ti of the vocabulary (1 ≤ i ≤ M). In the example in Figure 13.5, we
+
+show the generation of ⟨e1, e2, e3, e4, e5, e6⟩ = ⟨0, 1, 0, 1, 1, 1⟩, corresponding,
+
+again, to the one-sentence document Beijing and Taipei join WTO where we
+
+have assumed that and is a stop word.
+
+We compare the two models in Table 13.3, including estimation equations
+
+and decision rules.
+
+Naive Bayes is so called because the independence assumptions we have
+
+just made are indeed very naive for a model of natural language. The condi-
+
+tional independence assumption states that features are independent of each
+
+other given the class. This is hardly ever true for terms in documents. In
+
+many cases, the opposite is true. The pairs hong and kong or london and en-
+
+
+Online edition (c)�2009 Cambridge UP
+
+13.4
+
+Properties of Naive Bayes
+
+269
+
+◮ Table 13.4
+
+Correct estimation implies accurate prediction, but accurate predic-
+
+tion does not imply correct estimation.
+
+c1
+
+c2
+
+class selected
+
+
+
+true probability P(c|d)
+
+0.6
+
+0.4
+
+c1
+
+ˆP(c) ∏1≤k≤nd ˆP(tk|c) (Equation (13.13))
+
+0.00099
+
+0.00001
+
+NB estimate ˆP(c|d)
+
+0.99
+
+0.01
+
+c1
+
+
+
+glish in Figure 13.7 are examples of highly dependent terms. In addition, the
+
+multinomial model makes an assumption of positional independence. The
+
+Bernoulli model ignores positions in documents altogether because it only
+
+cares about absence or presence. This bag-of-words model discards all in-
+
+formation that is communicated by the order of words in natural language
+
+sentences. How can NB be a good text classiﬁer when its model of natural
+
+language is so oversimpliﬁed?
+
+The answer is that even though the probability estimates of NB are of low
+
+quality, its classiﬁcation decisions are surprisingly good. Consider a document
+
+d with true probabilities P(c1|d) = 0.6 and P(c2|d) = 0.4 as shown in Ta-
+
+ble 13.4. Assume that d contains many terms that are positive indicators for
+
+c1 and many terms that are negative indicators for c2. Thus, when using the
+
+multinomial model in Equation (13.13), ˆP(c1) ∏1≤k≤nd ˆP(tk|c1) will be much
+
+larger than ˆP(c2) ∏1≤k≤nd ˆP(tk|c2) (0.00099 vs. 0.00001 in the table). After di-
+
+vision by 0.001 to get well-formed probabilities for P(c|d), we end up with
+
+one estimate that is close to 1.0 and one that is close to 0.0. This is common:
+
+The winning class in NB classiﬁcation usually has a much larger probabil-
+
+ity than the other classes and the estimates diverge very signiﬁcantly from
+
+the true probabilities. But the classiﬁcation decision is based on which class
+
+gets the highest score. It does not matter how accurate the estimates are. De-
+
+spite the bad estimates, NB estimates a higher probability for c1 and therefore
+
+assigns d to the correct class in Table 13.4. Correct estimation implies accurate
+
+prediction, but accurate prediction does not imply correct estimation. NB classiﬁers
+
+estimate badly, but often classify well.
+
+Even if it is not the method with the highest accuracy for text, NB has many
+
+virtues that make it a strong contender for text classiﬁcation. It excels if there
+
+are many equally important features that jointly contribute to the classiﬁ-
+
+cation decision. It is also somewhat robust to noise features (as deﬁned in
+
+the next section) and concept drift – the gradual change over time of the con-
+
+CONCEPT DRIFT
+
+cept underlying a class like US president from Bill Clinton to George W. Bush
+
+(see Section 13.7). Classiﬁers like kNN (Section 14.3, page 297) can be care-
+
+fully tuned to idiosyncratic properties of a particular time period. This will
+
+then hurt them when documents in the following time period have slightly
+
+
+Online edition (c)�2009 Cambridge UP
+
+270
+
+13
+
+Text classiﬁcation and Naive Bayes
+
+◮ Table 13.5
+
+A set of documents for which the NB independence assumptions are
+
+problematic.
+
+(1)
+
+He moved from London, Ontario, to London, England.
+
+(2)
+
+He moved from London, England, to London, Ontario.
+
+(3)
+
+He moved from England to London, Ontario.
+
+
+
+different properties.
+
+The Bernoulli model is particularly robust with respect to concept drift.
+
+We will see in Figure 13.8 that it can have decent performance when using
+
+fewer than a dozen terms. The most important indicators for a class are less
+
+likely to change. Thus, a model that only relies on these features is more
+
+likely to maintain a certain level of accuracy in concept drift.
+
+NB’s main strength is its efﬁciency: Training and classiﬁcation can be ac-
+
+complished with one pass over the data. Because it combines efﬁciency with
+
+good accuracy it is often used as a baseline in text classiﬁcation research.
+
+It is often the method of choice if (i) squeezing out a few extra percentage
+
+points of accuracy is not worth the trouble in a text classiﬁcation application,
+
+(ii) a very large amount of training data is available and there is more to be
+
+gained from training on a lot of data than using a better classiﬁer on a smaller
+
+training set, or (iii) if its robustness to concept drift can be exploited.
+
+In this book, we discuss NB as a classiﬁer for text. The independence as-
+
+sumptions do not hold for text. However, it can be shown that NB is an
+
+optimal classiﬁer (in the sense of minimal error rate on new data) for data
+
+OPTIMAL CLASSIFIER
+
+where the independence assumptions do hold.
+
+13.4.1
+
+A variant of the multinomial model
+
+An alternative formalization of the multinomial model represents each doc-
+
+ument d as an M-dimensional vector of counts ⟨tft1,d, . . . , tftM,d⟩ where tfti,d
+
+is the term frequency of ti in d. P(d|c) is then computed as follows (cf. Equa-
+
+tion (12.8), page 243);
+
+P(d|c) = P(⟨tft1,d, . . . , tftM,d⟩|c) ∝ ∏
+
+1≤i≤M
+
+P(X = ti|c)tfti,d
+
+(13.15)
+
+Note that we have omitted the multinomial factor. See Equation (12.8) (page 243).
+
+Equation (13.15) is equivalent to the sequence model in Equation (13.2) as
+
+P(X = ti|c)tfti,d = 1 for terms that do not occur in d (tfti,d = 0) and a term
+
+that occurs tfti,d ≥ 1 times will contribute tfti,d factors both in Equation (13.2)
+
+and in Equation (13.15).
+
+
+Online edition (c)�2009 Cambridge UP
+
+13.5
+
+Feature selection
+
+271
+
+SELECTFEATURES(D, c, k)
+
+1
+
+V ← EXTRACTVOCABULARY(D)
+
+2
+
+L ← []
+
+3
+
+for each t ∈ V
+
+4
+
+do A(t, c) ← COMPUTEFEATUREUTILITY(D, t, c)
+
+5
+
+APPEND(L, ⟨A(t, c), t⟩)
+
+6
+
+return FEATURESWITHLARGESTVALUES(L, k)
+
+◮ Figure 13.6
+
+Basic feature selection algorithm for selecting the k best features.
+
+
+
+?
+
+Exercise 13.2
+
+[⋆]
+
+Which of the documents in Table 13.5 have identical and different bag of words rep-
+
+resentations for (i) the Bernoulli model (ii) the multinomial model? If there are differ-
+
+ences, describe them.
+
+Exercise 13.3
+
+The rationale for the positional independence assumption is that there is no useful
+
+information in the fact that a term occurs in position k of a document. Find exceptions.
+
+Consider formulaic documents with a ﬁxed document structure.
+
+Exercise 13.4
+
+Table 13.3 gives Bernoulli and multinomial estimates for the word the. Explain the
+
+difference.
+
+13.5
+
+Feature selection
+
+Feature selection is the process of selecting a subset of the terms occurring
+
+FEATURE SELECTION
+
+in the training set and using only this subset as features in text classiﬁca-
+
+tion. Feature selection serves two main purposes. First, it makes training
+
+and applying a classiﬁer more efﬁcient by decreasing the size of the effective
+
+vocabulary. This is of particular importance for classiﬁers that, unlike NB,
+
+are expensive to train. Second, feature selection often increases classiﬁca-
+
+tion accuracy by eliminating noise features. A noise feature is one that, when
+
+NOISE FEATURE
+
+added to the document representation, increases the classiﬁcation error on
+
+new data. Suppose a rare term, say arachnocentric, has no information about
+
+a class, say China, but all instances of arachnocentric happen to occur in China
+
+documents in our training set. Then the learning method might produce a
+
+classiﬁer that misassigns test documents containing arachnocentric to China.
+
+Such an incorrect generalization from an accidental property of the training
+
+set is called overﬁtting.
+
+OVERFITTING
+
+We can view feature selection as a method for replacing a complex clas-
+
+siﬁer (using all features) with a simpler one (using a subset of the features).
+
+
+Online edition (c)�2009 Cambridge UP
+
+272
+
+13
+
+Text classiﬁcation and Naive Bayes
+
+It may appear counterintuitive at ﬁrst that a seemingly weaker classiﬁer is
+
+advantageous in statistical text classiﬁcation, but when discussing the bias-
+
+variance tradeoff in Section 14.6 (page 308), we will see that weaker models
+
+are often preferable when limited training data are available.
+
+The basic feature selection algorithm is shown in Figure 13.6. For a given
+
+class c, we compute a utility measure A(t, c) for each term of the vocabulary
+
+and select the k terms that have the highest values of A(t, c). All other terms
+
+are discarded and not used in classiﬁcation. We will introduce three different
+
+utility measures in this section: mutual information, A(t, c) = I(Ut; Cc); the
+
+χ2 test, A(t, c) = X2(t, c); and frequency, A(t, c) = N(t, c).
+
+Of the two NB models, the Bernoulli model is particularly sensitive to
+
+noise features. A Bernoulli NB classiﬁer requires some form of feature se-
+
+lection or else its accuracy will be low.
+
+This section mainly addresses feature selection for two-class classiﬁcation
+
+tasks like China versus not-China. Section 13.5.5 brieﬂy discusses optimiza-
+
+tions for systems with more than two classes.
+
+13.5.1
+
+Mutual information
+
+A common feature selection method is to compute A(t, c) as the expected
+
+mutual information (MI) of term t and class c.5 MI measures how much in-
+
+MUTUAL INFORMATION
+
+formation the presence/absence of a term contributes to making the correct
+
+classiﬁcation decision on c. Formally:
+
+I(U; C)
+
+=
+
+∑
+
+et∈{1,0} ∑
+
+ec∈{1,0}
+
+P(U = et, C = ec) log2
+
+P(U = et, C = ec)
+
+
+
+P(U = et)P(C = ec),
+
+(13.16)
+
+where U is a random variable that takes values et = 1 (the document contains
+
+term t) and et = 0 (the document does not contain t), as deﬁned on page 266,
+
+and C is a random variable that takes values ec = 1 (the document is in class
+
+c) and ec = 0 (the document is not in class c). We write Ut and Cc if it is not
+
+clear from context which term t and class c we are referring to.
+
+ForMLEs of the probabilities, Equation (13.16) is equivalent to Equation (13.17):
+
+I(U; C)
+
+=
+
+N11
+
+
+
+N log2
+
+NN11
+
+
+
+N1.N.1
+
++ N01
+
+
+
+N log2
+
+NN01
+
+
+
+N0.N.1
+
+(13.17)
+
++ N10
+
+
+
+N log2
+
+NN10
+
+
+
+N1.N.0
+
++ N00
+
+
+
+N log2
+
+NN00
+
+
+
+N0.N.0
+
+where the Ns are counts of documents that have the values of et and ec that
+
+are indicated by the two subscripts. For example, N10 is the number of doc-
+
+
+
+5. Take care not to confuse expected mutual information with pointwise mutual information,
+
+which is deﬁned as log N11/E11 where N11 and E11 are deﬁned as in Equation (13.18). The
+
+two measures have different properties. See Section 13.7.
+
+
+Online edition (c)�2009 Cambridge UP
+
+13.5
+
+Feature selection
+
+273
+
+uments that contain t (et = 1) and are not in c (ec = 0). N1. = N10 + N11 is
+
+the number of documents that contain t (et = 1) and we count documents
+
+independent of class membership (ec ∈ {0, 1}). N = N00 + N01 + N10 + N11
+
+is the total number of documents. An example of one of the MLE estimates
+
+that transform Equation (13.16) into Equation (13.17) is P(U = 1, C = 1) =
+
+N11/N.
+
+
+
+Example 13.3:
+
+Consider the class poultry and the term export in Reuters-RCV1.
+
+The counts of the number of documents with the four possible combinations of indi-
+
+cator values are as follows:
+
+ec = epoultry = 1
+
+ec = epoultry = 0
+
+
+
+et = eexport = 1
+
+
+
+N11 = 49
+
+
+
+N10 = 27,652
+
+
+
+
+
+et = eexport = 0
+
+
+
+N01 = 141
+
+
+
+N00 = 774,106
+
+
+
+
+
+After plugging these values into Equation (13.17) we get:
+
+I(U; C)
+
+=
+
+49
+
+
+
+801,948 log2
+
+801,948 · 49
+
+
+
+(49+27,652)(49+141)
+
++
+
+141
+
+
+
+801,948 log2
+
+801,948 · 141
+
+
+
+(141+774,106)(49+141)
+
++ 27,652
+
+
+
+801,948 log2
+
+801,948 · 27,652
+
+
+
+(49+27,652)(27,652+774,106)
+
++ 774,106
+
+
+
+801,948 log2
+
+801,948 · 774,106
+
+
+
+(141+774,106)(27,652+774,106)
+
+≈
+
+0.0001105
+
+To select k terms t1, . . . , tk for a given class, we use the feature selection al-
+
+gorithm in Figure 13.6: We compute the utility measure as A(t, c) = I(Ut, Cc)
+
+and select the k terms with the largest values.
+
+Mutual information measures how much information – in the information-
+
+theoretic sense – a term contains about the class. If a term’s distribution is
+
+the same in the class as it is in the collection as a whole, then I(U; C) =
+
+0. MI reaches its maximum value if the term is a perfect indicator for class
+
+membership, that is, if the term is present in a document if and only if the
+
+document is in the class.
+
+Figure 13.7 shows terms with high mutual information scores for the six
+
+classes in Figure 13.1.6 The selected terms (e.g., london, uk, british for the class
+
+UK) are of obvious utility for making classiﬁcation decisions for their respec-
+
+tive classes. At the bottom of the list for UK we ﬁnd terms like peripherals
+
+and tonight (not shown in the ﬁgure) that are clearly not helpful in deciding
+
+
+
+6. Feature scores were computed on the ﬁrst 100,000 documents, except for poultry, a rare class,
+
+for which 800,000 documents were used. We have omitted numbers and other special words
+
+from the top ten lists.
+
+
+Online edition (c)�2009 Cambridge UP
+
+274
+
+13
+
+Text classiﬁcation and Naive Bayes
+
+UK
+
+
+
+
+
+london
+
+
+
+0.1925
+
+
+
+
+
+uk
+
+
+
+0.0755
+
+
+
+
+
+british
+
+
+
+0.0596
+
+
+
+
+
+stg
+
+
+
+0.0555
+
+
+
+
+
+britain
+
+
+
+0.0469
+
+
+
+
+
+plc
+
+
+
+0.0357
+
+
+
+
+
+england
+
+
+
+0.0238
+
+
+
+
+
+pence
+
+
+
+0.0212
+
+
+
+
+
+pounds
+
+
+
+0.0149
+
+
+
+
+
+english
+
+
+
+0.0126
+
+
+
+
+
+China
+
+
+
+
+
+china
+
+
+
+0.0997
+
+
+
+
+
+chinese
+
+
+
+0.0523
+
+
+
+
+
+beijing
+
+
+
+0.0444
+
+
+
+
+
+yuan
+
+
+
+0.0344
+
+
+
+
+
+shanghai
+
+
+
+0.0292
+
+
+
+
+
+hong
+
+
+
+0.0198
+
+
+
+
+
+kong
+
+
+
+0.0195
+
+
+
+
+
+xinhua
+
+
+
+0.0155
+
+
+
+
+
+province
+
+
+
+0.0117
+
+
+
+
+
+taiwan
+
+
+
+0.0108
+
+
+
+
+
+poultry
+
+
+
+
+
+poultry
+
+
+
+0.0013
+
+
+
+
+
+meat
+
+
+
+0.0008
+
+
+
+
+
+chicken
+
+
+
+0.0006
+
+
+
+
+
+agriculture
+
+
+
+0.0005
+
+
+
+
+
+avian
+
+
+
+0.0004
+
+
+
+
+
+broiler
+
+
+
+0.0003
+
+
+
+
+
+veterinary
+
+
+
+0.0003
+
+
+
+
+
+birds
+
+
+
+0.0003
+
+
+
+
+
+inspection
+
+
+
+0.0003
+
+
+
+
+
+pathogenic
+
+
+
+0.0003
+
+
+
+
+
+coffee
+
+
+
+
+
+coffee
+
+
+
+0.0111
+
+
+
+
+
+bags
+
+
+
+0.0042
+
+
+
+
+
+growers
+
+
+
+0.0025
+
+
+
+
+
+kg
+
+
+
+0.0019
+
+
+
+
+
+colombia
+
+
+
+0.0018
+
+
+
+
+
+brazil
+
+
+
+0.0016
+
+
+
+
+
+export
+
+
+
+0.0014
+
+
+
+
+
+exporters
+
+
+
+0.0013
+
+
+
+
+
+exports
+
+
+
+0.0013
+
+
+
+
+
+crop
+
+
+
+0.0012
+
+
+
+
+
+elections
+
+
+
+
+
+election
+
+
+
+0.0519
+
+
+
+
+
+elections
+
+
+
+0.0342
+
+
+
+
+
+polls
+
+
+
+0.0339
+
+
+
+
+
+voters
+
+
+
+0.0315
+
+
+
+
+
+party
+
+
+
+0.0303
+
+
+
+
+
+vote
+
+
+
+0.0299
+
+
+
+
+
+poll
+
+
+
+0.0225
+
+
+
+
+
+candidate
+
+
+
+0.0202
+
+
+
+
+
+campaign
+
+
+
+0.0202
+
+
+
+
+
+democratic
+
+
+
+0.0198
+
+
+
+
+
+sports
+
+
+
+
+
+soccer
+
+
+
+0.0681
+
+
+
+
+
+cup
+
+
+
+0.0515
+
+
+
+
+
+match
+
+
+
+0.0441
+
+
+
+
+
+matches
+
+
+
+0.0408
+
+
+
+
+
+played
+
+
+
+0.0388
+
+
+
+
+
+league
+
+
+
+0.0386
+
+
+
+
+
+beat
+
+
+
+0.0301
+
+
+
+
+
+game
+
+
+
+0.0299
+
+
+
+
+
+games
+
+
+
+0.0284
+
+
+
+
+
+team
+
+
+
+0.0264
+
+
+
+
+
+◮ Figure 13.7
+
+Features with high mutual information scores for six Reuters-RCV1
+
+classes.
+
+
+
+whether the document is in the class. As you might expect, keeping the in-
+
+formative terms and eliminating the non-informative ones tends to reduce
+
+noise and improve the classiﬁer’s accuracy.
+
+Such an accuracy increase can be observed in Figure 13.8, which shows
+
+F1 as a function of vocabulary size after feature selection for Reuters-RCV1.7
+
+Comparing F1 at 132,776 features (corresponding to selection of all features)
+
+and at 10–100 features, we see that MI feature selection increases F1 by about
+
+0.1 for the multinomial model and by more than 0.2 for the Bernoulli model.
+
+For the Bernoulli model, F1 peaks early, at ten features selected. At that point,
+
+the Bernoulli model is better than the multinomial model. When basing a
+
+classiﬁcation decision on only a few features, it is more robust to consider bi-
+
+nary occurrence only. For the multinomial model (MI feature selection), the
+
+peak occurs later, at 100 features, and its effectiveness recovers somewhat at
+
+
+
+7. We trained the classiﬁers on the ﬁrst 100,000 documents and computed F1 on the next 100,000.
+
+The graphs are averages over ﬁve classes.
+
+
+Online edition (c)�2009 Cambridge UP
+
+13.5
+
+Feature selection
+
+275
+
+#
+
+# #
+
+#
+
+#
+
+#
+
+#
+
+#
+
+#
+
+#
+
+#
+
+#
+
+#
+
+#
+
+1
+
+10
+
+100
+
+1000
+
+10000
+
+0.0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+number of features selected
+
+F1 measure
+
+o
+
+o o oo
+
+o
+
+o
+
+o
+
+o
+
+o
+
+o
+
+o
+
+o
+
+o
+
+x
+
+x
+
+x x
+
+x
+
+x
+
+x
+
+x
+
+x
+
+x
+
+x
+
+x
+
+x
+
+xx
+
+b
+
+b
+
+b
+
+bb
+
+b
+
+b
+
+b
+
+b
+
+b
+
+b
+
+b
+
+b
+
+b
+
+#
+
+o
+
+x
+
+b
+
+multinomial, MI
+
+multinomial, chisquare
+
+multinomial, frequency
+
+binomial, MI
+
+◮ Figure 13.8
+
+Effect of feature set size on accuracy for multinomial and Bernoulli
+
+models.
+
+
+
+the end when we use all features. The reason is that the multinomial takes
+
+the number of occurrences into account in parameter estimation and clas-
+
+siﬁcation and therefore better exploits a larger number of features than the
+
+Bernoulli model. Regardless of the differences between the two methods,
+
+using a carefully selected subset of the features results in better effectiveness
+
+than using all features.
+
+13.5.2
+
+χ2 Feature selection
+
+Another popular feature selection method is χ2. In statistics, the χ2 test is
+
+χ2 FEATURE SELECTION
+
+applied to test the independence of two events, where two events A and B are
+
+deﬁned to be independent if P(AB) = P(A)P(B) or, equivalently, P(A|B) =
+
+INDEPENDENCE
+
+P(A) and P(B|A) = P(B). In feature selection, the two events are occurrence
+
+of the term and occurrence of the class. We then rank terms with respect to
+
+the following quantity:
+
+X2(D, t, c) =
+
+∑
+
+et∈{0,1} ∑
+
+ec∈{0,1}
+
+(Netec − Eetec)2
+
+
+
+Eetec
+
+(13.18)
+
+
+Online edition (c)�2009 Cambridge UP
+
+276
+
+13
+
+Text classiﬁcation and Naive Bayes
+
+where et and ec are deﬁned as in Equation (13.16). N is the observed frequency
+
+in D and E the expected frequency. For example, E11 is the expected frequency
+
+of t and c occurring together in a document assuming that term and class are
+
+independent.
+
+
+
+Example 13.4:
+
+We ﬁrst compute E11 for the data in Example 13.3:
+
+E11
+
+=
+
+N × P(t) × P(c) = N × N11 + N10
+
+
+
+N
+
+× N11 + N01
+
+
+
+N
+
+=
+
+N × 49 + 141
+
+
+
+N
+
+× 49 + 27652
+
+
+
+N
+
+≈ 6.6
+
+where N is the total number of documents as before.
+
+We compute the other Eetec in the same way:
+
+epoultry = 1
+
+epoultry = 0
+
+
+
+eexport = 1
+
+
+
+N11 = 49
+
+E11 ≈ 6.6
+
+
+
+N10 = 27,652
+
+E10 ≈ 27,694.4
+
+
+
+
+
+eexport = 0
+
+
+
+N01 = 141
+
+E01 ≈ 183.4
+
+
+
+N00 = 774,106
+
+E00 ≈ 774,063.6
+
+
+
+
+
+Plugging these values into Equation (13.18), we get a X2 value of 284:
+
+X2(D, t, c) =
+
+∑
+
+et∈{0,1}
+
+∑
+
+ec∈{0,1}
+
+(Netec − Eetec)2
+
+
+
+Eetec
+
+≈ 284
+
+X2 is a measure of how much expected counts E and observed counts N
+
+deviate from each other. A high value of X2 indicates that the hypothesis of
+
+independence, which implies that expected and observed counts are similar,
+
+is incorrect. In our example, X2 ≈ 284 &gt; 10.83. Based on Table 13.6, we
+
+can reject the hypothesis that poultry and export are independent with only a
+
+0.001 chance of being wrong.8 Equivalently, we say that the outcome X2 ≈
+
+284 &gt; 10.83 is statistically signiﬁcant at the 0.001 level. If the two events are
+
+STATISTICAL
+
+SIGNIFICANCE
+
+dependent, then the occurrence of the term makes the occurrence of the class
+
+more likely (or less likely), so it should be helpful as a feature. This is the
+
+rationale of χ2 feature selection.
+
+An arithmetically simpler way of computing X2 is the following:
+
+X2(D, t, c) =
+
+(N11 + N10 + N01 + N00) × (N11N00 − N10N01)2
+
+
+
+(N11 + N01) × (N11 + N10) × (N10 + N00) × (N01 + N00)
+
+(13.19)
+
+This is equivalent to Equation (13.18) (Exercise 13.14).
+
+
+
+8. We can make this inference because, if the two events are independent, then X2 ∼ χ2, where
+
+χ2 is the χ2 distribution. See, for example, Rice (2006).
+
+
+Online edition (c)�2009 Cambridge UP
+
+13.5
+
+Feature selection
+
+277
+
+◮ Table 13.6
+
+Critical values of the χ2 distribution with one degree of freedom. For
+
+example, if the two events are independent, then P(X2 &gt; 6.63) &lt; 0.01. So for X2 &gt;
+
+6.63 the assumption of independence can be rejected with 99% conﬁdence.
+
+p
+
+χ2 critical value
+
+
+
+0.1
+
+2.71
+
+0.05
+
+3.84
+
+0.01
+
+6.63
+
+0.005
+
+7.88
+
+0.001
+
+10.83
+
+
+
+�
+
+Assessing χ2 as a feature selection method
+
+From a statistical point of view, χ2 feature selection is problematic. For a
+
+test with one degree of freedom, the so-called Yates correction should be
+
+used (see Section 13.7), which makes it harder to reach statistical signiﬁcance.
+
+Also, whenever a statistical test is used multiple times, then the probability
+
+of getting at least one error increases. If 1,000 hypotheses are rejected, each
+
+with 0.05 error probability, then 0.05 × 1000 = 50 calls of the test will be
+
+wrong on average. However, in text classiﬁcation it rarely matters whether a
+
+few additional terms are added to the feature set or removed from it. Rather,
+
+the relative importance of features is important. As long as χ2 feature selec-
+
+tion only ranks features with respect to their usefulness and is not used to
+
+make statements about statistical dependence or independence of variables,
+
+we need not be overly concerned that it does not adhere strictly to statistical
+
+theory.
+
+13.5.3
+
+Frequency-based feature selection
+
+A third feature selection method is frequency-based feature selection, that is,
+
+selecting the terms that are most common in the class. Frequency can be
+
+either deﬁned as document frequency (the number of documents in the class
+
+c that contain the term t) or as collection frequency (the number of tokens of
+
+t that occur in documents in c). Document frequency is more appropriate for
+
+the Bernoulli model, collection frequency for the multinomial model.
+
+Frequency-based feature selection selects some frequent terms that have
+
+no speciﬁc information about the class, for example, the days of the week
+
+(Monday, Tuesday, ...), which are frequent across classes in newswire text.
+
+When many thousands of features are selected, then frequency-based fea-
+
+ture selection often does well. Thus, if somewhat suboptimal accuracy is
+
+acceptable, then frequency-based feature selection can be a good alternative
+
+to more complex methods. However, Figure 13.8 is a case where frequency-
+
+
+Online edition (c)�2009 Cambridge UP
+
+278
+
+13
+
+Text classiﬁcation and Naive Bayes
+
+based feature selection performs a lot worse than MI and χ2 and should not
+
+be used.
+
+13.5.4
+
+Feature selection for multiple classiﬁers
+
+In an operational system with a large number of classiﬁers, it is desirable
+
+to select a single set of features instead of a different one for each classiﬁer.
+
+One way of doing this is to compute the X2 statistic for an n × 2 table where
+
+the columns are occurrence and nonoccurrence of the term and each row
+
+corresponds to one of the classes. We can then select the k terms with the
+
+highest X2 statistic as before.
+
+More commonly, feature selection statistics are ﬁrst computed separately
+
+for each class on the two-class classiﬁcation task c versus
+
+
+
+c and then com-
+
+bined. One combination method computes a single ﬁgure of merit for each
+
+feature, for example, by averaging the values A(t, c) for feature t, and then
+
+selects the k features with highest ﬁgures of merit. Another frequently used
+
+combination method selects the top k/n features for each of n classiﬁers and
+
+then combines these n sets into one global feature set.
+
+Classiﬁcation accuracy often decreases when selecting k common features
+
+for a system with n classiﬁers as opposed to n different sets of size k. But even
+
+if it does, the gain in efﬁciency owing to a common document representation
+
+may be worth the loss in accuracy.
+
+13.5.5
+
+Comparison of feature selection methods
+
+Mutual information and χ2 represent rather different feature selection meth-
+
+ods. The independence of term t and class c can sometimes be rejected with
+
+high conﬁdence even if t carries little information about membership of a
+
+document in c. This is particularly true for rare terms. If a term occurs once
+
+in a large collection and that one occurrence is in the poultry class, then this
+
+is statistically signiﬁcant. But a single occurrence is not very informative
+
+according to the information-theoretic deﬁnition of information.
+
+Because
+
+its criterion is signiﬁcance, χ2 selects more rare terms (which are often less
+
+reliable indicators) than mutual information. But the selection criterion of
+
+mutual information also does not necessarily select the terms that maximize
+
+classiﬁcation accuracy.
+
+Despite the differences between the two methods, the classiﬁcation accu-
+
+racy of feature sets selected with χ2 and MI does not seem to differ systemat-
+
+ically. In most text classiﬁcation problems, there are a few strong indicators
+
+and many weak indicators. As long as all strong indicators and a large num-
+
+ber of weak indicators are selected, accuracy is expected to be good. Both
+
+methods do this.
+
+Figure 13.8 compares MI and χ2 feature selection for the multinomial model.
+
+
+Online edition (c)�2009 Cambridge UP
+
+13.6
+
+Evaluation of text classiﬁcation
+
+279
+
+Peak effectiveness is virtually the same for both methods. χ2 reaches this
+
+peak later, at 300 features, probably because the rare, but highly signiﬁcant
+
+features it selects initially do not cover all documents in the class. However,
+
+features selected later (in the range of 100–300)are of better quality than those
+
+selected by MI.
+
+All three methods – MI, χ2 and frequency based – are greedy methods.
+
+GREEDY FEATURE
+
+SELECTION
+
+They may select features that contribute no incremental information over
+
+previously selected features. In Figure 13.7, kong is selected as the seventh
+
+term even though it is highly correlated with previously selected hong and
+
+therefore redundant. Although such redundancy can negatively impact ac-
+
+curacy, non-greedy methods (see Section 13.7 for references) are rarely used
+
+in text classiﬁcation due to their computational cost.
+
+?
+
+Exercise 13.5
+
+Consider the following frequencies for the class coffee for four terms in the ﬁrst 100,000
+
+documents of Reuters-RCV1:
+
+term
+
+
+
+N00
+
+N01
+
+N10
+
+N11
+
+
+
+brazil
+
+
+
+98,012
+
+102
+
+1835
+
+51
+
+council
+
+
+
+96,322
+
+133
+
+3525
+
+20
+
+producers
+
+
+
+98,524
+
+119
+
+1118
+
+34
+
+roasted
+
+
+
+99,824
+
+143
+
+23
+
+10
+
+Select two of these four terms based on (i) χ2, (ii) mutual information, (iii) frequency.
+
+13.6
+
+Evaluation of text classiﬁcation
+
+] Historically, the classic Reuters-21578 collection was the main benchmark
+
+for text classiﬁcation evaluation. This is a collection of 21,578 newswire ar-
+
+ticles, originally collected and labeled by Carnegie Group, Inc. and Reuters,
+
+Ltd. in the course of developing the CONSTRUE text classiﬁcation system.
+
+It is much smaller than and predates the Reuters-RCV1 collection discussed
+
+in Chapter 4 (page 69). The articles are assigned classes from a set of 118
+
+topic categories. A document may be assigned several classes or none, but
+
+the commonest case is single assignment (documents with at least one class
+
+received an average of 1.24 classes). The standard approach to this any-of
+
+problem (Chapter 14, page 306) is to learn 118 two-class classiﬁers, one for
+
+each class, where the two-class classiﬁer for class c is the classiﬁer for the two
+
+TWO-CLASS CLASSIFIER
+
+classes c and its complement
+
+
+
+c.
+
+For each of these classiﬁers, we can measure recall, precision, and accu-
+
+racy. In recent work, people almost invariably use the ModApte split, which
+
+MODAPTE SPLIT
+
+includes only documents that were viewed and assessed by a human indexer,
+
+
+Online edition (c)�2009 Cambridge UP
+
+280
+
+13
+
+Text classiﬁcation and Naive Bayes
+
+◮ Table 13.7
+
+The ten largest classes in the Reuters-21578 collection with number of
+
+documents in training and test sets.
+
+class
+
+# train
+
+# testclass
+
+# train
+
+# test
+
+
+
+earn
+
+2877
+
+1087 trade
+
+369
+
+119
+
+acquisitions
+
+1650
+
+179 interest
+
+347
+
+131
+
+money-fx
+
+538
+
+179 ship
+
+197
+
+89
+
+grain
+
+433
+
+149 wheat
+
+212
+
+71
+
+crude
+
+389
+
+189 corn
+
+182
+
+56
+
+
+
+and comprises 9,603 training documents and 3,299 test documents. The dis-
+
+tribution of documents in classes is very uneven, and some work evaluates
+
+systems on only documents in the ten largest classes. They are listed in Ta-
+
+ble 13.7. A typical document with topics is shown in Figure 13.9.
+
+In Section 13.1, we stated as our goal in text classiﬁcation the minimization
+
+of classiﬁcation error on test data. Classiﬁcation error is 1.0 minus classiﬁca-
+
+tion accuracy, the proportion of correct decisions, a measure we introduced
+
+in Section 8.3 (page 155). This measure is appropriate if the percentage of
+
+documents in the class is high, perhaps 10% to 20% and higher. But as we
+
+discussed in Section 8.3, accuracy is not a good measure for “small” classes
+
+because always saying no, a strategy that defeats the purpose of building a
+
+classiﬁer, will achieve high accuracy. The always-no classiﬁer is 99% accurate
+
+for a class with relative frequency 1%. For small classes, precision, recall and
+
+F1 are better measures.
+
+We will use effectiveness as a generic term for measures that evaluate the
+
+EFFECTIVENESS
+
+quality of classiﬁcation decisions, including precision, recall, F1, and accu-
+
+racy. Performance refers to the computational efﬁciency of classiﬁcation and
+
+PERFORMANCE
+
+EFFICIENCY
+
+IR systems in this book. However, many researchers mean effectiveness, not
+
+efﬁciency of text classiﬁcation when they use the term performance.
+
+When we process a collection with several two-class classiﬁers (such as
+
+Reuters-21578 with its 118 classes), we often want to compute a single ag-
+
+gregate measure that combines the measures for individual classiﬁers. There
+
+are two methods for doing this. Macroaveraging computes a simple aver-
+
+MACROAVERAGING
+
+age over classes. Microaveraging pools per-document decisions across classes,
+
+MICROAVERAGING
+
+and then computes an effectiveness measure on the pooled contingency ta-
+
+ble. Table 13.8 gives an example.
+
+The differences between the two methods can be large. Macroaveraging
+
+gives equal weight to each class, whereas microaveraging gives equal weight
+
+to each per-document classiﬁcation decision. Because the F1 measure ignores
+
+true negatives and its magnitude is mostly determined by the number of
+
+true positives, large classes dominate small classes in microaveraging. In the
+
+example, microaveraged precision (0.83) is much closer to the precision of
+
+
+Online edition (c)�2009 Cambridge UP
+
+13.6
+
+Evaluation of text classiﬁcation
+
+281
+
+&lt;REUTERS TOPICS=’’YES’’ LEWISSPLIT=’’TRAIN’’
+
+CGISPLIT=’’TRAINING-SET’’ OLDID=’’12981’’ NEWID=’’798’’&gt;
+
+&lt;DATE&gt; 2-MAR-1987 16:51:43.42&lt;/DATE&gt;
+
+&lt;TOPICS&gt;&lt;D&gt;livestock&lt;/D&gt;&lt;D&gt;hog&lt;/D&gt;&lt;/TOPICS&gt;
+
+&lt;TITLE&gt;AMERICAN PORK CONGRESS KICKS OFF TOMORROW&lt;/TITLE&gt;
+
+&lt;DATELINE&gt; CHICAGO, March 2 - &lt;/DATELINE&gt;&lt;BODY&gt;The American Pork
+
+Congress kicks off tomorrow, March 3, in Indianapolis with 160
+
+of the nations pork producers from 44 member states determining
+
+industry positions on a number of issues, according to the
+
+National Pork Producers Council, NPPC.
+
+Delegates to the three day Congress will be considering 26
+
+resolutions concerning various issues, including the future
+
+direction of farm policy and the tax law as it applies to the
+
+agriculture sector. The delegates will also debate whether to
+
+endorse concepts of a national PRV (pseudorabies virus) control
+
+and eradication program, the NPPC said. A large
+
+trade show, in conjunction with the congress, will feature
+
+the latest in technology in all areas of the industry, the NPPC
+
+added. Reuter
+
+\&amp;\#3;&lt;/BODY&gt;&lt;/TEXT&gt;&lt;/REUTERS&gt;
+
+◮ Figure 13.9
+
+A sample document from the Reuters-21578 collection.
+
+
+
+c2 (0.9) than to the precision of c1 (0.5) because c2 is ﬁve times larger than
+
+c1. Microaveraged results are therefore really a measure of effectiveness on
+
+the large classes in a test collection. To get a sense of effectiveness on small
+
+classes, you should compute macroaveraged results.
+
+In one-of classiﬁcation (Section 14.5, page 306), microaveraged F1 is the
+
+same as accuracy (Exercise 13.6).
+
+Table 13.9 gives microaveraged and macroaveraged effectiveness of Naive
+
+Bayes for the ModApte split of Reuters-21578. To give a sense of the relative
+
+effectiveness of NB, we compare it with linear SVMs (rightmost column; see
+
+Chapter 15), one of the most effective classiﬁers, but also one that is more
+
+expensive to train than NB. NB has a microaveraged F1 of 80%, which is
+
+9% less than the SVM (89%), a 10% relative decrease (row “micro-avg-L (90
+
+classes)”). So there is a surprisingly small effectiveness penalty for its sim-
+
+plicity and efﬁciency. However, on small classes, some of which only have on
+
+the order of ten positive examples in the training set, NB does much worse.
+
+Its macroaveraged F1 is 13% below the SVM, a 22% relative decrease (row
+
+“macro-avg (90 classes)”).
+
+The table also compares NB with the other classiﬁers we cover in this book:
+
+
+Online edition (c)�2009 Cambridge UP
+
+282
+
+13
+
+Text classiﬁcation and Naive Bayes
+
+◮ Table 13.8
+
+Macro- and microaveraging. “Truth” is the true class and “call” the
+
+decision of the classiﬁer. In this example, macroaveraged precision is [10/(10 + 10) +
+
+90/(10 + 90)]/2 = (0.5 + 0.9)/2 = 0.7. Microaveraged precision is 100/(100 + 20) ≈
+
+0.83.
+
+class 1
+
+
+
+truth:
+
+
+
+truth:
+
+
+
+yes
+
+
+
+no
+
+
+
+call:
+
+yes
+
+
+
+10
+
+
+
+10
+
+
+
+call:
+
+no
+
+
+
+10
+
+
+
+970
+
+class 2
+
+
+
+truth:
+
+
+
+truth:
+
+
+
+yes
+
+
+
+no
+
+
+
+call:
+
+yes
+
+
+
+90
+
+
+
+10
+
+
+
+call:
+
+no
+
+
+
+10
+
+
+
+890
+
+pooled table
+
+
+
+truth:
+
+
+
+truth:
+
+
+
+yes
+
+
+
+no
+
+
+
+call:
+
+yes
+
+
+
+100
+
+
+
+20
+
+
+
+call:
+
+no
+
+
+
+20
+
+
+
+1860
+
+◮ Table 13.9
+
+Text classiﬁcation effectiveness numbers on Reuters-21578 for F1 (in
+
+percent). Results from Li and Yang (2003) (a), Joachims (1998) (b: kNN) and Dumais
+
+et al. (1998) (b: NB, Rocchio, trees, SVM).
+
+(a)
+
+NB
+
+Rocchio
+
+kNN
+
+SVM
+
+
+
+micro-avg-L (90 classes)
+
+80
+
+85
+
+86
+
+89
+
+macro-avg (90 classes)
+
+47
+
+59
+
+60
+
+60
+
+(b)
+
+NB
+
+Rocchio
+
+kNN
+
+trees
+
+SVM
+
+
+
+earn
+
+96
+
+93
+
+97
+
+98
+
+98
+
+acq
+
+88
+
+65
+
+92
+
+90
+
+94
+
+money-fx
+
+57
+
+47
+
+78
+
+66
+
+75
+
+grain
+
+79
+
+68
+
+82
+
+85
+
+95
+
+crude
+
+80
+
+70
+
+86
+
+85
+
+89
+
+trade
+
+64
+
+65
+
+77
+
+73
+
+76
+
+interest
+
+65
+
+63
+
+74
+
+67
+
+78
+
+ship
+
+85
+
+49
+
+79
+
+74
+
+86
+
+wheat
+
+70
+
+69
+
+77
+
+93
+
+92
+
+corn
+
+65
+
+48
+
+78
+
+92
+
+90
+
+
+
+micro-avg (top 10)
+
+82
+
+65
+
+82
+
+88
+
+92
+
+micro-avg-D (118 classes)
+
+75
+
+62
+
+n/a
+
+n/a
+
+87
+
+
+
+Rocchio and kNN. In addition, we give numbers for decision trees, an impor-
+
+DECISION TREES
+
+tant classiﬁcation method we do not cover. The bottom part of the table
+
+shows that there is considerable variation from class to class. For instance,
+
+NB beats kNN on ship, but is much worse on money-fx.
+
+Comparing parts (a) and (b) of the table, one is struck by the degree to
+
+which the cited papers’ results differ. This is partly due to the fact that the
+
+numbers in (b) are break-even scores (cf. page 161) averaged over 118 classes,
+
+whereas the numbers in (a) are true F1 scores (computed without any know-
+
+
+Online edition (c)�2009 Cambridge UP
+
+13.6
+
+Evaluation of text classiﬁcation
+
+283
+
+ledge of the test set) averaged over ninety classes. This is unfortunately typ-
+
+ical of what happens when comparing different results in text classiﬁcation:
+
+There are often differences in the experimental setup or the evaluation that
+
+complicate the interpretation of the results.
+
+These and other results have shown that the average effectiveness of NB
+
+is uncompetitive with classiﬁers like SVMs when trained and tested on inde-
+
+pendent and identically distributed (i.i.d.) data, that is, uniform data with all the
+
+good properties of statistical sampling. However, these differences may of-
+
+ten be invisible or even reverse themselves when working in the real world
+
+where, usually, the training sample is drawn from a subset of the data to
+
+which the classiﬁer will be applied, the nature of the data drifts over time
+
+rather than being stationary (the problem of concept drift we mentioned on
+
+page 269), and there may well be errors in the data (among other problems).
+
+Many practitioners have had the experience of being unable to build a fancy
+
+classiﬁer for a certain problem that consistently performs better than NB.
+
+Our conclusion from the results in Table 13.9 is that, although most re-
+
+searchers believe that an SVM is better than kNN and kNN better than NB,
+
+the ranking of classiﬁers ultimately depends on the class, the document col-
+
+lection, and the experimental setup. In text classiﬁcation, there is always
+
+more to know than simply which machine learning algorithm was used, as
+
+we further discuss in Section 15.3 (page 334).
+
+When performing evaluations like the one in Table 13.9, it is important to
+
+maintain a strict separation between the training set and the test set. We can
+
+easily make correct classiﬁcation decisions on the test set by using informa-
+
+tion we have gleaned from the test set, such as the fact that a particular term
+
+is a good predictor in the test set (even though this is not the case in the train-
+
+ing set). A more subtle example of using knowledge about the test set is to
+
+try a large number of values of a parameter (e.g., the number of selected fea-
+
+tures) and select the value that is best for the test set. As a rule, accuracy on
+
+new data – the type of data we will encounter when we use the classiﬁer in
+
+an application – will be much lower than accuracy on a test set that the clas-
+
+siﬁer has been tuned for. We discussed the same problem in ad hoc retrieval
+
+in Section 8.1 (page 153).
+
+In a clean statistical text classiﬁcation experiment, you should never run
+
+any program on or even look at the test set while developing a text classiﬁca-
+
+tion system. Instead, set aside a development set for testing while you develop
+
+DEVELOPMENT SET
+
+your method. When such a set serves the primary purpose of ﬁnding a good
+
+value for a parameter, for example, the number of selected features, then it
+
+is also called held-out data. Train the classiﬁer on the rest of the training set
+
+HELD-OUT DATA
+
+with different parameter values, and then select the value that gives best re-
+
+sults on the held-out part of the training set. Ideally, at the very end, when
+
+all parameters have been set and the method is fully speciﬁed, you run one
+
+ﬁnal experiment on the test set and publish the results. Because no informa-
+
+
+Online edition (c)�2009 Cambridge UP
+
+284
+
+13
+
+Text classiﬁcation and Naive Bayes
+
+◮ Table 13.10
+
+Data for parameter estimation exercise.
+
+docID
+
+words in document
+
+in c = China?
+
+
+
+training set
+
+1
+
+Taipei Taiwan
+
+yes
+
+2
+
+Macao Taiwan Shanghai
+
+yes
+
+3
+
+Japan Sapporo
+
+no
+
+4
+
+Sapporo Osaka Taiwan
+
+no
+
+
+
+test set
+
+5
+
+Taiwan Taiwan Sapporo
+
+?
+
+
+
+tion about the test set was used in developing the classiﬁer, the results of this
+
+experiment should be indicative of actual performance in practice.
+
+This ideal often cannot be met; researchers tend to evaluate several sys-
+
+tems on the same test set over a period of several years. But it is neverthe-
+
+less highly important to not look at the test data and to run systems on it as
+
+sparingly as possible. Beginners often violate this rule, and their results lose
+
+validity because they have implicitly tuned their system to the test data sim-
+
+ply by running many variant systems and keeping the tweaks to the system
+
+that worked best on the test set.
+
+?
+
+Exercise 13.6
+
+[⋆⋆]
+
+Assume a situation where every document in the test collection has been assigned
+
+exactly one class, and that a classiﬁer also assigns exactly one class to each document.
+
+This setup is called one-of classiﬁcation (Section 14.5, page 306). Show that in one-of
+
+classiﬁcation (i) the total number of false positive decisions equals the total number
+
+of false negative decisions and (ii) microaveraged F1 and accuracy are identical.
+
+Exercise 13.7
+
+The class priors in Figure 13.2 are computed as the fraction of documents in the class
+
+as opposed to the fraction of tokens in the class. Why?
+
+Exercise 13.8
+
+The function APPLYMULTINOMIALNB in Figure 13.2 has time complexity Θ(La +
+
+|C|La). How would you modify the function so that its time complexity is Θ(La +
+
+|C|Ma)?
+
+Exercise 13.9
+
+Based on the data in Table 13.10, (i) estimate a multinomial Naive Bayes classiﬁer, (ii)
+
+apply the classiﬁer to the test document, (iii) estimate a Bernoulli NB classiﬁer, (iv)
+
+apply the classiﬁer to the test document. You need not estimate parameters that you
+
+don’t need for classifying the test document.
+
+Exercise 13.10
+
+Your task is to classify words as English or not English. Words are generated by a
+
+source with the following distribution:
+
+
+Online edition (c)�2009 Cambridge UP
+
+13.6
+
+Evaluation of text classiﬁcation
+
+285
+
+event
+
+word
+
+English?
+
+probability
+
+
+
+1
+
+ozb
+
+no
+
+4/9
+
+2
+
+uzu
+
+no
+
+4/9
+
+3
+
+zoo
+
+yes
+
+1/18
+
+4
+
+bun
+
+yes
+
+1/18
+
+(i) Compute the parameters (priors and conditionals) of a multinomial NB classi-
+
+ﬁer that uses the letters b, n, o, u, and z as features. Assume a training set that
+
+reﬂects the probability distribution of the source perfectly. Make the same indepen-
+
+dence assumptions that are usually made for a multinomial classiﬁer that uses terms
+
+as features for text classiﬁcation. Compute parameters using smoothing, in which
+
+computed-zero probabilities are smoothed into probability 0.01, and computed-nonzero
+
+probabilities are untouched. (This simplistic smoothing may cause P(A) + P(
+
+
+
+A) &gt; 1.
+
+Solutions are not required to correct this.) (ii) How does the classiﬁer classify the
+
+word zoo? (iii) Classify the word zoo using a multinomial classiﬁer as in part (i), but
+
+do not make the assumption of positional independence. That is, estimate separate
+
+parameters for each position in a word. You only need to compute the parameters
+
+you need for classifying zoo.
+
+Exercise 13.11
+
+What are the values of I(Ut; Cc) and X2(D, t, c) if term and class are completely inde-
+
+pendent? What are the values if they are completely dependent?
+
+Exercise 13.12
+
+The feature selection method in Equation (13.16) is most appropriate for the Bernoulli
+
+model. Why? How could one modify it for the multinomial model?
+
+Exercise 13.13
+
+Features can also be selected according toinformation gain (IG), which is deﬁned as:
+
+INFORMATION GAIN
+
+IG(D, t, c) = H(pD) −
+
+∑
+
+x∈{Dt+,Dt−}
+
+|x|
+
+
+
+|D| H(px)
+
+where H is entropy, D is the training set, and Dt+, and Dt− are the subset of D with
+
+term t, and the subset of D without term t, respectively. pA is the class distribution
+
+in (sub)collection A, e.g., pA(c) = 0.25, pA(
+
+
+
+c) = 0.75 if a quarter of the documents in
+
+A are in class c.
+
+Show that mutual information and information gain are equivalent.
+
+Exercise 13.14
+
+Show that the two X2 formulas (Equations (13.18) and (13.19)) are equivalent.
+
+Exercise 13.15
+
+In the χ2 example on page 276 we have |N11 − E11| = |N10 − E10| = |N01 − E01| =
+
+|N00 − E00|. Show that this holds in general.
+
+Exercise 13.16
+
+χ2 and mutual information do not distinguish between positively and negatively cor-
+
+related features. Because most good text classiﬁcation features are positively corre-
+
+lated (i.e., they occur more often in c than in
+
+
+
+c), one may want to explicitly rule out
+
+the selection of negative indicators. How would you do this?
+
+
+Online edition (c)�2009 Cambridge UP
+
+286
+
+13
+
+Text classiﬁcation and Naive Bayes
+
+13.7
+
+References and further reading
+
+General introductions to statistical classiﬁcation and machine learning can be
+
+found in (Hastie et al. 2001), (Mitchell 1997), and (Duda et al. 2000), including
+
+many important methods (e.g., decision trees and boosting) that we do not
+
+cover. A comprehensive review of text classiﬁcation methods and results is
+
+(Sebastiani 2002). Manning and Schütze (1999, Chapter 16) give an accessible
+
+introduction to text classiﬁcation with coverage of decision trees, perceptrons
+
+and maximum entropy models. More information on the superlinear time
+
+complexity of learning methods that are more accurate than Naive Bayes can
+
+be found in (Perkins et al. 2003) and (Joachims 2006a).
+
+Maron and Kuhns (1960) described one of the ﬁrst NB text classiﬁers. Lewis
+
+(1998) focuses on the history of NB classiﬁcation. Bernoulli and multinomial
+
+models and their accuracy for different collections are discussed by McCal-
+
+lum and Nigam (1998). Eyheramendy et al. (2003) present additional NB
+
+models. Domingos and Pazzani (1997), Friedman (1997), and Hand and Yu
+
+(2001) analyze why NB performs well although its probability estimates are
+
+poor. The ﬁrst paper also discusses NB’s optimality when the independence
+
+assumptions are true of the data. Pavlov et al. (2004) propose a modiﬁed
+
+document representation that partially addresses the inappropriateness of
+
+the independence assumptions. Bennett (2000) attributes the tendency of NB
+
+probability estimates to be close to either 0 or 1 to the effect of document
+
+length. Ng and Jordan (2001) show that NB is sometimes (although rarely)
+
+superior to discriminative methods because it more quickly reaches its opti-
+
+mal error rate. The basic NB model presented in this chapter can be tuned for
+
+better effectiveness (Rennie et al. 2003;Kołcz and Yih 2007). The problem of
+
+concept drift and other reasons why state-of-the-art classiﬁers do not always
+
+excel in practice are discussed by Forman (2006) and Hand (2006).
+
+Early uses of mutual information and χ2 for feature selection in text clas-
+
+siﬁcation are Lewis and Ringuette (1994) and Schütze et al. (1995), respec-
+
+tively. Yang and Pedersen (1997) review feature selection methods and their
+
+impact on classiﬁcation effectiveness. They ﬁnd that pointwise mutual infor-
+
+POINTWISE MUTUAL
+
+INFORMATION
+
+mation is not competitive with other methods. Yang and Pedersen refer to
+
+expected mutual information (Equation (13.16)) as information gain (see Ex-
+
+ercise 13.13, page 285). (Snedecor and Cochran 1989) is a good reference for
+
+the χ2 test in statistics, including the Yates’ correction for continuity for 2 × 2
+
+tables. Dunning (1993) discusses problems of the χ2 test when counts are
+
+small. Nongreedy feature selection techniques are described by Hastie et al.
+
+(2001). Cohen (1995) discusses the pitfalls of using multiple signiﬁcance tests
+
+and methods to avoid them. Forman (2004) evaluates different methods for
+
+feature selection for multiple classiﬁers.
+
+David D. Lewis deﬁnes the ModApte split at www.daviddlewis.com/resources/testcollections/reuters215
+
+based on Apté et al. (1994). Lewis (1995) describes utility measures for the
+
+UTILITY MEASURE
+
+
+Online edition (c)�2009 Cambridge UP
+
+13.7
+
+References and further reading
+
+287
+
+evaluation of text classiﬁcation systems. Yang and Liu (1999) employ signif-
+
+icance tests in the evaluation of text classiﬁcation methods.
+
+Lewis et al. (2004) ﬁnd that SVMs (Chapter 15) perform better on Reuters-
+
+RCV1 than kNN and Rocchio (Chapter 14).
+

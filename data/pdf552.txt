@@ -1,0 +1,462 @@
+
+9: Viterbi Algorithm for HMM Decoding
+
+Machine Learning and Real-world Data
+
+Simone Teufel and Ann Copestake
+
+Computer Laboratory
+
+University of Cambridge
+
+Lent 2017
+
+
+Last session: estimating parameters of an HMM
+
+The dishonest casino, dice edition
+
+Two states: L (loaded dice), F (fair dice). States are hidden.
+
+You estimated transition and emission probabilities.
+
+Now let’s now see how well an HMM can discriminate this
+
+highly ambiguous situation.
+
+We need to write a decoder.
+
+
+Decoding: ﬁnding the most likely path
+
+Deﬁnition of decoding: Finding the most likely state
+
+sequence X that explains the observations, given this
+
+HMM’s parameters.
+
+ˆX = argmax
+
+X0...XT+1
+
+P(X|O, µ) =
+
+argmax
+
+X0...XT+1
+
+T+1
+
+�
+
+t=0
+
+P(Ot|Xt)P(Xt|Xt−1)
+
+Search space of possible state sequences X is O(NT); too
+
+large for brute force search.
+
+
+Viterbi is a Dynamic Programming Application
+
+(Reminder from Algorithms course)
+
+We can use Dynamic Programming if two conditions apply:
+
+Optimal substructure property
+
+An optimal state sequence X0 . . . Xj . . . XT+1 contains inside
+
+it the sequence X0 . . . Xj, which is also optimal
+
+Overlapping subsolutions property
+
+If both Xt and Xu are on the optimal path, with u &gt; t, then
+
+the calculation of the probability for being in state Xt is part
+
+of each of the many calculations for being in state Xu.
+
+
+Viterbi is a Dynamic Programming Application
+
+(Reminder from Algorithms course)
+
+We can use Dynamic Programming if two conditions apply:
+
+Optimal substructure property
+
+An optimal state sequence X0 . . . Xj . . . XT+1 contains inside
+
+it the sequence X0 . . . Xj, which is also optimal
+
+Overlapping subsolutions property
+
+If both Xt and Xu are on the optimal path, with u &gt; t, then
+
+the calculation of the probability for being in state Xt is part
+
+of each of the many calculations for being in state Xu.
+
+
+The intuition behind Viterbi
+
+Here’s how we can save ourselves a lot of time.
+
+Because of the Limited Horizon of the HMM, we don’t need
+
+to keep a complete record of how we arrived at a certain
+
+state.
+
+For the ﬁrst-order HMM, we only need to record one
+
+previous step.
+
+Just do the calculation of the probability of reaching each
+
+state once for each time step.
+
+Then memoise this probability in a Dynamic Programming
+
+table
+
+This reduces our effort to O(N2T).
+
+This is for the ﬁrst order HMM, which only has a memory of
+
+one previous state.
+
+
+Viterbi: main data structure
+
+Memoisation is done using a trellis.
+
+A trellis is equivalent to a Dynamic Programming table.
+
+The trellis is N × (T + 1) in size, with states j as rows and
+
+time steps t as columns.
+
+Each cell j, t records the Viterbi probability δj(t), the
+
+probability of the optimal state sequence ending in state sj
+
+at time t:
+
+δj(t) =
+
+max
+
+X0,...,Xt−1
+
+P(X0 . . . Xt−1, o1o2 . . . ot, Xt = sj|µ)
+
+
+Viterbi algorithm, initialisation
+
+The initial δj(1) concerns time step 1.
+
+It stores, for all states, the probability of moving to state sj
+
+from the start state, and having emitted o1.
+
+We therefore calculate it for each state sj by multiplying
+
+transmission probability a0j from the start state to sj, with
+
+the emission probability for the ﬁrst emission o1.
+
+δj(1) = a0jbj(o1), 1 ≤ j ≤ N
+
+
+Viterbi algorithm, initialisation
+
+
+
+
+Viterbi algorithm, initialisation: observation is 4
+
+
+
+
+Viterbi algorithm, initialisation: observation is 4
+
+
+
+
+Viterbi algorithm, main step, observation is 3
+
+δj(t) stores the probability of the best path ending in sj at
+
+time step t.
+
+This probability is calculated by maximising over the best
+
+ways of transmitting into sj for each si.
+
+This step comprises:
+
+δi(t − 1): the probability of being in state si at time t − 1
+
+aij: the transition probability from si to sj
+
+bi(ot): the probability of emitting ot from destination state sj
+
+δj(t) = max
+
+1≤i≤N δi(t − 1) · aij · bj(ot)
+
+
+Viterbi algorithm, main step
+
+
+
+
+Viterbi algorithm, main step
+
+
+
+
+Viterbi algorithm, main step, ψ
+
+ψj(t) is a helper variable that stores the t − 1 state index i
+
+on the highest probability path.
+
+ψj(t) = argmax
+
+1≤i≤N
+
+δi(t − 1)aijbj(ot)
+
+In the backtracing phase, we will use ψ to ﬁnd the previous
+
+cell in the best path.
+
+
+Viterbi algorithm, main step
+
+
+
+
+Viterbi algorithm, main step
+
+
+
+
+Viterbi algorithm, main step
+
+
+
+
+Viterbi algorithm, main step, observation is 5
+
+
+
+
+Viterbi algorithm, main step, observation is 5
+
+
+
+
+Viterbi algorithm, termination
+
+δf(T + 1) is the probability of the entire state sequence up
+
+to point T + 1 having been produced given the observation
+
+and the HMM’s parameters.
+
+P(X|O, µ) = δf(T + 1) = max
+
+1≤i≤N δi · (T)aif
+
+It is calculated by maximising over the δi(T) · aif, almost as
+
+per usual
+
+Not quite as per usual, because the ﬁnal state sf does not
+
+emit, so there is no bi(oT) to consider.
+
+
+Viterbi algorithm, termination
+
+
+
+
+Viterbi algorithm, backtracing
+
+ψf is again calculated analogously to δf.
+
+ψf(T + 1) = argmax
+
+1≤i≤N
+
+δi(T) · aif
+
+It records XT, the last state of the optimal state sequence.
+
+We will next go back to the cell concerned and look up its
+
+ψ to ﬁnd the second-but-last state, and so on.
+
+
+Viterbi algorithm, backtracing
+
+
+
+
+Viterbi algorithm, backtracing
+
+
+
+
+Viterbi algorithm, backtracing
+
+
+
+
+Viterbi algorithm, backtracing
+
+
+
+
+Viterbi algorithm, backtracing
+
+
+
+
+Viterbi algorithm, backtracing
+
+
+
+
+Viterbi algorithm, backtracing
+
+
+
+
+Viterbi algorithm, backtracing
+
+
+
+
+Precision and Recall
+
+So far we have measured system success in accuracy or
+
+agreement in Kappa.
+
+But sometimes it’s only one type of example that we ﬁnd
+
+interesting.
+
+We don’t want a summary measure that averages over
+
+interesting and non-interesting examples, as accuracy
+
+does.
+
+In those cases we use precision, recall and F-measure.
+
+These metrics are imported from the ﬁeld of information
+
+retrieval, where the difference beween interesting and
+
+non-interesting examples is particularly high.
+
+
+Precision and Recall
+
+System says:
+
+F
+
+L
+
+Total
+
+Truth is:
+
+F
+
+a
+
+b
+
+a+b
+
+L
+
+c
+
+d
+
+c+d
+
+Total
+
+a+c
+
+b+d
+
+a+b+c+d
+
+Precision of L: PL =
+
+d
+
+b+d
+
+Recall of L: RL =
+
+d
+
+c+d
+
+F-measure of L: FL = 2PLRL
+
+PL+RL
+
+Accuracy: A =
+
+a+d
+
+a+b+c+d
+
+
+Your task today
+
+Task 8:
+
+Implement the Viterbi algorithm.
+
+Run it on the dice dataset and measure precision of L (PL),
+
+recall of L (RL) and F-measure of L (FL).
+
+
+Ticking today
+
+Task 7 – HMM Parameter Estimation
+
+
+Literature
+
+Manning and Schutze (2000). Foundations of Statistical
+
+Natural Language Processing, MIT Press. Chapter 9.3.2.
+
+We use a state-emission HMM, but this textbook uses an
+
+arc-emission HMM. There is therefore a slight difference in
+
+the algorithm as to in which step the initial and ﬁnal bj(kt)
+
+are multiplied in.
+
+Jurafsky and Martin, 2nd Edition, chapter 6.4
+

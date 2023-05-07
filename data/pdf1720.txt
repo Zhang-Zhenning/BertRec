@@ -1,0 +1,3518 @@
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+Introduction to
+
+
+
+Information Retrieval
+
+Probabilistic Information Retrieval
+
+Christopher Manning and Pandu Nayak
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+
+
+From Boolean to Ranked Retrieval
+
+1. Why ranked retrieval?
+
+2. Introduction to the classical probabilistic retrieval 
+
+model and the probability ranking principle
+
+3. The Binary Independence Model: BIM
+
+4. Relevance feedback, briefly
+
+5. The vector space model (VSM) (quick cameo)
+
+6. BM25 model
+
+7. Ranking with features: BM25F (if time allows …)
+
+Ch. 6
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+
+
+1. Ranked retrieval
+
+§ Thus far, our queries have all been Boolean
+
+§ Documents either match or don’t
+
+§ Can be good for expert users with precise 
+
+understanding of their needs and the collection
+
+§ Can also be good for applications: Applications can easily 
+
+consume 1000s of results
+
+§ Not good for the majority of users
+
+§ Most users incapable of writing Boolean queries 
+
+§ Or they are, but they think it’s too much work
+
+§ Most users don’t want to wade through 1000s of results
+
+§ This is particularly true of web search
+
+Ch. 6
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+
+
+Problem with Boolean search:
+
+feast or famine
+
+§ Boolean queries often result in either too few (=0) or 
+
+too many (1000s) results
+
+§ Query 1: “standard user dlink 650” → 200,000 hits
+
+§ Query 2: “standard user dlink 650 no card found”: 0 
+
+hits
+
+§ It takes a lot of skill to come up with a query that 
+
+produces a manageable number of hits
+
+§ AND gives too few; OR gives too many
+
+§ Suggested solution: 
+
+§ Rank documents by goodness – a sort of clever “soft AND”
+
+Ch. 6
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+
+
+2. Why probabilities in IR?
+
+
+
+User 
+
+Information Need
+
+Documents
+
+
+
+
+
+Document
+
+Representation
+
+
+
+
+
+Query
+
+Representation
+
+How to match?
+
+In traditional IR systems, matching between each document and
+
+query is attempted in a semantically imprecise space of index terms.
+
+Probabilities provide a principled foundation for uncertain reasoning.
+
+Can we use probabilities to quantify our search uncertainties?
+
+Uncertain guess of
+
+whether document 
+
+has relevant content
+
+Understanding
+
+of user need is
+
+uncertain
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+
+
+
+
+Probabilistic IR topics
+
+1. Classical probabilistic retrieval model
+
+§ Probability ranking principle, etc.
+
+§ Binary independence model (≈ Naïve Bayes text cat)
+
+§ (Okapi) BM25
+
+2. Bayesian networks for text retrieval
+
+3. Language model approach to IR (IIR ch. 12)
+
+§ An important development in 2000s IR
+
+Probabilistic methods are one of the oldest but also 
+
+one of the currently hot topics in IR
+
+§ Traditionally: neat ideas, but didn’t win on performance
+
+§ It seems to be different now
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+
+
+Who are these people?
+
+
+
+
+
+
+
+Stephen Robertson
+
+Keith van Rijsbergen
+
+Karen Spärck Jones
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+
+
+The document ranking problem
+
+§ We have a collection of documents
+
+§ User issues a query
+
+§ A list of documents needs to be returned
+
+
+
+§
+
+
+
+Ranking method is 
+
+
+
+the core 
+
+
+
+of 
+
+
+
+modern 
+
+
+
+IR 
+
+
+
+systems:
+
+
+
+§
+
+
+
+In what order do we present documents to the user?
+
+§ We want the “best” document to be first, second best 
+
+second, etc.
+
+
+
+§
+
+
+
+Idea: Rank by probability of relevance of the 
+
+
+
+document 
+
+
+
+w.r.t
+
+
+
+. information need
+
+§ P(R=1|documenti, query)
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+
+
+The Probability Ranking Principle (PRP)
+
+“If a reference retrieval system’s response to each request is a 
+
+ranking of the documents in the collection in order of decreasing 
+
+probability of relevance to the user who submitted the request, 
+
+where the probabilities are estimated as accurately as possible on 
+
+the basis of whatever data have been made available to the system 
+
+for this purpose, the overall effectiveness of the system to its user 
+
+will be the best that is obtainable on the basis of those data.”
+
+§ [1960s/1970s] S. Robertson, W.S. Cooper, M.E. Maron; 
+
+van Rijsbergen (1979:113); Manning &amp; Schütze (1999:538)
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+
+
+§ For events A and B:
+
+§ Bayes’ Rule
+
+§ Odds:
+
+Prior
+
+p(A, B) = p(A∩B) = p(A | B)p(B) = p(B | A)p(A)
+
+p(A | B) = p(B | A)p(A)
+
+p(B)
+
+=
+
+p(B | A)p(A)
+
+p(B | X)p(X)
+
+X=A,A
+
+∑
+
+Recall a few probability basics
+
+O(A) = p(A)
+
+p(A) =
+
+p(A)
+
+1− p(A)
+
+Posterior
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+
+
+The Probability Ranking Principle (PRP)
+
+Let x represent a document in the collection. 
+
+Let R represent relevance of a document w.r.t. given (fixed) query 
+
+and let R=1 represent relevant and R=0 not relevant.
+
+p(R =1| x) = p(x | R =1)p(R =1)
+
+p(x)
+
+p(R = 0 | x) = p(x | R = 0)p(R = 0)
+
+p(x)
+
+p(x|R=1), p(x|R=0) - probability that if a 
+
+relevant (not relevant) document is 
+
+retrieved, it is x.
+
+Need to find p(R=1|x) – probability that a document x is relevant.
+
+p(R=1),p(R=0) - prior probability
+
+of retrieving a relevant or non-relevant
+
+document at random
+
+p(R = 0 | x)+ p(R =1| x) =1
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+
+
+Probabilistic Retrieval Strategy
+
+§ First, estimate how each term contributes to relevance
+
+§ How do other things like term frequency and document 
+
+length influence your judgments about document 
+
+relevance? 
+
+§ Not at all in BIM
+
+§ A more nuanced answer is given by BM25
+
+§ Combine to find document relevance probability
+
+§ Order documents by decreasing probability
+
+§ Theorem: Using the PRP is optimal, in that it minimizes 
+
+the loss (Bayes risk) under 1/0 loss
+
+§ Provable if all probabilities correct, etc.  [e.g., Ripley 1996]
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+
+
+3. Binary Independence Model
+
+§ Traditionally used in conjunction with PRP
+
+§ “Binary” = Boolean: documents are represented as binary 
+
+incidence vectors of terms (cf. IIR Chapter 1):
+
+§
+
+§
+
+iff term i is present in document x.
+
+§ “Independence”: terms occur in documents independently  
+
+§ Different documents can be modeled as the same vector
+
+)
+
+,
+
+,
+
+( 1
+
+nx
+
+x
+
+x
+
+!
+
+" =
+
+1
+
+=
+
+ix
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+
+
+Binary Independence Model
+
+§ Queries: binary term incidence vectors
+
+§ Given query q, 
+
+§ for each document d need to compute p(R|q,d)
+
+§ replace with computing p(R|q,x) where x is binary term 
+
+incidence vector representing d
+
+§ Interested only in ranking
+
+§ Will use odds and Bayes’ Rule:
+
+O(R | q, x) = p(R =1| q, x)
+
+p(R = 0 | q, x) =
+
+p(R =1| q)p(x | R =1,q)
+
+p(x | q)
+
+p(R = 0 | q)p(x | R = 0,q)
+
+p(x | q)
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+
+
+Binary Independence Model
+
+• Using Independence Assumption:
+
+O(R | q, x) = O(R | q)⋅
+
+p(xi | R =1,q)
+
+p(xi | R = 0,q)
+
+i=1
+
+n
+
+∏
+
+p(x | R =1,q)
+
+p(x | R = 0,q) =
+
+p(xi | R =1,q)
+
+p(xi | R = 0,q)
+
+i=1
+
+n
+
+∏
+
+O(R | q, x) = p(R =1| q, x)
+
+p(R = 0 | q, x) = p(R =1| q)
+
+p(R = 0 | q) ⋅ p(x | R =1,q)
+
+p(x | R = 0,q)
+
+Constant for a 
+
+given query
+
+Needs estimation
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+
+
+Binary Independence Model
+
+• Since xi is either 0 or 1:
+
+O(R | q, x) = O(R | q)⋅
+
+p(xi =1| R =1,q)
+
+p(xi =1| R = 0,q)
+
+xi=1∏
+
+⋅
+
+p(xi = 0 | R =1,q)
+
+p(xi = 0 | R = 0,q)
+
+xi=0∏
+
+• Let pi = p(xi =1| R =1,q); ri = p(xi =1| R = 0,q);
+
+• Assume, for all terms not occurring in the query (qi=0)
+
+i
+
+i
+
+r
+
+p =
+
+O(R | q, x) = O(R | q)⋅
+
+p(xi | R =1,q)
+
+p(xi | R = 0,q)
+
+i=1
+
+n
+
+∏
+
+O(R | q, x) = O(R | q)⋅
+
+pi
+
+ri
+
+xi=1
+
+qi=1
+
+∏
+
+⋅
+
+(1− pi)
+
+(1−ri)
+
+xi=0
+
+qi=1
+
+∏
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+
+
+document
+
+relevant (R=1)
+
+not relevant (R=0)
+
+term present
+
+xi = 1
+
+pi
+
+ri
+
+term absent
+
+xi = 0
+
+(1 – pi)
+
+(1 – ri)
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+
+
+All matching terms
+
+Non-matching 
+
+query terms
+
+Binary Independence Model
+
+All matching terms
+
+All query terms
+
+O(R | q, x) = O(R | q)⋅
+
+pi
+
+ri
+
+xi=1
+
+qi=1
+
+∏
+
+⋅
+
+1− ri
+
+1− pi
+
+⋅1− pi
+
+1− ri
+
+$
+
+%
+
+&amp;
+
+'
+
+(
+
+)
+
+xi=1
+
+qi=1
+
+∏
+
+1− pi
+
+1− ri
+
+xi=0
+
+qi=1
+
+∏
+
+O(R | q, x) = O(R | q)⋅
+
+pi(1− ri)
+
+ri(1− pi)
+
+xi=qi=1
+
+∏
+
+⋅
+
+1− pi
+
+1− ri
+
+qi=1∏
+
+O(R | q, x) = O(R | q)⋅
+
+pi
+
+ri
+
+xi=qi=1
+
+∏
+
+⋅
+
+1− pi
+
+1− ri
+
+xi=0
+
+qi=1
+
+∏
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+
+
+Binary Independence Model
+
+Constant for
+
+each query
+
+Only quantity to be estimated 
+
+for rankings
+
+Õ
+
+Õ
+
+=
+
+=
+
+=
+
+-
+
+-
+
+×
+
+-
+
+-
+
+×
+
+=
+
+1
+
+1
+
+1
+
+1
+
+)
+
+1(
+
+)
+
+1(
+
+)
+
+|
+
+(
+
+)
+
+,
+
+|
+
+(
+
+i
+
+i
+
+i
+
+q
+
+i
+
+i
+
+q
+
+x
+
+i
+
+i
+
+i
+
+i
+
+r
+
+p
+
+p
+
+r
+
+r
+
+p
+
+q
+
+R
+
+O
+
+x
+
+q
+
+R
+
+O
+
+!
+
+Retrieval Status Value:
+
+å
+
+Õ
+
+=
+
+=
+
+=
+
+=
+
+-
+
+-
+
+=
+
+-
+
+-
+
+=
+
+1
+
+1
+
+)
+
+1(
+
+)
+
+1(
+
+log
+
+)
+
+1(
+
+)
+
+1(
+
+log
+
+i
+
+i
+
+i
+
+i
+
+q
+
+x
+
+i
+
+i
+
+i
+
+i
+
+q
+
+x
+
+i
+
+i
+
+i
+
+i
+
+p
+
+r
+
+r
+
+p
+
+p
+
+r
+
+r
+
+p
+
+RSV
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+
+
+Binary Independence Model
+
+[Robertson &amp; Spärck-Jones 1976]
+
+All boils down to computing RSV.
+
+å
+
+Õ
+
+=
+
+=
+
+=
+
+=
+
+-
+
+-
+
+=
+
+-
+
+-
+
+=
+
+1
+
+1
+
+)
+
+1(
+
+)
+
+1(
+
+log
+
+)
+
+1(
+
+)
+
+1(
+
+log
+
+i
+
+i
+
+i
+
+i
+
+q
+
+x
+
+i
+
+i
+
+i
+
+i
+
+q
+
+x
+
+i
+
+i
+
+i
+
+i
+
+p
+
+r
+
+r
+
+p
+
+p
+
+r
+
+r
+
+p
+
+RSV
+
+å
+
+=
+
+=
+
+=
+
+1
+
+;
+
+i
+
+i q
+
+x
+
+ic
+
+RSV
+
+)
+
+1(
+
+)
+
+1(
+
+log
+
+i
+
+i
+
+i
+
+i
+
+i
+
+p
+
+r
+
+r
+
+p
+
+c
+
+-
+
+-
+
+=
+
+So, how do we compute ci’s from our data?
+
+The ci are log odds ratios (of contingency table a few slides back)
+
+They function as the term weights in this model
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+
+
+Graphical model for BIM – Bernoulli NB
+
+
+
+
+
+
+
+
+
+i ∈ q
+
+
+
+
+
+Binary
+
+variables
+
+xi = (tfi ≠ 0)
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+
+
+Binary Independence Model
+
+• Estimating RSV coefficients in theory
+
+• For each term i look at this table of document counts:
+
+Documents 
+
+ 
+
+Relevant 
+
+Non-Relevant Total 
+
+xi=1 
+
+s 
+
+n-s 
+
+n 
+
+xi=0 
+
+S-s 
+
+N-n-S+s 
+
+N-n 
+
+Total 
+
+S 
+
+N-S 
+
+N 
+
+ 
+
+ 
+
+S
+
+s
+
+pi »
+
+)
+
+(
+
+)
+
+(
+
+S
+
+N
+
+s
+
+n
+
+ri
+
+-
+
+-
+
+»
+
+)
+
+(
+
+)
+
+(
+
+)
+
+(
+
+log
+
+)
+
+,
+
+,
+
+,
+
+(
+
+s
+
+S
+
+n
+
+N
+
+s
+
+n
+
+s
+
+S
+
+s
+
+s
+
+S
+
+n
+
+N
+
+K
+
+ci
+
++
+
+-
+
+-
+
+-
+
+-
+
+=
+
+»
+
+• Estimates:
+
+For now,
+
+assume no
+
+zero terms.
+
+Remember
+
+smoothing.
+
+)
+
+1(
+
+)
+
+1(
+
+log
+
+i
+
+i
+
+i
+
+i
+
+i
+
+p
+
+r
+
+r
+
+p
+
+c
+
+-
+
+-
+
+=
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+
+
+Estimation – key challenge
+
+§ If non-relevant documents are approximated by 
+
+the whole collection, then ri (prob. of occurrence 
+
+in non-relevant documents for query) is n/N and
+
+§ Inverse Document Frequency (IDF)
+
+§ Spärck-Jones (1972)
+
+§ A key, still-important term weighting concept
+
+log1−ri
+
+ri
+
+= log N − n − S + s
+
+n − s
+
+≈ log N − n
+
+n
+
+≈ log N
+
+n = IDF!
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+
+
+Collection vs. Document frequency
+
+§ Collection frequency of t is the total number of 
+
+occurrences of t in the collection (incl. multiples)
+
+§ Document frequency is number of docs t is in
+
+§ Example:
+
+§ Which word is a better search term (and should 
+
+get a higher weight)?
+
+Word
+
+Collection frequency
+
+Document frequency
+
+insurance
+
+10440
+
+3997
+
+try
+
+10422
+
+8760
+
+Sec. 6.2.1
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+
+
+Estimation – key challenge
+
+§ pi (probability of occurrence in relevant 
+
+documents) cannot be approximated as easily
+
+§ pi can be estimated in various ways:
+
+§ from relevant documents if you know some
+
+§ Relevance weighting can be used in a feedback loop
+
+§ constant (Croft and Harper combination match) – then 
+
+just get idf weighting of terms (with pi=0.5)
+
+§ proportional to prob. of occurrence in collection
+
+§ Greiff (SIGIR 1998) argues for 1/3 + 2/3 dfi/N
+
+RSV =
+
+log N
+
+ni
+
+xi=qi=1
+
+∑
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+
+
+4. Probabilistic Relevance Feedback
+
+1. Guess a preliminary probabilistic description of R=1
+
+documents; use it to retrieve a set of documents
+
+2. Interact with the user to refine the description: 
+
+learn some definite members with R = 1 and R = 0
+
+3. Re-estimate pi and ri on the basis of these
+
+§
+
+If i appears in Vi within set of documents V: pi = |Vi|/|V|
+
+§
+
+Or can combine new information with original guess (use 
+
+Bayesian prior):
+
+4. Repeat, thus generating a succession of 
+
+approximations to relevant documents 
+
+k
+
+k
+
++
+
++
+
+=
+
+|
+
+|
+
+|
+
+|
+
+)1(
+
+)
+
+2
+
+(
+
+V
+
+p
+
+V
+
+p
+
+i
+
+i
+
+i
+
+κ is 
+
+prior
+
+weight
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+
+
+27
+
+Pseudo-relevance feedback
+
+(iteratively auto-estimate pi and ri)
+
+1. Assume that pi is constant over all xi in query and ri
+
+as before
+
+§
+
+pi = 0.5 (even odds) for any given doc
+
+2. Determine guess of relevant document set:
+
+§
+
+V is fixed size set of highest ranked documents on this 
+
+model
+
+3. We need to improve our guesses for pi and ri, so
+
+§
+
+Use distribution of xi in docs in V. Let Vi be set of 
+
+documents containing xi
+
+§
+
+pi = |Vi| / |V|
+
+§
+
+Assume if not retrieved then not relevant 
+
+§
+
+ri = (ni – |Vi|) / (N – |V|)
+
+4. Go to 2. until converges then return ranking
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+
+
+PRP and BIM
+
+§ It is possible to reasonably approximate probabilities
+
+§ But either require partial relevance information or need to
+
+make do with somewhat inferior term weights
+
+§ Requires restrictive assumptions:
+
+§ “Relevance” of each document is independent of others 
+
+§ Really, it’s bad to keep on returning duplicates
+
+§ Term independence
+
+§ Terms not in query don’t affect the outcome
+
+§ Boolean representation of documents/queries
+
+§ Boolean notion of relevance
+
+§ Some of these assumptions can be removed
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+
+
+Removing term independence
+
+§
+
+In general, index terms aren’t 
+
+independent
+
+§
+
+“Hong Kong”
+
+§
+
+Dependencies can be complex
+
+§
+
+van Rijsbergen (1979) proposed 
+
+simple model of dependencies as 
+
+a tree
+
+§
+
+Each term dependent on one 
+
+other
+
+§
+
+Exactly Friedman and 
+
+Goldszmidt’s Tree Augmented 
+
+Naive  Bayes (AAAI 13, 1996)
+
+§
+
+In 1970s, estimation problems 
+
+held back success of this model
+
+
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+
+
+5. Term frequency and the VSM
+
+§ Right in the first lecture, we said that a page should 
+
+rank higher if it mentions a word more
+
+§ Perhaps modulated by things like page length
+
+§ Why not in BIM? Much of early IR was designed for 
+
+titles or abstracts, and not for modern full text search
+
+§ We now want a model with term frequency in it
+
+§ We’ll mainly look at a probabilistic model (BM25)
+
+§ First, a quick summary of vector space model
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+
+
+Summary – vector space ranking (ch. 6)
+
+§ Represent the query as a weighted term 
+
+frequency/inverse document frequency (tf-idf) vector
+
+§ (0, 0, 0, 0, 2.3, 0, 0, 0, 1.78, 0, 0, 0, …, 0, 8.17, 0, 0)
+
+§ Represent each document as a weighted tf-idf vector
+
+§ (1.2, 0, 3.7, 1.5, 2.0, 0, 1.3, 0, 3.7, 1.4, 0, 0, …, 3.5, 5.1, 0, 0)
+
+§ Compute the cosine similarity score for the query 
+
+vector and each document vector
+
+§ Rank documents with respect to the query by score
+
+§ Return the top K (e.g., K = 10) to the user
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+Cosine similarity
+
+
+
+Sec. 6.3
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+
+
+tf-idf weighting has many variants
+
+
+
+Sec. 6.4
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+
+
+6. BM25
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+
+
+Okapi BM25 
+
+[Robertson et al. 1994, TREC City U.]
+
+§ BM25 “Best Match 25” (they had a bunch of tries!)
+
+§ Developed in the context of the Okapi system
+
+§ Started to be increasingly adopted by other teams during 
+
+the TREC competitions
+
+§ It works well
+
+§ Goal: be sensitive to term frequency and document 
+
+length while not adding too many parameters
+
+§ (Robertson and Zaragoza 2009; Spärck Jones et al. 2000)
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+
+
+§ Words are drawn independently from the vocabulary 
+
+using a multinomial distribution
+
+
+
+Generative model for documents
+
+... the draft is that each team is given a position in the draft … 
+
+basic
+
+team
+
+each
+
+that
+
+of
+
+is
+
+the
+
+draft
+
+design
+
+nfl
+
+football
+
+given
+
+…
+
+annual
+
+
+
+
+
+draft
+
+football
+
+team
+
+nfl
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+
+
+§ Distribution of term frequencies (tf) follows a 
+
+binomial distribution – approximated by a Poisson
+
+
+
+Generative model for documents
+
+... the draft is that each team is given a position in the draft … 
+
+draft
+
+…
+
+…
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+
+
+Poisson distribution
+
+§ The Poisson distribution models the probability of k, 
+
+the number of events occurring in a fixed interval of 
+
+time/space, with known average rate λ ( = cf/T), 
+
+independent of the last event
+
+§ Examples
+
+§ Number of cars arriving at a toll booth per minute
+
+§ Number of typos on a page
+
+p(k) = λ k
+
+k! e−λ
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+
+
+Poisson distribution
+
+§ If T is large and p is small, we can approximate a 
+
+binomial distribution with a Poisson where λ = Tp
+
+§ Mean = Variance = λ = Tp. 
+
+§ Example p = 0.08, T = 20. Chance of 1 occurrence is:
+
+§
+
+Binomial 
+
+§
+
+Poisson                                                                                 … already close
+
+p(k) = λ k
+
+k! e−λ
+
+P(1) = [(20)(.08)]1
+
+1!
+
+e−(20)(.08) = 1.6
+
+1 e−1.6 = 0.3230
+
+P(1) =
+
+20
+
+1
+
+!
+
+"
+
+#
+
+$
+
+%
+
+&amp;(.08)1(.92)19 =.3282
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+
+
+Poisson model
+
+§ Assume that term frequencies in a document (tfi) 
+
+follow a Poisson distribution
+
+§ “Fixed interval” implies fixed document length … 
+
+think roughly constant-sized document abstracts
+
+§ … will fix later
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+
+
+Poisson distributions
+
+
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+
+
+(One) Poisson Model flaw
+
+§ Is a reasonable fit for “general” words
+
+§ Is a poor fit for topic-specific words
+
+§ get higher p(k) than predicted too often
+
+Documents containing k occurrences of word (λ = 53/650)
+
+Freq
+
+Word
+
+0
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+7
+
+8
+
+9
+
+10
+
+11
+
+12
+
+53
+
+expected
+
+599
+
+49
+
+2
+
+52
+
+based
+
+600
+
+48
+
+2
+
+53
+
+conditions
+
+604
+
+39
+
+7
+
+55
+
+cathexis
+
+619
+
+22
+
+3
+
+2
+
+1
+
+2
+
+0
+
+1
+
+51
+
+comic
+
+642
+
+3
+
+0
+
+1
+
+0
+
+0
+
+0
+
+0
+
+0
+
+0
+
+1
+
+1
+
+2
+
+Harter, “A Probabilistic Approach to Automatic Keyword Indexing”, JASIST, 1975 
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+
+
+Eliteness (“aboutness”)
+
+§ Model term frequencies using eliteness
+
+§ What is eliteness?
+
+§ Hidden variable for each document-term pair, 
+
+denoted as Ei for term i
+
+§ Represents aboutness: a term is elite in a 
+
+document if, in some sense, the document is 
+
+about the concept denoted by the term
+
+§ Eliteness is binary
+
+§ Term occurrences depend only on eliteness…
+
+§ … but eliteness depends on relevance 
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+
+
+Elite terms
+
+Text from the Wikipedia page on the NFL draft showing 
+
+elite terms
+
+The National Football League Draft 
+
+is an annual event in which the 
+
+National Football League (NFL) 
+
+teams select eligible college 
+
+football players.  It serves as the 
+
+league’s most common source of 
+
+player recruitment.  The basic design 
+
+of the draft is that each team is given 
+
+a position in the draft order in 
+
+reverse order relative to its record …
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+
+
+Graphical model with eliteness
+
+
+
+
+
+
+
+
+
+i ∈ q
+
+
+
+Frequencies
+
+(not binary)
+
+
+
+
+
+
+
+
+
+
+
+Binary
+
+variables
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+
+
+Retrieval Status Value
+
+§ Similar to the BIM derivation, we have
+
+where
+
+and using eliteness, we have:
+
+RSV elite =
+
+ci
+
+elite
+
+i∈q,tfi&gt;0
+
+∑
+
+(tfi);
+
+p(TFi = tfi R) = p(TFi = tfi Ei = elite)p(Ei = elite R)
+
++p(TFi = tfi Ei = elite)(1− p(Ei = elite R))
+
+ci
+
+elite(tfi) = log p(TFi = tfi R =1)p(TFi = 0 R = 0)
+
+p(TFi = 0 R =1)p(TFi = tfi R = 0)
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+
+
+2-Poisson model
+
+§ The problems with the 1-Poisson model suggests 
+
+fitting two Poisson distributions
+
+§ In the “2-Poisson model”, the distribution is different 
+
+depending on whether the term is elite or not
+
+§ where π is probability that document is elite for term
+
+§ but, unfortunately, we don’t know π, λ, μ
+
+
+
+p(TFi = ki R) =
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+
+
+Let’s get an idea: Graphing                  for 
+
+different parameter values of the 2-Poisson
+
+ci
+
+elite(tfi)
+
+
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+
+
+Qualitative properties
+
+§
+
+§
+
+increases monotonically with tfi
+
+§ … but asymptotically approaches a maximum value 
+
+as                           [not true for simple scaling of tf]
+
+§ … with the asymptotic limit being 
+
+ci
+
+elite(0) = 0
+
+ci
+
+elite(tfi)
+
+ci
+
+BIM
+
+Weight of
+
+eliteness
+
+feature
+
+
+
+tfi → ∞
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+
+
+Approximating the saturation function
+
+§ Estimating parameters for the 2-Poisson model is not 
+
+easy
+
+§ … So approximate it with a simple parametric curve 
+
+that has the same qualitative properties
+
+tf
+
+k1 +tf
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+
+
+Saturation function
+
+§ For high values of k1, increments in tfi continue to 
+
+contribute significantly to the score
+
+§ Contributions tail off quickly for low values of k1
+
+
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+
+
+“Early” versions of BM25
+
+§ Version 1: using the saturation function
+
+§ Version 2: BIM simplification to IDF
+
+§ (k1+1) factor doesn’t change ranking, but makes 
+
+term score 1 when tfi = 1
+
+§ Similar to tf-idf, but term scores are bounded
+
+ci
+
+BM 25v1(tfi) = ci
+
+BIM
+
+tfi
+
+k1 +tfi
+
+ci
+
+BM 25v2(tfi) = log N
+
+dfi
+
+× (k1 +1)tfi
+
+k1 +tfi
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+
+
+Document length normalization
+
+§ Longer documents are likely to have larger tfi values
+
+§ Why might documents be longer?
+
+§ Verbosity: suggests observed tfi too high
+
+§ Larger scope: suggests observed tfi may be right
+
+§ A real document collection probably has both effects 
+
+§ … so should apply some kind of partial normalization
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+
+
+Document length normalization
+
+§ Document length:
+
+§ avdl: Average document length over collection
+
+§ Length normalization component
+
+§ b = 1  full document length normalization 
+
+§ b = 0  no document length normalization
+
+dl =
+
+tfi
+
+i∈V∑
+
+B = (1− b)+ b dl
+
+avdl
+
+"
+
+#$
+
+%
+
+&amp;',
+
+0 ≤ b ≤1
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+
+
+Document length normalization
+
+
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+
+
+Okapi BM25
+
+§ Normalize tf using document length
+
+§ BM25 ranking function
+
+t !fi = tfi
+
+B
+
+ci
+
+BM 25(tfi) = log N
+
+dfi
+
+× (k1 +1)t "fi
+
+k1 +t "fi
+
+= log N
+
+dfi
+
+×
+
+(k1 +1)tfi
+
+k1((1− b)+ b dl
+
+avdl)+tfi
+
+RSV BM 25 =
+
+ci
+
+BM 25
+
+i∈q∑
+
+(tfi);
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+
+
+Okapi BM25
+
+§ k1 controls term frequency scaling
+
+§ k1 = 0 is binary model; k1 large is raw term frequency
+
+§ b controls document length normalization
+
+§ b = 0 is no length normalization; b = 1 is relative 
+
+frequency (fully scale by document length)
+
+§ Typically, k1 is set around 1.2–2 and b around 0.75 
+
+§ IIR sec. 11.4.3 discusses incorporating query term 
+
+weighting and (pseudo) relevance feedback
+
+RSV BM 25 =
+
+log N
+
+dfi
+
+i∈q∑
+
+⋅
+
+(k1 +1)tfi
+
+k1((1− b)+ b dl
+
+avdl)+tfi
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+
+
+Why is BM25 better than VSM tf-idf?
+
+§ Suppose your query is [machine learning]
+
+§ Suppose you have 2 documents with term counts:
+
+§ doc1: learning 1024; machine 1
+
+§ doc2: learning 16; machine 8
+
+§ tf-idf: log2 tf * log2 (N/df)
+
+§ doc1: 11 * 7 + 1 * 10         = 87
+
+§ doc2: 5 * 7 + 4 * 10            = 75
+
+§ BM25: k1 = 2
+
+§ doc1: 7 * 3 + 10 * 1             = 31
+
+§ doc2: 7 * 2.67 + 10 * 2.4    = 42.7
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+
+
+7. Ranking with features
+
+§ Textual features
+
+§ Zones: Title, author, abstract, body, anchors, …
+
+§ Proximity
+
+§ …
+
+§ Non-textual features
+
+§ File type
+
+§ File age
+
+§ Page rank
+
+§ …
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+
+
+Ranking with zones
+
+§ Straightforward idea: 
+
+§ Apply your favorite ranking function (BM25) to 
+
+each zone separately
+
+§ Combine zone scores using a weighted linear 
+
+combination
+
+§ But that seems to imply that the eliteness properties 
+
+of different zones are different and independent of 
+
+each other
+
+§ …which seems unreasonable
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+
+
+Ranking with zones
+
+§ Alternate idea
+
+§ Assume eliteness is a term/document property 
+
+shared across zones
+
+§ … but the relationship between eliteness and term 
+
+frequencies are zone-dependent
+
+§ e.g., denser use of elite topic words in title 
+
+§ Consequence
+
+§ First combine evidence across zones for each term
+
+§ Then combine evidence across terms
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+
+
+BM25F with zones
+
+§ Calculate a weighted variant of total term frequency
+
+§ … and a weighted variant of document length
+
+where 
+
+vz is zone weight
+
+tfzi is term frequency in zone z
+
+lenz is length of zone z
+
+Z is the  number of zones
+
+tfi =
+
+vztfzi
+
+z=1
+
+Z
+
+∑
+
+dl =
+
+vzlenz
+
+z=1
+
+Z
+
+∑
+
+avdl = Average
+
+across all
+
+documents
+
+dl
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+
+
+Simple BM25F with zones
+
+§ Simple interpretation: zone z is “replicated” vz times
+
+§ But we may want zone-specific parameters (k1, b,
+
+IDF)
+
+RSV SimpleBM 25F =
+
+log N
+
+dfi
+
+i∈q∑
+
+⋅
+
+(k1 +1)tfi
+
+k1((1− b)+ b dl
+
+avdl )+tfi
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+
+
+BM25F
+
+§ Empirically, zone-specific length normalization (i.e., 
+
+zone-specific b) has been found to be useful
+
+tfi =
+
+vz
+
+tfzi
+
+Bz
+
+z=1
+
+Z
+
+∑
+
+Bz = (1− bz)+ bz
+
+lenz
+
+avlenz
+
+"
+
+#
+
+$
+
+%
+
+&amp;
+
+',
+
+0 ≤ bz ≤1
+
+RSV BM 25F =
+
+log N
+
+dfi
+
+i∈q∑
+
+⋅ (k1 +1)tfi
+
+k1 +tfi
+
+See Robertson and Zaragoza (2009: 364)
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+
+
+Ranking with non-textual features
+
+§ Assumptions
+
+§ Usual independence assumption
+
+§ Independent of each other and of the textual features
+
+§ Allows us to factor out                                   in BIM-style 
+
+derivation
+
+§ Relevance information is query independent
+
+§ Usually true for features like page rank, age, type, …
+
+§ Allows us to keep all non-textual features in the BIM-
+
+style derivation where we drop non-query terms
+
+p(Fj = f j R =1)
+
+p(Fj = f j R = 0)
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+
+
+Ranking with non-textual features
+
+where
+
+and      is an artificially added free parameter to account 
+
+for rescalings in the approximations
+
+§ Care must be taken in selecting Vj depending on Fj. E.g. 
+
+§ Explains why                                              works well
+
+RSV =
+
+ci
+
+i∈q∑ (tfi)+
+
+λjVj( f j)
+
+j=1
+
+F
+
+∑
+
+Vj( fj) = log p(Fj = fj R =1)
+
+p(Fj = fj R = 0)
+
+λj
+
+log( !
+
+λj + f j)
+
+f j
+
+!
+
+λj + f j
+
+1
+
+!
+
+λj +exp(− f j !!
+
+λj)
+
+RSV BM 25 + log(pagerank)
+
+
+
+
+
+
+Introduction to Information Retrieval
+
+
+
+
+
+
+
+Resources
+
+S. E. Robertson and K. Spärck Jones. 1976. Relevance Weighting of Search 
+
+Terms. Journal of the American Society for Information Sciences 27(3): 
+
+129–146.
+
+C. J. van Rijsbergen. 1979. Information Retrieval. 2nd ed. London: 
+
+Butterworths, chapter 6. http://www.dcs.gla.ac.uk/Keith/Preface.html
+
+K. Spärck Jones, S. Walker, and S. E. Robertson. 2000. A probabilistic model of 
+
+information retrieval: Development and comparative experiments. Part 1. 
+
+Information Processing and Management 779–808.
+
+S. E. Robertson and H. Zaragoza. 2009. The Probabilistic Relevance 
+
+Framework: BM25 and Beyond. Foundations and Trends in Information 
+
+Retrieval 3(4): 333-389.
+

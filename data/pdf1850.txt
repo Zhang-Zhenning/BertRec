@@ -1,0 +1,964 @@
+
+
+
+
+
+
+
+
+
+
+
+Lecture 7: Relevance Feedback and Query
+
+Expansion
+
+Information Retrieval
+
+Computer Science Tripos Part II
+
+Ronan Cummins
+
+Natural Language and Information Processing (NLIP) Group
+
+ronan.cummins@cl.cam.ac.uk
+
+2017
+
+271
+
+
+
+
+Overview
+
+
+
+
+
+1 Introduction
+
+
+
+2 Relevance Feedback
+
+
+
+Rocchio Algorithm
+
+
+
+Relevance-Based Language Models
+
+
+
+3 Query Expansion
+
+
+
+
+Motivation
+
+
+
+
+
+The same word can have diﬀerent meanings (polysemy)
+
+
+
+Two diﬀerent words can have the same meaning (synonymy)
+
+
+
+Vocabulary of searcher may not match that of the documents
+
+
+
+Consider the query = {plane fuel}
+
+
+
+While this is relatively unambiguous (wrt the meaning of each
+
+word in context), exact matching will miss documents
+
+containing aircraft, airplane, or jet
+
+
+
+Relevance feedback and query expansion aim to overcome the
+
+problem of synonymy
+
+272
+
+
+
+
+Example
+
+
+
+
+
+273
+
+
+
+
+Improving Recall
+
+
+
+
+
+Local analysis: query-time analysis on a portion of documents
+
+returned for a user query
+
+
+
+Main local method: relevance feedback
+
+
+
+Global analysis: perform a global analysis once (e.g., of
+
+collection) to produce thesaurus
+
+
+
+Use thesaurus for query expansion
+
+274
+
+
+
+
+Overview
+
+
+
+
+
+1 Introduction
+
+
+
+2 Relevance Feedback
+
+
+
+Rocchio Algorithm
+
+
+
+Relevance-Based Language Models
+
+
+
+3 Query Expansion
+
+
+
+
+The Basics
+
+
+
+
+
+The user issues a (short, simple) query.
+
+
+
+The search engine returns a set of documents.
+
+
+
+User marks some docs as relevant (possibly some as
+
+non-relevant).
+
+
+
+Search engine computes a new representation of the
+
+information need.
+
+
+
+Hope: better than the initial query.
+
+
+
+Search engine runs new query and returns new results.
+
+
+
+New results have (hopefully) better recall (and possibly also
+
+better precision).
+
+A limited form of RF is often expressed as “more like this” or ”ﬁnd
+
+similar”.
+
+275
+
+
+
+
+Example
+
+
+
+
+
+276
+
+
+
+
+Example
+
+
+
+
+
+277
+
+
+
+
+Outline
+
+
+
+
+
+1 Introduction
+
+
+
+2 Relevance Feedback
+
+
+
+Rocchio Algorithm
+
+
+
+Relevance-Based Language Models
+
+
+
+3 Query Expansion
+
+278
+
+
+
+
+Rocchio Basics
+
+
+
+
+
+Developed in the late 60s or early 70s.
+
+
+
+It was developed using the VSM as its basis.
+
+
+
+Therefore, we represent documents as points in a
+
+high-dimensional term space.
+
+
+
+Uses centroids to calculate the center of a set of documents.
+
+279
+
+
+
+
+Rocchio Diagram
+
+
+
+Rocchio aims to ﬁnd the optimal query ⃗qopt that maximises:
+
+⃗qopt = arg max
+
+⃗q
+
+[sim(⃗q, Cr) − sim(⃗q, Cnr)]
+
+(1)
+
+where sim(⃗q, Cr) is the similarity between a query q and the set of
+
+relevant documents Cr.
+
+280
+
+
+
+
+Rocchio Diagram
+
+
+
+Rocchio aims to ﬁnd the optimal query ⃗qopt that maximises:
+
+⃗qopt = arg max
+
+⃗q
+
+[sim(⃗q, Cr) − sim(⃗q, Cnr)]
+
+(1)
+
+where sim(⃗q, Cr) is the similarity between a query q and the set of
+
+relevant documents Cr. Using cosine similarity the optimal query
+
+becomes:
+
+⃗qopt =
+
+1
+
+|Cr|
+
+�
+
+⃗dj∈Cr
+
+⃗dj −
+
+1
+
+|Cnr|
+
+�
+
+⃗dj∈Cnr
+
+⃗dj
+
+(2)
+
+which is the diﬀerence between the centroids of the relevant and
+
+non-relevant document vectors.
+
+280
+
+
+
+
+Rocchio Diagram
+
+
+
+
+
+281
+
+
+
+
+Rocchio in practice
+
+
+
+
+
+However, we usually do not know the full relevant and
+
+non-relevant sets.
+
+
+
+For example, a user might only label a few documents as
+
+relevant.
+
+Therefore, in practice Rocchio is often parameterised as follows:
+
+⃗qm = α⃗q0 + β 1
+
+|Cr|
+
+�
+
+⃗dj∈Cr
+
+⃗dj − γ
+
+1
+
+|Cnr|
+
+�
+
+⃗dj∈Cnr
+
+⃗dj
+
+(3)
+
+where α, β, and γ are weights that are attached to each
+
+component.
+
+282
+
+
+
+
+Rocchio Summary
+
+
+
+
+
+Rocchio has been shown useful for increasing recall
+
+
+
+Contains aspects of positive and negative feedback
+
+
+
+Positive feedback is much more valuable (i.e. indications of
+
+what is relevant and γ &lt; β
+
+
+
+Reasonable values of the parameters are α = 1.0, β = 0.75,
+
+γ = 0.15
+
+283
+
+
+
+
+Outline
+
+
+
+
+
+1 Introduction
+
+
+
+2 Relevance Feedback
+
+
+
+Rocchio Algorithm
+
+
+
+Relevance-Based Language Models
+
+
+
+3 Query Expansion
+
+284
+
+
+
+
+Relevance-Based Language Models I
+
+
+
+
+
+The query-likelihood language model (earlier lecture) had no
+
+concept of relevance (if you remember)
+
+
+
+Relevance-Based language models take a probabilistic
+
+language modelling approach to modelling relevance
+
+
+
+The main assumption is that a document is generated from
+
+either one of two classes (i.e. relevant or non-relevant)
+
+
+
+Documents are then ranked according to their probability of
+
+being drawn from the relevance class
+
+P(R|D) =
+
+P(D|R)P(R)
+
+P(D|R)P(R) + P(D|NR)P(NR)
+
+(4)
+
+which is rank equivalent to ranking by log-odds
+
+= log P(D|R)
+
+P(D|NR)
+
+(5)
+
+285
+
+
+
+
+Relevance-Based Language Models II
+
+
+
+
+
+
+
+Lavrenko (2001) introduced the idea of relevance-based
+
+language models
+
+
+
+Outlined a number of diﬀerent generative models
+
+
+
+One of the best performing models is one called RM3 (useful
+
+for both relevance and pseudo-relevance feedback)
+
+286
+
+
+
+
+Relevance-Based Language Models III
+
+
+
+
+
+Given a set of known relevant documents R one can estimate
+
+a relevance language model (e.g. multinomial θR)
+
+
+
+In practice, this can be smoothed with the original query
+
+model and a background model (not shown)
+
+One could estimate the relevance model as:
+
+(1 − π)θR + πθq
+
+(6)
+
+where π controls how much of the original query one wishes to
+
+retain.
+
+287
+
+
+
+
+Problems?
+
+
+
+
+
+Relevance feedback is expensive
+
+
+
+Relevance feedback creates long modiﬁed queries
+
+
+
+Long queries are expensive to process
+
+
+
+Users are reluctant to provide explicit feedback
+
+
+
+Its often hard to understand why a particular document was
+
+retrieved after applying relevance feedback
+
+288
+
+
+
+
+When does RF work?
+
+
+
+
+
+When users are willing to give feedback!
+
+
+
+When the user knows the terms in the collection well enough
+
+for an initial query.
+
+
+
+When relevant documents contain similar terms (similar to
+
+the cluster hypothesis)
+
+The cluster hypothesis states that if there is a document
+
+from a cluster that is relevant to a search request, then it
+
+is likely that other documents from the same cluster are
+
+also relevant. - Jardine and van Rijsbergen
+
+289
+
+
+
+
+Relevance Feedback - Evaluation
+
+
+
+
+
+How to evaluate if RF works?
+
+
+
+
+
+290
+
+
+
+
+Relevance Feedback - Evaluation
+
+
+
+
+
+How to evaluate if RF works?
+
+
+
+Have two collections, with relevance judgements for the same
+
+information needs (queries)
+
+
+
+User studies: time taken to ﬁnd # of relevant documents
+
+(with and without feedback)
+
+290
+
+
+
+
+Other types of relevance feedback
+
+
+
+
+
+Implicit relevance feedback
+
+
+
+Pseudo relevance feedback - when does it work?
+
+291
+
+
+
+
+Overview
+
+
+
+
+
+1 Introduction
+
+
+
+2 Relevance Feedback
+
+
+
+Rocchio Algorithm
+
+
+
+Relevance-Based Language Models
+
+
+
+3 Query Expansion
+
+
+
+
+Query Expansion Motivation
+
+
+
+
+
+
+
+292
+
+
+
+
+Query Expansion Motivation
+
+
+
+
+
+
+
+292
+
+
+
+
+Query Expansion Introduction
+
+
+
+
+
+Query expansion is another method for increasing recall
+
+
+
+We use “global query expansion” to refer to “global methods
+
+for query reformulation”
+
+
+
+In global query expansion, the query is modiﬁed based on
+
+some global resource, i.e. a resource that is not
+
+query-dependent
+
+
+
+Often the problem aims to ﬁnd (near-)synonyms
+
+
+
+Distributional Semantics (word embeddings)
+
+
+
+What’s the diﬀerent between “local” and “global” methods?
+
+293
+
+
+
+
+Query Expansion Methods
+
+
+
+
+
+Use of a controlled vocabulary that is maintained by human
+
+editors (e.g. sets of keywords for publications - Medline)
+
+
+
+A manual thesaurus (e.g. wordnet)
+
+
+
+An automatically derived thesaurus
+
+
+
+Query reformulations based on query log mining (i.e. what the
+
+large search engines do)
+
+294
+
+
+
+
+Automatic thesaurus generation I
+
+
+
+
+
+Let A be a term-document matrix
+
+
+
+Where each cell Atd is a weighted count of term t in
+
+document (or window) d
+
+
+
+Row normalise the matrix (e.g. L2 normalisation)
+
+
+
+Then C = AAT is a term-term similarity matrix
+
+
+
+The similarity between any two terms u and v is in Cuv
+
+
+
+Given any particular term q, the most similar terms can be
+
+easily retrieved
+
+295
+
+
+
+
+Automatic thesaurus generation II
+
+
+
+
+
+Other approaches involve distributional semantics
+
+
+
+Where words with similar meanings appear in similar contexts
+
+
+
+Word embeddings - word2vec, glove, etc
+
+
+
+Can be useful but global expansion still suﬀers from problems
+
+of polysemy
+
+
+
+A naive approach to word-level expansion might lead to
+
+{apple computer} → {apple fruit computer}
+
+296
+
+
+
+
+Summary
+
+
+
+
+
+QE is transparent in that it allows the user to see (select)
+
+expansion terms
+
+
+
+Local approaches (PRF) to expanding queries tend to be more
+
+eﬀective
+
+
+
+E.g. {apple computer} → {apple computer jobs iphone ipad
+
+macintosh}
+
+
+
+Local approaches tend to automatically disambiguate the
+
+individual query terms. Why?
+
+
+
+Query log mining approaches have also been shown to be
+
+useful
+
+297
+
+
+
+
+Reading
+
+
+
+
+
+Manning, Raghavan, Sch¨utze: Introduction to Information
+
+Retrieval (MRS), chapter 9: Relevance feedback and query
+
+expansion, chapter 16.1: Clustering in information retrieval
+
+
+
+Victor Lavrenko and W. Bruce Croft: Relevance-Based
+
+Language Models
+
+298
+

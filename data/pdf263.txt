@@ -1,0 +1,1170 @@
+
+Xiaozhou's Notes
+
+Xiaozhou's Notes
+
+Home
+
+Categories
+
+Publication
+
+About
+
+
+
+   
+
+© 2022. All rights reserved.
+
+Expectation-maximization algorithm,
+
+explained
+
+20 Oct 2020
+
+A comprehensive guide to the EM algorithm with intuitions, examples, Python
+
+implementation, and maths
+
+Yes! Let’s talk about the expectation-maximization algorithm (EM, for short). If you
+
+are in the data science “bubble”, you’ve probably come across EM at some point in
+
+time and wondered: What is EM, and do I need to know it?
+
+It’s the algorithm that solves Gaussian mixture models, a popular clustering
+
+approach. The Baum-Welch algorithm essential to hidden Markov models is a
+
+special type of EM. It works with both big and small data; it thrives when there is
+
+missing information while other techniques fail. It’s such a classic, powerful, and
+
+versatile statistical learning technique that it’s taught in almost all computational
+
+statistics classes. After reading this article, you could gain a strong understanding of
+
+the EM algorithm and know when and how to use it.
+
+We start with two motivating examples (unsupervised learning and evolution). Next,
+
+we see what EM is in its general form. We jump back in action and use EM to solve
+
+the two examples. We then explain both intuitively and mathematically why EM
+
+works like a charm. Lastly, a summary of this article and some further topics are
+
+presented.
+
+Motivating examples: Why do we care?
+
+General framework: What is EM?
+
+EM in action: Does it really work?
+
+Explained: Why does it work?
+
+Summary
+
+Further topics
+
+Motivating examples: Why do we care?
+
+Maybe you already know why you want to use EM, or maybe you don’t. Either way,
+
+let me use two motivating examples to set the stage for EM. These are quite
+
+lengthy, I know, but they perfectly highlight the common feature of the problems that
+
+
+EM is best at solving: the presence of missing information.
+
+Unsupervised learning: Solving Gaussian mixture model for
+
+clustering
+
+Suppose you have a data set with n
+
+number of data points. It could be a group of customers visiting your website
+
+(customer profiling) or an image with different objects (image segmentation).
+
+Clustering is the task of finding out k
+
+natural groups for your data when you don’t know (or don’t specify) the real
+
+grouping. This is an unsupervised learning problem because no ground-truth labels
+
+are used.
+
+Such clustering problem can be tackled by several types of algorithms, e.g.,
+
+combinatorial type such as k-means or hierarchical type such as Ward’s
+
+hierarchical clustering. However, if you believe that your data could be better
+
+modeled as a mixture of normal distributions, you would go for Gaussian mixture
+
+model (GMM).
+
+The underlying idea of GMM is that you assume there’s a data generating
+
+mechanism behind your data. This mechanism first chooses one of the k
+
+normal distributions (with a certain probability) and then delivers a sample from that
+
+distribution. Therefore, once you have estimated each distribution’s parameters,
+
+you could easily cluster each data point by selecting the one that gives the highest
+
+likelihood.
+
+
+
+FIGURE 1. An example of mixture of Gaussian data and clustering using k-
+
+means and GMM (solved by EM).
+
+However, estimating the parameters is not a simple task since we do not know
+
+which distribution generated which points (missing information). EM is an
+
+algorithm that can help us solve exactly this problem. This is why EM is the
+
+underlying solver in scikit-learn’s GMM implementation.
+
+Population genetics: Estimating moth allele frequencies to
+
+observe natural selection
+
+Have you heard the phrase “industrial melanism” before? Biologists coined the term
+
+in the 19th century to describe how animals change their skin color due to the
+
+massive industrialization in the cities. They observed that previously rare dark
+
+peppered moths started to dominate the population in coal-fueled industrialized
+
+towns. Scientists at the time were surprised and fascinated by this observation.
+
+Subsequent research suggests that the industrialized cities tend to have darker tree
+
+barks that disguise darker moths better than the light ones. You can play this
+
+peppered moth game to understand the phenomenon better.
+
+
+
+
+FIGURE 2. Dark (top) and light (bottom) peppered moth. Image by Jerzy
+
+Strzelecki via Wikimedia Commons
+
+As a result, dark moths survive the predation better and pass on their genes, giving
+
+rise to a predominantly dark peppered moth population. To prove their natural
+
+selection theory, scientists first need to estimate the percentage of black-producing
+
+and light-producing genes/alleles present in the moth population. The gene
+
+responsible for the moth’s color has three types of alleles: C, I, and T. Genotypes
+
+CC, CI, and CT produce dark peppered moth (Carbonaria); TT produces light
+
+peppered moth (Typica); II and IT produce moths with intermediate color (Insularia).
+
+Here’s a hand-drawn graph that shows the observed and missing information.
+
+
+
+FIGURE 3. Relationship between peppered moth alleles, genotypes, and
+
+phenotypes. We observed phenotypes, but wish to estimate percentages of
+
+alleles in the population. Image by author
+
+We wish to know the percentages of C, I, and T in the population. However, we can
+
+only observe the number of Carbonaria, Typica, and Insularia moths by capturing
+
+them, but not the genotypes (missing information). The fact that we do not
+
+observe the genotypes and multiple genotypes produce the same subspecies make
+
+the calculation of the allele frequencies difficult. This is where EM comes in to play.
+
+
+With EM, we can easily estimate the allele frequencies and provide concrete
+
+evidence for the micro-evolution happening on a human time scale due to
+
+environmental pollution.
+
+How does EM tackle the GMM problem and the peppered moth problem in the
+
+presence of missing information? We will illustrate these in the later section. But
+
+first, let’s see what EM is really about.
+
+General framework: What is EM?
+
+At this point, you must be thinking (I hope): All these examples are wonderful, but
+
+what is really EM? Let’s dive into it.
+
+EM algorithm is an iterative optimization method that finds the maximum likelihood
+
+estimate (MLE) of parameters in problems where hidden/missing/latent variables
+
+are present. It was first introduced in its full generality by Dempster, Laird, and Rubin
+
+(1977) in their famous paper1 (currently 62k citations). It has been widely used for its
+
+easy implementation, numerical stability, and robust empirical performance.
+
+Let’s set up the EM for a general problem and introduce some notations. Suppose
+
+that Y
+
+are our observed variables, X
+
+are hidden variables, and we say that the pair (X,Y)
+
+is the complete data. We also denote any unknown parameter of interest as θ � Θ
+
+. The objective of most parameter estimation problems is to find the most probable 
+
+θ
+
+given our model and data, i.e.,
+
+θ = arg
+
+max
+
+θ�Θ pθ(y),
+
+where pθ(y)
+
+is the incomplete-data likelihood. Using the law of total probability, we can also
+
+express the incomplete-data likelihood as
+
+pθ(y) = ∫pθ(x,y)dx,
+
+where pθ(x,y)
+
+is known as the complete-data likelihood.
+
+What’s with all these complete- and incomplete-data likelihoods? In many problems,
+
+the maximization of the incomplete-data likelihood pθ(y)
+
+is difficult because of the missing information. On the other hand, it’s often easier to
+
+work with complete-data likelihood. EM algorithm is designed to take advantage of
+
+this observation. It iterates between an expectation step (E-step) and a
+
+maximization step (M-step) to find the MLE.
+
+Assuming θ(n)
+
+is the estimate obtained at the n
+
+th iteration, the algorithm iterates between the two steps as follows:
+
+E-step: define Q(θ|θ(n))
+
+as the conditional expectation of the complete-data log-likelihood w.r.t. the
+
+hidden variables, given observed data and current parameter estimate, i.e.,
+
+Q(θ|θ(n)) = EX|y,θ(n) lnpθ(x,y) .
+
+M-step: find a new θ
+
+[
+
+]
+
+
+that maximizes the above expectation and set it to θ(n+1)
+
+, i.e.,
+
+θ(n+1) = arg
+
+max
+
+θ�ΘQ(θ|θ(n)).
+
+The above definitions might seem hard-to-grasp at first. Some intuitive explanation
+
+might help:
+
+E-step: This step is asking, given our observed data y
+
+and current parameter estimate θ(n)
+
+, what are the probabilities of different X
+
+? Also, under these probable X
+
+, what are the corresponding log-likelihoods?
+
+M-step: Here we ask, under these probable X
+
+, what is the value of θ
+
+that gives us the maximum expected log-likelihood?
+
+The algorithm iterates between these two steps until a stopping criterion is reached,
+
+e.g., when either the Q function or the parameter estimate has converged. The
+
+entire process can be illustrated in the following flowchart.
+
+
+
+FIGURE 4. The EM algorithm iterates between E-step and M-step to obtain MLEs
+
+and stops when the estimates have converged. Image by author
+
+That’s it! With two equations and a bunch of iterations, you have just unlocked one of
+
+the most elegant statistical inference techniques!
+
+EM in action: Does it really work?
+
+What we’ve seen above is the general framework of EM, not the actual
+
+implementation of it. In this section, we will see step-by-step just how EM is
+
+implemented to solve the two previously mentioned examples. After verifying that
+
+EM does work for these problems, we then see intuitively and mathematically why it
+
+works in the next section.
+
+Solving GMM for clustering
+
+Suppose we have some data and would like to model the density of them.
+
+
+
+
+FIGURE 5. 400 points generated as a mixture of four different normal
+
+distributions. Image by author
+
+Are you able to see the different underlying distributions? Apparently, these data
+
+come from more than one distribution. Thus a single normal distribution would not
+
+be appropriate, and we use a mixture approach. In general, GMM-based clustering
+
+is the task of clustering y1,…,yn
+
+data points into k
+
+groups. We let
+
+xik = 1
+
+if yi is in group k
+
+0
+
+otherwise
+
+Thus, xi
+
+is the one-hot coding of data yi
+
+, e.g., xi = [0,0,1]
+
+if k = 3
+
+and yi
+
+is from group 3. In this case, the collection of data points y
+
+is the incomplete data, and (x,y)
+
+is the augmented complete data. We further assume that each group follows a
+
+normal distribution, i.e.,
+
+yi � xik = 1 � N(μk,Σk).
+
+Following the usual mixture Gaussian model set up, a new point is generated from
+
+the k
+
+th group with probability P(xik = 1) = wk
+
+and ∑k
+
+i=1wi = 1
+
+. Suppose we are only working with the incomplete data y
+
+. The likelihood of one data point under a GMM is
+
+p(yi) =
+
+k
+
+∑
+
+j=1wjϕ(yi;μj,Σj),
+
+where ϕ( � ;μ,Σ)
+
+is the PDF of a normal distribution with mean μ
+
+{
+
+
+and variance-covariance Σ
+
+. The total log-likelihood of n
+
+points is
+
+lnp(y) =
+
+n
+
+∑
+
+i=1ln
+
+k
+
+∑
+
+j=1wjϕ(yi;μj,Σj).
+
+In our problem, we are trying to estimate three groups of parameters: the group
+
+mixing probabilities (w
+
+) and each distribution’s mean and covariance matrix (μ,Σ
+
+). The usual approach to parameter estimation is by maximizing the above total log-
+
+likelihood function w.r.t. each parameter (MLE). However, this is difficult to do due to
+
+the summation inside the log
+
+term.
+
+Expectation step
+
+Let’s use the EM approach instead! Remember that we first need to define the Q
+
+function in the E-step, which is the conditional expectation of the complete-data log-
+
+likelihood. Since (x,y)
+
+is the complete data, the corresponding likelihood of one data point is
+
+p(xi,yi) = Πk
+
+j=1{wjϕ(yi;μj,Σj)}xij,
+
+and only the term with xij = 1
+
+is active. Hence, our total complete-data log-likelihood is
+
+lnp(x,y) =
+
+n
+
+∑
+
+i=1
+
+k
+
+∑
+
+j=1xijln{wjϕ(yi;μj,Σj)}.
+
+Denote θ
+
+as the collection of unknown parameters (w,μ,Σ)
+
+, and θ(n)
+
+as the estimates from the last iteration. Following the E-step formula in (2
+
+), we obtain the Q function as
+
+Q(θ|θ(n)) =
+
+n
+
+∑
+
+i=1
+
+k
+
+∑
+
+j=1z(n)
+
+ij ln{wjϕ(yi;μj,Σj)}
+
+where
+
+z(n)
+
+ij
+
+=
+
+ϕ(yi;μ(n)
+
+j
+
+,Σ(n)
+
+j
+
+)w(n)
+
+j
+
+∑k
+
+l=1ϕ(yi;μ(n)
+
+l
+
+,Σ(n)
+
+l
+
+)w(n)
+
+l
+
+.
+
+Here z(n)
+
+ij
+
+is the probability that data yi
+
+is in class j
+
+with the current parameter estimates θ(n)
+
+. This probability is also called responsibility in some texts. It means the
+
+responsibility of each class to this data point. It’s also a constant given the observed
+
+data and θ(n)
+
+.
+
+Click here for the derivation of the Q function:
+
+
+Maximization step
+
+Recall that the EM algorithm proceeds by iterating between the E-step and the M-
+
+step. We have obtained the latest iteration’s Q function in the E-step above. Next,
+
+we move on to the M-step and find a new θ
+
+that maximizes the Q function in (6
+
+), i.e., we find
+
+θ(n+1) = arg
+
+max
+
+θ�Θ Q(θ|θ(n)).
+
+A closer look at the obtained Q function reveals that it’s actually a weighted normal
+
+distribution MLE problem. That means, the new θ
+
+has closed-form formulas and can be verified easily using differentiation:
+
+w(n+1)
+
+j
+
+=
+
+1
+
+n
+
+n
+
+∑
+
+i=1z(n)
+
+ij
+
+New mixing probabilities
+
+μ(n+1)
+
+j
+
+=
+
+∑n
+
+i=1z(n)
+
+ij yi
+
+∑n
+
+i=1z(n)
+
+ij
+
+New means
+
+Σ(n+1)
+
+j
+
+=
+
+∑n
+
+i=1z(n)
+
+ij (yi − μ(n+1)
+
+j
+
+)(yi − μ(n+1)
+
+j
+
+)T
+
+∑n
+
+i z(n)
+
+ij
+
+New var-cov matrices
+
+for j = 1,…,k
+
+.
+
+How does it perform?
+
+We go back to the opening problem in this section. I simulated 400 points using four
+
+different normal distributions. FIGURE 5 is what we see if we do not know the
+
+underlying true groupings. We run the EM procedure as derived above and set the
+
+algorithm to stop when the log-likelihood does not change anymore.
+
+In the end, we found the mixing probabilities and all four group’s means and
+
+covariance matrices. FIGURE 6 below shows the density contours of each
+
+distribution found by EM superimposed on the data, which are now color-coded by
+
+their ground-truth groupings. Both the locations (means) and the scales
+
+(covariances) of the four underlying normal distributions are correctly identified.
+
+Unlike k-means, EM gives us both the clustering of the data and the generative
+
+model (GMM) behind them.
+
+
+
+
+FIGURE 6.  Density contours superimposed on samples from four different
+
+normal distributions. Image by author
+
+Click here for the GMM-EM implementation, credit to Cliburn Chan:
+
+Click here for the script to run the above experiment:
+
+Estimating allele frequencies
+
+We return to the population genetics problem mentioned earlier. Suppose we
+
+captured n
+
+moths and of which there are three different types: Carbonaria, Typica, and
+
+Insularia. However, we do not know the genotype of each moth except for Typica
+
+moths, see FIGURE 3 above. We wish to estimate the population allele frequencies.
+
+Let’s speak in EM terms. Here’s what we know:
+
+Observed:
+
+X = (nCar,nTyp,nIns)
+
+Unobserved: the number of different genotypes
+
+Y = (nCC,nCI,nCT,nII,nIT,nTT)
+
+But we do know the relationship between them:
+
+nCar = nCC+ nCI + nCT
+
+nTyp = nTT
+
+nIns = nII + nIT
+
+Parameter of interest: allele frequencies
+
+θ = (pC,pI,pT)
+
+and we know pC+ pI + pT = 1
+
+There’s another important modeling principle that we need to use: the Hardy–
+
+Weinberg principle, which says that the genotype frequency is the product of the
+
+corresponding allele frequency or double that when the two alleles are different. That
+
+is, we can expect the genotype frequencies of nCC,nCI,nCT,nII,nIT,nTT
+
+to be
+
+
+p2
+
+C,2pCpI,2pCpT,p2
+
+I ,2pIpT,p2
+
+T.
+
+Good! Now we are ready to plug in the EM framework. What’s the first step?
+
+Expectation step
+
+Just like the GMM case, we first need to figure out the complete-data likelihood.
+
+Notice that this is actually a multinomial distribution problem. We have a population
+
+of moths, the chance of capturing a moth of genotype CC
+
+is p2
+
+C
+
+, similarly for the other genotypes. Therefore, the complete-data likelihood is just the
+
+multinomial distribution PDF:
+
+p(x,y) = Pr(NCC = nCC,NCI = nCI,…,NTT = nTT)
+
+=
+
+n
+
+nCC nCI
+
+…
+
+nTT
+
+(p2
+
+C)nCC(2pCpI)nCI…(p2
+
+T)nTT.
+
+And the complete-data log-likelihood can be written in the following decomposed
+
+form:
+
+lnpθ(x,y) = nCClog p2
+
+C + nCIlog 2pCpI + nCTlog 2pCpT
+
++ nIIlog p2
+
+I + nITlog 2pIpT + nTTlog p2
+
+T
+
++ log
+
+n
+
+nCC nCI nCT nII nIT nTT
+
+Remember that the E-step is taking a conditional expectation of the above
+
+likelihood w.r.t. the unobserved data Y
+
+, given the latest iteration’s parameter estimates θ(n)
+
+. The Q function is found to be
+
+Q θ � θ(n) = n(n)
+
+CClog p2
+
+C + n(n)
+
+CI log 2pCpI
+
++ n(n)
+
+CTlog 2pCpT + n(n)
+
+II log p2
+
+I
+
++ n(n)
+
+IT log 2pIpT + nTTlog p2
+
+T + k nC,nI,nT,θ(n) ,
+
+where n(n)
+
+CC
+
+is expected number of CC
+
+type moth given the current allele frequency estimates, and similarly for the other
+
+types. k( � )
+
+is a function that does not involve θ
+
+.
+
+Click here for the derivation of the Q function:
+
+Maximization step
+
+Since we obtained the expected number of each phenotype, e.g. n(n)
+
+CC,n(n)
+
+CI
+
+, estimating the allele frequencies is easy. Intuitively, the frequency of allele C
+
+is calculated as the ratio between the number of allele C
+
+present in the population and the total number of alleles. This works for the other
+
+alleles as well. Therefore, in the M-step, we obtain
+
+(
+
+)
+
+{ }
+
+{
+
+}
+
+{
+
+}
+
+{ }
+
+{
+
+}
+
+{ }
+
+(
+
+)
+
+(
+
+)
+
+{ }
+
+{
+
+}
+
+{
+
+}
+
+{ }
+
+{
+
+}
+
+{ }
+
+(
+
+)
+
+
+p(n+1)
+
+C
+
+=
+
+2n(n)
+
+CC + n(n)
+
+CI + n(n)
+
+CT
+
+2n
+
+p(n+1)
+
+I
+
+=
+
+2n(n)
+
+II
+
++ n(n)
+
+IT + n(n)
+
+CI
+
+2n
+
+p(n+1)
+
+T
+
+=
+
+2n(n)
+
+TT + n(n)
+
+IT + n(n)
+
+CT
+
+2n
+
+.
+
+In fact, we could obtain the same M-step formulas by differentiating the Q function
+
+and setting them to zero (usual optimization routine).
+
+How does it perform?
+
+Let’s try solving the peppered moth problem using the above derived EM
+
+procedure. Suppose we captured 622 peppered moths. 85 of them are Carbonaria,
+
+196 of them are Insularia, and 341 of them are Typica. We run the EM iterations for
+
+10 steps, FIGURE 7 shows that we obtain converged results in less than five steps.
+
+
+
+FIGURE 7.  EM algorithm converges in less than five steps and finds the allele
+
+frequencies. Image by author
+
+Click here for the script to run the above experiment:
+
+What did we learn from the examples?
+
+Estimating the allele frequencies is difficult because of the missing phenotype
+
+information. EM helps us to solve this problem by augmenting the process with
+
+exactly the missing information. If we look back at the E-step and M-step, we see
+
+that the E-step calculates the most probable phenotype counts given the latest
+
+frequency estimates; the M-step then calculates the most probable frequencies
+
+given the latest phenotype count estimates. This process is evident in the GMM
+
+problem as well: the E-step calculates the class responsibilities for each data given
+
+the current class parameter estimates; the M-step then estimates the new class
+
+parameters using those responsibilities as the data weights.
+
+Explained: Why does it work?
+
+Working through the previous two examples, we see clearly that the essence of EM
+
+lies in the E-step/M-step iterative process that augments the observed information
+
+
+with the missing information. And we see that it indeed finds the MLEs effectively.
+
+But why does this iterative process work? Is EM just a smart hack, or is it well-
+
+supported by theory? Let’s find out.
+
+Intuitive explanation
+
+We start by gaining an intuitive understanding of why EM works. EM solves the
+
+parameter estimation problem by transferring the task of maximizing incomplete-
+
+data likelihood to maximizing complete-data likelihood in some small steps.
+
+Imagine you are hiking up Mt. Fuji � for the first time. There are nine stations to
+
+reach before the summit, but you do not know the route. Luckily, there are hikers
+
+coming down from the top, and they can give you a rough direction to the next
+
+station. Therefore, here’s what you can do to reach the top: start at the base station
+
+and ask people for the direction to the second station; go to the second station and
+
+ask the people there for the path to the third station, and so on. At the end of the day
+
+(or start of the day, if you are catching sunrise �), there’s a high chance you’ll
+
+reach the summit.
+
+That’s very much what EM does to find the MLEs for problems where we have
+
+missing data. Instead of maximizing lnp(x)
+
+(find the route to summit), EM maximizes the Q function and finds the next θ
+
+that also increases lnp(x)
+
+(ask direction to the next station). FIGURE 8 below illustrates this process in two
+
+iterations. Note that the G function is just a combination of Q function and a few
+
+other terms constant w.r.t. θ
+
+. Maximizing G function w.r.t. θ
+
+is equivalent to maximizing Q function.
+
+
+
+FIGURE 8.  The iterative process of EM illustrated in two steps. As we build and
+
+maximize a G function (equivalently, Q function) from the current parameter
+
+estimate, we obtain the next parameter estimate. In the process, the incomplete-
+
+data log-likelihood is also increased. Image by author
+
+Mathematical proof:
+
+Summary
+
+In this article, we see that EM converts a difficult problem with missing information to
+
+an easy problem through the optimization transfer framework. We also see EM in
+
+action by solving step-by-step two problems with Python implementation (Gaussian
+
+
+mixture clustering and peppered moth population genetics). More importantly, we
+
+show that EM is not just a smart hack but has solid mathematical groundings on why
+
+it would work.
+
+I hope this introductory article has helped you a little in getting to know the EM
+
+algorithm. From here, if you are interested, consider exploring the following topics.
+
+Further topics
+
+Digging deeper, the first question you might ask is: So, is EM perfect? Of course,
+
+it’s not. Sometimes, the Q function is difficult to obtain analytically. We could use
+
+Monte Carlo techniques to estimate the Q function, e.g., check out Monte Carlo EM.
+
+Sometimes, even with complete-data information, the Q function is still difficult to
+
+maximize. We could consider alternative maximizing techniques, e.g., see
+
+expectation conditional maximization (ECM). Another disadvantage of EM is that it
+
+provides us with only point estimates. In case we want to know the uncertainty in
+
+these estimates, we would need to conduct variance estimation through other
+
+techniques, e.g., Louis’s method, supplemental EM, or bootstrapping.
+
+Thanks for reading! Please consider leaving feedback for me below.
+
+References
+
+1. Dempster, A. P., Laird, N. M., &amp; Rubin, D. B. (1977). Maximum likelihood from
+
+incomplete data via the EM algorithm. Journal of the Royal Statistical
+
+Society: Series B (Methodological), 39(1), 1-22. �
+
+
+
+ expectation-maximization  
+
+ statistical-learning  
+
+ clustering  
+
+ inference 
+
+Recent Posts
+
+2021�1������������� [26 Jan 2021]
+
+Domain Expertise: What deep learning needs for better COVID-19
+
+detection [27 Sep 2020]
+
+Convolutional Neural Network: How is it different from the other
+
+networks? [24 Sep 2020]
+
+

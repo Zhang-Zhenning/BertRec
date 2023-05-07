@@ -1,0 +1,1410 @@
+
+
+
+
+
+
+
+
+
+
+
+16.410/413
+
+Principles of Autonomy and Decision Making
+
+Lecture 21: Intro to Hidden Markov Models
+
+the Baum-Welch algorithm
+
+Emilio Frazzoli
+
+Aeronautics and Astronautics
+
+Massachusetts Institute of Technology
+
+November 24, 2010
+
+E. Frazzoli (MIT)
+
+Lecture 21: HMMs
+
+November 24, 2010
+
+1 / 23
+
+
+Assignments
+
+Readings
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Lecture notes
+
+
+
+[AIMA] Ch. 15.1-3, 20.3.
+
+
+
+Paper on Stellar: L. Rabiner, “A tutorial on Hidden Markov Models...”
+
+E. Frazzoli (MIT)
+
+Lecture 21: HMMs
+
+November 24, 2010
+
+2 / 23
+
+
+Outline
+
+
+
+1 Decoding and Viterbi’s algorithm
+
+
+
+2 Learning and the Baum-Welch algorithm
+
+E. Frazzoli (MIT)
+
+Lecture 21: HMMs
+
+November 24, 2010
+
+3 / 23
+
+
+Decoding
+
+
+
+Filtering and smoothing produce distributions of states at each time
+
+step.
+
+
+
+Maximum likelihood estimation chooses the state with the highest
+
+probability at the “best” estimate at each time step.
+
+
+
+However, these are pointwise best estimate: the sequence of
+
+maximum likelihood estimates is not necessarily a good (or feasible)
+
+trajectory for the HMM!
+
+
+
+How do we ﬁnd the most likely state history, or state trajectory?
+
+(As opposed to the sequence of point-wise most likely states?)
+
+E. Frazzoli (MIT)
+
+Lecture 21: HMMs
+
+November 24, 2010
+
+4 / 23
+
+
+Example: ﬁltering/smoothing vs. decoding
+
+1/4
+
+
+
+Three states:
+
+X = {x1, x2, x3}.
+
+
+
+Three possible observations:
+
+Z = {2, 3}.
+
+
+
+Initial distribution:
+
+π = (1, 0, 0).
+
+
+
+Transition probabilities:
+
+T =
+
+
+
+
+
+0
+
+0.5
+
+0.5
+
+0
+
+0.9
+
+0.1
+
+0
+
+0
+
+1
+
+
+
+
+
+
+
+Observation probabilities:
+
+M =
+
+
+
+
+
+0.5
+
+0.5
+
+0.9
+
+0.1
+
+0.1
+
+0.9
+
+
+
+
+
+x1
+
+x2
+
+x3
+
+0.5
+
+0.5
+
+0.9
+
+0.1
+
+1
+
+Observation sequence:
+
+Z = (2, 3, 3, 2, 2, 2, 3, 2, 3).
+
+E. Frazzoli (MIT)
+
+Lecture 21: HMMs
+
+November 24, 2010
+
+5 / 23
+
+
+Example: ﬁltering/smoothing vs. decoding
+
+2/4
+
+
+
+Using ﬁltering:
+
+t
+
+x1
+
+x2
+
+x3
+
+1
+
+1.0000
+
+0
+
+0
+
+2
+
+0
+
+0.1000
+
+0.9000
+
+3
+
+0
+
+0.0109
+
+0.9891
+
+4
+
+0
+
+0.0817
+
+0.9183
+
+5
+
+0
+
+0.4165
+
+0.5835
+
+6
+
+0
+
+0.8437
+
+0.1563
+
+7
+
+0
+
+0.2595
+
+0.7405
+
+8
+
+0
+
+0.7328
+
+0.2672
+
+9
+
+0
+
+0.1771
+
+0.8229
+
+
+
+The sequence of point-wise most likely states is:
+
+(1, 3, 3, 3, 3, 2, 3, 2, 3).
+
+
+
+The above sequence is not feasible for the HMM model!
+
+E. Frazzoli (MIT)
+
+Lecture 21: HMMs
+
+November 24, 2010
+
+6 / 23
+
+
+Example: ﬁltering vs. smoothing vs. decoding
+
+3/4
+
+
+
+Using smoothing:
+
+t
+
+x1
+
+x2
+
+x3
+
+1
+
+1.0000
+
+0
+
+0
+
+2
+
+0
+
+0.6297
+
+0.3703
+
+3
+
+0
+
+0.6255
+
+0.3745
+
+4
+
+0
+
+0.6251
+
+0.3749
+
+5
+
+0
+
+0.6218
+
+0.3782
+
+6
+
+0
+
+0.5948
+
+0.4052
+
+7
+
+0
+
+0.3761
+
+0.6239
+
+8
+
+0
+
+0.3543
+
+0.6457
+
+9
+
+0
+
+0.1771
+
+0.8229
+
+
+
+The sequence of point-wise most likely states is:
+
+(1, 2, 2, 2, 2, 2, 3, 3, 3).
+
+E. Frazzoli (MIT)
+
+Lecture 21: HMMs
+
+November 24, 2010
+
+7 / 23
+
+
+Viterbi’s algorithm
+
+
+
+As before, let us use the Markov property of the HMM.
+
+
+
+Deﬁne
+
+δk(s) = max
+
+X1:(k−1)
+
+Pr
+
+�
+
+X1:k = (X1:(k−1), s), Z1:k|λ
+
+�
+
+(i.e., δk(s) is the joint probability of the most likely path that ends at
+
+state s at time k, generating observations Z1:k.)
+
+
+
+Clearly,
+
+δk+1(s) = max
+
+q
+
+(δk(q)Tq,s) Ms,zk+1
+
+
+
+This can be iterated to ﬁnd the probability of the most likely path
+
+that ends at each possible state s at the ﬁnal time. Among these, the
+
+highest probability path is the desired solution.
+
+
+
+We need to keep track of the path...
+
+E. Frazzoli (MIT)
+
+Lecture 21: HMMs
+
+November 24, 2010
+
+8 / 23
+
+
+Viterbi’s algorithm 2/3
+
+
+
+Initialization, for all s ∈ X:
+
+
+
+δ1(s) = πsMs,z1
+
+
+
+Pre1(s) = null.
+
+
+
+Repeat, for k = 1, . . . , t − 1, and for all s ∈ X:
+
+
+
+δk+1(s) = maxq (δk(q)Tq,s) Ms,zk+1
+
+
+
+Prek+1(s) = arg maxq (δk(q)Tq,s)
+
+
+
+Select most likely terminal state: s∗
+
+t = arg maxs δt(s)
+
+
+
+Backtrack to ﬁnd most likely path. For k = t − 1, . . . , 1
+
+
+
+q∗
+
+k = Prek+1(q∗
+
+k+1)
+
+
+
+The joint probability of the most likely path + observations is found
+
+as p∗ = δt(s∗
+
+t ).
+
+E. Frazzoli (MIT)
+
+Lecture 21: HMMs
+
+November 24, 2010
+
+9 / 23
+
+
+Whack-the-mole example
+
+
+
+Viterbi’s algorithm
+
+
+
+δ1 = (0.6, 0, 0)
+
+Pre1 = (null, null, null)
+
+
+
+δ2 = (0.012, 0.048, 0.18)
+
+Pre2 = (1, 1, 1).
+
+
+
+δ3 = (0.0038, 0.0216, 0.0432)
+
+Pre3 = (2, 3, 3).
+
+
+
+Joint probability of the most likely path + observations: 0.0432
+
+
+
+End state of the most likely path: 3
+
+
+
+Most likely path: 3 ← 3 ← 1.
+
+E. Frazzoli (MIT)
+
+Lecture 21: HMMs
+
+November 24, 2010
+
+10 / 23
+
+
+Example: ﬁltering vs. smoothing vs. decoding
+
+4/4
+
+
+
+Using Viterbi’s algorithm:
+
+t
+
+x1
+
+x2
+
+x3
+
+1
+
+0.5/0
+
+0
+
+0
+
+2
+
+0/1
+
+0.025/1
+
+0.225/1
+
+3
+
+0/1
+
+0.00225/2
+
+0.2025/3
+
+4
+
+0/1
+
+0.0018225/2
+
+0.02025/3
+
+5
+
+0/1
+
+0.0014762/2
+
+0.002025/3
+
+6
+
+0/1
+
+0.0011957/2
+
+0.0002025/3
+
+7
+
+0/1
+
+0.00010762/2
+
+0.00018225/3
+
+8
+
+0/1
+
+8.717e-05/2
+
+1.8225e-05/3
+
+9
+
+0/1
+
+7.8453e-06/2
+
+1.6403e-05/3
+
+
+
+The most likely sequence is:
+
+(1, 3, 3, 3, 3, 3, 3, 3, 3).
+
+
+
+Note: Based on the ﬁrst 8 observations, the most likely sequence
+
+would have been
+
+(1, 2, 2, 2, 2, 2, 2, 2)!
+
+E. Frazzoli (MIT)
+
+Lecture 21: HMMs
+
+November 24, 2010
+
+11 / 23
+
+
+Viterbi’s algorithm 3/3
+
+
+
+Viterbi’s algorithm is similar to the forward algorithm, with the
+
+diﬀerence that the summation over the states at time step k becomes
+
+a maximization.
+
+
+
+The time complexity is, as for the forward algorithm, linear in t (and
+
+quadratic in card(X)).
+
+
+
+The space complexity is also linear in t (unlike the forward
+
+algorithm), since we need to keep track of the “pointers” Prek.
+
+
+
+Viterbi’s algorithm is used in most communication devices (e.g., cell
+
+phones, wireless network cards, etc.) to decode messages in noisy
+
+channels; it also has widespread applications in speech recognition.
+
+E. Frazzoli (MIT)
+
+Lecture 21: HMMs
+
+November 24, 2010
+
+12 / 23
+
+
+Outline
+
+
+
+1 Decoding and Viterbi’s algorithm
+
+
+
+2 Learning and the Baum-Welch algorithm
+
+E. Frazzoli (MIT)
+
+Lecture 21: HMMs
+
+November 24, 2010
+
+13 / 23
+
+
+Problem 3: Learning
+
+The learning problem
+
+
+
+
+
+
+
+
+
+
+
+
+
+Given a HMM λ, and an observation history Z = (z1, z2, . . . , zt), ﬁnd a
+
+new HMM λ′ that explains the observations at least as well, or possibly
+
+better, i.e., such that Pr [Z|λ′] ≥ Pr [Z|λ].
+
+
+
+Ideally, we would like to ﬁnd the model that maximizes Pr [Z|λ];
+
+however, this is in general an intractable problem.
+
+
+
+We will be satisﬁed with an algorithm that converges to local maxima
+
+of such probability.
+
+
+
+Notice that in order for learning to be eﬀective, we need lots of data,
+
+i.e., many, long observation histories!
+
+E. Frazzoli (MIT)
+
+Lecture 21: HMMs
+
+November 24, 2010
+
+14 / 23
+
+
+Example: Finding Keyser S¨oze
+
+1
+
+Let us consider the following problem.
+
+
+
+The elusive leader of a dangerous criminal organization (e.g., Keyser S¨oze,
+
+from the movie “The Usual Suspects”) is known to travel between two cities
+
+(say, Los Angeles and New York City)
+
+
+
+The FBI has no clue about his whereabouts at the initial time (e.g., uniform
+
+probability being at any one of the cities).
+
+
+
+The FBI has no clue about the probability that he would stay or move to the
+
+other city at each time period:
+
+from\to
+
+LA
+
+NY
+
+LA
+
+0.5
+
+0.5
+
+NY
+
+0.5
+
+0.5
+
+
+
+At each time period the FBI could get sighting reports (or evidence of his
+
+presence in a city), including a non-sighting null report. An estimate of the
+
+probability of getting such reports is
+
+where \ report
+
+LA
+
+NY
+
+null
+
+LA
+
+0.4
+
+0.1
+
+0.5
+
+NY
+
+0.1
+
+0.5
+
+0.4
+
+E. Frazzoli (MIT)
+
+Lecture 21: HMMs
+
+November 24, 2010
+
+15 / 23
+
+
+Example: Finding Keyser S¨oze
+
+2
+
+
+
+Let us assume that the FBI has been tracking sighting reports for,
+
+say, 20 periods, with observation sequence Z
+
+Z = (−, LA, LA, −, NY , −, NY , NY , NY , −,
+
+NY , NY , NY , NY , NY , −, −, LA, LA, NY ).
+
+
+
+We can compute, using the algorithms already discussed:
+
+
+
+the current probability distribution (after the 20 observations):
+
+γ20 = (0.1667, 0.8333)
+
+
+
+the probability distribution at the next period (so that we can catch
+
+him):
+
+γ21 = T ′γ20 = (0.5, 0.5)
+
+
+
+the probability of getting that particular observation sequence given the
+
+model:
+
+Pr[Z|λ] = 1.9 · 10−10
+
+E. Frazzoli (MIT)
+
+Lecture 21: HMMs
+
+November 24, 2010
+
+16 / 23
+
+
+Example: Finding Keyser S¨oze
+
+3
+
+
+
+Using smoothing:
+
+t
+
+LA
+
+NY
+
+1
+
+0.5556
+
+0.4444
+
+2
+
+0.8000
+
+0.2000
+
+3
+
+0.8000
+
+0.2000
+
+. . .
+
+. . .
+
+. . .
+
+18
+
+0.8000
+
+0.2000
+
+19
+
+0.8000
+
+0.2000
+
+20
+
+0.1667
+
+0.8333
+
+
+
+The sequence of point-wise most likely states is:
+
+(LA, LA, LA, LA, NY , LA, NY , NY , NY , LA,
+
+NY , NY , NY , NY , NY , LA, LA, LA)
+
+
+
+The new question is: given all the data, can we improve on our model,
+
+in such a way that the observations are more consistent with it?
+
+E. Frazzoli (MIT)
+
+Lecture 21: HMMs
+
+November 24, 2010
+
+17 / 23
+
+
+Expectation of (state) counts
+
+
+
+Let us deﬁne
+
+γk(s) = Pr[Xk = s|Z, λ],
+
+i.e., γk(s) is the probability that the system is at state s at the k-th
+
+time step, given the observation sequence Z and the model λ.
+
+
+
+We already know how to compute this, e.g., using smoothing:
+
+γk(s) = αk(s)βk(s)
+
+Pr[Z|λ]
+
+= αk(s)βk(s)
+
+�
+
+s∈X αt(s).
+
+
+
+New concept: how many times is the state trajectory expected to
+
+transition from state s?
+
+E[# of transitions from s] =
+
+t−1
+
+�
+
+k=1
+
+γk(s)
+
+E. Frazzoli (MIT)
+
+Lecture 21: HMMs
+
+November 24, 2010
+
+18 / 23
+
+
+Expectation of (transition) counts
+
+
+
+In much the same vein, let us deﬁne
+
+ξk(q, s) = Pr [Xk = q, Xk+1 = s|Z, λ]
+
+(i.e., ξk(q, s) is the probability of being at state q at time k, and at
+
+state s at time k + 1, given the observations and the current HMM
+
+model)
+
+
+
+We have that
+
+ξk(q, s) = ηkαk(q)Tq,sMs,zk+1βk+1(s),
+
+where ηk is a normalization factor, such that �
+
+q,s ξk(q, s) = 1.
+
+
+
+New concept: how many times it the state trajectory expected to
+
+transition from state q to state s?
+
+E[# of transitions from q to s] =
+
+t−1
+
+�
+
+k=1
+
+ξk(q, s)
+
+E. Frazzoli (MIT)
+
+Lecture 21: HMMs
+
+November 24, 2010
+
+19 / 23
+
+
+Baum-Welch algorithm
+
+1
+
+
+
+Based on the probability estimates and expectations computed so far,
+
+using the original HMM model λ = (T, M, π), we can construct a
+
+new model λ′ = (T ′, M′, π′) (notice that the two models share the
+
+states and observations):
+
+
+
+The new initial condition distribution is the one obtained by
+
+smoothing:
+
+π′
+
+s = γ1(s)
+
+
+
+The entries of the new transition matrix can be obtained as follows:
+
+T ′
+
+qs = E[# of transitions from state q to state s]
+
+E[# of transitions from state q]
+
+=
+
+�t−1
+
+k=1 ξk(q, s)
+
+�t−1
+
+k=1 γk(q)
+
+E. Frazzoli (MIT)
+
+Lecture 21: HMMs
+
+November 24, 2010
+
+20 / 23
+
+
+Baum-Welch algorithm
+
+2
+
+
+
+The entries of the new observation matrix can be obtained as follows:
+
+M′
+
+sm = E[# of times in state s, when the observation was m]
+
+E[# of times in state s]
+
+=
+
+�t
+
+k=1 γk(s) · 1(zk = m)
+
+�t
+
+k=1 γk(s)
+
+
+
+It can be shown [Baum et al., 1970] that the new model λ′ is such
+
+that
+
+
+
+Pr [Z|λ′] ≥ Pr [Z|λ], as desired.
+
+
+
+Pr [Z|λ′] = Pr [Z|λ] only if λ is a critical point of the likelihood
+
+function f (λ) = Pr [Z|λ]
+
+E. Frazzoli (MIT)
+
+Lecture 21: HMMs
+
+November 24, 2010
+
+21 / 23
+
+
+Example: Finding Keyser S¨oze
+
+4
+
+Let us apply the method to the example. We get
+
+
+
+Initial condition: π = (1, 0).
+
+
+
+Transition matrix:
+
+�0.6909
+
+0.3091
+
+0.0934
+
+0.9066
+
+�
+
+
+
+Observation matrix:
+
+�0.5807
+
+0.0010
+
+0.4183
+
+0.0000
+
+0.7621
+
+0.2379
+
+�
+
+0
+
+2
+
+4
+
+6
+
+8
+
+10
+
+12
+
+14
+
+16
+
+18
+
+20
+
+−10
+
+−9.5
+
+−9
+
+−8.5
+
+−8
+
+−7.5
+
+Iteration number
+
+Pr[Z|λ]
+
+ 
+
+ 
+
+Baum−Welch iterations
+
+True value
+
+
+
+Note that it is possible that Pr [Z|λ′] &gt; Pr [Z|λtrue]! This is due to
+
+overﬁtting over one particular data set.
+
+E. Frazzoli (MIT)
+
+Lecture 21: HMMs
+
+November 24, 2010
+
+22 / 23
+
+
+Recursive Bayesian estimation: HMMs and Kalman ﬁlters
+
+x1
+
+z1
+
+x2
+
+z2
+
+. . .
+
+. . .
+
+xt
+
+zt
+
+
+
+The idea of the ﬁltering/smoothing techniques for HMM is in fact
+
+broader. In general it applies to any system where the state at a time
+
+step only depends on the state at the previous time step (Markov
+
+property), and the observation at a time step only depends on the
+
+state at that time step.
+
+
+
+HMMs: discrete state (Markov chain), arbitrary transition and
+
+observation matrices.
+
+
+
+Kalman ﬁlter: continuous state (Markov process), (Linear-)Gaussian
+
+transitions, Gaussian observations.
+
+E. Frazzoli (MIT)
+
+Lecture 21: HMMs
+
+November 24, 2010
+
+23 / 23
+
+
+MIT OpenCourseWare
+
+http://ocw.mit.edu 
+
+16.410 / 16.413 Principles of Autonomy and Decision Making
+
+Fall 2010
+
+ 
+
+For information about citing these materials or our Terms of Use, visit: http://ocw.mit.edu/terms . 
+

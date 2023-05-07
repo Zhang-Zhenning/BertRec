@@ -1,0 +1,720 @@
+
+
+
+Log in
+
+Sign up
+
+
+
+User1865345
+
+5,482
+
+4
+
+10
+
+34
+
+
+
+yoyo
+
+1,179
+
+1
+
+7
+
+10
+
+
+
+doubllle
+
+1,698
+
+1
+
+15
+
+20
+
+What is the difference between Cross-entropy and KL divergence?
+
+Asked 4 years, 9 months ago
+
+Modified 1 month ago
+
+Viewed 60k times
+
+95
+
+ 
+
+ 
+
+Both the cross-entropy and the KL divergence are tools to measure the distance between two probability distributions, but what is the difference between them?
+
+H(P,Q) = −
+
+∑
+
+x P(x)logQ(x)
+
+KL(P|Q) =
+
+∑
+
+x P(x)log
+
+P(x)
+
+Q(x)
+
+Moreover, it turns out that the minimization of KL divergence is equivalent to the minimization of cross-entropy.
+
+I want to know them instinctively.
+
+Share
+
+Improve this question
+
+edited Mar 13 at 8:06
+
+asked Jul 19, 2018 at 13:02
+
+6 Answers
+
+Sorted by:
+
+103
+
+ 
+
+You will need some conditions to claim the equivalence between minimizing cross entropy and minimizing KL divergence. I will put your question under the context of classification problems using cross entropy as loss functions.
+
+Let us first recall that entropy is used to measure the uncertainty of a system, which is defined as
+
+S(v) = −
+
+∑
+
+i p(vi)logp(vi),
+
+for p(vi) as the probabilities of different states vi of the system. From an information theory point of view, S(v) is the amount of information is needed for removing the uncertainty.
+
+For instance, the event I I will die within 200 years  is almost certain (we may solve the aging problem for the word almost), therefore it has low uncertainty which requires only the information of the aging problem cannot be 
+
+solved  to make it certain. However, the event II I will die within 50 years  is more uncertain than event I, thus it needs more information to remove the uncertainties. Here entropy can be used to quantify the uncertainty of the
+
+distribution When will I die? , which can be regarded as the expectation of uncertainties of individual events like I and II.
+
+Now look at the definition of KL divergence between distributions A and B
+
+DKL(A ∥ B) =
+
+∑
+
+i pA(vi)logpA(vi)−pA(vi)logpB(vi),
+
+where the first term of the right hand side is the entropy of distribution A, the second term can be interpreted as the expectation of distribution B in terms of A. And the DKL describes how different B is from A from the perspective
+
+of A. It's worth of noting A usually stands for the data, i.e. the measured distribution, and B is the theoretical or hypothetical distribution. That means, you always start from what you observed.
+
+To relate cross entropy to entropy and KL divergence, we formalize the cross entropy in terms of distributions A and B as
+
+H(A,B) = −
+
+∑
+
+i pA(vi)logpB(vi).
+
+From the definitions, we can easily see
+
+H(A,B) =DKL(A ∥ B)+SA.
+
+If SA is a constant, then minimizing H(A,B) is equivalent to minimizing DKL(A ∥ B).
+
+A further question follows naturally as how the entropy can be a constant. In a machine learning task, we start with a dataset (denoted as P( )) which represent the problem to be solved, and the learning purpose is to make the
+
+model estimated distribution (denoted as P(model)) as close as possible to true distribution of the problem (denoted as P(truth)). P(truth) is unknown and represented by P( ). Therefore in an ideal world, we expect
+
+P(model) ≈P( ) ≈P(truth)
+
+and minimize DKL(P( ) ∥ P(model)). And luckily, in practice  is given, which means its entropy S(D) is fixed as a constant.
+
+Share
+
+Improve this answer
+
+edited Sep 4, 2021 at 20:28
+
+answered Jul 19, 2018 at 13:38
+
+1
+
+Thank you for your answer. It deepened my understanding. So when we have a dataset, it is more effective to minimize cross- entropy rather than KL, right? However, I cannot understand the proper use of them. In other words,
+
+when should I minimize KL or cross entropy?
+
+– yoyo
+
+Jul 19, 2018 at 14:00
+
+3
+
+Ask Question
+
+entropy
+
+kullback-leibler
+
+cross-entropy
+
+Cite
+
+Follow
+
+
+
+
+
+Highest score (default)
+
+Cite
+
+Follow
+
+
+
+
+User1865345
+
+5,482
+
+4
+
+10
+
+34
+
+
+
+zewen liu
+
+449
+
+4
+
+3
+
+After reading your answer, I think it is no use to minimize KL because we always have a dataset, P(D).
+
+– yoyo
+
+Jul 19, 2018 at 14:03
+
+1
+
+Ideally, one would choose KL divergence to measure the distance between two distributions. In the context of classification, the cross-entropy loss usually arises from the negative log likelihood, for example, when you choose
+
+Bernoulli distribution to model your data.
+
+– doubllle
+
+Jul 19, 2018 at 14:14
+
+1
+
+You might want to look at this great post. The symmetry is not problem in classification as the goal of machine learning models is to make predicted distribution as close as possible to the fixed P(D), though regularizations are
+
+usually added to avoid overfitting.
+
+– doubllle
+
+Jul 19, 2018 at 14:35 
+
+3
+
+Re: "For instance, the event A I will die eventually  is almost certain, therefore it has low entropy". Not sure what you meant to write here, but technically speaking an event has no entropy. You can define its information, and
+
+you can measure the entropy of the distribution or the system. The statement I will die eventually  isn't an event either.
+
+– Amelio Vazquez-Reina
+
+May 30, 2020 at 20:23 
+
+Show 7 more comments
+
+34
+
+ 
+
+ 
+
+I suppose it is because the models usually work with the samples packed in mini-batches. For KL divergence and Cross-Entropy, their relation can be written as
+
+H(q,p) =DKL(p,q)+H(p) = −
+
+∑
+
+i pilog(qi)
+
+so have
+
+DKL(p,q) =H(q,p)−H(p)
+
+From the equation, we could see that KL divergence can depart into a Cross-Entropy of p and q (the first part), and a global entropy of ground truth p (the second part).
+
+In many machine learning projects, minibatch is involved to expedite training, where the p′ of a minibatch may be different from the global p. In such a case, Cross-Entropy is relatively more robust in practice while KL divergence
+
+needs a more stable H(p) to finish her job.
+
+Share
+
+Improve this answer
+
+edited Mar 13 at 8:06
+
+answered May 20, 2019 at 17:47
+
+6
+
+This answer is what I was looking for. In my own current experience, which involves learning a target probabilities, BCE is way more robust than KL. Basically, KL was unusable. KL and BCE aren't "equivalent" loss functions.
+
+– Nicholas Leonard
+
+Nov 29, 2019 at 16:31
+
+When you said "the first part" and "the second part", which one was which?
+
+– Josh
+
+May 30, 2020 at 20:27
+
+The' first part' denotes DKL(p, q), and the 'second part' means H(p).
+
+– zewen liu
+
+May 31, 2020 at 21:04
+
+A very nice tl;dr answer. Thank you!
+
+– rayryeng
+
+May 24, 2022 at 16:49
+
+1
+
+Are you sure the 1st formula is correct? Seems the p,d are ordered wrong.
+
+– Junwei Dong
+
+Sep 28, 2022 at 3:29
+
+Show 1 more comment
+
+4
+
+ 
+
+ 
+
+This is how I think about it:
+
+DKL(p(yi|xi) || q(yi|xi,θ)) =H(p(yi|xi,θ),q(yi|xi,θ))−H(p(yi|xi,θ))
+
+where p and q are two probability distributions. In machine learning, we typically know p, which is the distribution of the target. For example, in a binary classification problem, ={0,1}, so if yi =1, p(yi =1|x) =1 and 
+
+p(yi =0|x) =0, and vice versa. Given each yi ∀i =1,2,…,N, where N is the total number of points in the dataset, we typically want to minimize the KL divergence DKL(p,q) between the distribution of the target p(yi|x) and our
+
+predicted distribution q(yi|x,θ), averaged over all i. (We do so by tuning our model parameters θ. Thus, for each training example, the model is spitting out a distribution over the class labels 0 and 1.) For each example, since the
+
+target is fixed, its distribution never changes. Thus, H(p(yi|xi)) is constant for each i, regardless of what our current model parameters θ are. Thus, the minimizer of DKL(p,q) is equal to the minimizer of H(p,q).
+
+If you had a situation where p and q were both variable (say, in which x1 ∼ p and x2 ∼ q were two latent variables) and wanted to match the two distributions, then you would have to choose between minimizing DKL and minimizing 
+
+H(p,q). This is because minimizing DKL implies maximizing H(p) while minimizing H(p,q) implies minimizing H(p). To see the latter, we can solve equation (1) for H(p,q):
+
+H(p,q) =DKL(p,q)+H(p)
+
+The former would yield a broad distribution for p while the latter would yield one that is concentrated in one or a few modes. Note that it is your choice as a ML practitioner whether you want to minimize DKL(p,q) or DKL(q,p). A
+
+small discussion of this is given in the context of variational inference (VI) below.
+
+In VI, you must choose between minimizing DKL(p,q) and DKL(q,p), which are not equal since KL divergence is not symmetric. If we once again treat p as known, then minimizing DKL(p,q) would result in a distribution q that is
+
+sharp and focused on one or a few areas while minimizing DKL(q,p) would result in a distribution q that is wide and covers a broad range of the domain of q. Again, the latter is because minimizing DKL(q,p) implies maximizing the
+
+entropy of q.
+
+Share
+
+Improve this answer
+
+edited May 9, 2020 at 18:59
+
+answered May 8, 2020 at 21:58
+
+
+
+
+
+Cite
+
+Follow
+
+Cite
+
+Follow
+
+
+
+
+Vivek Subramanian
+
+2,933
+
+2
+
+23
+
+35
+
+
+
+fatpanda2049
+
+165
+
+5
+
+
+
+User1865345
+
+5,482
+
+4
+
+10
+
+34
+
+
+
+user326765
+
+11
+
+2
+
+
+
+Ggjj11
+
+451
+
+3
+
+11
+
+In equation (1) on the left side you don't have θ in p(yi|xi), whereas on the right side you have p(yi|xi,θ). Why? Also in the 5-th row you should use xi instead of x.
+
+– Rodvi
+
+May 19, 2020 at 13:45 
+
+Also, will the entropy H(p) be typically constant in the case of generative classifiers q(y,x|θ), in the case of regression models, and in the case of non-parametric models (not assuming latent variable case)?
+
+– Rodvi
+
+May 19, 2020 at 14:05 
+
+2
+
+ 
+
+ 
+
+@zewen's answer can be misleading as he claims that in mini-batch training, CE can be more robust than KL. In most of standard mini-batch training, we use gradient-based approach, and the gradient of H(p) with respect to q (which
+
+is a function of our model parameter) would be zero. So in these cases, CE and KL as a loss function are identical.
+
+I actually want to add a comment below @zewen's answer but I can't because I do not have enough reputation...
+
+Share
+
+Improve this answer
+
+answered Sep 23, 2021 at 13:41
+
+Your answer could be improved with additional supporting information. Please edit to add further details, such as citations or documentation, so that others can confirm that your answer is correct. You can find more information
+
+on how to write good answers in the help center.
+
+– Community Bot
+
+Sep 23, 2021 at 13:54
+
+Actually you can edit your answer and explain your point. This is much more efficient than comments since they can be deleted and readers do not always read them.
+
+– Pitouille
+
+Sep 23, 2021 at 13:57
+
+1
+
+ 
+
+ 
+
+Some answers are already provided, while I would like to point out regarding the question itself
+
+that neither of cross-entropy and KL divergence measures the distance between two distributions-- instead they measure the difference of two distributions [1]. It's not distance because of the asymmetry, i.e. CE(P,Q) ≠CE(Q,P)
+
+and KL(P,Q) ≠ KL(Q,P).
+
+Reference:
+
+[1] I. Goodfellow, Y. Bengio, A. Courville, and Y. Bengio, Deep learning, vol. 1 (MIT Press Cambridge, 2016).
+
+Share
+
+Improve this answer
+
+edited Mar 13 at 8:05
+
+answered May 27, 2022 at 10:28
+
+0
+
+ 
+
+ 
+
+Minimizing an importance sampling estimate of the KL divergence is equivalent to minimizing the cross entropy loss of these importance samples.
+
+Share
+
+Improve this answer
+
+answered Mar 13 at 8:02
+
+Your Answer
+
+
+
+
+
+
+
+Cite
+
+Follow
+
+
+
+measure the distance between two probability distributions
+
+Cite
+
+Follow
+
+
+
+Cite
+
+Follow
+
+
+
+
+CROSS VALIDATED
+
+Tour
+
+Help
+
+Chat
+
+Contact
+
+Feedback
+
+COMPANY
+
+Stack Overflow
+
+Teams
+
+Advertising
+
+Collectives
+
+Talent
+
+About
+
+Press
+
+Legal
+
+Privacy Policy
+
+Terms of Service
+
+Cookie Settings
+
+Cookie Policy
+
+STACK EXCHANGE NETWORK
+
+Technology
+
+Culture &amp; recreation
+
+Life &amp; arts
+
+Science
+
+Professional
+
+Business
+
+API
+
+Data
+
+Blog
+
+Facebook
+
+Twitter
+
+LinkedIn
+
+Instagram
+
+Site design / logo © 2023 Stack Exchange Inc; user contributions licensed under CC BY-SA. rev 2023.4.21.43403
+
+By clicking “Post Your Answer”, you agree to our terms of service, privacy policy and cookie policy
+
+Not the answer you're looking for? Browse other questions tagged entropy
+
+kullback-leibler
+
+cross-entropy  or ask your own question.
+
+Linked
+
+83
+
+Intuition on the Kullback–Leibler (KL) Divergence
+
+7
+
+Cross entropy vs KL divergence: What's minimized directly in practice?
+
+3
+
+Are Dispersion and Entropy Related?
+
+2
+
+Understanding intuitive difference between KL divergence and Cross entropy
+
+0
+
+If you're trying to match a vector p to x, why doesn't a divisive loss function 
+
+p
+
+x +
+
+x
+
+p work better than negative log loss?
+
+Related
+
+13
+
+Intuitively, why is cross entropy a measure of distance of two probability distributions?
+
+6
+
+Different definitions of cross entropy loss function not equivalent?
+
+4
+
+Obtaining Shannon entropy from "KL-divergence to uniform distribution"
+
+1
+
+Difference between Empirical distribution and Bernoulli distribution
+
+7
+
+Cross entropy vs KL divergence: What's minimized directly in practice?
+
+2
+
+Is label smoothing equivalent to adding a KL divergence term or a cross entropy term?
+
+2
+
+Relationship between cross entropy and average negative log likelihood
+
+Hot Network Questions
+
+
+
+How to check for #1 being either `d` or `h` with latex3?
+
+
+
+What was the actual cockpit layout and crew of the Mi-24A?
+
+
+
+Would you ever say "eat pig" instead of "eat pork"?
+
+
+
+Why typically people don't use biases in attention mechanism?
+
+
+
+How is white allowed to castle 0-0-0 in this position?
+
+more hot questions
+
+ Question feed
+
+Post Your Answer
+
+Featured on Meta
+
+
+
+New blog post from our CEO Prashanth: Community is the future of AI
+
+
+
+Improving the copy in the close modal and post notices - 2023 edition
+
+Your privacy
+
+By clicking “Accept all cookies”, you agree Stack Exchange can store cookies on your device and disclose information in accordance with our Cookie Policy.
+
+ 
+
+Accept all cookies
+
+Necessary cookies only
+
+Customize settings
+

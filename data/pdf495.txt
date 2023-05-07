@@ -1,0 +1,2096 @@
+
+1 
+
+CS 188: Artificial Intelligence 
+
+  
+
+Lecture 17: HMMs and Particle Filtering 
+
+Pieter Abbeel --- UC Berkeley 
+
+Many slides over this course adapted from Dan Klein, Stuart Russell, 
+
+Andrew Moore 
+
+TexPoint fonts used in EMF.  
+
+Read the TexPoint manual before you delete this box.: AAAAAAAAAA 
+
+
+
+Reasoning over Time or Space 
+
+§  Often, we want to reason about a sequence of 
+
+observations 
+
+§  Speech recognition 
+
+§  Robot localization 
+
+§  User attention 
+
+§  Medical monitoring 
+
+§  Need to introduce time (or space) into our 
+
+models 
+
+5 
+
+
+
+Outline 
+
+§  Markov Models 
+
+ ( = a particular Bayes net) 
+
+§  Hidden Markov Models (HMMs) 
+
+§  Representation 
+
+( = another particular Bayes net) 
+
+§  Inference 
+
+§  Forward algorithm ( = variable elimination) 
+
+§  Particle filtering ( = likelihood weighting with some tweaks) 
+
+§  Viterbi (= variable elimination, but replace sum by max 
+
+    = graph search) 
+
+§  Dynamic Bayes’ Nets  
+
+§  Representation 
+
+§  (= yet another particular Bayes’ net) 
+
+§  Inference: forward algorithm and particle filtering 
+
+6 
+
+
+
+Markov Models 
+
+§  A Markov model is a chain-structured BN 
+
+§  Each node is identically distributed (stationarity) 
+
+§  Value of X at a given time is called the state 
+
+§  As a BN: 
+
+§  Parameters: called transition probabilities or dynamics, 
+
+specify how the state evolves over time (also, initial state 
+
+probabilities) 
+
+§  Same as MDP transition model, but no choice of action 
+
+X2 
+
+X1 
+
+X3 
+
+X4 
+
+
+
+
+
+
+
+Conditional Independence 
+
+§  Basic conditional independence: 
+
+§  Past and future independent of the present 
+
+§  Each time step only depends on the previous 
+
+§  This is called the (first order) Markov property 
+
+§  Note that the chain is just a (growing) BN 
+
+§  We can always use generic BN reasoning on it if we 
+
+truncate the chain at a fixed length 
+
+X2 
+
+X1 
+
+X3 
+
+X4 
+
+8 
+
+
+
+§  Slow answer: inference by enumeration 
+
+§  Enumerate all sequences of length t which end in s 
+
+§  Add up their probabilities 
+
+§  = join on X1, X2, X3, then sum over x1, x2, x3 
+
+
+
+
+
+9 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+X2 
+
+X1 
+
+X3 
+
+X4 
+
+Query: P(X4) 
+
+
+2 
+
+
+
+Query: P(X4) 
+
+§  Fast answer: variable elimination 
+
+§  Order: X1, X2, X3 
+
+
+
+10 
+
+X2 
+
+X1 
+
+X3 
+
+X4 
+
+
+
+Query P(X_t) 
+
+§  Variable elimination in order X1, X2, …, Xt-1 
+
+    computes for k = 2, 3, …, t 
+
+ 
+
+ 
+
+ 
+
+= “mini-forward algorithm” 
+
+Note: common thread in this lecture: special cases of algorithms we 
+
+already know, and they have a special name in the context of HMMs for 
+
+historical reasons.   
+
+11 
+
+X2 
+
+X1 
+
+X3 
+
+X4 
+
+
+
+
+
+
+
+Forward simulation 
+
+
+
+Example Markov Chain: Weather 
+
+§  States: X = {rain, sun} 
+
+§  CPT P(Xt | Xt-1): 
+
+rain 
+
+sun 
+
+0.9 
+
+0.7 
+
+0.3 
+
+0.1 
+
+Two new ways of 
+
+representing the same  
+
+CPT, that are often 
+
+used for Markov models 
+
+(These are not BNs!) 
+
+12 
+
+sun 
+
+rain 
+
+sun 
+
+rain 
+
+0.1 
+
+0.9 
+
+0.7 
+
+0.3 
+
+Xt-1 
+
+Xt 
+
+P(Xt|Xt-1) 
+
+sun sun 0.9 
+
+sun rain 0.1 
+
+rain sun 0.3 
+
+rain rain 0.7 
+
+
+
+Example Run of Mini-Forward Algorithm 
+
+§  From initial observation of sun 
+
+ 
+
+§  From initial observation of rain 
+
+§  From yet another initial distribution P(X1): 
+
+
+
+
+
+P(X1) 
+
+P(X2) 
+
+
+
+
+
+P(X3) 
+
+P(X∞) 
+
+14 
+
+
+
+P(X4) 
+
+
+
+
+
+
+
+
+
+P(X1) 
+
+P(X2) 
+
+P(X3) 
+
+P(X∞) 
+
+
+
+P(X4) 
+
+
+
+
+
+P(X1) 
+
+P(X∞) 
+
+… 
+
+
+
+Stationary Distributions 
+
+§  For most chains: 
+
+§  influence of initial distribution gets less and less over 
+
+time. 
+
+§  the distribution we end up in is independent of the initial 
+
+distribution 
+
+§  Stationary distribution: 
+
+§  Distribution we end up with is called the stationary 
+
+distribution P1 of the chain 
+
+§  It satisfies 
+
+
+
+
+
+Application of Markov Chain Stationary 
+
+Distribution: Web Link Analysis 
+
+§  PageRank over a web graph 
+
+§  Each web page is a state 
+
+§  Initial distribution: uniform over pages 
+
+§  Transitions: 
+
+§  With prob. c, uniform jump to a 
+
+ random page (dotted lines, not all shown) 
+
+§  With prob. 1-c, follow a random 
+
+ outlink (solid lines) 
+
+§  Stationary distribution 
+
+§  Will spend more time on highly reachable pages 
+
+§  E.g. many ways to get to the Acrobat Reader download page 
+
+§  Somewhat robust to link spam 
+
+§  Google 1.0 returned the set of pages containing all your 
+
+keywords in decreasing rank, now all search engines use link 
+
+analysis along with many other factors (rank actually getting 
+
+less important over time) 
+
+16 
+
+
+3 
+
+
+
+Application of Markov Chain Stationary 
+
+Distribution: Gibbs Sampling* 
+
+§  Each joint instantiation over all hidden and query 
+
+variables is a state.  Let X = H \union Q 
+
+§  Transitions: 
+
+§  With probability 1/n resample variable Xj according to  
+
+ P(Xj | x1, x2, …, xj-1, xj+1, …, xn, e1, …, em) 
+
+§  Stationary distribution: 
+
+§  = conditional distribution P(X1, X2 , … , Xn|e1, …, em) 
+
+à When running Gibbs sampling long enough we get a 
+
+sample from the desired distribution! 
+
+ 
+
+We did not prove this, all we did is stating this result. 
+
+17 
+
+
+
+
+
+Outline 
+
+§  Markov Models 
+
+ ( = a particular Bayes net) 
+
+§  Hidden Markov Models (HMMs) 
+
+§  Representation 
+
+( = another particular Bayes net) 
+
+§  Inference 
+
+§  Forward algorithm ( = variable elimination) 
+
+§  Particle filtering ( = likelihood weighting with some tweaks) 
+
+§  Viterbi (= variable elimination, but replace sum by max 
+
+    = graph search) 
+
+§  Dynamic Bayes’ Nets  
+
+§  Representation 
+
+§  (= yet another particular Bayes’ net) 
+
+§  Inference: forward algorithm and particle filtering 
+
+18 
+
+
+
+Hidden Markov Models 
+
+§  Markov chains not so useful for most agents 
+
+§  Need observations to update your beliefs 
+
+§  Hidden Markov models (HMMs) 
+
+§  Underlying Markov chain over states S 
+
+§  You observe outputs (effects) at each time step 
+
+§  As a Bayes’net: 
+
+X5 
+
+X2 
+
+E1 
+
+X1 
+
+X3 
+
+X4 
+
+E2 
+
+E3 
+
+E4 
+
+E5 
+
+
+
+Example 
+
+§  An HMM is defined by: 
+
+§  Initial distribution: 
+
+§  Transitions: 
+
+§  Emissions: 
+
+
+
+
+
+
+
+
+
+
+
+Ghostbusters HMM 
+
+§  P(X1) = uniform 
+
+§  P(X|X’) = usually move clockwise, but 
+
+sometimes move in a random direction or 
+
+stay in place 
+
+§  P(Rij|X) = same sensor model as before: 
+
+red means close, green means far away. 
+
+1/9 1/9 
+
+1/9 1/9 
+
+1/9 
+
+1/9 
+
+1/9 1/9 1/9 
+
+P(X1) 
+
+P(X|X’=&lt;1,2&gt;) 
+
+1/6 1/6 
+
+0 
+
+1/6 
+
+1/2 
+
+0 
+
+0 
+
+0 
+
+0 
+
+X5 
+
+X2 
+
+Ri,j 
+
+X1 
+
+X3 
+
+X4 
+
+Ri,j 
+
+Ri,j 
+
+Ri,j 
+
+E5 
+
+
+
+Conditional Independence 
+
+§  HMMs have two important independence properties: 
+
+§  Markov hidden process, future depends on past via the present 
+
+§  Current observation independent of all else given current state 
+
+§  Quiz: does this mean that evidence variables are 
+
+guaranteed to be independent? 
+
+§  [No, they tend to correlated by the hidden state] 
+
+X5 
+
+X2 
+
+E1 
+
+X1 
+
+X3 
+
+X4 
+
+E2 
+
+E3 
+
+E4 
+
+E5 
+
+
+4 
+
+
+
+Real HMM Examples 
+
+§  Speech recognition HMMs: 
+
+§  Observations are acoustic signals (continuous valued) 
+
+§  States are specific positions in specific words (so, tens of 
+
+thousands) 
+
+§  Machine translation HMMs: 
+
+§  Observations are words (tens of thousands) 
+
+§  States are translation options 
+
+§  Robot tracking: 
+
+§  Observations are range readings (continuous) 
+
+§  States are positions on a map (continuous) 
+
+
+
+Filtering / Monitoring 
+
+§  Filtering, or monitoring, is the task of tracking the 
+
+distribution Bt(X) = Pt(Xt | e1, …, et) (the belief state) over 
+
+time 
+
+§  We start with B1(X) in an initial setting, usually uniform 
+
+§  As time passes, or we get observations, we update B(X) 
+
+§  The Kalman filter was invented in the 60’s and first 
+
+implemented as a method of trajectory estimation for the 
+
+Apollo program 
+
+
+
+Example: Robot Localization 
+
+t=0 
+
+Sensor model: can read in which directions there is a 
+
+wall, never more than 1 mistake 
+
+Motion model: may not execute action with small prob. 
+
+
+
+1 
+
+0 
+
+Prob 
+
+Example from 
+
+Michael Pfeiffer 
+
+
+
+Example: Robot Localization 
+
+t=1 
+
+Lighter grey: was possible to get the reading, 
+
+but less likely b/c required 1 mistake 
+
+
+
+1 
+
+0 
+
+Prob 
+
+
+
+Example: Robot Localization 
+
+t=2 
+
+
+
+1 
+
+0 
+
+Prob 
+
+
+
+Example: Robot Localization 
+
+t=3 
+
+
+
+1 
+
+0 
+
+Prob 
+
+
+5 
+
+
+
+Example: Robot Localization 
+
+t=4 
+
+
+
+1 
+
+0 
+
+Prob 
+
+
+
+Example: Robot Localization 
+
+t=5 
+
+
+
+1 
+
+0 
+
+Prob 
+
+
+
+Query: P(X4|e1,e2,e3,e4) --- 
+
+Variable Elimination, X1, X2, X3 
+
+32 
+
+P(X4|e1, e2, e3, e4) ∝ P(X4, e1, e2, e3, e4) =
+
+￿
+
+x1,x2,x3
+
+P(x1, x2, x3, X4, e1, e2, e3, e4)
+
+=
+
+￿
+
+x3
+
+￿
+
+x2
+
+￿
+
+x1
+
+P(e4|X4)P(X4|x3)P(e3|x3)P(x3|x2)P(e2|x2)P(x2|x1)P(e1|x1)P(x1)
+
+=
+
+￿
+
+x3
+
+￿
+
+x2
+
+￿
+
+x1
+
+P(e4|X4)P(X4|x3)P(e3|x3)P(x3|x2)P(e2|x2)P(x2|x1)P(x1, e1)
+
+=
+
+￿
+
+x3
+
+￿
+
+x2
+
+P(e4|X4)P(X4|x3)P(e3|x3)P(x3|x2)P(e2|x2)
+
+￿
+
+x1
+
+P(x2|x1)P(x1, e1)
+
+=
+
+￿
+
+x3
+
+￿
+
+x2
+
+P(e4|X4)P(X4|x3)P(e3|x3)P(x3|x2)P(e2|x2)P(x2, e1)
+
+=
+
+￿
+
+x3
+
+￿
+
+x2
+
+P(e4|X4)P(X4|x3)P(e3|x3)P(x3|x2)P(x2, e1, e2)
+
+=
+
+￿
+
+x3
+
+P(e4|X4)P(X4|x3)P(e3|x3)
+
+￿
+
+x2
+
+P(x3|x2)P(x2, e1, e2)
+
+=
+
+￿
+
+x3
+
+P(e4|X4)P(X4|x3)P(e3|x3)P(x3, e1, e2)
+
+=
+
+￿
+
+x3
+
+P(e4|X4)P(X4|x3)P(x3, e1, e2, e3)
+
+=
+
+P(e4|X4)
+
+￿
+
+x3
+
+P(X4|x3)P(x3, e1, e2, e3)
+
+=
+
+P(e4|X4)P(x4, e1, e2, e3)
+
+=
+
+P(X4, e1, e2, e3, e4)
+
+
+
+
+
+Re-occurring computation: 
+
+
+
+The Forward Algorithm 
+
+§  We are given evidence at each time and want to know 
+
+§  We can derive the following updates 
+
+§  = exactly variable elimination in order X1, X2, … 
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+We can normalize 
+
+as we go if we want 
+
+to have P(x|e) at 
+
+each time step, or 
+
+just once at the 
+
+end… 
+
+
+
+Belief Updating = the forward algorithm broken 
+
+down into two steps and with normalization 
+
+§  Forward algorithm: 
+
+§  Can break this down into: 
+
+§  Time update: 
+
+§  Observation update:  
+
+§  Normalizing in the observation update gives: 
+
+§  Time update: 
+
+§  Observation update:  
+
+§  Notation:  
+
+§  Time update: 
+
+§  Observation update:  
+
+ 
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+§  Observation 
+
+§  Given: P(Xt+1), P(et+1 | Xt+1) 
+
+§  Query: P(xt+1 | et+1) 8 xt+1 
+
+Et+1 
+
+Xt+1 
+
+Xt+1 
+
+Xt 
+
+
+
+
+
+
+
+
+
+
+
+§  Passage of Time 
+
+§  Given: P(Xt), P(Xt+1 | Xt) 
+
+§  Query: P(xt+1)  8 xt+1 
+
+Belief updates can also easily be derived 
+
+from basic probability 
+
+
+6 
+
+
+
+Example: Passage of Time 
+
+§  As time passes, uncertainty “accumulates” 
+
+
+
+
+
+
+
+T = 1 
+
+T = 2 
+
+T = 5 
+
+Transition model: ghosts usually go clockwise 
+
+
+
+
+
+Example: Observation 
+
+§  As we get observations, beliefs get 
+
+reweighted, uncertainty “decreases” 
+
+
+
+
+
+Before observation 
+
+After observation 
+
+
+
+
+
+Example HMM 
+
+
+
+
+
+Outline 
+
+§  Markov Models 
+
+ ( = a particular Bayes net) 
+
+§  Hidden Markov Models (HMMs) 
+
+§  Representation 
+
+( = another particular Bayes net) 
+
+§  Inference 
+
+§  Forward algorithm ( = variable elimination) 
+
+§  Particle filtering ( = likelihood weighting with some tweaks) 
+
+§  Viterbi (= variable elimination, but replace sum by max 
+
+    = graph search) 
+
+§  Dynamic Bayes’ Nets  
+
+§  Representation 
+
+§  (= yet another particular Bayes’ net) 
+
+§  Inference: forward algorithm and particle filtering 
+
+43 
+
+
+
+
+
+
+
+
+
+Particle Filtering 
+
+0.0 
+
+0.1 
+
+0.0 
+
+0.0 
+
+0.0 
+
+0.2 
+
+0.0 
+
+0.2 
+
+0.5 
+
+§  Filtering: approximate solution 
+
+§  Sometimes |X| is too big to use exact 
+
+inference 
+
+§  |X| may be too big to even store B(X) 
+
+§  E.g. X is continuous 
+
+§  Solution: approximate inference 
+
+§  Track samples of X, not all values 
+
+§  Samples are called particles 
+
+§  Time per step is linear in the number of 
+
+samples 
+
+§  But: number needed may be large 
+
+§  In memory: list of particles, not states 
+
+§  This is how robot localization works in 
+
+practice 
+
+§  Particle is just new name for sample 
+
+
+
+Representation: Particles 
+
+§  Our representation of P(X) is now 
+
+a list of N particles (samples) 
+
+§  Generally, N &lt;&lt; |X| 
+
+§  Storing map from X to counts 
+
+would defeat the point 
+
+§  P(x) approximated by number of 
+
+particles with value x 
+
+§  So, many x will have P(x) = 0!  
+
+§  More particles, more accuracy 
+
+§  For now, all particles have a 
+
+weight of 1 
+
+45 
+
+Particles: 
+
+    (3,3) 
+
+    (2,3) 
+
+    (3,3)    
+
+    (3,2) 
+
+    (3,3) 
+
+    (3,2) 
+
+    (1,2) 
+
+    (3,3) 
+
+    (3,3) 
+
+    (2,3) 
+
+
+7 
+
+
+
+Particle Filtering: Elapse Time 
+
+§  Each particle is moved by 
+
+sampling its next position from 
+
+the transition model 
+
+§  This is like prior sampling – 
+
+samples’ frequencies reflect the 
+
+transition probs 
+
+§  Here, most samples move 
+
+clockwise, but some move in 
+
+another direction or stay in place 
+
+§  This captures the passage of 
+
+time 
+
+§  If enough samples, close to exact 
+
+values before and after (consistent) 
+
+
+
+Particles: 
+
+    (3,3) 
+
+    (2,3) 
+
+    (3,3)    
+
+    (3,2) 
+
+    (3,3) 
+
+    (3,2) 
+
+    (1,2) 
+
+    (3,3) 
+
+    (3,3) 
+
+    (2,3) 
+
+Particles: 
+
+    (3,2) 
+
+    (2,3) 
+
+    (3,2)    
+
+    (3,1) 
+
+    (3,3) 
+
+    (3,2) 
+
+    (1,3) 
+
+    (2,3) 
+
+    (3,2) 
+
+    (2,2) 
+
+
+
+§  Slightly trickier: 
+
+§  Don’t sample observation, fix it 
+
+§  Similar to likelihood weighting, 
+
+downweight samples based on 
+
+the evidence 
+
+§  As before, the probabilities 
+
+don’t sum to one, since most 
+
+have been downweighted (in 
+
+fact they sum to an 
+
+approximation of P(e)) 
+
+
+
+
+
+Particle Filtering: Observe 
+
+Particles: 
+
+    (3,2)  w=.9 
+
+    (2,3)  w=.2 
+
+    (3,2)  w=.9 
+
+    (3,1)  w=.4 
+
+    (3,3)  w=.4 
+
+    (3,2)  w=.9 
+
+    (1,3)  w=.1 
+
+    (2,3)  w=.2 
+
+    (3,2)  w=.9 
+
+    (2,2)  w=.4 
+
+Particles: 
+
+    (3,2) 
+
+    (2,3) 
+
+    (3,2)    
+
+    (3,1) 
+
+    (3,3) 
+
+    (3,2) 
+
+    (1,3) 
+
+    (2,3) 
+
+    (3,2) 
+
+    (2,2) 
+
+
+
+Particle Filtering: Resample 
+
+§ 
+
+Rather than tracking 
+
+weighted samples, 
+
+we resample 
+
+§ 
+
+N times, we choose 
+
+from our weighted 
+
+sample distribution 
+
+(i.e. draw with 
+
+replacement) 
+
+§ 
+
+This is equivalent to 
+
+renormalizing the 
+
+distribution 
+
+§ 
+
+Now the update is 
+
+complete for this time 
+
+step, continue with 
+
+the next one 
+
+Particles: 
+
+    (3,2)  w=.9 
+
+    (2,3)  w=.2 
+
+    (3,2)  w=.9 
+
+    (3,1)  w=.4 
+
+    (3,3)  w=.4 
+
+    (3,2)  w=.9 
+
+    (1,3)  w=.1 
+
+    (2,3)  w=.2 
+
+    (3,2)  w=.9 
+
+    (2,2)  w=.4 
+
+(New) Particles: 
+
+    (3,2) 
+
+    (2,2) 
+
+    (3,2)    
+
+    (2,3) 
+
+    (3,3) 
+
+    (3,2) 
+
+    (1,3) 
+
+    (2,3) 
+
+    (3,2) 
+
+    (3,2) 
+
+
+
+Recap: Particle Filtering 
+
+§  Particles: track samples of states rather than an explicit distribution 
+
+49 
+
+Particles: 
+
+    (3,3) 
+
+    (2,3) 
+
+    (3,3)    
+
+    (3,2) 
+
+    (3,3) 
+
+    (3,2) 
+
+    (1,2) 
+
+    (3,3) 
+
+    (3,3) 
+
+    (2,3) 
+
+Elapse 
+
+Weight 
+
+Resample 
+
+Particles: 
+
+    (3,2) 
+
+    (2,3) 
+
+    (3,2)    
+
+    (3,1) 
+
+    (3,3) 
+
+    (3,2) 
+
+    (1,3) 
+
+    (2,3) 
+
+    (3,2) 
+
+    (2,2) 
+
+Particles: 
+
+    (3,2)  w=.9 
+
+    (2,3)  w=.2 
+
+    (3,2)  w=.9 
+
+    (3,1)  w=.4 
+
+    (3,3)  w=.4 
+
+    (3,2)  w=.9 
+
+    (1,3)  w=.1 
+
+    (2,3)  w=.2 
+
+    (3,2)  w=.9 
+
+    (2,2)  w=.4 
+
+(New) Particles: 
+
+    (3,2) 
+
+    (2,2) 
+
+    (3,2)    
+
+    (2,3) 
+
+    (3,3) 
+
+    (3,2) 
+
+    (1,3) 
+
+    (2,3) 
+
+    (3,2) 
+
+    (3,2) 
+
+
+
+Outline 
+
+§  Markov Models 
+
+ ( = a particular Bayes net) 
+
+§  Hidden Markov Models (HMMs) 
+
+§  Representation 
+
+( = another particular Bayes net) 
+
+§  Inference 
+
+§  Forward algorithm ( = variable elimination) 
+
+§  Particle filtering ( = likelihood weighting with some tweaks) 
+
+§  Viterbi (= variable elimination, but replace sum by max 
+
+    = graph search) 
+
+§  Dynamic Bayes’ Nets  
+
+§  Representation 
+
+§  (= yet another particular Bayes’ net) 
+
+§  Inference: forward algorithm and particle filtering 
+
+50 
+
+
+
+
+
+
+
+
+
+
+
+Dynamic Bayes Nets (DBNs) 
+
+§  We want to track multiple variables over time, using 
+
+multiple sources of evidence 
+
+§  Idea: Repeat a fixed Bayes net structure at each time 
+
+§  Variables from time t can condition on those from t-1 
+
+§  Discrete valued dynamic Bayes nets are also HMMs 
+
+G1
+
+a 
+
+E1a 
+
+E1b 
+
+G1
+
+b 
+
+G2
+
+a 
+
+E2a 
+
+E2b 
+
+G2
+
+b 
+
+t =1 
+
+t =2 
+
+G3
+
+a 
+
+E3a 
+
+E3b 
+
+G3
+
+b 
+
+t =3 
+
+
+8 
+
+
+
+Exact Inference in DBNs 
+
+§  Variable elimination applies to dynamic Bayes nets 
+
+§  Procedure: “unroll” the network for T time steps, then 
+
+eliminate variables until P(XT|e1:T) is computed 
+
+§  Online belief updates: Eliminate all variables from the 
+
+previous time step; store factors for current time only 
+
+ 
+
+52 
+
+G1
+
+a 
+
+E1a 
+
+E1b 
+
+G1
+
+b 
+
+G2
+
+a 
+
+E2a 
+
+E2b 
+
+G2
+
+b 
+
+G3
+
+a 
+
+E3a 
+
+E3b 
+
+G3
+
+b 
+
+t =1 
+
+t =2 
+
+t =3 
+
+G3
+
+b 
+
+
+
+DBN Particle Filters 
+
+§  A particle is a complete sample for a time step 
+
+§  Initialize: Generate prior samples for the t=1 Bayes net 
+
+§  Example particle: G1
+
+a = (3,3) G1
+
+b = (5,3)  
+
+§  Elapse time: Sample a successor for each particle  
+
+§  Example successor: G2
+
+a = (2,3) G2
+
+b = (6,3) 
+
+§  Observe: Weight each entire sample by the likelihood of 
+
+the evidence conditioned on the sample 
+
+§  Likelihood: P(E1
+
+a |G1
+
+a ) * P(E1
+
+b |G1
+
+b )  
+
+§  Resample: Select prior samples (tuples of values) in 
+
+proportion to their likelihood 
+
+53 
+
+
+
+Trick I to Improve Particle Filtering 
+
+Performance: Low Variance Resampling 
+
+
+
+§  Advantages: 
+
+§  More systematic coverage of space of samples 
+
+§  If all samples have same importance weight, no 
+
+samples are lost 
+
+§  Lower computational complexity 
+
+0 
+
+1 
+
+
+
+§  If no or little noise in transitions model, all 
+
+particles will start to coincide 
+
+ 
+
+à regularization: introduce additional 
+
+(artificial) noise into the transition model 
+
+Trick II to Improve Particle Filtering 
+
+Performance: Regularization 
+
+
+
+Robot Localization 
+
+§  In robot localization: 
+
+§  We know the map, but not the robot’s position 
+
+§  Observations may be vectors of range finder readings 
+
+§  State space and readings are typically continuous (works 
+
+basically like a very fine grid) and so we cannot store B(X) 
+
+§  Particle filtering is a main technique 
+
+§  Demos: global-floor.gif 
+
+ 
+
+
+
+SLAM 
+
+§  SLAM = Simultaneous Localization And Mapping 
+
+§  We do not know the map or our location 
+
+§  State consists of position AND map! 
+
+§  Main techniques: Kalman filtering (Gaussian HMMs) and particle 
+
+methods 
+
+
+9 
+
+
+
+60 
+
+Particle Filter Example 
+
+
+
+
+
+
+
+
+
+map of particle 1 
+
+map of particle 3 
+
+map of particle 2 
+
+3 particles 
+
+
+
+SLAM 
+
+§  DEMOS 
+
+§  Intel-lab-raw-odo.wmv 
+
+§  Intel-lab-scan-matching.wmv 
+
+§  visionSlam_heliOffice.wmv 
+
+
+
+P4: Ghostbusters 2.0 (beta) 
+
+§  Plot: Pacman's grandfather, Grandpac, 
+
+learned to hunt ghosts for sport.   
+
+§  He was blinded by his power, but could 
+
+hear the ghosts’ banging and clanging. 
+
+§  Transition Model: All ghosts move 
+
+randomly, but are sometimes biased 
+
+§  Emission Model: Pacman knows a 
+
+“noisy” distance to each ghost 
+
+1
+
+3
+
+5
+
+7
+
+9
+
+11
+
+13
+
+15
+
+Noisy distance prob 
+
+True distance = 8 
+
+
+
+Outline 
+
+§  Markov Models 
+
+ ( = a particular Bayes net) 
+
+§  Hidden Markov Models (HMMs) 
+
+§  Representation 
+
+( = another particular Bayes net) 
+
+§  Inference 
+
+§  Forward algorithm ( = variable elimination) 
+
+§  Particle filtering ( = likelihood weighting with some tweaks) 
+
+§  Viterbi (= variable elimination, but replace sum by max 
+
+    = graph search) 
+
+§  Dynamic Bayes’ Nets  
+
+§  Representation 
+
+§  (= yet another particular Bayes’ net) 
+
+§  Inference: forward algorithm and particle filtering 
+
+63 
+
+
+
+
+
+
+
+
+
+
+
+
+
+Best Explanation Queries 
+
+§  Query: most likely seq: 
+
+X5 
+
+X2 
+
+E1 
+
+X1 
+
+X3 
+
+X4 
+
+E2 
+
+E3 
+
+E4 
+
+E5 
+
+
+
+64 
+
+
+
+Best Explanation Query Solution 
+
+Method 1: Search 
+
+§  States:  {(), +x1, -x1, +x2, -x2, …, +xt, -xt} 
+
+§  Start state: () 
+
+§  Actions:  in state xk, choose any assignment for state xk+1 
+
+§  Cost:  
+
+§  Goal test: goal(xk) = true iff k == t  
+
+à Can run uniform cost graph search to find solution 
+
+à Uniform cost graph search will take O( t d2 ).  Think about this! 
+
+
+
+slight abuse of notation, 
+
+assuming P(x1|x0) = P(x1) 
+
+
+
+
+10 
+
+
+
+Best Explanation Query Solution Method 2: Viterbi 
+
+Algorithm (= max-product version of forward algorithm) 
+
+
+
+
+
+
+
+
+
+
+
+66 
+
+
+
+Viterbi computational complexity: O(t d2) 
+
+Compare to forward algorithm: 
+
+
+
+Further readings 
+
+§  We are done with Part II Probabilistic 
+
+Reasoning 
+
+§  To learn more (beyond scope of 188): 
+
+§  Koller and Friedman, Probabilistic Graphical 
+
+Models  (CS281A) 
+
+§   Thrun, Burgard and Fox, Probabilistic 
+
+Robotics  (CS287) 
+

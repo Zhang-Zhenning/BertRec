@@ -1,0 +1,1930 @@
+
+Three New Graphical Models for Statistical Language Modelling
+
+Andriy Mnih
+
+amnih@cs.toronto.edu
+
+Geoﬀrey Hinton
+
+hinton@cs.toronto.edu
+
+Department of Computer Science, University of Toronto, Canada
+
+Abstract
+
+The supremacy of n-gram models in statis-
+
+tical language modelling has recently been
+
+challenged by parametric models that use
+
+distributed representations to counteract the
+
+diﬃculties caused by data sparsity. We pro-
+
+pose three new probabilistic language models
+
+that deﬁne the distribution of the next word
+
+in a sequence given several preceding words
+
+by using distributed representations of those
+
+words. We show how real-valued distributed
+
+representations for words can be learned at
+
+the same time as learning a large set of
+
+stochastic binary hidden features that are
+
+used to predict the distributed representation
+
+of the next word from previous distributed
+
+representations.
+
+Adding connections from
+
+the previous states of the binary hidden fea-
+
+tures improves performance as does adding
+
+direct connections between the real-valued
+
+distributed representations. One of our mod-
+
+els signiﬁcantly outperforms the very best n-
+
+gram models.
+
+1. Introduction
+
+One of the main tasks of statistical language modelling
+
+is learning probability distributions of word sequences.
+
+This problem is usually reduced to learning the con-
+
+ditional distribution of the next word given a ﬁxed
+
+number of preceding words, a task at which n-gram
+
+models have been very successful (Chen &amp; Goodman,
+
+1996).
+
+Density estimation for discrete distributions
+
+is inherently diﬃcult because there is no simple way
+
+to do smoothing based on input similarity. Since all
+
+discrete values are equally similar (or dissimilar) as-
+
+signing similar probabilities to similar inputs, which
+
+is typically done for continuous inputs, does not work
+
+Appearing in Proceedings of the 24 th International Confer-
+
+ence on Machine Learning, Corvallis, OR, 2007. Copyright
+
+2007 by the author(s)/owner(s).
+
+in the discrete case. Representing discrete structures
+
+such as words using continuous-valued distributed rep-
+
+resentations and then assigning probability to these
+
+structures based on their representations automati-
+
+cally introduces smoothing into the density estima-
+
+tion problem making the data sparsity problem less
+
+severe. Recently, signiﬁcant progress in statistical lan-
+
+guage modelling has been made by using models that
+
+rely on such distributed representations. Feed-forward
+
+neural networks that operate on real-valued vector rep-
+
+resentations of words have been both the most popu-
+
+lar and most successful models of this type (Bengio
+
+et al., 2003; Morin &amp; Bengio, 2005; Emami et al.,
+
+2003). A number of techniques have been proposed
+
+to address the main drawback of these models – their
+
+long training times (Bengio &amp; Sen´ecal, 2003; Schwenk
+
+&amp; Gauvain, 2005; Morin &amp; Bengio, 2005). Hierarchi-
+
+cal alternatives to feed-forward networks, which are
+
+faster to train and use, have been considered (Morin
+
+&amp; Bengio, 2005; Blitzer et al., 2005b), but they do not
+
+perform quite as well.
+
+Recently, a stochastic model
+
+with hidden variables has been proposed for language
+
+modelling (Blitzer et al., 2005a). Unlike the previous
+
+models, it uses distributed representations that consist
+
+of stochastic binary variables as opposed to real num-
+
+bers. Unfortunately, this model does not scale well to
+
+large vocabulary sizes due to the diﬃculty of inference
+
+in the model.
+
+In this paper, we describe three new probabilistic lan-
+
+guage models that use distributed word representa-
+
+tions to deﬁne the distribution of the next word in
+
+a sequence given several preceding words.
+
+We start
+
+with an undirected graphical model that uses a large
+
+number of hidden binary variables to capture the de-
+
+sired conditional distribution.
+
+Then we augment it
+
+with temporal connections between hidden units to in-
+
+crease the number of preceding words taken into ac-
+
+count without signiﬁcantly increasing the number of
+
+model parameters.
+
+Finally, we investigate a model
+
+that predicts the distributed representation for the
+
+next word using a linear function of the distributed
+
+representations of the preceding words, without using
+
+
+Three New Graphical Models for Statistical Language Modelling
+
+any additional latent variables.
+
+2. The Factored Restricted Boltzmann
+
+Machine Language Model
+
+Our goal is to design a probabilistic model for word se-
+
+quences that uses distributed representations for words
+
+and captures the dependencies between words in a se-
+
+quence using stochastic hidden variables. The main
+
+choice to be made here is between directed and undi-
+
+rected interactions between the hidden variables and
+
+the visible variables representing words. Blitzer et al.
+
+(2005a) have proposed a model with directed interac-
+
+tions for this task. Unfortunately, training their model
+
+required exact inference, which is exponential in the
+
+number of hidden variables. As a result, only a very
+
+small number of hidden variables can be used, which
+
+greatly limits the expressive power of the model.
+
+In order to be able to handle a large number of hid-
+
+den variables, we use a Restricted Boltzmann Ma-
+
+chine (RBM) that has undirected interactions between
+
+multinomial visible units and binary hidden units.
+
+While maximum likelihood learning in RBMs is in-
+
+tractable, RBMs can be trained eﬃciently using con-
+
+trastive divergence learning (Hinton, 2002) and the
+
+learning rule is unaﬀected when binary units are re-
+
+placed by multinomial ones.
+
+Assuming that the words we are dealing with come
+
+from a ﬁnite dictionary of size Nw, we model the ob-
+
+served words as multinomial random variables that
+
+take on Nw values.
+
+To deﬁne an RBM model for the probability distribu-
+
+tion of the next word in a sentence given the word’s
+
+context w1:n−1, which is the previous n − 1 words
+
+w1, ..., wn−1, we must ﬁrst specify the energy function
+
+for a joint conﬁguration of the visible and hidden units.
+
+The simplest choice is probably
+
+E0(wn, h; w1:n−1) = −
+
+n
+
+�
+
+i=1
+
+vT
+
+i Gih,
+
+(1)
+
+where vi is a binary column vector of length Nw with 1
+
+in the wth
+
+i
+
+position and zeros everywhere else, and h is
+
+a column vector of length Nh containing the conﬁgura-
+
+tion of the hidden variables. Here matrix Gi speciﬁes
+
+the interaction between the multinomial1 visible unit
+
+vi and the binary hidden units. For simplicity, we have
+
+ignored the bias terms – the ones that depend only on
+
+h or only on vn. Unfortunately, this parameterization
+
+1Technically, we do not have to assume any distribution
+
+for w1, ..., wn−1 since we always condition on these random
+
+variables. As a result, the energy function can depend on
+
+them in an arbitrary, nonlinear, way.
+
+requires nNwNh free parameters which can be unac-
+
+ceptably large for vocabularies of even moderate size.
+
+Another weakness of this model is that each word is
+
+associated with a diﬀerent set of parameters for each
+
+of the n positions it can occupy.
+
+Both of these drawbacks can be addressed by intro-
+
+ducing distributed representations (i.e.
+
+feature vec-
+
+tors) for words. Generalization is made easier by shar-
+
+ing feature vectors across all sequence positions, and
+
+deﬁning all of the interactions involving a word via
+
+its feature vector. This type of parameterization has
+
+been used in feed-forward neural networks for mod-
+
+elling symbolic relations (Hinton, 1986) and for statis-
+
+tical language modelling (Bengio et al., 2003).
+
+We represent each word using a real-valued feature
+
+vector of length Nf and make the energy depend on
+
+the word only through its feature vector. Let R be an
+
+Nw×Nf matrix with row i being the feature vector for
+
+the ith word in the dictionary. Then the feature vector
+
+for word wi is given by vT
+
+i R. Using this notation, we
+
+deﬁne the joint energy of a sequence of words w1, ..., wn
+
+along with the conﬁguration of the hidden units h as
+
+E(wn, h; w1:n−1) = − (
+
+n
+
+�
+
+i=1
+
+vT
+
+i RWi)h
+
+− bT
+
+h h − bT
+
+r RT vn − bT
+
+v vn.
+
+(2)
+
+Here matrix Wi speciﬁes the interaction between the
+
+vector of hidden variables and the feature vector for
+
+the visible variable vi.
+
+The vector bh contains bi-
+
+ases for the hidden units, while the vectors bv and
+
+br contain biases for words and word features re-
+
+spectively.2
+
+To simplify the notation we do not ex-
+
+plicitly show the dependence of the energy functions
+
+and probability distributions on model parameters.
+
+In other words, we write P(wn|w1:n−1) instead of
+
+P(wn|w1:n−1, Wi, R, ...).
+
+Deﬁning these interactions on the Nf-dimensional fea-
+
+ture vectors instead of directly on the Nw-dimensional
+
+visible variables leads to a much more compact param-
+
+eterization of the model, since typically Nf is much
+
+smaller than Nw. Using the same feature matrix R
+
+for all visible variables forces it to capture position-
+
+invariant information about words as well as further re-
+
+ducing the number of model parameters. With 18,000
+
+2The inclusion of per-word biases contradicts our philos-
+
+ophy of using only the feature vectors to deﬁne the energy
+
+function. However, since the number of these bias param-
+
+eters is small compared to the total number of parameters
+
+in the model, generalization is not negatively aﬀected. In
+
+fact the inclusion of per-word biases does not seem to af-
+
+fect generalization but does speed up the early stages of
+
+learning.
+
+
+Three New Graphical Models for Statistical Language Modelling
+
+Figure 1. a) The diagram for the Factored RBM and the
+
+Temporal Factored RBM. The dashed part is included only
+
+for the TFRBM. b) The diagram for the log-bilinear model.
+
+words, 1000 hidden units and a context of size 2
+
+(n = 3), the use of 100-dimensional feature vectors
+
+reduces the number of parameters by a factor of 25,
+
+from 54 million to a mere 2.1 million. As can be seen
+
+from Eqs. 1 and 2, the feature-based parameteriza-
+
+tion constrains each of the visible-hidden interaction
+
+matrices Gi to be a product of two low-rank matrices
+
+R and Wi, while the original parameterization does
+
+not constrain Gi in any way.
+
+The joint conditional distribution of the next word and
+
+the hidden conﬁguration h is deﬁned in terms of the
+
+energy function in Eq. 2 as
+
+P(wn, h|w1:n−1) = 1
+
+Zc
+
+exp(−E(wn, h; w1:n−1)),
+
+(3)
+
+where Zc
+
+= �
+
+wn
+
+�
+
+h exp(−E(wn, h; w1:n−1)) is a
+
+context-dependent normalization term.
+
+The condi-
+
+tional distribution of the next word given its context,
+
+which is the distribution we are ultimately interested
+
+in, can be obtained from the joint by marginalizing
+
+over the hidden variables:
+
+P(wn|w1:n−1) = 1
+
+Zc
+
+�
+
+h
+
+exp(−E(wn, h; w1:n−1)). (4)
+
+Thus, we obtain a conditional model, which does not
+
+try to model the distribution of w1:n−1 since we always
+
+condition on those variables.
+
+2.1. Making Predictions
+
+One attractive property of RBMs is that the probabil-
+
+ity of a conﬁguration of visible units can be computed
+
+up to a multiplicative constant in time linear in the
+
+number of hidden units (Hinton, 2002). The normaliz-
+
+ing constant, however, is usually infeasible to compute
+
+because it is a sum of the exponential number of terms
+
+(in the number of visible units). In the proposed lan-
+
+guage model, though, this computation is easy because
+
+normalization is performed only over vn, resulting in
+
+a sum containing only Nw terms. Moreover, in some
+
+applications, such as speech recognition, we are inter-
+
+ested in ratios of probabilities of words from a short
+
+list and as a result we do not have to compute the
+
+normalizing constant at all (Bengio et al., 2003).
+
+The unnormalized probability of the next word can be
+
+eﬃciently computed using the formula
+
+P(wn|w1:n−1) ∝ exp(bT
+
+r RT vn + bT
+
+v vn)
+
+�
+
+i
+
+(1 + exp(Ti)),
+
+(5)
+
+where Ti is the total input to the hidden unit i when
+
+w1, ..., wn is the input to the model.
+
+Since the normalizing constant for this distribution can
+
+be computed in time linear in the dictionary size, ex-
+
+act inference in this model has time complexity linear
+
+in the number of hidden variables and the dictionary
+
+size. This compares favourably with complexity of ex-
+
+act inference in the latent variable model proposed in
+
+(Blitzer et al., 2005a), which is exponential in the num-
+
+ber of hidden variables.
+
+2.2. Learning
+
+The model can be trained on a dataset D of word
+
+sequences using maximum likelihood learning.
+
+The
+
+log-likelihood of the dataset (assuming IID sequences)
+
+simpliﬁes to
+
+L(D) =
+
+�
+
+log P(wn|w1:n−1),
+
+(6)
+
+where P is deﬁned by the model and the sum is over
+
+all word subsequences w1, ..., wn of length n in the
+
+dataset. L(D) can be maximized w.r.t. model param-
+
+eters using gradient ascent. The contributions made
+
+by a subsequence w1, ..., wn from D to the derivatives
+
+of L(D) are given by
+
+∂
+
+∂R log P(wn|w1:n−1) =
+
+� n
+
+�
+
+i=1
+
+vihT W T
+
+i + vnbT
+
+r
+
+�
+
+D
+
+−
+
+� n
+
+�
+
+i=1
+
+vihT W T
+
+i + vnbT
+
+r
+
+�
+
+M
+
+,
+
+(7)
+
+∂
+
+∂Wi
+
+log P(wn|w1:n−1) =
+
+�
+
+RT vihT �
+
+D −
+
+�
+
+RT vihT �
+
+M ,
+
+(8)
+
+
+Three New Graphical Models for Statistical Language Modelling
+
+where ⟨·⟩D and ⟨·⟩M denote expectations w.r.t. dis-
+
+tributions P(h|w1:n) and P(vn, h|w1:n−1) respectively.
+
+The derivative of the log likelihood of the dataset w.r.t.
+
+each parameter is then simply the sum of the contri-
+
+butions by all n-word subsequences in the dataset.
+
+Computing these derivatives exactly can be computa-
+
+tionally expensive because computing an expectation
+
+w.r.t. P(vn, h|w1:n−1) takes O(NwNh) time for each
+
+context. One alternative is to approximate the expec-
+
+tation using a Monte Carlo method by generating sam-
+
+ples from P(vn, h|w1:n−1) and averaging the expression
+
+we are interested in over them. Unfortunately, gener-
+
+ating an exact sample from P(vn, h|w1:n−1) is just as
+
+expensive as computing the original expectation. In-
+
+stead of using exact sampling, we can generate sam-
+
+ples from the distribution using a Markov Chain Monte
+
+Carlo method such as Gibbs sampling which involves
+
+starting vn and h in some random conﬁguration and
+
+alternating between sampling vn and h from their re-
+
+spective conditional distributions given by
+
+P(wn|h, w1:n−1) ∝
+
+exp((hT W T
+
+n + bT
+
+r )RT vn + bT
+
+v vn),
+
+(9)
+
+P(h|w1:n) ∝ exp((
+
+n
+
+�
+
+i=1
+
+vT
+
+i RWi + bT
+
+h )h).
+
+(10)
+
+However, a large number of alternating updates might
+
+have to be performed to obtain a single sample from
+
+the joint distribution.
+
+Fortunately, there is an approximate learning pro-
+
+cedure called Contrastive Divergence (CD) learning
+
+which is much more eﬃcient. It is obtained by mak-
+
+ing two changes to the MCMC-based learning method.
+
+First, instead of starting vn in a random conﬁguration,
+
+we initialize vn with the state corresponding to wn.
+
+Second, instead of running the Markov chain to con-
+
+vergence, we perform three alternating updates (ﬁrst
+
+h, then vn, and then h again).
+
+While the resulting
+
+conﬁguration (vn, h) (called a “confabulation” or “re-
+
+construction”) is not a sample from P(vn, h|w1:n−1),
+
+it has been shown empirically that learning still works
+
+well when confabulations are used instead of samples
+
+from P(vn, h|w1:n−1) in the learning rules given above
+
+(Hinton, 2002).
+
+In this paper, we train all our models that have hid-
+
+den variables using CD learning. In some cases, we
+
+use a version of CD that, instead of sampling vn from
+
+P(wn|h, w1:n−1) to obtain a binary vector with a single
+
+1 in wnth position, sets vn to the vector of probabilities
+
+given by P(wn|h, w1:n−1). This can be viewed as us-
+
+ing mean-ﬁeld updates for visible units and stochastic
+
+updates for the hidden units, which is common prac-
+
+tice when training RBMs (Hinton, 2002). Using these
+
+mean-ﬁeld updates instead of stochastic ones reduces
+
+the noise in the parameter derivatives allowing larger
+
+learning rates to be used.
+
+3. The Temporal Factored RBM
+
+The language model proposed above, like virtually all
+
+statistical language models, is based on the assump-
+
+tion that given a word’s context, which is the n − 1
+
+words that immediately precede it, the word is con-
+
+ditionally independent of all other preceding words.
+
+This assumption, which is clearly false, is made in or-
+
+der keep the number of model parameters relatively
+
+small.
+
+In n-grams, for example, the number of pa-
+
+rameters is exponential in context size, which makes
+
+n-grams unsuitable for handling large contexts. While
+
+the dependence of the number of model parameters on
+
+context size is usually linear for models that use dis-
+
+tributed representations for words, for larger context
+
+sizes this number might still be very large.
+
+Ideally, a language model should be able to take ad-
+
+vantage of indeﬁnitely large contexts without needing
+
+a very large number of parameters. We propose a sim-
+
+ple extension to the factored RBM language model
+
+to achieve that goal (at least in theory) following
+
+Sutskever and Hinton (2007).
+
+Suppose we want to
+
+predict word wt+n from w1, ..., wt+n−1 for some large
+
+t. We can apply a separate instance of our model (with
+
+the same parameters) to words wτ, ..., wτ+n−1 for each
+
+τ in {1, ..., t}, obtaining a distributed representation of
+
+the ith n-tuple of words in the hidden state hτ of the
+
+τ th instance of the model.
+
+In order to propagate context information forward
+
+through the sequence towards the word we want to
+
+predict, we introduce directed connections from hτ to
+
+hτ+1 and compute the hidden state of model τ + 1
+
+using the inputs from the hidden state of model τ as
+
+well as its visible units. By introducing the dependen-
+
+cies between the hidden states of successive instances
+
+and specifying these dependencies using a shared pa-
+
+rameter matrix A we make the distribution of wt+n
+
+under the model depend on all previous words in the
+
+sequence.
+
+3.1. Making Predictions
+
+Exact inference in the resulting model is intractable
+
+– it takes time exponential in the number of hidden
+
+variables (Nh) in the model being instantiated. How-
+
+ever, since predicting the next word given its (near)
+
+inﬁnite context is an online problem we take the ﬁlter-
+
+
+Three New Graphical Models for Statistical Language Modelling
+
+ing approach to making this prediction, which requires
+
+storing only the last n − 1 words in the sequence. In
+
+contrast, exact inference requires that the whole con-
+
+text be stored, which might be infeasible or undesir-
+
+able.
+
+Unfortunately, exact ﬁltering is also intractable in this
+
+model. To get around this problem, we treat the hid-
+
+den state hτ as ﬁxed at pτ when inferring the distribu-
+
+tion P(hτ+1|w1:τ+n), where pτ
+
+j = P(hτ
+
+j = 1|w1:τ+n−1)
+
+Then, given a sequence of words w1, ..., wt+n−1 we in-
+
+fer the posterior over the hidden states of model in-
+
+stances using the following recursive procedure. The
+
+posterior for the ﬁrst model instance is given by Eq.
+
+10. Given the (factorial) posterior for model instance
+
+τ, the posterior for model instance τ + 1 is computed
+
+as
+
+P(hτ+1|w1:τ+n) ∝
+
+exp((
+
+n
+
+�
+
+i=1
+
+vT
+
+i RWi + (bh + Apτ)T )hτ+1). (11)
+
+Thus, computing the posterior for model instance τ +
+
+1 amounts to adding Apτ to that model’s vector of
+
+biases for hidden units and performing inference in the
+
+resulting model using Eq. 10.
+
+Finally, the predictive distribution over wn is obtained
+
+by applying the procedure described in Section 2.1 to
+
+model instance t after shifting its biases appropriately.
+
+3.2. Learning
+
+Maximum likelihood learning in the temporal FRBM
+
+model is intractable because it requires performing ex-
+
+act inference. Since we would like to be able to train
+
+models with large numbers of hidden variables we have
+
+to resort to an approximate algorithm.
+
+Instead of performing exact inference we simply ap-
+
+ply the ﬁltering algorithm from the previous section to
+
+compute the approximate posterior for the model. For
+
+each model instance the algorithm produces a vector
+
+which, when added to that model’s vector of hidden
+
+unit biases, makes the model posterior be the posterior
+
+produced by the ﬁltering operation. Then we compute
+
+the parameter updates for each model instance sepa-
+
+rately using the usual CD learning rule and average
+
+them over all instances.
+
+The temporal parameters are learned using the follow-
+
+ing rule applied to each training sequence separately:
+
+∆A ∝
+
+t−1
+
+�
+
+τ=1
+
+(pτ+1 − ˆpτ+1)T pτ.
+
+(12)
+
+Here ˆpτ+1
+
+i
+
+is the probability of the hidden unit i being
+
+on in the confabulation produced by model instance
+
+τ + 1.
+
+See (Sutskever &amp; Hinton, 2007) for a more
+
+detailed description of learning in temporal RBMs.
+
+4. A Log-Bilinear Language Model
+
+An alternative to using stochastic binary variables for
+
+modelling the conditional distribution of the next word
+
+given several previous words is to directly parameterize
+
+the distribution and thus avoid introducing stochastic
+
+hidden variables altogether.
+
+As before, we start by
+
+specifying the energy function:
+
+E(wn; w1:n−1) = −
+
+�n−1
+
+�
+
+i=1
+
+vT
+
+i RCi
+
+�
+
+RT vn
+
+− bT
+
+r RT vn − bT
+
+v vn.
+
+(13)
+
+Here Ci speciﬁes the interaction between the feature
+
+vector of wi and the feature vector of wn, while br
+
+and bv specify the word biases as in Eq. 2. Just like
+
+the energy function for the factored RBM, this energy
+
+function deﬁnes a bilinear interaction. However, in the
+
+FRBM energy function the interaction is between the
+
+word feature vectors and the hidden variables, whereas
+
+in this model the interaction is between the feature
+
+vectors for the context words and the feature vector
+
+for the predicted word.
+
+Intuitively, the model pre-
+
+dicts a feature vector for the next word by computing
+
+a linear function of the context word feature vectors.
+
+Then it assigns probabilities to all words in the vo-
+
+cabulary based on the similarity of their feature vec-
+
+tors to the predicted feature vector as measured by
+
+the dot product. The resulting predictive distribution
+
+is given by P(wn|w1:n−1) =
+
+1
+
+Zc exp(−E(wn; w1:n−1)),
+
+where Zc = �
+
+wn exp(−E(wn; w1:n−1)).
+
+This model is similar to the energy-based model pro-
+
+posed in (Bengio et al., 2003). However, our model
+
+uses a bilinear energy function while their energy func-
+
+tion is a one-hidden-layer neural network.
+
+4.1. Learning
+
+Training the above model is considerably simpler and
+
+faster than training the FRBM models because no
+
+stochastic hidden variables are involved. The gradients
+
+required for maximum likelihood learning are given by
+
+∂
+
+∂Ci
+
+log P(wn|w1:n−1) =
+
+�
+
+RT vivT
+
+n R
+
+�
+
+D −
+
+�
+
+RT vivT
+
+n R
+
+�
+
+M ,
+
+(14)
+
+
+Three New Graphical Models for Statistical Language Modelling
+
+Table 1. Perplexity scores for the models trained on the
+
+10M word training set. The mixture test score is the per-
+
+plexity obtained by averaging the model’s predictions with
+
+those of the Kneser-Ney 6-gram model.
+
+The ﬁrst four
+
+models use 100-dimensional feature vectors. The FRBM
+
+models have 1000 stochastic hidden units. GTn and KNn
+
+refer to back-oﬀ n-grams with Good-Turing and modiﬁed
+
+Kneser-Ney discounting respectively.
+
+Model
+
+Context
+
+Model
+
+Mixture
+
+type
+
+size
+
+test score
+
+test score
+
+FRBM
+
+2
+
+169.4
+
+110.6
+
+Temporal FRBM
+
+2
+
+127.3
+
+95.6
+
+Log-bilinear
+
+2
+
+132.9
+
+102.2
+
+Log-bilinear
+
+5
+
+124.7
+
+96.5
+
+Back-oﬀ GT3
+
+2
+
+135.3
+
+Back-oﬀ KN3
+
+2
+
+124.3
+
+Back-oﬀ GT6
+
+5
+
+124.4
+
+Back-oﬀ KN6
+
+5
+
+116.2
+
+∂
+
+∂R log P(wn|w1:n−1) =
+
+�n−1
+
+�
+
+i=1
+
+(vnvT
+
+i RCi + vivT
+
+n RCT
+
+i ) + vnbT
+
+r
+
+�
+
+D
+
+−
+
+�n−1
+
+�
+
+i=1
+
+(vnvT
+
+i RCi + vivT
+
+n RCT
+
+i ) + vnbT
+
+r
+
+�
+
+M
+
+.
+
+(15)
+
+Note that averaging over the model distribution in this
+
+case is the same as averaging over the predictive distri-
+
+bution over vn. As a result, these gradients are faster
+
+to compute than the gradients for a FRBM.
+
+5. Experimental Results
+
+We evaluated our models using the Associated Press
+
+News (APNews) dataset consisting of a text stream
+
+of about 16 million words. The dataset has been pre-
+
+processed by replacing proper nouns and rare words
+
+with the special “proper noun” and “unknown word”
+
+symbols respectively, while keeping all the punctua-
+
+tion marks, resulting in 17964 unique words. A more
+
+detailed description of preprocessing can be found in
+
+(Bengio et al., 2003).
+
+We performed our experiments in two stages. First,
+
+we compared the performance of our models to that of
+
+n-gram models on a smaller subset of the dataset to
+
+determine which type of our models showed the most
+
+promise. Then we performed a more thorough compar-
+
+ison between the models of that type and the n-gram
+
+models using the full dataset.
+
+In the ﬁrst experiment, we used a 10 million word
+
+training set, a 0.5 million word validation set, and a
+
+0.5 million word test set. We trained one non-temporal
+
+and one temporal FRBM, as well as two log-bilinear
+
+models. All of our models used 100-dimensional fea-
+
+ture vectors and both FRBM models had 1000 stochas-
+
+tic hidden units.
+
+The models were trained using mini-batches of 1000
+
+examples each.
+
+For the non-temporal models with
+
+n = 3, each training case consisted of a two-word con-
+
+text and a vector of probabilities specifying the dis-
+
+tribution of the next word for this context.
+
+These
+
+probabilities were precomputed on the training set and
+
+stored in a sparse array.
+
+During training, the non-
+
+temporal FRBM, vn was initialized with the precom-
+
+puted probability vector instead of the usual binary
+
+vector with a single 1 indicating the single “correct”
+
+next word for this instance of the context. The use of
+
+probability vectors as inputs along with mean ﬁeld up-
+
+dates for the visible unit, as described in Section 2.2,
+
+allowed us to use relatively high learning rates. Since
+
+precomputing and storing the probability vectors for
+
+all 5-word contexts turned out to be non-trivial, the
+
+model with a context size of 5 was trained directly on
+
+6-word sequences.
+
+All the parameters of the non-temporal models except
+
+for biases were initialized to small random values. Per-
+
+word bias parameters bv were initialized based on word
+
+frequencies in the training set. All other bias parame-
+
+ters were initialized to zero.
+
+The temporal FRBM model was initialized by copy-
+
+ing the parameters from the trained FRBM and ini-
+
+tializing the temporal parameters (A) to zero. During
+
+training, stochastic updates were used for visible units
+
+and vn was always initialized to a binary vector rep-
+
+resenting the actual next word in the sequences (as
+
+opposed to a distribution over words).
+
+For all models we used weight decay of 10−4 for word
+
+representations and 10−5 for all other weights.
+
+No
+
+weight decay was applied to network biases. Weight
+
+decay values as well as other learning parameters were
+
+chosen using the validation set.
+
+Each model was
+
+trained until its performance on a subset of the val-
+
+idation set stopped improving.
+
+We did not observe
+
+overﬁtting in any of our models, which suggests that
+
+using models with more parameters might lead to im-
+
+proved performance.
+
+We compared our models to n-gram models estimated
+
+using Good-Turing and modiﬁed Kneser-Ney discount-
+
+ing. Training and testing of the n-gram models was
+
+performed using programs from the SRI Language
+
+Modelling toolkit (Stolcke, 2002). To make the com-
+
+parison fair, the n-gram models treated punctuation
+
+marks (including full stops) as if they were ordinary
+
+
+Three New Graphical Models for Statistical Language Modelling
+
+words, since that is how they were treated by the net-
+
+work models.
+
+Models were compared based on their perplexity on
+
+the test set.
+
+Perplexity is a standard performance
+
+measure for probabilistic language models, which is
+
+computed as
+
+P = exp(− 1
+
+N
+
+�
+
+w1:n
+
+log P(wn|w1:n−1)),
+
+(16)
+
+where the sum is over all subsequences of length n in
+
+the dataset, N is the number of such subsequences,
+
+and P(wn|w1:n−1) is the probability under the model
+
+of the nth word in the subsequence given the previous
+
+n−1 words. To make the comparison between models
+
+of diﬀerent context size fair, given a test sequence of
+
+length L, we ignored the ﬁrst C words and tested the
+
+models at predicting words C+1, ..., L in the sequence,
+
+where C was the largest context size among the models
+
+compared.
+
+For each network model we also computed the perplex-
+
+ity for a mixture of that model with the best n-gram
+
+model (modiﬁed Kneser-Ney 6-gram). The predictive
+
+distribution for the mixture was obtained simply by
+
+averaging the predictive distributions produced by the
+
+network and the n-gram model (giving them equal
+
+weight).
+
+The resulting model perplexities are given
+
+in Table 1.
+
+The results show that three of the four network models
+
+we tested are competitive with n-gram models. Only
+
+the non-temporal FRBM is signiﬁcantly outperformed
+
+by all n-gram models. Adding temporal connections to
+
+it, however, to obtain a temporal FRBM, improves the
+
+model dramatically as indicated by a 33% drop in per-
+
+plexity, suggesting that the temporal connections do
+
+increase the eﬀective context size of the model. The
+
+log-bilinear models perform quite well: their scores are
+
+on par with Good-Turing n-grams with the same con-
+
+text size.
+
+Averaging the predictions of any network model with
+
+the predictions of the best n-gram model produced
+
+better predictions than any single model, which sug-
+
+gests that the network and n-gram models complement
+
+each other in at least some cases.
+
+The best results
+
+were obtained by averaging with the temporal network
+
+model, resulting in 21% reduction in perplexity over
+
+the best n-gram model.
+
+Since the log-bilinear models performed well and, com-
+
+pared to the FRBMs, were fast to train, we used only
+
+log-bilinear models in the second experiment. Simi-
+
+larly, we chose to use n-grams with Kneser-Ney dis-
+
+counting as they signiﬁcantly outperformed the n-
+
+Table 2. Perplexity scores for the models trained on the
+
+14M word training set. The mixture test score is the per-
+
+plexity obtained by averaging the model’s predictions with
+
+those of the Kneser-Ney 5-gram model. The log-bilinear
+
+models use 100-dimensional feature vectors.
+
+Model
+
+Context
+
+Model
+
+Mixture
+
+type
+
+size
+
+test score
+
+test score
+
+Log-bilinear
+
+5
+
+117.0
+
+97.3
+
+Log-bilinear
+
+10
+
+107.8
+
+92.1
+
+Back-oﬀ KN3
+
+2
+
+129.8
+
+Back-oﬀ KN5
+
+4
+
+123.2
+
+Back-oﬀ KN6
+
+5
+
+123.5
+
+Back-oﬀ KN9
+
+8
+
+124.6
+
+grams with Good-Turing discounting. For this experi-
+
+ment we used the full APNews dataset which was split
+
+into a 14 million word training set, 1 million word val-
+
+idation set, and 1 million word test set.
+
+We trained two log-bilinear models: one with a con-
+
+text of size 5, the other with a context of size 10. The
+
+training parameters were the same as in the ﬁrst ex-
+
+periment with the exception of the learning rate, which
+
+was annealed to a lower value than before.3 The re-
+
+sults of the second experiments are summarized in Ta-
+
+ble 2. The perplexity scores clearly show that the log-
+
+bilinear models outperform the n-gram models. Even
+
+the smaller log-bilinear model, with a context of size
+
+5, outperforms all the n-gram models. The table also
+
+shows using n-grams with a larger context size does not
+
+necessarily lead to better results. In fact, the best per-
+
+formance on this dataset was achieved for the context
+
+size of 4. Log-bilinear models, on the other hand, do
+
+beneﬁt from larger context sizes: increasing the con-
+
+text size from 5 to 10 decreases the model perplexity
+
+by 8%.
+
+In our second experiment, we used the same training,
+
+validation, and test sets as in (Bengio et al., 2003),
+
+which means that our results are directly compara-
+
+ble to theirs4. In (Bengio et al., 2003), a neural lan-
+
+guage model with a context size of 5 is trained but its
+
+individual score on the test set is not reported. In-
+
+stead the score of 109 is reported for the mixture of
+
+a Kneser-Ney 5-gram model and the neural language
+
+3This diﬀerence is one of the reasons for the log-bilinear
+
+model with a context of size 5 performing considerably bet-
+
+ter in the second experiment than in the ﬁrst one. The
+
+increased training set size and the diﬀerent test set are
+
+unlikely be the only reasons because the n-gram models
+
+actually performed slightly better in the ﬁrst experiment.
+
+4Due to limitations of the SRILM toolkit in dealing with
+
+very long strings, instead of treating the dataset as a single
+
+string, we broke up each of the test, training, and valida-
+
+tions sets into 1000 strings of equal length.
+
+This might
+
+explain why the n-gram scores we obtained are slightly
+
+diﬀerent from the scores reported in (Bengio et al., 2003).
+
+
+Three New Graphical Models for Statistical Language Modelling
+
+model. That score is signiﬁcantly worse than the score
+
+of 97.3 obtained by the corresponding mixture in our
+
+experiments. Moreover, our best single model has a
+
+score of 107.8 which means it performs at least as well
+
+as their mixture.
+
+6. Discussion and Future Work
+
+We have proposed three new probabilistic models for
+
+language one of which achieves state-of-the-art perfor-
+
+mance on the APNews dataset. In two of our models
+
+the interaction between the feature vectors for the con-
+
+text words and the feature vector for the next word is
+
+controlled by binary hidden variables.
+
+In the third
+
+model the interaction is modelled directly using a bi-
+
+linear interaction between the feature vectors.
+
+This
+
+third model appears to be preferable to the other two
+
+models because it is considerably faster to train and
+
+make predictions with. We plan to combine these two
+
+interaction types in a single model, which, due to its
+
+greater representational power, should perform better
+
+than any of our current models.
+
+Unlike other language models, with the exception of
+
+the energy based model in (Bengio et al., 2003), our
+
+models use distributed representations not only for
+
+context words, but for the word being predicted as
+
+well. This means that our models should be able to
+
+generalize well even for datasets with very large vo-
+
+cabularies. We intend to test this hypothesis by com-
+
+paring our models to n-gram models on the APNews
+
+dataset without removing rare words ﬁrst.
+
+In this paper we have used only a single layer of hid-
+
+den units, but now that we have shown how to use
+
+factored matrices to take care of the very large num-
+
+ber of free parameters, it would be easy to make use
+
+of the greedy, multilayer learning algorithm for RBMs
+
+that was described in (Hinton et al., 2006).
+
+Acknowledgements
+
+We thank Yoshua Bengio for providing us with the
+
+APNews dataset. This research was funded by grants
+
+from NSERC, CIAR and CFI.
+
+References
+
+Bengio, Y., Ducharme, R., Vincent, P., &amp; Jauvin, C.
+
+(2003). A neural probabilistic language model. Jour-
+
+nal of Machine Learning Research, 3, 1137–1155.
+
+Bengio, Y., &amp; Sen´ecal, J.-S. (2003). Quick training of
+
+probabilistic neural nets by importance sampling.
+
+AISTATS’03.
+
+Blitzer, J., Globerson, A., &amp; Pereira, F. (2005a).
+
+Distributed latent variable models of lexical co-
+
+occurrences. Proceedings of the Tenth International
+
+Workshop on Artiﬁcial Intelligence and Statistics.
+
+Blitzer, J., Weinberger, K., Saul, L., &amp; Pereira, F.
+
+(2005b). Hierarchical distributed representations for
+
+statistical language modeling.
+
+Advances in Neu-
+
+ral Information Processing Systems 18. Cambridge,
+
+MA: MIT Press.
+
+Chen, S. F., &amp; Goodman, J. (1996).
+
+An empirical
+
+study of smoothing techniques for language model-
+
+ing. Proceedings of the Thirty-Fourth Annual Meet-
+
+ing of the Association for Computational Linguistics
+
+(pp. 310–318). San Francisco: Morgan Kaufmann
+
+Publishers.
+
+Emami, A., Xu, P., &amp; Jelinek, F. (2003).
+
+Using a
+
+connectionist model in a syntactical based language
+
+model. Proceedings of ICASSP (pp. 372–375).
+
+Hinton, G. E. (1986). Learning distributed representa-
+
+tions of concepts. Proceedings of the Eighth Annual
+
+Conference of the Cognitive Science Society (pp. 1–
+
+12). Amherst, MA.
+
+Hinton, G. E. (2002). Training products of experts by
+
+minimizing contrastive divergence. Neural Compu-
+
+tation, 14, 1711–1800.
+
+Hinton, G. E., Osindero, S., &amp; Teh, Y. W. (2006).
+
+A fast learning algorithm for deep belief networks.
+
+Neural Computation, 18, 1527–1554.
+
+Morin, F., &amp; Bengio, Y. (2005).
+
+Hierarchical prob-
+
+abilistic neural network language model.
+
+AIS-
+
+TATS’05 (pp. 246–252).
+
+Schwenk, H., &amp; Gauvain, J.-L. (2005). Training neu-
+
+ral network language models on very large corpora.
+
+Proceedings of Human Language Technology Confer-
+
+ence and Conference on Empirical Methods in Nat-
+
+ural Language Processing (pp. 201–208). Vancouver,
+
+Canada.
+
+Stolcke, A. (2002). SRILM – an extensible language
+
+modeling toolkit. Proceedings of the International
+
+Conference on Spoken Language Processing (pp.
+
+901–904). Denver.
+
+Sutskever,
+
+I.,
+
+&amp; Hinton,
+
+G. E. (2007).
+
+Learn-
+
+ing multilevel distributed representations for high-
+
+dimensional sequences. AISTATS’07.
+

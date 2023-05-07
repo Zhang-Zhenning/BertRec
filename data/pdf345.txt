@@ -1,0 +1,1165 @@
+
+Probabilistic Latent Semantic Analysis
+
+Dan Oneat¸˘a
+
+1
+
+Introduction
+
+Probabilistic
+
+Latent
+
+Semantic
+
+Analysis
+
+(pLSA) is a technique from the category of
+
+topic models.
+
+Its main goal is to model co-
+
+occurrence information under a probabilistic
+
+framework in order to discover the underlying
+
+semantic structure of the data.
+
+It was developed in 1999 by Th. Hofmann [7]
+
+and it was initially used for text-based applica-
+
+tions (such as indexing, retrieval, clustering);
+
+however its use shortly spread in other ﬁelds:
+
+such as computer vision [14, 16, 10] or audio
+
+processing [5].
+
+PLSA can be regarded in two seemingly dif-
+
+ferent ways:
+
+• Latent variable model. The probabilistic
+
+structure of pLSA is based on a statisti-
+
+cal model, called the aspect model. The
+
+latent/hidden variables (represented by
+
+topics/concepts) are associated with the
+
+observed variables (represented by docu-
+
+ments and words, for the text domain).
+
+• Matrix factorization. Similarly to Latent
+
+Semantic Indexing (LSI) [3], pLSA aims
+
+to factorize the sparse co-occurrence ma-
+
+trix in order to reduce its dimensional-
+
+ity.
+
+However, pLSA is usually viewed
+
+as a more sound method as it provides
+
+a
+
+probabilistic
+
+interpretation,
+
+whereas
+
+LSI achieves the factorization by using
+
+only mathematical foundations (more pre-
+
+cisely, LSI uses the singular value decom-
+
+position method).
+
+2
+
+Theoretical presentation
+
+In order to make the theoretical presenta-
+
+tion more explicit and easy to understand we
+
+will refer, without loss of generality, to the
+
+text domain1. For this particular application,
+
+our training data is a corpus—a large set of
+
+documents—that is usually represented in the
+
+form of a document-term matrix (this indicates
+
+the number of times each word appears in each
+
+document). The goal of pLSA is to use this
+
+co-occurrence matrix to extract the so-called
+
+“topics” and explain the documents as a mix-
+
+ture of them.
+
+2.1
+
+Latent variable model
+
+PLSA considers that our data can be expressed
+
+in terms of 3 sets of variables:
+
+• Documents:
+
+d ∈ D = {d1, · · · , dN}—
+
+observed variables. Let N be their num-
+
+ber, deﬁned by the size of our given cor-
+
+pus.
+
+• Words:
+
+w
+
+∈
+
+W
+
+=
+
+{w1, · · · , wM}—
+
+observed variables. Let M be the number
+
+of distinct words from the corpus.
+
+• Topics: z ∈ Z = {z1, · · · , zK}—latent (or
+
+hidden) variables. Their number, K, has
+
+to be speciﬁed a priori.
+
+1Also the terminology used will be relevant to the
+
+natural language processing domain (i.e., documents,
+
+words, topics).
+
+However, it is not hard to make the
+
+correspondences for any other domain or application
+
+that uses co-occurrence data.
+
+1
+
+
+d
+
+z
+
+w
+
+Nw
+
+N
+
+Figure 1: The graphical model using plate rep-
+
+resentation. It describes the generative process
+
+for each of the N documents in the collection.
+
+Nw denotes the number of words in document
+
+d. Each word w has associated a latent con-
+
+cept z from which is generated. The shaded
+
+circles indicate observed variables, while the
+
+unshaded one represents the latent variables.
+
+These are linked in a graphical model (based
+
+on the aspect model) that associates the topics
+
+z with the observed pairs (d, w) (see Figure 1).
+
+This also describes a generative process for the
+
+documents [4]:
+
+• First we select a document dn with prob-
+
+ability P(d).
+
+• For each word wi, i ∈ {1, · · · , Nw} in the
+
+document dn:
+
+– Select a topic zi from a multinomial
+
+conditioned on the given document
+
+with probability P(z|dn).
+
+– Select a word wi from a multinomial
+
+conditioned on the previous chosen
+
+topic with probability P(w|zi).
+
+There are some important assumptions made
+
+by the presented model:
+
+• Bag-of-words. Intuitively, each document
+
+is regarded as an unordered collection of
+
+words2. More precisely, this means that
+
+the joint variable (d, w) is independently
+
+2http://en.wikipedia.org/wiki/Bag_of_words_
+
+model Date last accessed: 06/04/2011
+
+sampled and, consequently, the joint dis-
+
+tribution of the observed data will factor-
+
+ize as a product:
+
+P(D, W) =
+
+�
+
+(d,w)
+
+P(d, w).
+
+• Conditional independence.
+
+This means
+
+that words and documents are condi-
+
+tionally
+
+independent
+
+given
+
+the
+
+topic:
+
+P(w, d|z) = P(w|z)P(d|z) or P(w|d, z) =
+
+P(w|z). (This can be easily proved by us-
+
+ing d-separation into our graphical model:
+
+the path from d to w is blocked by z.)
+
+The model can be completely deﬁned by spec-
+
+ifying the joint distribution.
+
+We can obtain
+
+P(d, w) by using the product rule:
+
+P(d, w) = P(d)P(w|d)
+
+P(w|d) =
+
+�
+
+z∈Z
+
+P(w, z|d)
+
+=
+
+�
+
+z∈Z
+
+P(w|d, z)P(z|d).
+
+Using the conditional independence assump-
+
+tion, we obtain:
+
+P(w|d) =
+
+�
+
+z∈Z
+
+P(w|z)P(z|d)
+
+(1)
+
+P(w, d) =
+
+�
+
+z∈Z
+
+P(z)P(d|z)P(w|z).
+
+(2)
+
+Equation 1 is the mathematical represen-
+
+tation of the mixture model (see Figure 2).
+
+The parameters of the model are P(w|z) and
+
+P(z|d); their number is (M −1)K, respectively
+
+N(K − 1), which means that the total number
+
+of parameters grows linearly with the size of
+
+the corpus3 and the model becomes prone to
+
+overﬁtting (as stated in [1]). The parameters
+
+3We have (M − 1)K parameters for P(w|z), in-
+
+stead of MK, because of the normalization constraint
+
+�
+
+w∈W P(w|z) = 1, ∀z ∈ Z.
+
+The same reasoning ap-
+
+plies for the other case, P(z|d).
+
+2
+
+
+d1
+
+d2
+
+...
+
+dN
+
+z1
+
+...
+
+zK
+
+w1
+
+w2
+
+...
+
+wD
+
+Documents
+
+Latent
+
+Topics
+
+Words
+
+P(z|d)
+
+P(w|z)
+
+Figure 2:
+
+The general structure of pLSA
+
+model. This shows the intermediate layer of
+
+latent topics that links the documents and the
+
+words: each document can be represented as
+
+a mixture of concepts weighted by the proba-
+
+bility P(z|d) and each word expresses a topic
+
+with probability P(w|z).
+
+can be estimated via likelihood maximization,
+
+by ﬁnding those values that maximize the pre-
+
+dictive probability for the observed word oc-
+
+currences. The predictive probability of pLSA
+
+mixture model is denoted by P(w|d), so the
+
+objective function is given by the following ex-
+
+pression:
+
+L =
+
+�
+
+(d,w)
+
+P(w|d) =
+
+�
+
+d∈D
+
+�
+
+w∈W
+
+P(w|d)n(d,w) (3)
+
+where n(d, w) represents the observed frequen-
+
+cies, the number of times word w appears in
+
+document d. This is a non-convex optimiza-
+
+tion problem and it can be solved by using
+
+Expectation-Maximization (EM) algorithm for
+
+the log-likelihood:
+
+L = log L =
+
+�
+
+d∈D
+
+�
+
+w∈W
+
+n(d, w)
+
+· log
+
+�
+
+z∈Z
+
+P(w|z)P(z|d).
+
+(4)
+
+In the original paper [7], in order to avoid
+
+overﬁtting the author suggested an alternative
+
+heuristic approach for training—a “tempered”
+
+version of EM algorithm, similar to determin-
+
+istic annealing [15].
+
+2.2
+
+Matrix factorization
+
+Another way to present pLSA is as a matrix
+
+factorization approach.
+
+The document-word
+
+matrix that deﬁnes our dataset is a very large
+
+and sparse matrix; it has as many rows as doc-
+
+uments N, and the number of columns is equal
+
+to the number of diﬀerent words M that ap-
+
+pear in our corpus. Its sparseness comes from
+
+the from the fact that only a small percentage
+
+of the words are used in each document de-
+
+pending on its particular topic. So, the idea is
+
+to somehow reduce the dimensionality of our
+
+document-word matrix as most of its entries
+
+are zero and do not oﬀer particular informa-
+
+tion. This can be achieved by approximating
+
+the co-occurrence matrix (which it will be de-
+
+noted by A) as a product of two low-rank (thin-
+
+ner) matrices L and R. For example:
+
+A ≈ ˆA = L · R.
+
+(5)
+
+So, if the size of L is N ×K and the size of R is
+
+K × M, with K ≪ M, N, then this will fullﬁl
+
+the dimensionality reduction task, because N ·
+
+M ≫ N · K + K · M.
+
+Apart from this, we
+
+also expect that our matrices L and R reveal
+
+information about the latent structure of the
+
+data.
+
+If we look back to Equation 1, we easily ob-
+
+serve that what pLSA does is exactly a ma-
+
+trix factorization of the conditional distribu-
+
+tion P(w|d). In order to obtain the factoriza-
+
+tion of the full co-occurrence data P(w, d), we
+
+use Equation 2. In terms of matrix notation,
+
+that can be rewritten as follows:
+
+A = L · U · R.
+
+(6)
+
+3
+
+
+ˆA
+
+=
+
+L
+
+×
+
+U
+
+×
+
+R
+
+N
+
+M
+
+Figure 3: Alternative view of pLSA as a matrix decomposition technique. The matrix A denotes
+
+the document-term matrix. The green row represents the probabilities over a document P(d|z),
+
+the blue diagonal represents the probabilities over all the topics P(z) and the red column
+
+corresponds to the probabilites of a word being generated by each topic P(w|z).
+
+where he have the following relations (see Fig-
+
+ure 3):
+
+• L contains the document probabilities
+
+P(d|z).
+
+• U is a diagonal matrix of the prior proba-
+
+bilities of the topics P(z).
+
+• R corresponds to the word probability
+
+P(w|z).
+
+These matrices are non-negative and normal-
+
+ized, as they represent probability distribution.
+
+Consequently, these properties ensure diﬀerent
+
+results from plain LSI, which uses SVD and
+
+does not impose any constraints.
+
+3
+
+Applications
+
+to
+
+computer
+
+vision
+
+3.1
+
+Object categorization
+
+One extension of the pLSA model for com-
+
+puter vision applications was done by Sivic et
+
+al. [16]; they used this model on sets of images
+
+in order to extract object categories in an unsu-
+
+pervised manner. Also, they were able to clas-
+
+sify novel images with the help of the learned
+
+objects and to segment images by grouping to-
+
+gether local features that belong to a certain
+
+object.
+
+The standard pLSA framework (described
+
+in Section 2) was used; however, instead of
+
+documents the algorithm operated on images,
+
+the words were substituted by patches/visual
+
+words, and the topic was represented by a cat-
+
+egory of an object. The most acute diﬀerence
+
+from the previous case is that the “words” are
+
+not clearly speciﬁed for a set of pictures. These
+
+can be achieved in three steps4:
+
+Feature detection Elliptical regions are ex-
+
+tracted using an aﬃne invariant inter-
+
+est point detector [12]—this technique is
+
+also known as Harris-aﬃne detector and
+
+it “can identify similar regions between
+
+images that are related through aﬃne
+
+transformation and have diﬀerent illumi-
+
+nations”5 (see Figure 4a, ﬁrst 3 rows).
+
+Feature representation The previously de-
+
+tected patches are scaled to circles (see
+
+Figure 4a,
+
+last row) and their scale-
+
+invariant feature transform (SIFT) [11]
+
+descriptor is computed.
+
+Codebook generation As there are a huge
+
+number of resulted visual words (around
+
+4http://en.wikipedia.org/wiki/Bag_of_words_
+
+model_in_computer_vision
+
+Date
+
+last
+
+accessed:
+
+06/04/2011
+
+5http://en.wikipedia.org/wiki/Harris_affine_
+
+region_detector Date last accessed: 06/04/2011
+
+4
+
+
+
+
+(a) Examples of a visual “words” (source:
+
+[16]).
+
+
+
+(b) Example of a dictionary (source:
+
+[9]).
+
+Figure 4: The steps performed for obtaining the set of codewords.
+
+hundred of thousands [16]) their number
+
+is reduced through the process of vector
+
+quantization (to approximately 2000)—
+
+they are clustered using k-means algo-
+
+rithm and each cluster will be represented
+
+by its centroid (see Figure 4b).
+
+Thus a
+
+dictionary of “words” is determined and
+
+each image can be represented as a “bag”
+
+of these patches; consequently, the en-
+
+tire dataset can be represented as a co-
+
+occurrence matrix.
+
+In the following, we brieﬂy describe how
+
+pLSA was applied for diﬀerent goals:
+
+Object categorization The training process
+
+of pLSA yields the probabilities P(z|d)
+
+and
+
+P(w|z);
+
+using
+
+P(z|dn)
+
+for
+
+each
+
+image
+
+dn,
+
+the
+
+images
+
+were
+
+classiﬁed
+
+as
+
+containing
+
+object
+
+k,
+
+where
+
+k
+
+=
+
+argmaxzk∈Z P(zk|dn).
+
+Classify unseen images New
+
+images
+
+are
+
+classiﬁed by using the so-called “fold-in”
+
+technique.
+
+First, the standard training
+
+procedure (the EM algorithm) is done on
+
+the dataset. When we have a new query
+
+image dnew the training algorithm is re-
+
+run, but this time P(w|z) are kept ﬁxed to
+
+their previous values, while only P(z|dnew)
+
+is updated. In this manner we obtain the
+
+mixing coeﬃcients P(z|dnew) for the un-
+
+seen image.
+
+Segmentation Spatial segmentation can be
+
+achieved by using the posterior distribu-
+
+tion:
+
+P(z|w, d) = P(w|z, d)P(z|d)
+
+P(w|d)
+
+=
+
+=
+
+P(w|z)P(z|d)
+
+�
+
+z∈Z P(w|z)P(z|d).
+
+This gives us the probability of every word
+
+in an image of being generated by a certain
+
+topic. In [16], they selected the words that
+
+have a probability larger than 0.8.
+
+3.2
+
+Auto-annotation
+
+Monay et al.
+
+addressed the problem of im-
+
+age auto-annotation with pLSA model [13, 14].
+
+In their ﬁrst work [13], they use a pLSA-
+
+mixed system where every document is rep-
+
+resented by a pair image-annotation and the
+
+words are a concatenation of visual words and
+
+textual words (that are present in the anno-
+
+tation).
+
+This approach is based on the fact
+
+that the latent topics are the same for both
+
+the visual words and the text. However, for
+
+5
+
+
+datasets where the visual modality does not
+
+correspond to textual modailty, this method
+
+has drawbacks; this happens because if two
+
+pLSA models are ﬁtted—one on images and
+
+the other on text—they learn diﬀerent topics
+
+[14].
+
+In their next paper [14], they use two
+
+linked pLSA models that share the distribution
+
+over the topics P(z|d). The learning process is
+
+done in two steps: ﬁrst a model is ﬁtted only
+
+to the textual information and then the other
+
+model uses the previously obtained P(z|d) and
+
+learns the distribution over the visual words
+
+P(visual words|z).
+
+In this way the semantic
+
+consistency is ensured.
+
+Further reading
+
+• Original papers that introduce pLSA [7,
+
+6, 8].
+
+• Latent Dirichlet Allocation (Bayesian ver-
+
+sion of pLSA) [1] and its application to
+
+computer vision [9].
+
+• Other applications of pLSA to computer
+
+vision:
+
+– Scene classiﬁcaion via pLSA [2].
+
+– Multilayer pLSA for mutlimodal im-
+
+age retrieval [10].
+
+References
+
+[1] David M. Blei,
+
+Andrew Y. Ng,
+
+and
+
+Michael I. Jordan. Latent dirichlet allo-
+
+cation. J. Mach. Learn. Res., 3:993–1022,
+
+March 2003.
+
+[2] Anna Bosch,
+
+Andrew Zisserman,
+
+and
+
+Xavier Mu˜noz.
+
+Scene classiﬁcation via
+
+pLSA. In In Proc. ECCV, pages 517–530,
+
+2006.
+
+[3] Scott Deerwester.
+
+Improving Informa-
+
+tion Retrieval with Latent Semantic In-
+
+dexing.
+
+In Christine L. Borgman and
+
+Edward Y. H. Pai, editors, Proceedings
+
+of the 51st ASIS Annual Meeting (ASIS
+
+’88), volume 25, Atlanta, Georgia, Octo-
+
+ber 1988. American Society for Informa-
+
+tion Science.
+
+[4] Kevin
+
+Gimpel.
+
+Modelling
+
+topics.
+
+http://www.cs.cmu.edu/~nasmith/
+
+LS2/gimpel.06.pdf, 2006.
+
+Date last
+
+accessed: 06/04/2011.
+
+[5] Matthew D. Hoﬀman, David M. Blei, and
+
+Perry R. Cook.
+
+Finding latent sources
+
+in recorded music with a shift-invariant
+
+hdp. In International Conference on Dig-
+
+ital Audio Eﬀects (DAFx), 2009.
+
+[6] Thomas Hofmann. Probabilistic latent se-
+
+mantic analysis. In Proc. of Uncertainty
+
+in Artiﬁcial Intelligence, UAI’99, Stock-
+
+holm, 1999.
+
+[7] Thomas Hofmann. Probabilistic latent se-
+
+mantic indexing.
+
+In Proceedings of the
+
+22nd annual international ACM SIGIR
+
+conference on Research and development
+
+in information retrieval, SIGIR ’99, pages
+
+50–57, New York, NY, USA, 1999. ACM.
+
+[8] Thomas Hofmann. Unsupervised learning
+
+by probabilistic latent semantic analysis.
+
+Mach. Learn., 42:177–196, January 2001.
+
+[9] Fei-Fei Li and Pietro Perona. A bayesian
+
+hierarchical model for learning natural
+
+scene categories.
+
+In Proceedings of the
+
+2005 IEEE Computer Society Conference
+
+on Computer Vision and Pattern Recogni-
+
+tion (CVPR’05) - Volume 2 - Volume 02,
+
+CVPR ’05, pages 524–531, Washington,
+
+DC, USA, 2005. IEEE Computer Society.
+
+6
+
+
+[10] Rainer Lienhart, Stefan Romberg, and
+
+Eva H¨orster.
+
+Multilayer pLSA for mul-
+
+timodal image retrieval. In Proceeding of
+
+the ACM International Conference on Im-
+
+age and Video Retrieval, CIVR ’09, pages
+
+9:1–9:8, New York, NY, USA, 2009. ACM.
+
+[11] David G. Lowe. Object recognition from
+
+local scale-invariant features. In Proceed-
+
+ings of the International Conference on
+
+Computer Vision-Volume 2 - Volume 2,
+
+ICCV ’99, pages 1150–, Washington, DC,
+
+USA, 1999. IEEE Computer Society.
+
+[12] K. Mikolajczyk and C. Schmid. An aﬃne
+
+invariant interest point detector. In Pro-
+
+ceedings of the 7th European Conference
+
+on Computer Vision-Part I, ECCV ’02,
+
+pages 128–142, London, UK, UK, 2002.
+
+Springer-Verlag.
+
+[13] Florent Monay and Daniel Gatica-Perez.
+
+On image auto-annotation with latent
+
+space models.
+
+In Proceedings of the
+
+eleventh ACM international conference on
+
+Multimedia, MULTIMEDIA ’03, pages
+
+275–278, New York, NY, USA, 2003.
+
+ACM.
+
+[14] Florent Monay and Daniel Gatica-Perez.
+
+PLSA-based image auto-annotation: con-
+
+straining the latent space.
+
+In Proceed-
+
+ings of the 12th annual ACM interna-
+
+tional conference on Multimedia, MULTI-
+
+MEDIA ’04, pages 348–351, New York,
+
+NY, USA, 2004. ACM.
+
+[15] K. Rose, E. Gurewwitz, and G. Fox. A
+
+deterministic annealing approach to clus-
+
+tering. Pattern Recogn. Lett., 11:589–594,
+
+September 1990.
+
+[16] J. Sivic, B. C. Russell, A. A. Efros, A. Zis-
+
+serman, and W. T. Freeman. Discovering
+
+object categories in image collections. In
+
+Proceedings of the International Confer-
+
+ence on Computer Vision, 2005.
+
+7
+

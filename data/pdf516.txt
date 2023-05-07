@@ -1,0 +1,2417 @@
+
+A temporally abstracted Viterbi algorithm
+
+Shaunak Chatterjee
+
+Computer Science Division
+
+University of California, Berkeley
+
+Berkeley, CA 94720
+
+shaunakc@cs.berkeley.edu
+
+Stuart Russell
+
+Computer Science Division
+
+University of California, Berkeley
+
+Berkeley, CA 94720
+
+russell@cs.berkeley.edu
+
+Abstract
+
+Hierarchical problem abstraction, when ap-
+
+plicable, may oﬀer exponential reductions
+
+in
+
+computational
+
+complexity.
+
+Previous
+
+work on coarse-to-ﬁne dynamic programming
+
+(CFDP) has demonstrated this possibility us-
+
+ing state abstraction to speed up the Viterbi
+
+algorithm. In this paper, we show how to ap-
+
+ply temporal abstraction to the Viterbi prob-
+
+lem. Our algorithm uses bounds derived from
+
+analysis of coarse timescales to prune large
+
+parts of the state trellis at ﬁner timescales.
+
+We demonstrate improvements of several or-
+
+ders of magnitude over the standard Viterbi
+
+algorithm, as well as signiﬁcant speedups
+
+over CFDP, for problems whose state vari-
+
+ables evolve at widely diﬀering rates.
+
+1
+
+Introduction
+
+The Viterbi algorithm (Viterbi, 1967; Forney, 1973)
+
+ﬁnds the most likely sequence of hidden states, called
+
+the “Viterbi path,” conditioned on a sequence of ob-
+
+servations in a hidden Markov model (HMM). If the
+
+HMM has N states and the sequence is of length T,
+
+there are N T possible state sequences, but, because
+
+it uses dynamic programming (DP), the Viterbi algo-
+
+rithm’s time complexity is just O(N 2T). It is one of
+
+the most important and basic algorithms in the entire
+
+ﬁeld of information technology; its original applica-
+
+tion was in signal decoding but has since been used in
+
+numerous other applications including speech recog-
+
+nition (Rabiner, 1989), language parsing (Klein and
+
+Manning, 2003), and bioinformatics (Lytynoja and
+
+Milinkovitch, 2003).
+
+Finding a most-likely state sequence in an HMM is
+
+isomorphic to ﬁnding a minimum cost path through
+
+a state–time trellis graph (see Figure 1) whose link
+
+cost is the negative log probability of the correspond-
+
+ing transition–observation pair in the HMM. Thus, the
+
+cost of ﬁnding an optimal path can be reduced further
+
+using an admissible (lower bound) heuristic and A*
+
+graph search.
+
+Even with this improvement, the time and space cost
+
+can be prohibitive when N and T are very large; for
+
+example, with a state space deﬁned by 30 Boolean vari-
+
+ables, running Viterbi for a million time steps requires
+
+1024 computations. One possible approach to handle
+
+such problems is to use a state abstraction: a map-
+
+ping φ : S0 �→ S1 from the original state space S0 to a
+
+coarser state space S1. For stochastic models (such as
+
+an HMM), the parameters of the model in S1 are often
+
+chosen to be the maximum of the corresponding con-
+
+stituent parameters in S0. Although these parameters
+
+do not deﬁne a valid probability measure, they serve as
+
+admissible heuristics for an A* search. The same idea
+
+can be applied to produce a a hierarchy of abstrac-
+
+tions S0, S1, . . . , SL. Coarse-to-ﬁne dynamic program-
+
+ming or CFDP (Raphael, 2001) begins with SL and
+
+iteratively ﬁnds the shortest path in the current (ab-
+
+stracted) version of the graph and reﬁnes along it until
+
+the current shortest path is completely reﬁned. Several
+
+algorithms—e.g., hierarchical A* (Holte et al., 1996)
+
+and HA*LD (Felzenszwalb and McAllester, 2007)—are
+
+able to reﬁne only the necessary part of the hierarchy
+
+tree and compute heuristics only when needed.
+
+The Viterbi algorithm devotes equal eﬀort to every
+
+link in the state–time trellis. CFDP and its relatives
+
+can determine that an entire set of states need not
+
+be explored in detail, based on bounding the cost of
+
+paths through that set; but they do so separately for
+
+each time step.
+
+In this paper, we show how to use
+
+temporal abstraction to eliminate large sets of states
+
+from consideration over large periods of time.
+
+To motivate our algorithm, consider the following
+
+problem. We observe Judy’s daily tweets describing
+
+what she eats for lunch, and wish to infer the city in
+
+which she is staying on each day. The state space S0 is
+
+the set of all cities in the world. The abstract space S1
+
+is the set of countries, and S2 is the continents. (Fig-
+
+ure 1 shows a small example.) The transition model
+
+
+T=1
+
+T=2
+
+T=3
+
+T=4
+
+T=5
+
+New York
+
+Chicago
+
+Montreal
+
+Toronto
+
+London
+
+Manchester
+
+Munich
+
+Berlin
+
+U.S.A.
+
+Canada
+
+England
+
+Germany
+
+Europe
+
+North 
+
+America
+
+Figure 1:
+
+The state–time trellis for a small version of
+
+the tracking problem.
+
+The links have weights denoting
+
+probabilities of going from a city A to a city B in a day.
+
+The abstract state spaces S1 (countries depicted in green)
+
+and S2 (continents in yellow) are only shown for T=5 to
+
+maintain clarity. The observation links are also omitted
+
+for the same reason.
+
+suggests that on any given day Judy is unlikely to leave
+
+the city she is in, even less likely to leave the country
+
+she is in, and very unlikely indeed to travel to another
+
+continent. Thus, if Judy had Tandoori chicken on a
+
+Thursday but the rest of the week was all hamburgers,
+
+then it is most likely that she was in some American
+
+city for the entire week.
+
+However, if she had Tan-
+
+doori chicken and/or biryani for an entire week, then
+
+it is quite possible that she is in India. Our algorithm,
+
+temporally abstracted Viterbi (henceforth TAV), facil-
+
+itates reasoning over a temporal interval (like a week
+
+or month or longer) and localized search within those
+
+intervals. Neither of these is possible with Viterbi or
+
+state abstraction algorithms like CFDP. The compu-
+
+tational savings of TAV on an instance of this problem
+
+can be seen in Figure 2.
+
+Temporal abstractions have been well-studied in the
+
+context of planning (Sutton et al., 1999) and inference
+
+in dynamic Bayesian networks (Chatterjee and Rus-
+
+sell, 2010). An excellent survey of temporal abstrac-
+
+tion for dynamical systems can be found in (Pavliotis
+
+and Stuart, 2007). To the best of our knowledge, TAV
+
+is the ﬁrst algorithm to use temporal abstraction for
+
+general shortest-path problems. TAV is guaranteed to
+
+ﬁnd the Viterbi path, and does so (for certain problem
+
+instances) several orders of magnitude faster than the
+
+Viterbi algorithm and one to two orders of magnitude
+
+faster than CFDP.
+
+The rest of the paper is organized as follows. Section 2
+
+reviews the Viterbi algorithm and CFDP and intro-
+
+duces the notations and deﬁnitions used in the rest of
+
+the paper. Section 3 provides a detailed description
+
+of the main algorithm and establishes its correctness.
+
+10
+
+20
+
+30
+
+40
+
+50
+
+5
+
+10
+
+15
+
+20
+
+25
+
+Days
+
+Cities
+
+TAV refinements
+
+10
+
+20
+
+30
+
+40
+
+50
+
+5
+
+10
+
+15
+
+20
+
+25
+
+Days
+
+Cities
+
+CFDP refinements
+
+Figure 2: A comparison of the performance of CFDP and
+
+TAV on the city tracking problem with 27 cities, 9 countries
+
+and 3 continents over 50 days. The plots indicate portions
+
+of the state–time trellis each algorithm explored. Black,
+
+green and yellow squares denote the cities, countries and
+
+continents considered during search. The cyan dotted line
+
+is the optimal trajectory.
+
+Section 4 discusses the computation of temporal ab-
+
+straction heuristics. Section 5 presents some empiri-
+
+cal results to demonstrate the beneﬁts of TAV while
+
+section 6 provides some guidance on how to induce
+
+abstraction hierarchies.
+
+2
+
+Problem Formulation
+
+Consider a hidden Markov model (HMM) whose la-
+
+tent Markovian state X is in one of N discrete states
+
+{1, 2, . . . , N}.
+
+Let the actual state at time t be de-
+
+noted by Xt.
+
+The transition matrix A = {aij :
+
+i, j = 1, 2, . . . , N} deﬁnes the state transition probabil-
+
+ities where aij = p(Xt+1 = j | Xt = i).
+
+The Markov
+
+chain is assumed to be stationary, so aij is inde-
+
+pendent of t.
+
+Let the discrete observation space
+
+be the set {1, 2, . . . , M}.
+
+Let Yt be the observa-
+
+tion symbol at time t. The observation matrix B =
+
+{bik : i = 1, 2, . . . , N; k = 1, 2, . . . , M} deﬁnes the emis-
+
+sion probabilities where bik = p(Yt = k | Xt = i). (We
+
+assume a discrete observation space in this paper,
+
+but our methods naturally extend to the continu-
+
+ous case.)
+
+The initial state distribution is given by
+
+Π = {π1, . . . , πN} where πi = p(X0 = i).
+
+The Viterbi path is the maximum likelihood sequence
+
+of latent states conditioned on the observation se-
+
+quence. Following Rabiner (1989), we deﬁne
+
+δt(i) = max
+
+X0:t−1 p(X0:t−1, Xt = i, Y1:t | A, B, Π) ,
+
+i.e., the likelihood score of the optimal (most likely)
+
+sequence of hidden states (ending in state i) and the
+
+
+ﬁrst t observations. By induction on t, we have:
+
+δt+1(j) = [max
+
+i
+
+δt(i)aij]bjYt+1 .
+
+The actual state sequence is retrieved by tracking the
+
+transitions that maximize the δ(.) scores for each t and
+
+j. This is done via an array of back pointers ψt(j). The
+
+complete procedure (Rabiner, 1989) is as follows:
+
+1. Initialization
+
+δ1(i)
+
+=
+
+πi biY1,
+
+1 ≤ i ≤ N
+
+ψ1(i)
+
+=
+
+0
+
+2. Recursion
+
+δt(j) =
+
+max1≤i≤N[δt−1(i)aij]bjYt,
+
+2 ≤ t ≤ T
+
+ψt(j) =
+
+arg max1≤i≤N[δt−1(i)aij],
+
+2 ≤ t ≤ T
+
+3. Termination
+
+P ∗
+
+=
+
+max
+
+1≤i≤N[δT (i)]
+
+X∗
+
+T
+
+=
+
+arg max
+
+1≤i≤N
+
+[δT (i)]
+
+4. Path backtracking
+
+X∗
+
+t
+
+=
+
+ψt+1(X∗
+
+t+1),
+
+t = T − 1, T − 2, . . . , 1
+
+The time complexity of this algorithm is O(N 2T) and
+
+the space complexity is O(N 2 + NT).
+
+In coarse-to-ﬁne (a.k.a. hierarchical) approaches, in-
+
+ference is performed in the coarser models to re-
+
+duce the amount of computation needed in the
+
+ﬁner models.
+
+Typically, a set of abstract state
+
+spaces
+
+S = {S0, S1, . . . , SL}
+
+and
+
+abstract
+
+models
+
+M = {M0, M1, . . . , ML} are deﬁned where S0 (M0) is
+
+the original state space (model) and SL (ML) is the
+
+coarsest abstract state space (model). Let the param-
+
+eters of Ml be denoted by the set {Al, Bl, Πl}.
+
+A state in this hierarchy is denoted by sl
+
+i, where l is the
+
+abstraction level and i is its index within level l. Nl de-
+
+notes the number of states in level l. Let φ : Sl �→ Sl+1
+
+denote the mapping from any level l to its immediate
+
+abstract level l + 1.
+
+The parameters at level l + 1
+
+are deﬁned by taking the maximum of the component
+
+parameters at level l. Thus, Al+1 = {al+1
+
+ij }, where
+
+al+1
+
+ij
+
+= max
+
+p,q al
+
+pq
+
+s.t.
+
+φ(sl
+
+p) = sl+1
+
+i
+
+, φ(sl
+
+q) = sl+1
+
+j
+
+.
+
+Bl+1 and Πl+1 are deﬁned similarly in terms of Bl
+
+and Πl. Any transition/emission probability in an ab-
+
+stract model is a tight upper bound on the correspond-
+
+ing probability in its immediate reﬁnement.
+
+Hence,
+
+the cost (negative log probability) of an abstract tra-
+
+jectory can serve as an admissible heuristic to guide
+
+search in a more reﬁned state space.
+
+CFDP works by starting with only the coarsest states
+
+sL
+
+1:NL at every time step from 1 to T. The states in t
+
+and t+1 are connected by transition links whose values
+
+are given by AL. BL and ΠL deﬁne the other starting
+
+parameters. It then iterates between computing the
+
+optimal path in the current trellis graph and reﬁning
+
+the states (and thereby the associated links) along the
+
+current optimal path. The algorithm terminates when
+
+the current optimal path contains only completely re-
+
+ﬁned states (i.e., states in S0). A graphical depiction
+
+of how CFDP works is shown in Figure 5. The TAV
+
+algorithm, which also has an iterative structure, is de-
+
+scribed in the next section. We will be reusing notation
+
+and deﬁnitions from this section throughout the rest
+
+of the paper.
+
+3
+
+Main algorithm
+
+The distinguishing feature of TAV is its ability to
+
+reason with temporally abstract links. A link in the
+
+Viterbi algorithm and CFDP-like approaches describes
+
+the transition probability between states over a sin-
+
+gle time step. A temporally abstract link starting in
+
+state s1 at time t1 and ending in state s2 at time
+
+t2 &gt; t1 represents all trajectories having those end
+
+points and is denoted by a 4-tuple—((s1, t1), (s2, t2)).
+
+Links((s, t)) is the set of incoming links to state s at
+
+time t. Children(sl) = {s′ : s′ ∈ Sl−1, φ(s′) = sl} is
+
+the set of children of state sl in the abstraction hier-
+
+archy. We deﬁne three diﬀerent kinds of temporally
+
+abstract links:
+
+1. Direct links: d(s, t1, t2) represents the set of tra-
+
+jectories that start at (s, t1) and end in (s, t2) and
+
+stay within s for the entire time interval (t1, t2).
+
+2. Cross links: c((s1, t1), (s2, t2)) represents the set
+
+of trajectories from (s1, t1) to (s2, t2), when s1 ̸=
+
+s2.
+
+3. Re–entry links: r((s, t1), (s, t2)) represents the set
+
+of trajectories that start at (s, t1) and end in
+
+(s, t2) but move outside s at least once in the
+
+time interval (t1, t2). r((s1, t1), (s1, t2)) = ∅ when
+
+t2 − t1 ≤ 1.
+
+The direct and cross links are denoted graphically by
+
+straight lines, whereas the re-entry links are repre-
+
+sented by curved lines as shown in Figure 3. A generic
+
+link is denoted by the symbol k. The (heuristic) score
+
+of a temporally abstract link has to be an upper bound
+
+on the probability of all trajectories in the set of trajec-
+
+tories it represents. Computing admissible and mono-
+
+tone heuristics will be discussed in Section 4.
+
+Our algorithm’s computational savings over spatial ab-
+
+straction schemes come from two avenues—ﬁrst, fewer
+
+time points to consider using temporal abstraction;
+
+second, fewer states to reason about by considering
+
+constrained trajectories using direct links. Although
+
+
+the general ﬂow of the algorithm is similar to CFDP,
+
+the reﬁnement constructions are diﬀerent. The algo-
+
+rithm descriptions provided omit details about obser-
+
+vation matrix computations since they are standard.
+
+However, the issue is revisited in Section 4 to focus
+
+on some subtleties. The correctness of the algorithm
+
+depends only on the admissibility of the heuristics.
+
+3.1
+
+Reﬁnement constructions
+
+A reﬁnement of a temporally abstract link replaces
+
+the original link with a set of reﬁned links that repre-
+
+sent a partition—a mutually exclusive and exhaustive
+
+decomposition—of the set of trajectories represented
+
+by the original link. The reﬁnement allows us to rea-
+
+son about subsets of the original set of trajectories
+
+separately and thereby potentially narrow down on a
+
+single optimal trajectory. There are two diﬀerent kinds
+
+of reﬁnement constructions.
+
+3.1.1
+
+Spatial reﬁnement
+
+When a direct link, d(sl, t1, t2), lies on the optimal
+
+path, the natural thing to do is to reﬁne (partition)
+
+the set of trajectories it represents. The original di-
+
+rect link is replaced with all possible cross, direct and
+
+re-entry links between Children(sl) at t1 and t2. This
+
+is depicted graphically in Figure 3. A link is also re-
+
+ﬁned spatially if its time span (t2 − t1) is 1 time step
+
+since temporal reﬁnement is not a possibility.
+
+The
+
+pseudocode for spatial reﬁnement (see Algorithm 1)
+
+provides all the necessary details. It is trivial to show
+
+that the new links constitute a partition of the trajec-
+
+tories represented by the original link.
+
+Algorithm 1 Spatial Reﬁnement((p1, t1, p2, t2))
+
+C ← Children(p1); D ← Children(p2)
+
+if t2 − t1 &gt; 1 then
+
+Links(p1, t2) ← Links(p1, t2) \ d(p1, t1, t2)
+
+else
+
+5:
+
+Links(p2, t2) ← Links(p2, t2) \ k((p1, t1), (p2, t2))
+
+end if
+
+usedStates(t1) ← usedStates(t1) ∪ C
+
+usedStates(t2) ← usedStates(t2) ∪ D
+
+for all s ∈ D do
+
+10:
+
+Links(s, t2) ← Links(s, t2) ∪ d(s, t1, t2)
+
+for all s′ ∈ C do
+
+if s = s′ then
+
+Links(s, t2) ← Links(s, t2) ∪ r((s, t1), (s, t2))
+
+else
+
+15:
+
+Links(s, t2) ← Links(s, t2) ∪ c((s′, t1), (s, t2))
+
+end if
+
+end for
+
+end for
+
+3.1.2
+
+Temporal reﬁnement
+
+When a cross link c((s1, t1), (s2, t2)) or a re-entry link
+
+r((s1, t1), (s1, t2)) is selected for reﬁnement, we are
+
+faced with the task of reﬁning a set of trajectories that
+
+do not stay in the same state for the abstraction inter-
+
+val. This is a case where temporal abstraction is not
+
+helping (not at the current resolution at least).
+
+Spatial 
+
+Refinement
+
+s1
+
+l
+
+s2
+
+l
+
+s1
+
+l
+
+s2
+
+l
+
+s1
+
+l
+
+s1
+
+l
+
+s2
+
+l
+
+s2
+
+l
+
+s2
+
+l-1
+
+s2
+
+l-1
+
+s1
+
+l-1
+
+s1
+
+l-1
+
+T2
+
+T1
+
+T2
+
+T1
+
+Figure 3: Spatial reﬁnement: The optimal link, shown in
+
+bright red, is a direct link and is replaced with all possible
+
+links between its children.
+
+An example of temporal reﬁnement, which is only in-
+
+voked when t2 − t1 &gt; 1, is shown in Figure 4.
+
+It
+
+results in splitting the time interval (t1, t2) into two
+
+sub-intervals that together span the original interval.
+
+Let us assume that we select the (rounded oﬀ) mid-
+
+point of the interval. When a link is temporally re-
+
+ﬁned , we temporally split all cross, re-entry and di-
+
+rect links spanning the interval (t1, t2) between states
+
+in Children(φ(s1)). We will show later that for any
+
+link longer than 1 time step, φ(s1) = φ(s2). It should
+
+be noted that re-entry links are only added when the
+
+sub–interval length is longer than 1 time step. Also, if
+
+t2 − t1 = 1, then a cross link is spatially reﬁned (anal-
+
+ogous to CFDP).
+
+One possibility is that some of the direct links for
+
+states in Children(φ(s1)) between (t1, t2) were already
+
+spatially reﬁned. In that case, we apply temporal re-
+
+ﬁnement recursively to the spatially reﬁned links of
+
+those direct links.
+
+The choice of the splitting point
+
+does not aﬀect the correctness of the algorithm as long
+
+as the split is replicated in the instantiated portion of
+
+the state space tree rooted at φ(s1). The pseudocode
+
+(shown in Algorithm 2) provides details of this proce-
+
+dure.
+
+Lemma 3.1 The sets of trajectories represented by
+
+links before and after any spatial or temporal reﬁne-
+
+ment are the same.
+
+Also, every trajectory is repre-
+
+sented by exactly one temporally abstract path.
+
+Lemma 3.2 Any link created by TAV will always be
+
+between two states at the same level of abstraction. If
+
+the time span of the link is greater than 1 time step,
+
+then those two states will also have the same parent at
+
+all coarser levels of abstraction.
+
+Proof The original links are all between states of level
+
+L. Both reﬁnement constructions add links only be-
+
+tween states at the same abstraction level. This proves
+
+
+Algorithm 2 Temporal Reﬁnement((parent, t1, t2))
+
+nT ← ⌈(t1 + t2)/2⌉
+
+if parent ∈ usedStates(nT) then
+
+return
+
+end if
+
+5: usedTimes ← usedTimes ∪ nT
+
+C ← Children(parent)
+
+usedStates(nT) ← usedStates(nT) ∪ C
+
+for all s ∈ C do
+
+if d(s, t1, t2) /∈ Links(s, t2) then
+
+10:
+
+Temporal Refinement(s, t1, t2)
+
+Links(s, t2) ← ∅
+
+Links(s, nT) ← ∅
+
+else
+
+Links(s, t2) ← {d(s, nT, t2)}
+
+15:
+
+Links(s, nT) ← {d(s, t1, nT)}
+
+end if
+
+for all s′ ∈ C do
+
+Links(s, t2) ← Links(s, t2) \ k((s′, t1), (s, t2))
+
+Links(s, t2) ← Links(s, t2) ∪ k((s′, nT), (s, t2))
+
+20:
+
+Links(s, nT) ← Links(s, nT) ∪ k((s′, t1), (s, nT))
+
+end for
+
+end for
+
+Temporal 
+
+Refinement
+
+T2
+
+T1
+
+T2
+
+T1
+
+T
+
+s1
+
+l
+
+s2
+
+l
+
+s1
+
+l
+
+s2
+
+l
+
+s1
+
+l
+
+s2
+
+l
+
+s1
+
+l
+
+s2
+
+l
+
+s1
+
+l
+
+s2
+
+l
+
+Figure 4: Temporal reﬁnement: When reﬁning a cross or
+
+re-entry link, reﬁne all links between nodes that have the
+
+same parent as the nodes of the selected link.
+
+the ﬁrst statement.
+
+Moreover, upon initialization,
+
+there is no coarser level of abstraction—hence the sec-
+
+ond part of the statement is vacuously true. Temporal
+
+reﬁnement always considers links between descendants
+
+of the parent node. Spatial reﬁnement also adds links
+
+between Children(sl) of a state sl except when the
+
+time step is 1. This proves the second statement. □
+
+3.2
+
+Modiﬁed Viterbi algorithm
+
+It is possible to have links to a state s and to its
+
+abstraction φ(s) at the same time step t (see Fig-
+
+ure 5(b)).
+
+This was not possible in CFDP. Hence,
+
+we need a slightly modiﬁed scoring and backtracking
+
+scheme. δt(s) is the best score of a trajectory ending
+
+in state s at time t and ψt(s) contains the temporally
+
+abstract link’s information which connects (s, t) to its
+
+predecessor. usedTimes is a sorted list of time steps
+
+which have links to or from it. usedStates(t) is the
+
+set of nodes at time t which have incoming or out-
+
+Algorithm 3 BestPath(Links, usedStates, usedTimes)
+
+curTime ← 1
+
+while curTime &lt; T do
+
+curTime ← nextUsedTime(curTime, usedTimes)
+
+for all s ∈ UsedStates(curTime) do
+
+5:
+
+δt(s) ← MaxOverLinks(Links((s, curTime)), δ)
+
+ψt(s) ← ArgMaxOverLinks(Links((s, curTime)), δ)
+
+end for
+
+for level = L − 1 to 0 do
+
+for all s ∈ Slevel &amp;&amp; s ∈ usedStates(curTime) do
+
+10:
+
+if δt(φ(s)) &gt; δt(s) then
+
+δt(s) ← δt(φ(s))
+
+ψt(s) ← ψt(φ(s))
+
+end if
+
+end for
+
+15:
+
+end for
+
+for level = 0 to L-1 do
+
+for all s ∈ Slevel &amp;&amp; s ∈ usedStates(curTime) do
+
+if δt(φ(s)) ≤ δt(s) then
+
+δt(φ(s)) ← δt(s)
+
+20:
+
+ψt(φ(s)) ← ψt(s)
+
+end if
+
+end for
+
+end for
+
+end while
+
+25: s∗ ← arg maxs∈usedStates(T ) δT (s)
+
+curTime ← 1;
+
+Path ← ∅
+
+while curTime &gt; 1 do
+
+Path ← Path ∪ ψcurT ime(s∗)
+
+(s∗, curTime) ← ψcurT ime(s∗)
+
+30: end while
+
+return Path
+
+going links. The score computation algorithm moves
+
+forward in time like the normal Viterbi algorithm. The
+
+score computation (at each used time step t) is done
+
+in 3 phases. The pseudocode is given in Algorithm 3.
+
+1. δt(s) is computed using the best of its incoming
+
+links, Links(s, t) and ψt(s) points to that link.
+
+2. Starting at level L − 1 and going down to level 0,
+
+a state s gets its parent’s (φ(s)) score and back-
+
+pointer if φ(s) has a higher score.
+
+3. Starting from level 0 and going up to level L − 1,
+
+a state s’s parent φ(s) gets its child’s score and
+
+backpointer if s has a higher score
+
+Theorem 3.3 The
+
+score
+
+δt(s)
+
+computed
+
+by
+
+the
+
+BestPath procedure is a strict upper bound on all tra-
+
+jectories ending in state s at time t given the current
+
+abstracted version of the state-time trellis.
+
+Proof Any trajectory ending in a state ˆs, which is
+
+neither an ancestor nor a descendant of s, does not in-
+
+clude any trajectory to s. Hence, BestPath computes
+
+an upper bound on the score of the best trajectory
+
+ending in state s at time t.
+
+For the bound to be strict, it is suﬃcient to show that
+
+each phase of BestPath only considers scores of such
+
+nodes where every incoming link includes at least one
+
+trajectory to s. The ﬁrst phase accounts for all the
+
+incoming links to node s itself. Let φ∗(s) denote an
+
+ancestor of s. Any incoming link (direct, cross or re–
+
+entry) to φ∗(s) includes at least one trajectory to s.
+
+
+This necessitates taking the maximum over δt(φ∗(s))
+
+(step 2).
+
+Finally, any trajectory ending in state s′,
+
+where s′ is a descendant of s, is by deﬁnition, a tra-
+
+jectory ending in s. Hence, the upper bound is strict.
+
+□
+
+The ordering of the phases is important to perform the
+
+desired computation correctly and eﬃciently.
+
+3.3
+
+Complete algorithm
+
+The algorithmic structure of TAV and CFDP are quite
+
+similar.
+
+The complete speciﬁcation of TAV is pre-
+
+sented in Algorithm 4. CFDP has a diﬀerent initializa-
+
+tion and reﬁnement is node–based (TAV is link–based)
+
+which introduces links between states at diﬀerent lev-
+
+els of abstraction. The two initializations are shown in
+
+Figure 5(a). CFDP’s initial conﬁguration has no tem-
+
+porally abstract links. The algorithm iterates between
+
+two stages: computing the optimal path in the cur-
+
+rent graph and reﬁning links along the current optimal
+
+path. A few steps of execution of the two algorithms
+
+are shown on an example in Figure 5.
+
+Algorithm 4 TAV(A, B, Π, φ, Y1:T )
+
+δ1(.) ← ScoreInitialization(Π)
+
+usedStates(1) = usedStates(T) = SL
+
+usedTimes = {1, T}
+
+for all s ∈ SL do
+
+5:
+
+Links(s, T) ← d(s, 1, T)
+
+for all s′ ∈ SL do
+
+Links(s, T) ← Links(s, T) ∪ k((s′, 1), (s, T))
+
+end for
+
+end for
+
+10: V iterbiPathFound ← 0
+
+while V iterbiPathFound = 0 do
+
+Path = BestPath(Links, usedStates, usedTimes)
+
+V iterbiPathFound = 1
+
+for all k ∈ Path do
+
+15:
+
+((s1, t1), (s2, t2)) ← details(k)
+
+if level(s1) &gt; 1 || ¬isDirect(k) then
+
+V iterbiPathFound = 0
+
+end if
+
+if isDirect(k) || t2 − t1 = 1 then
+
+20:
+
+Spatial Refinement(k)
+
+else
+
+Temporal Refinement(k)
+
+end if
+
+end for
+
+25: end while
+
+The correctness of the algorithm follows from the opti-
+
+mality of A* search and Lemma 3.1 and Theorem 3.3.
+
+4
+
+Heuristics for temporal abstraction
+
+In hierarchical state abstraction schemes, computing
+
+heuristics involves taking the maximum of a set of sin-
+
+gle time step transition probabilities. As mentioned
+
+in Section 2, this can be done by hierarchically con-
+
+structing Al, Bl and Πl.
+
+For temporal abstractions
+
+however, there are more design choices to be made
+
+when it comes to computing heuristic scores of links.
+
+There is a more signiﬁcant tradeoﬀ between cost of
+
+computation and quality of heuristic.
+
+The heuristic score of a direct link is very easy to com-
+
+pute. We do not have to select between possible state
+
+transitions.
+
+Thus, the heuristic for a link spanning
+
+the interval (t1, t2) can be done in O(t2 − t1), since we
+
+still need to account for all the observations in that
+
+interval. If the score is cached, the score for any sub-
+
+interval is computable in O(1) time.
+
+Cross links and re–entry links require further consid-
+
+eration. A somewhat expensive option is to compute
+
+the Viterbi path in the restricted scope. As Lemma 3.2
+
+shows, a cross or a re–entry link represents trajectories
+
+that can switch between sibling states (the ones which
+
+map to the same parent via φ). In an abstraction hier-
+
+archy, if the cardinality of Children(s) for any state s
+
+is restricted to some constant C, then computing this
+
+heuristic will require O(C2(t2 − t1)) time.
+
+A computationally cheaper but relatively loose heuris-
+
+tic is the following:
+
+h((si, t1), (sj, t2))
+
+=
+
+max
+
+k
+
+ˆAik max
+
+p,q
+
+ˆAt2−t1−2
+
+pq
+
+max
+
+k
+
+ˆAkj
+
+�
+
+t
+
+max
+
+k
+
+ˆBkYt
+
+ˆA and ˆB represent the transition matrices for the set
+
+Children(φ(si)). This heuristic chooses the best possi-
+
+ble transition at every time step other than the two end
+
+points and also the best possible observation probabil-
+
+ity. Its computational complexity is O(C2 + (t2 − t1)).
+
+Caching values help in both cases. The Viterbi heuris-
+
+tic, being tighter, leads to fewer iterations but needs
+
+more computation time.
+
+We will compare the two
+
+heuristics in our experiments.
+
+5
+
+Experiments
+
+The simulations we performed were aimed at showing
+
+the beneﬁt of TAV over Viterbi and CFDP. The ben-
+
+eﬁts are magniﬁed in systems where variables evolve
+
+at widely varying timescales. The timescale of a ran-
+
+dom variable is the expected number of time steps in
+
+which it changes state. A person’s continental location
+
+would have a very large timescale, whereas his zip code
+
+location would have a much smaller timescale.
+
+A natural way to generate transition matrices with
+
+timescale separation is to use a dynamic Bayesian net-
+
+work (DBN). We consider a DBN with n variables,
+
+each of which has a cardinality of k. Hence, the state
+
+space size N is kn. We used fully connected DBNs
+
+in our simulations. Our observation matrix was mul-
+
+timodal (hence somewhat informative). A DBN with
+
+a parameter ϵ means that the timescales of succes-
+
+sive variables have a ratio of ϵ. The fastest variable’s
+
+timescale is 1/ϵ and the slowest variable’s (1/ϵ)k.
+
+The state space hierarchy at the most abstract level
+
+arises from the branching of the slowest variable. In
+
+
+
+
+
+
+(a)
+
+
+
+
+
+
+
+
+
+(b)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+(c)
+
+
+
+
+
+
+
+
+
+
+
+(d)
+
+Figure 5: Sample run: TAV: (a) Initialization. The optimal path is a direct link—hence spatial reﬁnement. The new
+
+additions are shadowed. (b) A re-entry link is optimal—hence temporal reﬁnement. Since one direct link among siblings
+
+was already reﬁned in Step 1, we also temporally reﬁne the spatially reﬁned component. (c) The optimal path has links at
+
+diﬀerent levels of abstraction. Such scenarios necessitate the BestPath procedure. (d) More recursive temporal reﬁnement
+
+is performed. Note the diﬀerence in the numbers of links in the two graphs after 3 iterations.
+
+each subtree, we branch on the next slowest variable.
+
+In the experiments in this section we assume that the
+
+abstraction hierarchy is given to us.
+
+5.1
+
+Varying T, N and ϵ
+
+To study the eﬀect of increasing T on the computa-
+
+tion time, we generated 2 sequences of length 100000
+
+with ϵ = .1 (case 1) and .05 (case 2).
+
+N was 256
+
+and the abstraction hierarchy was a binary tree. For
+
+each sequence, we found the Viterbi path for the ﬁrst
+
+T timesteps using TAV, CFDP and the Viterbi algo-
+
+rithm. The results are shown in Figure 6(a). TAV’s
+
+computational complexity is marginally super-linear.
+
+This is because TAV might need to search in the in-
+
+terval [0, T] even if it had found the Viterbi sequence in
+
+that interval as new observations (after time T) come
+
+in. For the ϵ values used, TAV is more than 2 orders
+
+of magnitude faster than Viterbi and 1 order of mag-
+
+nitude faster than CFDP.
+
+It is intuitive that TAV will beneﬁt more from a
+
+smaller ϵ (i.e.
+
+a larger timescale).
+
+As Figure 6(a)
+
+shows, CFDP also beneﬁts from the timescale artifact.
+
+However, TAV’s gains are larger and also grow more
+
+quickly with diminishing ϵ. This set of experiments
+
+had N = 256 and T = 10000.
+
+Finally, to check the eﬀect of the state space size, we
+
+chose ϵ = .5 (case 1) and .25 (case 2). We chose fast
+
+timescales to show the limitations of TAV (having al-
+
+ready demonstrated its beneﬁts for small ϵ). As Fig-
+
+ure 6(a) shows, TAV is 3x to 10x faster than CFDP
+
+for N &lt; 1024. However, CFDP is about 6x faster than
+
+TAV for N = 2048. In this case, TAV performs poorly
+
+because of its initialization as a single interval. For
+
+fast timescales, the ﬁrst few reﬁnements in this setting
+
+are invariably temporal and these reﬁnements can be
+
+computationally very expensive.
+
+5.2
+
+A priori temporal reﬁnement
+
+If T is comparable to the timescale of the slowest vari-
+
+able, then one or more temporal reﬁnements at the
+
+very outset of TAV is very likely.
+
+Performing these
+
+reﬁnements a priori will be beneﬁcial if TAV actually
+
+had to perform those reﬁnements. The beneﬁt would
+
+be proportional to the cost of deciding whether to re-
+
+ﬁne or not. This decision cost increases with T and N
+
+(but does not depend on ϵ).
+
+Figure 6(b) shows the computation time for cases
+
+where we initialized TAV with 20 equal segments. The
+
+a priori reﬁnement time was also included in the “Pre-
+
+Segmentation” time. Speedups of 2x to 6x were ob-
+
+
+10
+
+3
+
+10
+
+4
+
+10
+
+5
+
+10
+
+0
+
+10
+
+2
+
+10
+
+4
+
+10
+
+6
+
+Time Horizon
+
+Computation Time (sec)
+
+ 
+
+ 
+
+TAV−1
+
+CFDP−1
+
+TAV−2
+
+CFDP−2
+
+Viterbi
+
+10
+
+−3
+
+10
+
+−2
+
+10
+
+−1
+
+10
+
+0
+
+10
+
+2
+
+10
+
+4
+
+10
+
+6
+
+ε
+
+ 
+
+ 
+
+TAV
+
+CFDP
+
+Viterbi
+
+64
+
+256
+
+1024
+
+10
+
+0
+
+10
+
+2
+
+10
+
+4
+
+10
+
+6
+
+State space size
+
+ 
+
+ 
+
+TAV−1
+
+CFDP−1
+
+TAV−2
+
+CFDP−2
+
+Viterbi
+
+(a)
+
+10
+
+3
+
+10
+
+4
+
+10
+
+5
+
+10
+
+0
+
+10
+
+1
+
+10
+
+2
+
+10
+
+3
+
+10
+
+4
+
+Time Horizon
+
+Computation Time (sec)
+
+ 
+
+ 
+
+TAV
+
+Pre−segmentation
+
+TAV−Viterbi
+
+10
+
+−3
+
+10
+
+−2
+
+10
+
+−1
+
+10
+
+0
+
+10
+
+1
+
+10
+
+2
+
+ε
+
+ 
+
+ 
+
+TAV
+
+Pre−segmentation
+
+TAV−Viterbi
+
+64
+
+256
+
+1024
+
+10
+
+2
+
+10
+
+3
+
+10
+
+4
+
+State space size
+
+ 
+
+ 
+
+TAV
+
+Pre−segmentation
+
+TAV−Viterbi
+
+(b)
+
+Figure 6: Simulation results: (a) The computation time of Viterbi, CFDP and TAV with varying T (left), ϵ (middle)
+
+and N (right).
+
+(b) The computation time of TAV and its two extensions—pre-segmentation and using the Viterbi
+
+heuristic—with varying T (left), ϵ (middle) and N (right).
+
+tained for varying values of N and T.
+
+When only
+
+ϵ was varied, the beneﬁt was approximately constant
+
+(between 3 to 6 seconds of computation time). This re-
+
+sulted in eﬀective speedups only for the smaller values
+
+of ϵ, which had small computation times.
+
+5.3
+
+Impact of heuristics
+
+As discussed in Section 4, there is a trade-oﬀ in com-
+
+puting heuristics between accuracy and computation
+
+time.
+
+Figure 6(b) compares the eﬀect of using the
+
+Viterbi heuristic instead of the cheap heuristic de-
+
+scribed previously.
+
+With increasing T, there was a
+
+small improvement in computation time, although the
+
+speedup was never greater than 2x. The two compu-
+
+tation times were virtually the same with increasing ϵ.
+
+For large state spaces, the Viterbi heuristic produced
+
+more than 5x speedup (which made it comparable to
+
+CFDP).
+
+The main reason for the lack of improvement (in com-
+
+putation time) is the randomness of the data gener-
+
+ation process. The Viterbi heuristic can signiﬁcantly
+
+outperform the cheap heuristic only if the most likely
+
+state sequences according to the transition model re-
+
+ceive very poor support from the observations. In that
+
+case, the cheap heuristic will provide very inaccurate
+
+bounds and mislead the search. In randomly gener-
+
+ated models however, the two heuristics demonstrate
+
+comparable performance.
+
+6
+
+Hierarchy induction
+
+Till this point, we have assumed that the abstraction
+
+hierarchy will be an input to the algorithm.
+
+How-
+
+ever, in many cases, we might have to construct our
+
+own hierarchy. Spectral clustering (Ng et al., 2001) is
+
+one technique which we have used in our experiments
+
+to successfully induce hierarchies.
+
+If the underlying
+
+structure is a DBN of binary variables with timescale
+
+separation between each variable (as discussed in Sec-
+
+tion 5), there will be a gap in the eigenvalue spectrum
+
+after the two largest values. The ﬁrst two eigenvectors
+
+will be analogous to indicator functions for branching
+
+on the slowest variable. We can then apply the method
+
+recursively within each cluster. The main drawback is
+
+the O(N 3) computational cost. It can be argued that
+
+this is an oﬄine and one-time cost—nonetheless it is
+
+quite expensive. It should be noted that spatial hier-
+
+archy induction is also a hard problem.
+
+Let 28 denote a 8-variable DBN where each variable is
+
+binary. The slowest variables are placed at the left—
+
+hence 4224 denotes a DBN whose two slowest variables
+
+are 4-valued. As we change the underlying model from
+
+28 to 44 to 162, is there a particular abstraction hier-
+
+archy which performs well for all the models?
+
+
+2^8 
+
+ 
+
+ 
+
+4^4 
+
+ 
+
+ 
+
+16^2
+
+10
+
+1
+
+10
+
+2
+
+10
+
+3
+
+10
+
+4
+
+Computation Time (sec)
+
+28 data model
+
+ 
+
+ 
+
+TAV−1
+
+CFDP−1
+
+TAV−2
+
+CFDP−2
+
+2^8 
+
+ 
+
+ 
+
+4^4 
+
+ 
+
+ 
+
+16^2
+
+10
+
+1
+
+10
+
+2
+
+10
+
+3
+
+10
+
+4
+
+Tree Structure
+
+44 data model
+
+ 
+
+ 
+
+TAV−1
+
+CFDP−1
+
+TAV−2
+
+CFDP−2
+
+2^8 
+
+ 
+
+ 
+
+4^4 
+
+ 
+
+ 
+
+16^2
+
+10
+
+1
+
+10
+
+2
+
+10
+
+3
+
+10
+
+4
+
+162 data model
+
+ 
+
+ 
+
+TAV−1
+
+CFDP−1
+
+TAV−2
+
+CFDP−2
+
+Figure 7: Eﬀect of abstraction hierarchy: For diﬀerent underlying models (28, 44 and 162), deep hierarchies outperform
+
+shallow hierarchies. Cases 1 and 2 have ϵ = 0.1 and .05 respectively
+
+For the experiments, we generated 3 diﬀerent data sets
+
+using the following DBNs—28 (left), 44 (middle) and
+
+162 (right)—with N = 256. On each data set, we used
+
+the following abstraction hierarchies (28; 2442; 4224;
+
+44; 4182; 8241; 162). The results in Figure 7 show the
+
+computation time for TAV and CFDP using diﬀerent
+
+abstraction hierarchies (deepest on the left to shallow-
+
+est on the right) for two diﬀerent values of ϵ. Both TAV
+
+and CFDP perform better with deeper hierarchies, al-
+
+though the improvement is much more pronounced for
+
+TAV. The trend across all 3 underlying data models
+
+indicates that we could always induce a deep hierar-
+
+chy. The beneﬁt of lightweight local searches in a deep
+
+hierarchy seems to outweigh the cost of the necessary
+
+additional reﬁnements.
+
+7
+
+Conclusion
+
+We have presented a temporally abstracted Viterbi al-
+
+gorithm, that can reason about sets of trajectories and
+
+uses A* search to provably reach the correct solution.
+
+Direct links provide a way to reason about trajecto-
+
+ries within a set of states—something that previous
+
+DP algorithms did not do. For systems with widely
+
+varying timescales, TAV can outperform CFDP hand-
+
+somely. Our experiments conﬁrm the intuition—the
+
+greater the timescale separation, the more the compu-
+
+tational beneﬁt.
+
+Another smart feature of our algorithm is that it can
+
+exploit multiple timescales present in a system by
+
+adaptive spatial and temporal reﬁnements. TAV’s lim-
+
+itations arise when the system has frequent state tran-
+
+sitions and in such cases, it is better to fall back on the
+
+conventional Viterbi algorithm (CFDP is often slower
+
+as well in such cases). It might be possible to design
+
+an algorithm that uses temporal abstraction and can
+
+also switch to conventional Viterbi when the heuristic
+
+scores of direct links are low.
+
+Acknowledgements
+
+We would like to acknowledge NSF for their support
+
+(grant no. IIS-0904672). We would also like to thank
+
+Jason Wolfe, Aastha Jain and the anonymous review-
+
+ers for their comments and suggestions.
+
+References
+
+Chatterjee, S. and Russell, S. (2010).
+
+Why are DBNs
+
+sparse?.
+
+Journal of Machine Learning Research -
+
+Proceedings Track, 9, 81–88.
+
+Felzenszwalb, P. F. and McAllester, D. (2007). The gener-
+
+alized A* architecture. J. Artif. Int. Res., 29, 153–
+
+190.
+
+Forney, G.D., J. (1973). The Viterbi algorithm. Proceedings
+
+of the IEEE, 61(3), 268 – 278.
+
+Holte, R. C., Perez, M. B., Zimmer, R. M., and Mac-
+
+Donald, A. J. (1996).
+
+Hierarchical A*: Searching
+
+Abstraction Hierarchies Eﬃciently. In AAAI/IAAI,
+
+Vol. 1, pp. 530–535.
+
+Klein, D. and Manning, C. D. (2003). A* Parsing: Fast
+
+Exact Viterbi Parse Selection. In HLT-NAACL.
+
+Lytynoja, A. and Milinkovitch, M. C. (2003). A hidden
+
+markov model for progressive multiple alignment.
+
+Bioinformatics, 19(12), 1505–1513.
+
+Ng, A. Y., Jordan, M. I., and Weiss, Y. (2001). On spectral
+
+clustering: Analysis and an algorithm. In NIPS, pp.
+
+849–856.
+
+Pavliotis, G. A. and Stuart, A. M. (2007). Multiscale meth-
+
+ods: Averaging and homogenization. Springer.
+
+Rabiner, L. (1989).
+
+A tutorial on hidden Markov mod-
+
+els and selected applications in speech recognition.
+
+Proceedings of the IEEE, 77(2), 257 –286.
+
+Raphael, C. (2001).
+
+Coarse-to-Fine Dynamic Program-
+
+ming. IEEE Transactions on Pattern Analysis and
+
+Machine Intelligence, 23, 1379–1390.
+
+Sutton, R. S., Precup, D., and Singh, S. P. (1999). Between
+
+MDPs and Semi-MDPs: A Framework for Temporal
+
+Abstraction in Reinforcement Learning.
+
+Artif. In-
+
+tell., 112(1-2), 181–211.
+
+Viterbi, A. (1967). Error bounds for convolutional codes
+
+and an asymptotically optimum decoding algorithm.
+
+Information Theory, IEEE Transactions on, 13(2),
+
+260 – 269.
+

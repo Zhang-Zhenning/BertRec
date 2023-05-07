@@ -1,0 +1,1109 @@
+
+Mono vs Multilingual BERT for Hate Speech
+
+Detection and Text Classiﬁcation: A Case Study in
+
+Marathi
+
+Abhishek Velankar
+
+Pune Institute of Computer Technology
+
+L3Cube Pune
+
+velankarabhishek@gmail.com
+
+Hrushikesh Patil
+
+Pune Institute of Computer Technology
+
+L3Cube Pune
+
+hrushi2900@gmail.com
+
+Raviraj Joshi
+
+Indian Institute of Technology Madras
+
+L3Cube Pune
+
+ravirajoshi@gmail.com
+
+Abstract—Transformers are the most eminent architectures
+
+used for a vast range of Natural Language Processing tasks.
+
+These models are pre-trained over a large text corpus and
+
+are meant to serve state-of-the-art results over tasks like text
+
+classiﬁcation. In this work, we conduct a comparative study
+
+between monolingual and multilingual BERT models. We focus
+
+on the Marathi language and evaluate the models on the datasets
+
+for hate speech detection, sentiment analysis, and simple text
+
+classiﬁcation in Marathi. We use standard multilingual models
+
+such as mBERT, indicBERT, and xlm-RoBERTa and compare
+
+them with MahaBERT, MahaALBERT, and MahaRoBERTa,
+
+the monolingual models for Marathi. We further show that
+
+Marathi monolingual models outperform the multilingual BERT
+
+variants in ﬁve different downstream ﬁne-tuning experiments.
+
+We also evaluate sentence embeddings from these models by
+
+freezing the BERT encoder layers. We show that monolingual
+
+MahaBERT-based models provide rich representations as com-
+
+pared to sentence embeddings from multi-lingual counterparts.
+
+However, we observe that these embeddings are not generic
+
+enough and do not work well on out-of-domain social media
+
+datasets. We consider two Marathi hate speech datasets L3Cube-
+
+MahaHate, HASOC-2021, a Marathi sentiment classiﬁcation
+
+dataset L3Cube-MahaSent, and Marathi Headline, Articles clas-
+
+siﬁcation datasets.
+
+Index Terms—Natural Language Processing, Text Classiﬁca-
+
+tion, Hate Speech Detection, Sentiment Analysis, BERT, Marathi
+
+BERT
+
+I. INTRODUCTION
+
+The language models like BERT, built over the transformer
+
+architecture, have gained a lot of popularity due to the
+
+promising results on an extensive range of natural language
+
+processing tasks. These large models make use of attention
+
+mechanism from transformers and understand the language
+
+deeper in terms of context. These models can be ﬁne-tuned
+
+on domain-speciﬁc data to obtain state-of-the-art solutions.
+
+More recently, there has been a signiﬁcant amount of
+
+research on monolingual and multilingual language models,
+
+speciﬁcally the BERT variants. Due to the variety of text
+
+corpus in terms of languages used for training, multilin-
+
+gual models ﬁnd notable beneﬁts over multiple applications,
+
+speciﬁcally for the languages that are low in resources [1]–
+
+[3]. However, the monolingual models, when used in the
+
+Supported by L3Cube Pune
+
+corresponding language, outperform the multilingual versions
+
+in tasks like text classiﬁcation. Both the categories of models
+
+ﬁnd their use in several problems like next sentence prediction,
+
+named entity recognition, sentiment analysis, etc. Recently, a
+
+substantial amount of work can be seen with the use of these
+
+models in native languages. [4] propose monolingual BERT
+
+models for the Arabic language and show that these models
+
+achieve state-of-the-art performances. Additionally, [5], [6],
+
+[7] show that the single language models, when used for
+
+the corresponding language tasks, perform more efﬁciently
+
+than the multilingual variants. [8] analyze the effectiveness
+
+of multilingual models over the monolingual counterparts for
+
+6 different languages including English and German. Our
+
+work focuses on hate speech detection, sentiment analysis,
+
+and simple text classiﬁcation in Marathi [9]–[12]. We evaluate
+
+monolingual and multilingual BERT models on Marathi cor-
+
+pus to compare the performance. A similar analysis for Hindi
+
+and Marathi named entity recognition has been performed in
+
+[13].
+
+Marathi is a regional language in India. It is majorly
+
+spoken by the people in Maharashtra [14]. Additionally, after
+
+Hindi and Bengali, it is considered as the third most popular
+
+language in India [15], [16]. However, the Marathi language
+
+is greatly overlooked in terms of language resources which
+
+suggests the need of widening the research in this area.
+
+In this work, we perform a comparative analysis of mono-
+
+lingual and multilingual BERT models for Marathi. We ﬁne-
+
+tune these models over the Marathi corpus, which contains
+
+hate speech detection and simple text classiﬁcation datasets.
+
+We consider standard multilingual models i.e mBERT, in-
+
+dicBERT, and xlm-RoBERTa, and compare them with Marathi
+
+monolingual counterparts i.e. MahaBERT, MahaALBERT, and
+
+MahaRoBERTa. We further show that the monolingual models
+
+when used in Marathi, outperform the multilingual equiva-
+
+lents. Moreover, we evaluate sentence representations from
+
+these models and show that the monolingual models provide
+
+superior sentence representations. The advantage of using
+
+monolingual models is more visible when extracted sentence
+
+embeddings are used for classiﬁcation. This research is aimed
+
+to help the community by giving an insight into the appropriate
+
+arXiv:2204.08669v1  [cs.CL]  19 Apr 2022
+
+
+use of these single and multilingual models when applied to
+
+single language tasks.
+
+II. RELATED WORK
+
+The BERT is currently one of the most effective language
+
+models in terms of performance when different NLP tasks
+
+like text classiﬁcation are concerned. The previous research
+
+has shown how BERT captures the language context in an
+
+efﬁcient way [17], [18], [19].
+
+Recently, a lot of work can be seen in single and multi-
+
+language NLP applications. Several efforts have been made to
+
+build monolingual variants of BERT and shown to be effective
+
+over a quantity of single language downstream tasks. In [20]
+
+authors publish a German monolingual BERT model based on
+
+RoBERTa. The experiments have been performed in the tasks
+
+like named entity recognition (NER) and text classiﬁcation to
+
+evaluate the model performance. They further propose that,
+
+with the only little tuning of hyperparameters, the model
+
+outperformed all other tested German and multilingual BERT
+
+models. A monolingual RoBERTa language model trained on
+
+Czech data has been presented in [21]. The authors show that
+
+the model signiﬁcantly outperforms equally-sized multilingual
+
+and Czech language-oriented model variants. Other works
+
+for single language-speciﬁc BERT models include models
+
+built in Vietnamese, Hindi, Bengali, etc. [22], [23]. In [24]
+
+authors propose model evaluations on toxicity detection in
+
+Spanish comments. They show that transformers obtain better
+
+results than statistical models. Furthermore, they conclude
+
+monolingual BERT models provide better results in their pre-
+
+trained language as compared to multilingual models.
+
+III. DATASETS
+
+• HASOC’21 Marathi dataset [25]:
+
+A Marathi binary dataset provided in HASOC’21 shared
+
+task divided into hateful and non-hateful categories.
+
+It consists of a total of 1874 training and 625 testing
+
+samples.
+
+• L3Cube-MahaHate [12]:
+
+A hate speech detection dataset in Marathi consists
+
+of 25000 tweet samples divided into 4 major classes
+
+namely hate, offensive, profane, and not. The dataset
+
+consists of 21500 train, 2000 test, and 1500 validation
+
+examples.
+
+• Articles:
+
+A text classiﬁcation dataset containing Marathi news
+
+articles classiﬁed into sports, entertainment, and lifestyle
+
+with 3823 train, 479 test, and 477 validation samples.
+
+• Headlines:
+
+A
+
+Marathi
+
+news
+
+headlines
+
+dataset
+
+containing
+
+the
+
+headlines containing three classes viz. entertainment,
+
+sports, and state. It consists of 9672 train, 1210 test, and
+
+1210 validation samples.
+
+• L3Cube-MahaSent [10]:
+
+A Sentiment Analysis dataset in Marathi includes tweets
+
+classiﬁed as positive, negative, and neutral. It has 12114
+
+train, 2250 test, and 1500 validation examples.
+
+IV. EXPERIMENTS
+
+A. Transformer models
+
+BERT is a deep transformer model, pre-trained over large
+
+text corpus in a self-supervised manner, and provides a great
+
+ability to promptly adapt to a broad range of downstream tasks.
+
+There are a lot of different ﬂavors of BERT available openly,
+
+some popular variants are ALBERT and RoBERTa. In this
+
+work, we are focusing on both multilingual and monolingual
+
+models for text classiﬁcation and hate speech detection tasks.
+
+Following standard multilingual BERT models which use
+
+Marathi as one of the training languages are used:
+
+• Multilingual-BERT (mBERT)1:
+
+It is a BERT-base
+
+model [26] trained on and usable with 104 languages
+
+with Wikipedia using a masked language modeling
+
+(MLM) and next sentence prediction (NSP) objective.
+
+• IndicBERT2:
+
+a multilingual ALBERT model released
+
+by Ai4Bharat [27], trained on large-scale corpora. The
+
+training languages include 12 major Indian languages.
+
+The model has been proven to be working better for the
+
+tasks in Indic languages.
+
+• XLM-RoBERTa3:
+
+a
+
+multilingual
+
+version
+
+of
+
+the
+
+RoBERTa model [28]. It is pre-trained on 2.5TB of
+
+ﬁltered CommonCrawl data containing 100 languages
+
+with the Masked language modeling (MLM) objective
+
+and can be used for downstream tasks.
+
+To compare with the above models, the following Marathi
+
+monolingual models are used [14]:
+
+• MahaBERT4:
+
+a multilingual BERT model ﬁne-tuned
+
+on L3Cube-MahaCorpus and other publicly available
+
+Marathi monolingual datasets containing a total of 752M
+
+tokens.
+
+• MahaAlBERT5:
+
+It is a Marathi monolingual model
+
+extended from AlBERT, trained on L3Cube-MahaCorpus
+
+and
+
+other
+
+publicly
+
+available
+
+Marathi
+
+monolingual
+
+datasets.
+
+• MahaRoBERTa6: It is a Marathi RoBERTa model built
+
+upon a multilingual RoBERTa (xlm-roberta-base) model
+
+ﬁne-tuned on L3Cube-MahaCorpus and other publicly
+
+available Marathi monolingual datasets.
+
+
+TABLE I: Classiﬁcation accuracies for monolingual and multilingual models
+
+Model
+
+Training
+
+Mode
+
+HASOC
+
+L3Cube-
+
+MahaHate
+
+L3Cube-
+
+MahaSent
+
+Articles
+
+Headlines
+
+Multilingual BERT Variants
+
+mBERT
+
+Freeze
+
+0.770
+
+0.516
+
+0.653
+
+0.901
+
+0.907
+
+Non-Freeze
+
+0.875
+
+0.783
+
+0.786
+
+0.976
+
+0.947
+
+IndicBERT
+
+Freeze
+
+0.710
+
+0.436
+
+0.656
+
+0.828
+
+0.877
+
+Non-Freeze
+
+0.870
+
+0.711
+
+0.833
+
+0.987
+
+0.937
+
+xlm-RoBERTa
+
+Freeze
+
+0.755
+
+0.487
+
+0.666
+
+0.91
+
+0.79
+
+Non-Freeze
+
+0.862
+
+0.787
+
+0.820
+
+0.985
+
+0.925
+
+Monolingual BERT Variants
+
+MahaBERT
+
+Freeze
+
+0.824
+
+0.580
+
+0.666
+
+0.939
+
+0.907
+
+Non-Freeze
+
+0.883
+
+0.802
+
+0.828
+
+0.987
+
+0.944
+
+MahaAlBERT
+
+Freeze
+
+0.800
+
+0.587
+
+0.717
+
+0.991
+
+0.927
+
+Non-Freeze
+
+0.866
+
+0.764
+
+0.841
+
+0.991
+
+0.945
+
+MahaRoBERTa
+
+Freeze
+
+0.782
+
+0.531
+
+0.698
+
+0.904
+
+0.864
+
+Non-Freeze
+
+0.890
+
+0.803
+
+0.834
+
+0.985
+
+0.942
+
+
+
+
+
+Fig. 1: BERT architectures with freeze and non-freeze training mode
+
+B. Evaluation results
+
+The BERT transformer models have been evaluated on
+
+hate speech detection and text classiﬁcation datasets. We
+
+used standard multilingual BERT variants namely indicBERT,
+
+mBERT and xlm-RoBERTa to obtain baseline classiﬁcation
+
+results. Additionally, monolingual Marathi models have been
+
+used for comparison. These single language models include
+
+MahaBERT, MahaAlBERT, and MahaRoBERTa are based on
+
+the BERT-base, AlBERT, and RoBERTa-base models respec-
+
+tively.
+
+The experiments have been performed in two schemes.
+
+Firstly, we obtained the results by ﬁne-tuning all the BERT
+
+layers i.e pre-trained layers as well as classiﬁcation layers.
+
+Furthermore, we froze the pre-trained embedding and encoder
+
+1https://huggingface.co/bert-base-multilingual-cased
+
+2https://huggingface.co/ai4bharat/indic-bert
+
+3https://huggingface.co/xlm-roberta-base
+
+4https://huggingface.co/l3cube-pune/marathi-bert
+
+5https://huggingface.co/l3cube-pune/marathi-albert
+
+6https://huggingface.co/l3cube-pune/marathi-roberta
+
+layers and trained only the classiﬁer to obtain the results.
+
+Using this setup we aim to evaluate the sentence embeddings
+
+generated by these monolingual and multilingual models. All
+
+the classiﬁcation results are displayed in Table I.
+
+For all the monolingual and multilingual models, the frozen
+
+settings i.e freezing BERT embedding and encoder layers are
+
+underperforming as compared to their non-freeze counterparts.
+
+The difference in accuracy is too high for L3Cube-MahaSent
+
+and L3Cube-MahaHate. This indicates that the pre-trained
+
+models do not provide generic discriminative sentence embed-
+
+dings for the classiﬁcation task. However, the mono-lingual
+
+model does provide better sentence embeddings as compared
+
+to the multi-lingual counterpart. This shows the importance
+
+of monolingual pretraining for obtaining rich sentence em-
+
+beddings. Since the pre-training data is mostly comprised of
+
+Marathi news articles the frozen setting works comparatively
+
+well on the Articles and Headlines dataset. In general, the
+
+monolingual models have outperformed the multilingual mod-
+
+els on all the datasets. For hate speech detection datasets,
+
+
+particularly the MahaRoBERTa model is working the best. In
+
+the case of other text classiﬁcation datasets, the MahaAlBERT
+
+model is giving the best accuracy.
+
+V. CONCLUSION
+
+In this paper, we have presented a comparison between
+
+monolingual and multilingual transformer-based models, par-
+
+ticularly the variants of BERT. We have evaluated these mod-
+
+els on hate speech detection and text classiﬁcation datasets.
+
+We have used standard multilingual models namely mBERT,
+
+indicBERT, and xlm-RoBERTa for evaluation. On the other
+
+hand, we have used Marathi monolingual models trained
+
+exclusively on large Marathi corpus i.e. MahaBERT, Ma-
+
+haAlBERT, and MahaRoBERTa for comparison. The MahaAl-
+
+BERT model performs the best in the case of simple text
+
+classiﬁcation whereas MahaRoBERTa gives the best results
+
+for hate speech detection tasks. The monolingual versions for
+
+all the datasets have outperformed the standard multilingual
+
+models when focused on single language tasks. The mono-
+
+lingual models also provide better sentence representations.
+
+However, these sentence representations do not generalize well
+
+across the tasks, thus highlighting the need for better sentence
+
+embedding models.
+
+ACKNOWLEDGMENT
+
+This work was done under the L3Cube Pune mentorship
+
+program. We would like to express our gratitude towards
+
+our mentors at L3Cube for their continuous support and
+
+encouragement.
+
+REFERENCES
+
+[1] T. Pires, E. Schlinger, and D. Garrette, “How multilingual is multilingual
+
+bert?” in Proceedings of the 57th Conference of the Association for
+
+Computational Linguistics, ACL 2019, Florence, Italy, July 28- August
+
+2, 2019, Volume 1: Long Papers, A. Korhonen, D. R. Traum, and
+
+L. M`arquez, Eds. Association for Computational Linguistics, 2019, pp.
+
+4996–5001. [Online]. Available: https://doi.org/10.18653/v1/p19-1493
+
+[2] ——, “How multilingual is multilingual BERT?” in Proceedings of the
+
+57th Annual Meeting of the Association for Computational Linguistics.
+
+Florence, Italy: Association for Computational Linguistics, Jul. 2019,
+
+pp. 4996–5001. [Online]. Available: https://aclanthology.org/P19-1493
+
+[3] R. Joshi, R. Karnavat, K. Jirapure, and R. Joshi, “Evaluation of deep
+
+learning models for hostility detection in hindi text,” in 2021 6th
+
+International Conference for Convergence in Technology (I2CT). IEEE,
+
+2021, pp. 1–5.
+
+[4] A. Ghaddar, Y. Wu, A. Rashid, K. Bibi, M. Rezagholizadeh, C. Xing,
+
+Y. Wang, D. Xinyu, Z. Wang, B. Huai, X. Jiang, Q. Liu, and
+
+P. Langlais, “JABER: junior arabic bert,” CoRR, vol. abs/2112.04329,
+
+2021. [Online]. Available: https://arxiv.org/abs/2112.04329
+
+[5] H. Le, L. Vial, J. Frej, V. Segonne, M. Coavoux, B. Lecouteux,
+
+A. Allauzen, B. Crabb´e, L. Besacier, and D. Schwab, “FlauBERT:
+
+Unsupervised language model pre-training for French,” in Proceedings
+
+of the 12th Language Resources and Evaluation Conference. Marseille,
+
+France: European Language Resources Association, May 2020, pp.
+
+2479–2490. [Online]. Available: https://aclanthology.org/2020.lrec-1.
+
+302
+
+[6] H. Q. To, K. V. Nguyen, N. L. Nguyen, and A. G. Nguyen,
+
+“Monolingual versus multilingual bertology for vietnamese extractive
+
+multi-document summarization,” CoRR, vol. abs/2108.13741, 2021.
+
+[Online]. Available: https://arxiv.org/abs/2108.13741
+
+[7] M. Ulcar and M. Robnik-Sikonja, “Training dataset and dictionary
+
+sizes matter in BERT models: the case of baltic languages,” CoRR, vol.
+
+abs/2112.10553, 2021. [Online]. Available: https://arxiv.org/abs/2112.
+
+10553
+
+[8] S. R¨onnqvist, J. Kanerva, T. Salakoski, and F. Ginter, “Is multilingual
+
+BERT ﬂuent in language generation?” CoRR, vol. abs/1910.03806,
+
+2019. [Online]. Available: http://arxiv.org/abs/1910.03806
+
+[9] A. Velankar, H. Patil, A. Gore, S. Salunke, and R. Joshi, “Hate
+
+and offensive speech detection in hindi and marathi,” CoRR, vol.
+
+abs/2110.12200, 2021. [Online]. Available: https://arxiv.org/abs/2110.
+
+12200
+
+[10] A. Kulkarni, M. Mandhane, M. Likhitkar, G. Kshirsagar, and R. Joshi,
+
+“L3cubemahasent: A marathi tweet-based sentiment analysis dataset,”
+
+in Proceedings of the Eleventh Workshop on Computational Approaches
+
+to Subjectivity, Sentiment and Social Media Analysis, WASSA@EACL
+
+2021, Online, April 19, 2021, O. D. Clercq, A. Balahur, J. Sedoc,
+
+V. Barri`ere, S. Tafreshi, S. Buechel, and V. Hoste, Eds.
+
+Association
+
+for Computational Linguistics, 2021, pp. 213–220. [Online]. Available:
+
+https://aclanthology.org/2021.wassa-1.23/
+
+[11] A. Kulkarni, M. Mandhane, M. Likhitkar, G. Kshirsagar, J. Jagdale,
+
+and R. Joshi, “Experimental evaluation of deep learning models for
+
+marathi text classiﬁcation,” in Proceedings of the 2nd International
+
+Conference on Recent Trends in Machine Learning, IoT, Smart Cities
+
+and Applications.
+
+Springer, 2022, pp. 605–613.
+
+[12] A. Velankar, H. Patil, A. Gore, S. Salunke, and R. Joshi, “L3cube-
+
+mahahate: A tweet-based marathi hate speech detection dataset and
+
+BERT models,” CoRR, vol. abs/2203.13778, 2022. [Online]. Available:
+
+https://doi.org/10.48550/arXiv.2203.13778
+
+[13] O. Litake, M. Sabane, P. Patil, A. Ranade, and R. Joshi, “Mono vs
+
+multilingual BERT: A case study in hindi and marathi named entity
+
+recognition,” CoRR, vol. abs/2203.12907, 2022. [Online]. Available:
+
+https://doi.org/10.48550/arXiv.2203.12907
+
+[14] R. Joshi, “L3cube-mahacorpus and mahabert: Marathi monolingual
+
+corpus, marathi BERT language models, and resources,” CoRR, vol.
+
+abs/2202.01159, 2022. [Online]. Available: https://arxiv.org/abs/2202.
+
+01159
+
+[15] R.
+
+Joshi,
+
+P.
+
+Goel,
+
+and
+
+R.
+
+Joshi,
+
+“Deep
+
+learning
+
+for
+
+hindi
+
+text classiﬁcation: A comparison,” in Intelligent Human Computer
+
+Interaction - 11th International Conference, IHCI 2019, Allahabad,
+
+India,
+
+December
+
+12-14,
+
+2019,
+
+Proceedings,
+
+ser.
+
+Lecture
+
+Notes
+
+in
+
+Computer
+
+Science,
+
+U.
+
+S.
+
+Tiwary
+
+and
+
+S.
+
+Chaudhury,
+
+Eds.,
+
+vol.
+
+11886.
+
+Springer,
+
+2019,
+
+pp.
+
+94–101.
+
+[Online].
+
+Available:
+
+https://doi.org/10.1007/978-3-030-44689-5 9
+
+[16] M. S. Islam, F. E. M. Jubayer, and S. I. Ahmed, “A comparative
+
+study
+
+on
+
+different
+
+types
+
+of
+
+approaches
+
+to
+
+bengali
+
+document
+
+categorization,” CoRR, vol. abs/1701.08694, 2017. [Online]. Available:
+
+http://arxiv.org/abs/1701.08694
+
+[17] G. Jawahar, B. Sagot, and D. Seddah, “What does BERT learn about
+
+the structure of language?” in Proceedings of the 57th Annual Meeting
+
+of the Association for Computational Linguistics.
+
+Florence, Italy:
+
+Association for Computational Linguistics, Jul. 2019, pp. 3651–3657.
+
+[Online]. Available: https://aclanthology.org/P19-1356
+
+[18] I. Tenney, D. Das, and E. Pavlick, “BERT rediscovers the classical
+
+NLP pipeline,” in Proceedings of the 57th Annual Meeting of the
+
+Association for Computational Linguistics. Florence, Italy: Association
+
+for Computational Linguistics, Jul. 2019, pp. 4593–4601. [Online].
+
+Available: https://aclanthology.org/P19-1452
+
+[19] W. de Vries, A. van Cranenburgh, and M. Nissim, “What’s so
+
+special about BERT’s layers? a closer look at the NLP pipeline in
+
+monolingual and multilingual models,” in Findings of the Association
+
+for Computational Linguistics: EMNLP 2020.
+
+Online: Association
+
+for Computational Linguistics, Nov. 2020, pp. 4339–4350. [Online].
+
+Available: https://aclanthology.org/2020.ﬁndings-emnlp.389
+
+[20] R. Scheible, F. Thomczyk, P. Tippmann, V. Jaravine, and M. Boeker,
+
+“Gottbert: a pure german language model,” CoRR, vol. abs/2012.02110,
+
+2020. [Online]. Available: https://arxiv.org/abs/2012.02110
+
+[21] M. Straka, J. N´aplava, J. Strakov´a, and D. Samuel, “Robeczech:
+
+Czech roberta, a monolingual contextualized language representation
+
+model,”
+
+CoRR,
+
+vol.
+
+abs/2105.11314,
+
+2021.
+
+[Online].
+
+Available:
+
+https://arxiv.org/abs/2105.11314
+
+[22] D. Q. Nguyen and A. T. Nguyen, “Phobert: Pre-trained language
+
+models for vietnamese,” CoRR, vol. abs/2003.00744, 2020. [Online].
+
+Available: https://arxiv.org/abs/2003.00744
+
+[23] K. Jain, A. Deshpande, K. Shridhar, F. Laumann, and A. Dash,
+
+“Indic-transformers: An analysis of transformer language models
+
+for indian languages,” CoRR, vol. abs/2011.02323, 2020. [Online].
+
+Available: https://arxiv.org/abs/2011.02323
+
+
+[24] A. F. M. de Paula and I. B. Schlicht, “AI-UPV at iberlef-2021 DETOXIS
+
+task: Toxicity detection in immigration-related web news comments
+
+using transformers and statistical models,” CoRR, vol. abs/2111.04530,
+
+2021. [Online]. Available: https://arxiv.org/abs/2111.04530
+
+[25] S. Modha, T. Mandl, G. K. Shahi, H. Madhu, S. Satapara, T. Ranasinghe,
+
+and M. Zampieri, “Overview of the hasoc subtrack at ﬁre 2021: Hate
+
+speech and offensive content identiﬁcation in english and indo-aryan
+
+languages and conversational hate speech,” in Forum for Information
+
+Retrieval Evaluation, 2021, pp. 1–3.
+
+[26] J. Devlin, M. Chang, K. Lee, and K. Toutanova, “BERT: pre-training
+
+of deep bidirectional transformers for language understanding,” CoRR,
+
+vol. abs/1810.04805, 2018. [Online]. Available: http://arxiv.org/abs/
+
+1810.04805
+
+[27] D. Kakwani, A. Kunchukuttan, S. Golla, G. N.C., A. Bhattacharyya,
+
+M. M. Khapra, and P. Kumar, “IndicNLPSuite: Monolingual Corpora,
+
+Evaluation Benchmarks and Pre-trained Multilingual Language Models
+
+for Indian Languages,” in Findings of EMNLP, 2020.
+
+[28] A. Conneau, K. Khandelwal, N. Goyal, V. Chaudhary, G. Wenzek,
+
+F. Guzm´an, E. Grave, M. Ott, L. Zettlemoyer, and V. Stoyanov,
+
+“Unsupervised cross-lingual representation learning at scale,” CoRR,
+
+vol. abs/1911.02116, 2019. [Online]. Available: http://arxiv.org/abs/
+
+1911.02116
+

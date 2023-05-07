@@ -1,0 +1,237 @@
+
+Probabilistic Latent Semantic Analysis with the EM
+
+Algorithm
+
+In this homework you will exercise your expertise on the EM algorithm and apply it to Probabilistic Latent Semantic Analysis (pLSA).
+
+Part I: The Model
+
+Recall that our data model for pLSA will consist of a set of documents D, and each document is modeled as a bag of words over
+
+dictionary W, we denote xw,d as the number of times word w ∈ W appears in document d ∈ D.
+
+Warmup: A simple multinomial model
+
+Before we introduce the concept of topics, let’s build a simple model based on frequency of word occurences to get used to Maximum
+
+Likelihood Estimation for multinomial distributions. Specifically, letting nd be the number of words in document d, then we model each
+
+document d as nd draws from a Multinomial distribution with parameters θ1,d, …, θW,d with θw,d the probability of drawing word w in
+
+document d. Note that θw,d ≥ 0 for all w ∈ W, and ∑wθw,d = 1.
+
+With this model in place, the probability of observing the set of words in document d is given by
+
+Pr(d|θd) ∝ W∏w=1θxw,dw,d
+
+where θd collects parameters {θ1,d, …, θW,d}.
+
+Problem 1: Prove that Maximum Likelihood Estimates (MLE) are given by ˆθw,d = xw,dnd, that is, the number of times word w appears in
+
+document d divided by the total number of words in document d.
+
+Hints:
+
+Write MLE estimation problem as a constrained maximization problem
+
+Write out the Lagrangian L(θd, α) (see lecture slides) for this maximization problem (use α as the Lagrangian parameter)
+
+Use optimality conditions from lecture to solve
+
+A fully observed topic model
+
+Let’s introduce topics now. Instead of modeling each document as d ∼ Mult({θ1,d, …, θW,d}) over words, we model each document as a
+
+distribution over T topics as d ∼ Mult({p1,d, …, pT,d}). In turn, each topic t = 1, …, T is modeled as a distribution t ∼ Mult({θ1,t, …, θW,t})
+
+over words. Note that the topics are shared across documents in dataset.
+
+In pLSA, we learn topic distributions from observations by a soft assignment of each word occurence to topics using the EM algorithm. We
+
+will denote these latent word-topic assignments as Δw,d,t to represent the number of times word w was assigned to topic t in document d.
+
+Of course, we do not observe any of these latent word-topic assignments. However, it is helpful to think of the fully observed case to
+
+develop the EM algorithm.
+
+Assuming we observe word occurences xw,d and latent word-topic assignments Δw,d,t such that ∑tΔw,d,t = xw,d the full data probability is
+
+given by
+
+Pr(D|{pd}, {θt}) = D∏d=1W∏w=1T∏t=1pΔw,d,tt,dθΔw,d,tw,t
+
+Problem 2: Prove that MLEs are given by
+
+ˆpt,d = ∑Ww=1Δw,d,t∑Tt=1∑Ww=1Δw,d,t
+
+and
+
+ˆθw,t = ∑Dd=1Δw,d,t∑Ww=1∑Dd=1Δw,d,t
+
+Part II: pLSA with EM Algorithm
+
+Denote the responsibility of topic t for the occurences of word w in document d as γw,d,t = E[Δw,d,t|{pd}, {θt}]
+
+Problem 3: Write out the M-step for the EM algorithm based on the result of Problem 3
+
+Problem 4: Show that the E-step for the EM algorithm, i.e., the update γdj,t given current set of parameters {pd} and {θt} is given by
+
+
+
+
+γw,d,t = xw,d × pt,dθw,t∑Tt′=1pt′,dθw,t′
+
+Part III: pLSA with EM Implementation
+
+Part IIIA: Simulating data
+
+Problem 5 Write python code to generate a test corpus. See lecture notes on how to do this.
+
+Part IIIB: pLSA using EM
+
+Problem 6 Implement pLSA using the EM updates from problems 3 and 4.
+
+Notes:
+
+For the pLSA topic model we set out here, the probability of the observed word-document occurences is given by mixture
+
+distribution
+
+Pr(D|{pd}, {θt}) = D∏d=1W∏w=1(T∑t=1pt,dθw,t)
+
+xw,d
+
+You will need to determine how to initialize parameters {pd} and {θt} (see lecture notes on the Dirichlet distribution)
+
+You will need to determine how to test for convergence
+
+You will need to determine how to deal with local minima (e.g., you can use multiple random initial points and choose the model that
+
+has largest likelihood).
+
+Highly recommend that you test your function on small simulation dataset, i.e., from the data you generate above
+
+The skeleton of the function should be something like this:
+
+def plsa_em(doc_mat, num_topics=5, max_iter=20, eps=1e-3):
+
+  num_docs, num_words = doc_mat.shape
+
+  p, theta = init_parameters(num_docs, num_words, num_topics)
+
+  gamma = np.zeros((num_words,num_docs,num_topics))
+
+ 
+
+  i = 0
+
+ while True:
+
+ # overwrite gamma since it can get rather large
+
+    estep(doc_mat, gamma, p, theta)
+
+    new_p, new_theta = mstep(doc_mat, gamma)
+
+ if i &gt;= max_iter or check_convergence(doc_mat, new_p, new_theta, p, theta, eps):
+
+ break
+
+ 
+
+    i += 1
+
+    p, theta = new_p, new_theta
+
+ return p, theta
+
+Part III: LDA with Gibbs Sampling
+
+Implement Latent Dirichlet Annotation with Gibbs Sampling. See lecture notes for details.
+
+The overall structure of the function should be
+
+
+
+
+def lda_gibbs(doc_mat, num_topics=5, alpha=1, beta=1, total_iter=200, burn_iter=100):
+
+  num_docs, num_words = doc_mat.shape
+
+  p, theta = init_parameters(num_docs, num_words, num_topics,alpha,beta)
+
+  gamma = np.zeros((num_words,num_docs,num_topics))
+
+  delta = np.zeros((num_wrods, num_docs, num_topics))
+
+ 
+
+  num_estimates = total_iter - burn_iter
+
+  delta_estimates = np.zeros((num_words, num_docs, num_topics, num_estimates))
+
+ 
+
+  i = 0
+
+ while True:
+
+ # overwrite gamma since it can get rather large
+
+    compute_gamma(gamma, p, theta)
+
+ 
+
+ # overwrite delta since it can get rahter large
+
+    sample_delta(doc_mat, gamma, delta)
+
+ # keep estimate if past burn_in iterations
+
+ if i &gt;= burn_iter:
+
+      j = i - burn_iter
+
+      delta_estimates[:,:,:,j] = delta
+
+ 
+
+    p = sample_p(delta, alpha)
+
+    theta = sample_theta(delta, beta)
+
+ 
+
+ if i &gt;= total_iter:
+
+ break
+
+ 
+
+    i += 1
+
+ 
+
+  final_delta = np.mean(delta_estimates, axis=3)
+
+  p = get_final_p(final_delta, alpha)
+
+  theta = get_final_theta(final_delta, beta)
+
+ return p, theta
+
+Part III: Applying Methods
+
+Use your pLSA and LDA implementations to learn topics from the Reuters dataset. Instructions on how to prepare data will be posted
+
+separately.
+
+Analysis 1: Compare topics learned from pLSA and LDA given T = 3
+
+Analysis 2: Compare LDA topics learned for different values of T
+
+Use it on a few different values of T (number of topics to learn). Do your topic distributions reflect sensible topics?
+
+Processing math: 100%
+

@@ -1,0 +1,298 @@
+
+Page 19 of 29
+
+Home / Database / Oracle Database Online Documentation 12c Release 1 (12.1) / Data Warehousing and Business Intelligence
+
+Data Mining Concepts
+
+
+
+
+
+
+
+
+
+
+
+12 Expectation Maximization
+
+Learn how to use Expectation Maximization Clustering algorithm.
+
+About Expectation Maximization
+
+Algorithm Enhancements
+
+Configuring the Algorithm
+
+Data Preparation for Expectation Maximization
+
+See Also:
+
+"Clustering"
+
+About Expectation Maximization
+
+Expectation Maximization (EM) estimation of mixture models is a popular probability density estimation technique that is used in a
+
+variety of applications. Oracle Data Mining uses EM to implement a distribution-based clustering algorithm (EM-clustering).
+
+Expectation Step and Maximization Step
+
+Expectation Maximization is an iterative method. It starts with an initial parameter guess. The parameter values are used to
+
+compute the likelihood of the current model. This is the Expectation step. The parameter values are then recomputed to maximize
+
+the likelihood. This is the Maximization step. The new parameter estimates are used to compute a new expectation and then they
+
+are optimized again to maximize the likelihood. This iterative process continues until model convergence.
+
+Probability Density Estimation
+
+In density estimation, the goal is to construct a density function that captures how a given population is distributed. In probability
+
+density estimation, the density estimate is based on observed data that represents a sample of the population. Areas of high data
+
+density in the model correspond to the peaks of the underlying distribution.
+
+Density-based clustering is conceptually different from distance-based clustering (for example k-Means) where emphasis is placed
+
+on minimizing inter-cluster and maximizing the intra-cluster distances. Due to its probabilistic nature, density-based clustering can
+
+compute reliable probabilities in cluster assignment. It can also handle missing values automatically.
+
+Algorithm Enhancements
+
+Although Expectation Maximization (EM) is well established as a distribution-based clustering algorithm, it presents some
+
+challenges in its standard form. The Oracle Data Mining implementation includes significant enhancements, such as scalable
+
+processing of large volumes of data and automatic parameter initialization. The strategies that Oracle Data Mining uses to address
+
+the inherent limitations of EM clustering are described further in this section.
+
+Note:
+
+The EM abbreviation is used here to refer to EM-clustering.
+
+
+
+
+
+ Sign In
+
+
+
+
+Limitations of Standard Expectation Maximization:
+
+Scalability: EM has linear scalability with the number of records and attributes. The number of iterations to convergence tends to
+
+increase with growing data size (both rows and columns). EM convergence can be slow for complex problems and can place a
+
+significant load on computational resources.
+
+High dimensionality: EM has limited capacity for modeling high dimensional (wide) data. The presence of many attributes slows
+
+down model convergence, and the algorithm becomes less able to distinguish between meaningful attributes and noise. The
+
+algorithm is thus compromised in its ability to find correlations.
+
+Number of components: EM typically requires the user to specify the number of components. In most cases, this is not
+
+information that the user can know in advance.
+
+Parameter initialization: The choice of appropriate initial parameter values can have a significant effect on the quality of the
+
+model. Initialization strategies that have been used for EM have generally been computationally expensive.
+
+From components to clusters: EM model components are often treated as clusters. This approach can be misleading since
+
+cohesive clusters are often modeled by multiple components. Clusters that have a complex shape need to be modeled by
+
+multiple components.
+
+Scalability
+
+The Oracle Data Mining implementation of Expectation Maximization (EM) uses database parallel processing to achieve excellent
+
+scalability. EM computations naturally lend themselves to row parallel processing, and the partial results are easily aggregated.
+
+The parallel implementation efficiently distributes the computationally intensive work across slave processes and then combines
+
+the partial results to produce the final solution.
+
+See Also:
+
+Oracle Database VLDB and Partitioning Guide for information about parallel execution
+
+High Dimensionality
+
+The Oracle Data Mining implementation of Expectation Maximization (EM) can efficiently process high-dimensional data with
+
+thousands of attributes. This is achieved through a two-fold process:
+
+The data space of single-column (not nested) attributes is analyzed for pair-wise correlations. Only attributes that are
+
+significantly correlated with other attributes are included in the EM mixture model. The algorithm can also be configured to
+
+restrict the dimensionality to the M most correlated attributes.
+
+High-dimensional (nested) numerical data that measures events of similar type is projected into a set of low-dimensional
+
+features that are modeled by EM. Some examples of high-dimensional, numerical data are: text, recommendations, gene
+
+expressions, and market basket data.
+
+Number of Components
+
+Typical implementations of Expectation Maximization (EM) require the user to specify the number of model components. This is
+
+problematic because users do not generally know the correct number of components. Choosing too many or too few components
+
+can lead to over-fitting or under-fitting, respectively.
+
+When model search is enabled, the number of EM components is automatically determined. The algorithm uses a held-aside
+
+sample to determine the correct number of components, except in the cases of very small data sets when Bayesian Information
+
+Criterion (BIC) regularization is used.
+
+Parameter Initialization
+
+Choosing appropriate initial parameter values can have a significant effect on the quality of the solution. Expectation Maximization
+
+(EM) is not guaranteed to converge to the global maximum of the likelihood function but may instead converge to a local maximum.
+
+Therefore different initial parameter values can lead to different model parameters and different model quality.
+
+
+
+
+In the process of model search, the EM model is grown independently. As new components are added, their parameters are
+
+initialized to areas with poor distribution fit.
+
+From Components to Clusters
+
+Expectation Maximization (EM) model components are often treated as clusters. However, this approach can be misleading.
+
+Cohesive clusters are often modeled by multiple components. The shape of the probability density function used in EM effectively
+
+predetermines the shape of the identified clusters. For example, Gaussian density functions can identify single peak symmetric
+
+clusters. Clusters of more complex shape need to be modeled by multiple components.
+
+Ideally, high density areas of arbitrary shape must be interpreted as single clusters. To accomplish this, the Oracle Data Mining
+
+implementation of EM builds a component hierarchy that is based on the overlap of the individual components' distributions. Oracle
+
+Data Mining EM uses agglomerative hierarchical clustering. Component distribution overlap is measured using the Bhattacharyya
+
+distance function. Choosing an appropriate cutoff level in the hierarchy automatically determines the number of high-level clusters.
+
+The Oracle Data Mining implementation of EM produces an assignment of the model components to high-level clusters. Statistics
+
+like means, variances, modes, histograms, and rules additionally describe the high-level clusters. The algorithm can be configured
+
+to either produce clustering assignments at the component level or at the cluster level.
+
+Configuring the Algorithm
+
+In Oracle Data Mining, Expectation Maximization (EM) can effectively model very large data sets (both rows and columns) without
+
+requiring the user to supply initialization parameters or specify the number of model components. While the algorithm offers
+
+reasonable defaults, it also offers flexibility.
+
+The following list describes some of the configurable aspects of EM:
+
+Whether or not independent non-nested column attributes are included in the model. The choice is system-determined by
+
+default.
+
+Whether to use Bernoulli or Gaussian distribution for numerical attributes. By default, the algorithm chooses the most
+
+appropriate distribution, and individual attributes may use different distributions. When the distribution is user-specified, it is
+
+used for all numerical attributes.
+
+Whether the convergence criterion is based on a held-aside data set or on Bayesian Information Criterion (BIC). The
+
+convergence criterion is system-determined by default.
+
+The percentage improvement in the value of the log likelihood function that is required to add a new component to the model.
+
+The default percentage is 0.001.
+
+Whether to define clusters as individual components or groups of components. Clusters are associated to groups of
+
+components by default.
+
+The maximum number of components in the model. If model search is enabled, the algorithm determines the number of
+
+components based on improvements in the likelihood function or based on regularization (BIC), up to the specified maximum.
+
+Whether the linkage function for the agglomerative clustering step uses the nearest distance within the branch (single linkage),
+
+the average distance within the branch (average linkage), or the maximum distance within the branch (complete linkage). By
+
+default the algorithm uses single linkage.
+
+See Also:
+
+"Global Settings" and "Algorithm Settings: Expectation Maximization" in Oracle Database PL/SQL Packages and Types
+
+Reference
+
+Data Preparation for Expectation Maximization
+
+If you use Automatic Data Preparation (ADP), you do not need to specify additional data preparation for Expectation Maximization.
+
+ADP normalizes numerical attributes (in non-nested columns) when they are modeled with Gaussian distributions. ADP applies a
+
+topN binning transformation to categorical attributes.
+
+Missing value treatment is not needed since Oracle Data Mining algorithms handle missing values automatically. The Expectation
+
+Maximization algorithm replaces missing values with the mean in single-column numerical attributes that are modeled with
+
+
+
+
+Gaussian distributions. In other single-column attributes (categoricals and numericals modeled with Bernoulli distributions), NULLs
+
+are not replaced; they are treated as a distinct value with its own frequency count. In nested columns, missing values are treated
+
+as zeros.
+
+See Also:
+
+Chapters 3 and 4 in Oracle Data Mining User's Guide for information about data transformations, missing value treatment, and
+
+Automatic Data Preparation
+
+Page 19 of 29
+
+
+
+
+
+
+
+About Oracle
+
+Contact Us
+
+Legal Notices
+
+Terms of Use
+
+Your Privacy Rights
+
+Copyright © 2005, 2017, Oracle and/or its affiliates. 
+
+
+
+
+

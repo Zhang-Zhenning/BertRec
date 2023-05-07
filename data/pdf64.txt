@@ -1,0 +1,1652 @@
+
+Text mining and topic models
+
+Charles Elkan
+
+elkan@cs.ucsd.edu
+
+February 12, 2014
+
+Text mining means the application of learning algorithms to documents con-
+
+sisting of words and sentences. Text mining tasks include
+
+• classiﬁer learning
+
+• clustering, and
+
+• theme identiﬁcation.
+
+Classiﬁers for documents are useful for many applications. Major uses for binary
+
+classiﬁers include spam detection and personalization of streams of news articles.
+
+Multiclass classiﬁers are useful for routing messages to recipients.
+
+Most classiﬁers for documents are designed to categorize according to subject
+
+matter. However, it is also possible to learn to categorize according to qualitative
+
+criteria such as helpfulness for product reviews submitted by consumers.
+
+In many applications of multiclass classiﬁcation, a single document can be-
+
+long to more than one category, so it is correct to predict more than one label.
+
+This task is speciﬁcally called multilabel classiﬁcation. In standard multiclass
+
+classiﬁcation, the classes are mutually exclusive, i.e. a special type of negative
+
+correlation is ﬁxed in advance. In multilabel classiﬁcation, it is important to learn
+
+the positive and negative correlations between classes.
+
+1
+
+The bag-of-words representation
+
+In order to do text mining, the ﬁrst question we must answer is how to represent
+
+documents. For genuine understanding of natural language one must obviously
+
+1
+
+
+preserve the order of the words in documents. However, for many large-scale data
+
+mining tasks, including classifying and clustering documents, it is sufﬁcient to use
+
+a simple representation that loses all information about word order.
+
+Given a collection of documents, the ﬁrst task to perform is to identify the
+
+set of all words used a least once in at least one document. This set is called the
+
+vocabulary. Often, it is reduced in size by keeping only words that are used in at
+
+least two documents. (Words that are found only once are often mis-spellings or
+
+other mistakes.) Although the vocabulary is a set, we ﬁx an arbitrary ordering for
+
+it so we can refer to word 1 through word m where m is the size of the vocabulary.
+
+Once the vocabulary has been ﬁxed, each document is represented as a vector
+
+with integer entries of length m. If this vector is x then its jth component xj is the
+
+number of appearances of word j in the document. The length of the document is
+
+n = �m
+
+j=1 xj. For typical documents, n is much smaller than m and xj = 0 for
+
+most words j.
+
+Many applications of text mining also eliminate from the vocabulary so-called
+
+“stop” words. These are words that are common in most documents and do not
+
+correspond to any particular subject matter. In linguistics these words are some-
+
+times called function words or closed-class words. They include pronouns (you,
+
+he, it) connectives (and, because, however), prepositions (to, of, before), and aux-
+
+iliaries (have, been, can, should). Stop words may also include generic nouns
+
+(amount, part, nothing) and verbs (do, have). It is important to appreciate, how-
+
+ever, that generic words carry a lot of information for many tasks, including iden-
+
+tifying the author of a document or detecting its genre.
+
+A collection of documents is represented as a two-dimensional matrix where
+
+each row describes a document and each column corresponds to a word. Each
+
+entry in this matrix is an integer count; most entries are zero. It makes sense to
+
+view each column as a feature. It also makes sense to learn a low-rank approx-
+
+imation of the whole matrix; doing this is called latent semantic analysis (LSA)
+
+and is discussed elsewhere.
+
+2
+
+The multinomial distribution
+
+Once we have a representation for individual documents, the natural next step is to
+
+select a model for a set of documents. It is important to understand the difference
+
+between a representation and a model. A representation is a way of encoding
+
+an entity as a data structure. A model is an abstraction of a set of entities, for
+
+example a probability distribution. Given a training set of documents, we will
+
+2
+
+
+choose values for the parameters of a probabilistic model that make the training
+
+documents have high probability. Then, given a test document, we can evaluate
+
+its probability according to the model. The higher this probability is, the more
+
+similar the test document is to the training set.
+
+The probability distribution that we use is the multinomial. Mathematically,
+
+this distribution is
+
+p(x; θ) =
+
+�
+
+n!
+
+�m
+
+j=1 xj!
+
+�� m
+
+�
+
+j=1
+
+θ
+
+xj
+
+j
+
+�
+
+.
+
+(1)
+
+where the data x are a vector of non-negative integers and the parameters θ are a
+
+real-valued vector. Both vectors have the same length m.
+
+Intuitively, θj is the probability of word j while xj is the count of word j.
+
+Each time word j appears in the document it contributes an amount θj to the total
+
+probability, hence the term θ
+
+xj
+
+j . The components of θ are non-negative and have
+
+unit sum: �m
+
+j=1 θj = 1. A vector with these properties is called a unit vector.
+
+Each vector x of word counts can be generated by any member of an equiva-
+
+lence class of sequences of words. In Equation (1) the ﬁrst factor in parentheses
+
+is called a multinomial coefﬁcient. It is the size of the equivalence class of x, that
+
+is the number of different word sequences that yield the same counts. The second
+
+factor in parentheses in Equation (1) is the probability of any individual member
+
+of the equivalence class of x.
+
+Like any discrete distribution, a multinomial has to sum to one, where the sum
+
+is over all possible data points. Here, a data point is a document containing n
+
+words. The number of such documents is exponential in their length n: it is mn.
+
+The probability of any individual document will therefore be very small. What
+
+is important is the relative probability of different documents. A document that
+
+mostly uses words with high probability will have higher relative probability.
+
+At ﬁrst sight, computing the probability of a document requires O(m) time
+
+because of the product over j. However, if xj = 0 then θ
+
+xj
+
+j
+
+= 1 so the jth factor
+
+can be omitted from the product. Similarly, 0! = 1 so the jth factor can be omitted
+
+from �m
+
+j=1 xj!. Hence, computing the probability of a document needs only O(n)
+
+time.
+
+Because the probabilities of individual documents decline exponentially with
+
+length n, it is necessary to do numerical computations with log probabilities:
+
+log p(x; θ) = log n! − [
+
+m
+
+�
+
+j=1
+
+log xj!] + [
+
+m
+
+�
+
+j=1
+
+xj · log θj]
+
+3
+
+
+Given a set of training documents, the maximum-likelihood estimate of the jth
+
+parameter is
+
+θj = 1
+
+T
+
+�
+
+x
+
+xj
+
+where the sum is over all documents x belonging to the training set. The nor-
+
+malizing constant is T = �
+
+x
+
+�
+
+j xj which is the sum of the sizes of all training
+
+documents.
+
+If a multinomial has θj = 0 for some j, then every document with xj &gt; 0
+
+for this j has zero probability, regardless of any other words in the document.
+
+Probabilities that are perfectly zero are undesirable, so we want θj &gt; 0 for all j.
+
+Smoothing with a constant c is the way to achieve this. We set
+
+θj = 1
+
+T ′(c +
+
+�
+
+x
+
+xj).
+
+The constant c is called a pseudocount. Intuitively, it is a notional number of
+
+appearances of word j that are assumed to exist, regardless of the true number of
+
+appearances. Typically c is chosen in the range 0 &lt; c ≤ 1. Because the equality
+
+�
+
+j θj = 1 must be preserved, the normalizing constant must be T ′ = mc + T.
+
+In order to avoid big changes in the estimated probabilities θj, one should have
+
+c &lt; T/m.
+
+Technically, one multinomial is a distribution over all documents of a ﬁxed
+
+size n. Therefore, what is learned by the maximum-likelihood process just de-
+
+scribed is in fact a different distribution for each size n. These distributions, al-
+
+though separate, have the same parameter values. Parameters are said to be “tied”
+
+if they are required to be the same for different distributions.
+
+3
+
+Generative processes
+
+Suppose that we have a collection of documents, and we want to ﬁnd an organi-
+
+zation for these, i.e. we want to do unsupervised learning.
+
+A common way to do unsupervised learning is to assume that the data were
+
+generated by some probabilistic process, and then to infer the parameters of this
+
+process. The generative process is a speciﬁcation of a parametrized family of
+
+distributions. Learning is based on the principle of maximum likelihood, or some
+
+reﬁnement of this principle such as maximum a posteriori (MAP) probability.
+
+A generative process for a single document is as follows:
+
+4
+
+
+A: ﬁx a multinomial distribution with parameter vector φ of length V
+
+B: for each word in the document
+
+draw a word w according to φ
+
+Above, step A sets up the probability distributions that are then used in step B to
+
+produce the observed training data.
+
+A single multinomial distribution can only represent a category of closely re-
+
+lated documents. For a collection of documents of multiple categories, a simple
+
+generative process is
+
+A:
+
+ﬁx a multinomial α over categories 1 to K
+
+for category number 1 to category number K
+
+ﬁx a multinomial with parameter vector φk
+
+B: for document number 1 to document number M
+
+draw a category z according to α
+
+for each word in the document
+
+draw a word w according to φz
+
+Note that z is an integer between 1 and K. For each document, the value of z
+
+is hidden, meaning that it exists conceptually, but it is never known, not even for
+
+training data. The generative process above gives the following global probability
+
+distribution:
+
+f(x) =
+
+K
+
+�
+
+k=1
+
+αkf(x; φk).
+
+where x is a document and φk is the parameter vector of the kth multinomial.
+
+In general, x could be a data point of any type and φk could be the parame-
+
+ters of any appropriate distribution. K is called the number of components in the
+
+mixture model. For each k, f(x; θk) is the distribution of component number k.
+
+The scalar αk is the proportion of component number k. A distribution like this
+
+is called a mixture distribution. In general, the components can be probability
+
+density functions (pdfs), for example Gaussians, or probability mass functions
+
+(pmfs), for example multinomials. We will see later how to do maximum like-
+
+lihood estimation for mixture distributions, using a technique called expectation-
+
+maximization.
+
+4
+
+Latent Dirichlet allocation
+
+The speciﬁc topic model we consider is called latent Dirichlet allocation (LDA).
+
+(The same abbreviation is also used for linear discriminant analysis, which is un-
+
+5
+
+
+related.) LDA is based on the intuition that each document contains words from
+
+multiple topics; the proportion of each topic in each document is different, but the
+
+topics themselves are the same for all documents.
+
+The generative process assumed by the LDA model is as follows:
+
+Given: Dirichlet distribution with parameter vector α of length K
+
+Given: Dirichlet distribution with parameter vector β of length V
+
+for topic number 1 to topic number K
+
+draw a multinomial with parameter vector φk according to β
+
+for document number 1 to document number M
+
+draw a topic distribution, i.e. a multinomial θ according to α
+
+for each word in the document
+
+draw a topic z according to θ
+
+draw a word w according to φz
+
+Note that z is an integer between 1 and K for each word.
+
+Before we go into the LDA model in mathematical detail, we need to review
+
+the Dirichlet distribution. The Dirichlet is useful because it is a valid prior dis-
+
+tribution for the multinomial distribution. Concretely, a Dirichlet distribution is
+
+a probability density function over the set of all multinomial parameter vectors.
+
+This set is all vectors γ of length m such that γs ≥ 0 for all s and �m
+
+s=1 γs = 1.
+
+The Dirichlet distribution itself has parameter vector α of length m. There
+
+is no constraint on �m
+
+s=1 αs, but αs &gt; 0 is required for all s. Concretely, the
+
+equation for the Dirichlet distribution is
+
+p(γ|α) =
+
+1
+
+D(α)
+
+m
+
+�
+
+s=1
+
+γαs−1
+
+s
+
+.
+
+The function D is a normalizing constant, so by deﬁnition
+
+D(α) =
+
+�
+
+γ
+
+m
+
+�
+
+s=1
+
+γαs−1
+
+s
+
+where the integral is over the set of all unit vectors γ. Explicitly, the D function is
+
+D(α) =
+
+�m
+
+s=1 Γ(αs)
+
+Γ(�m
+
+s=1 αs)
+
+where the Γ function is the standard continuous generalization of the factorial such
+
+that Γ(k) = (k − 1)! if k is an integer. The D function is similar to the reciprocal
+
+of a multinomial coefﬁcient.
+
+6
+
+
+Maximum likelihood ﬁtting of the LDA distribution would ﬁnd the optimal
+
+α and β parameter vectors. Typically, this is not done and instead α and β are
+
+treated as ﬁxed. The goal of learning is typically to ﬁnd likely values for the
+
+hidden variables, that is the multinomial parameter vectors and which topic z
+
+each word of each document belongs to.
+
+5
+
+Training via Gibbs sampling
+
+For learning, the training data are the words in all documents. The prior distribu-
+
+tions α and β are assumed to be ﬁxed and known, as are the number K of topics,
+
+the number M of documents, the length Nm of each document, and the cardinality
+
+V of the vocabulary (i.e. the dictionary of all words). Learning has two goals: (i)
+
+to infer the document-speciﬁc multinomial θ for each document, and (ii) to infer
+
+the topic distribution φk for each topic.
+
+The algorithm that we use for learning is called collapsed Gibbs sampling. It
+
+does not infer the θ and φk distributions directly. Instead, it infers the hidden value
+
+z for each word occurrence in each document. For an alternative exposition of this
+
+algorithm, see [?].
+
+Although documents are represented as vectors of counts, Gibbs sampling is
+
+based on occurrences of words. Different appearances of the same word, in the
+
+same or different documents, may have be assigned to different topics; that is,
+
+each appearance of every word has its own z value.
+
+Suppose that we know the value of z for every word occurrence in the corpus
+
+except occurrence number i. The idea of Gibbs sampling is to draw a z value
+
+for i randomly according to its distribution, then assume that we know this value,
+
+then draw a z value for another word, and so on. It can be proved that eventually
+
+this process converges to a correct distribution of z values for all words in the
+
+corpus. Note that Gibbs sampling never converges to a ﬁxed z for each w; instead
+
+it converges to a distribution of z values for each w.
+
+Let ¯w be the sequence of words making up the entire corpus, and let ¯z be a
+
+corresponding sequence of z values. Note that ¯w is not a vector of word counts.
+
+As mentioned above, Gibbs sampling is based on viewing each document as a
+
+sequence of words. However, the particular sequence used can be arbitrary. The
+
+equations we ﬁnally obtain below will depend only on counts of words in docu-
+
+ments, and not on any particular sequencing of words.
+
+Use the notation ¯w′ to mean ¯w with word number i removed, so ¯w = {wi, ¯w′}.
+
+7
+
+
+Similarly, write ¯z = {zi, ¯z′}. In order to do Gibbs sampling, we need to compute
+
+p(zi|¯z′, ¯w) = p(¯z, ¯w)
+
+p(¯z′, ¯w) =
+
+p( ¯w|¯z)p(¯z)
+
+p(wi|¯z′)p( ¯w′|¯z′)p(¯z′)
+
+for zi = 1 to zi = K. In principle the entire denominator can be ignored, because
+
+it is a constant that does not depend on zi. However, we will pay attention to the
+
+second and third factors in the denominator, because they lead to cancellations
+
+with the numerator. So we will evaluate
+
+p(zi|¯z′, ¯w) ∝ p( ¯w|¯z)p(¯z)
+
+p( ¯w′|¯z′)p(¯z′).
+
+(2)
+
+We will work out the four factors of (2) one by one. Consider p(¯z) ﬁrst, and
+
+let ¯z refer temporarily to just document number m. For this document,
+
+p(¯z|θ) =
+
+Nm
+
+�
+
+i=1
+
+p(zi) =
+
+K
+
+�
+
+k=1
+
+θnmk
+
+k
+
+where nmk is the number of times zi = k within document m, and θ is the multi-
+
+nomial parameter vector for document m. What we really want is p(¯z|α), which
+
+requires averaging over all possible θ. This is
+
+p(¯z|α) =
+
+�
+
+θ
+
+p(θ|α)p(¯z|θ).
+
+By the deﬁnition of the Dirichlet distribution,
+
+p(θ|α) =
+
+�K
+
+k=1 θαk−1
+
+k
+
+D(α)
+
+.
+
+Therefore,
+
+p(¯z|α) =
+
+1
+
+D(α)
+
+�
+
+θ
+
+� K
+
+�
+
+k=1
+
+θαk−1
+
+k
+
+K
+
+�
+
+k=1
+
+θnmk
+
+k
+
+�
+
+=
+
+1
+
+D(α)
+
+�
+
+θ
+
+K
+
+�
+
+k=1
+
+θnmk+αk−1
+
+k
+
+.
+
+The integral above is an unnormalized Dirichlet distribution, so we get
+
+p(¯z|α) = D(¯nm + α)
+
+D(α)
+
+.
+
+8
+
+
+Here, ¯nm is the vector of topic counts ⟨nm1, . . . , nmK⟩ for document number m.
+
+Similarly,
+
+p(¯z′|α) = D(¯n′
+
+m + α)
+
+D(α)
+
+where ¯n′
+
+m is ¯nm with one subtracted from the count for topic number zi. For the
+
+corpus of all M documents,
+
+p(¯z|α) =
+
+M
+
+�
+
+m=1
+
+D(¯nm + α)
+
+D(α)
+
+(3)
+
+and
+
+p(¯z′|α) =
+
+M
+
+�
+
+m=1
+
+D(¯n′
+
+m + α)
+
+D(α)
+
+.
+
+(4)
+
+Note that all factors are identical in (3) and (4), except for the document m that
+
+position i is part of.
+
+Referring back to (2), consider p( ¯w|¯z), which means p( ¯w|¯z, β). This is
+
+�
+
+Φ
+
+p(Φ|β)p( ¯w|¯z, Φ)
+
+where Φ is a collection of K different topic distributions φk. Again by the deﬁni-
+
+tion of the Dirichlet distribution,
+
+p(Φ|β) =
+
+K
+
+�
+
+k=1
+
+1
+
+D(β)
+
+V�
+
+t=1
+
+φβt−1
+
+kt
+
+.
+
+Now consider p( ¯w|¯z, Φ). To evaluate this, group the words wi together according
+
+to which topic zi they come from:
+
+p( ¯w|¯z, Φ) =
+
+K
+
+�
+
+k=1
+
+�
+
+i:zi=k
+
+p(wi|zi, Φ) =
+
+K
+
+�
+
+k=1
+
+V�
+
+t=1
+
+φqkt
+
+kt
+
+where qkt is the number of times that word t occurs with topic k in the whole
+
+corpus. We get that
+
+p( ¯w|¯z, β) =
+
+�
+
+Φ
+
+� K
+
+�
+
+k=1
+
+1
+
+D(β)
+
+V�
+
+t=1
+
+φβt−1
+
+kt
+
+�� K
+
+�
+
+k=1
+
+V�
+
+t=1
+
+φqkt
+
+kt
+
+�
+
+9
+
+
+=
+
+�
+
+Φ
+
+� K
+
+�
+
+k=1
+
+1
+
+D(β)
+
+V�
+
+t=1
+
+φβt−1+qkt
+
+kt
+
+�
+
+=
+
+K
+
+�
+
+k=1
+
+�
+
+φk
+
+1
+
+D(β)
+
+V�
+
+t=1
+
+φβt−1+qkt
+
+kt
+
+=
+
+K
+
+�
+
+k=1
+
+1
+
+D(β)D(¯qk + β)
+
+where ¯qk is the vector of counts over the whole corpus of words belonging to topic
+
+k. This equation is similar to (3), with the corpus divided into K topics instead of
+
+into M documents.
+
+Referring back again to (2), we get that p(zi|¯z′, ¯w) is proportional to
+
+K
+
+�
+
+k=1
+
+D(¯qk + β)
+
+D(β)
+
+K
+
+�
+
+k=1
+
+D(β)
+
+D(¯q′
+
+k + β)
+
+M
+
+�
+
+m=1
+
+D(¯nm + α)
+
+D(α)
+
+M
+
+�
+
+m=1
+
+D(α)
+
+D(¯n′
+
+m + α).
+
+The D(β) and D(α) factors obviously cancel above. The products can be elimi-
+
+nated also because ¯qk + β = ¯q′
+
+k + β except when the topic k = zi, and ¯nm + α =
+
+¯n′
+
+m + α except for the document m that word i belongs to. So,
+
+p(zi|¯z′, ¯w) ∝ D(¯qzi + β)
+
+1
+
+D(¯q′
+
+zi + β)D(¯nm + α)
+
+1
+
+D(¯n′
+
+m + α)
+
+For any vector γ, the deﬁnition of the D function is
+
+D(γ) =
+
+�
+
+s Γ(γs)
+
+Γ(�
+
+s γs)
+
+where s indexes the components of γ. Using this deﬁnition, p(zi = j|¯z′, ¯w) is
+
+proportional to
+
+�
+
+t Γ(qjt + βt)
+
+Γ(�
+
+t qjt + βt)
+
+Γ(�
+
+t q′
+
+jt + βt)
+
+�
+
+t Γ(q′
+
+jt + βt)
+
+�
+
+k Γ(nmk + αk)
+
+Γ(�
+
+k nmk + αk)
+
+Γ(�
+
+k n′
+
+mk + αk)
+
+�
+
+k Γ(n′
+
+mk + αk) .
+
+Now qjt +βt = q′
+
+jt +βt except when t = wi, in which case qjt +βt = q′
+
+jt +βt +1,
+
+so
+
+�
+
+t Γ(qjt + βt)
+
+�
+
+t Γ(q′
+
+jt + βt) = Γ(q′
+
+jwi + βwi + 1)
+
+Γ(q′
+
+jwi + βwi)
+
+.
+
+10
+
+
+Applying the fact that Γ(x + 1)/Γ(x) = x yields
+
+Γ(q′
+
+jwi + βwi + 1)
+
+Γ(q′
+
+jwi + βwi)
+
+= q′
+
+jwi + βwi.
+
+Similarly,
+
+�
+
+k Γ(nmk + αk)
+
+�
+
+k Γ(n′
+
+mk + αk) = n′
+
+mj + αj
+
+where j = zi is the candidate topic assignment of word i.
+
+Summing over all words t in the vocabulary gives
+
+V
+
+�
+
+t=1
+
+qjt + βt = 1 +
+
+V
+
+�
+
+t=1
+
+q′
+
+jt + βt.
+
+so
+
+Γ(�
+
+t q′
+
+jt + βt)
+
+Γ(�
+
+t qjt + βt) =
+
+1
+
+�
+
+t q′
+
+jt + βt
+
+and similarly
+
+Γ(�
+
+k n′
+
+mk + αk)
+
+Γ(�
+
+k nmk + αk) =
+
+1
+
+�
+
+k n′
+
+mk + αk
+
+.
+
+Putting the simpliﬁcations above yields
+
+p(zi = j|¯z′, ¯w) ∝ q′
+
+jwi + βwi
+
+�
+
+t q′
+
+jt + βt
+
+n′
+
+mj + αj
+
+�
+
+k n′
+
+mk + αk
+
+.
+
+(5)
+
+This result says that occurrence number i is more likely to belong to topic j if q′
+
+jwi
+
+is large, or if n′
+
+mj is large; in other words, if the same word occurs often with topic
+
+j elsewhere in the corpus, or if topic j occurs often elsewhere inside document m.
+
+6
+
+Implementation notes
+
+The inner loop of the Gibbs sampling algorithm is to select a new topic label for
+
+position i. This is done by drawing a random number uniformly between 0 and
+
+1, and using it to index into the unit interval which is divided into subintervals
+
+of length p(zi = j|¯z′, ¯w). In Equation (5) the vectors α and β are ﬁxed and
+
+known. Each value q′
+
+jwi depends on the current assignment of topics to each ap-
+
+pearance of the word wi throughout the corpus, not including the appearance as
+
+11
+
+
+word number i. These assignments can be initialized in any desired way, and are
+
+then updated one at a time by the Gibbs sampling process. Each value n′
+
+mj is the
+
+count of how many words within document m are assigned to topic j, not includ-
+
+ing word number i. These counts can be computed easily after the initial topic
+
+assignments are chosen, and then they can be updated in constant time whenever
+
+the topic assigned to a word changes.
+
+The LDA generative model treats each word in each document individually.
+
+However, the speciﬁc order in which words are generated does not inﬂuence the
+
+probability of a document according to the generative model. Similarly, the Gibbs
+
+sampling algorithm works with a speciﬁc ordering of the words in the corpus.
+
+However, any ordering will do. Hence, the sequence of words inside each train-
+
+ing document does not need to be known. The only training information needed
+
+for each document is how many times each word appears in it. Therefore, the
+
+LDA model can be learned from the standard bag-of-words representation of doc-
+
+uments.
+
+The standard approach to implementing Gibbs sampling iterates over every
+
+position of every document, taking the positions in some arbitrary order. For
+
+each position, Equation (5) is evaluated for each alternative topic j. For each j,
+
+evaluating (5) requires constant time, so the time to perform one epoch of Gibbs
+
+sampling is O(NK) where N is the total number of words in all documents and
+
+K is the number of topics.
+
+7
+
+Optimizations
+
+Note: This section is preliminary and not required for CSE 250B. Intuitively,
+
+evaluating (4) K times for each word, when just one value k ∈ {1, . . . , K} will
+
+be chosen, is too much work. Let us consider how to do less than O(K) work for
+
+each word.
+
+The starting point is Equation (5),
+
+p(zi = j|¯z′, ¯w) ∝ q′
+
+jwi + βwi
+
+�
+
+t q′
+
+jt + βt
+
+n′
+
+mj + αj
+
+�
+
+k n′
+
+mk + αk
+
+.
+
+The factor �
+
+k n′
+
+mk + αk depends on i but not on j for a given i, so it need not be
+
+evaluated and we can write
+
+p(zi = j|¯z′, ¯w) = 1
+
+Z
+
+q′
+
+jwi + βwi
+
+Q′
+
+j + β (n′
+
+mj + αj)
+
+(6)
+
+12
+
+
+where Q′
+
+j = �
+
+t q′
+
+jt and β = �
+
+t βt. The normalization constant Z, which is also
+
+called the partition function, is the sum
+
+Z =
+
+K
+
+�
+
+j=1
+
+q′
+
+jwi + βwi
+
+Q′
+
+j + β (n′
+
+mj + αj).
+
+As explained above, the new topic label of word i is found by using a random
+
+number between 0 and 1 to index into the unit interval, which is divided into
+
+subintervals of length p(zi = j|¯z′, ¯w).
+
+Unfortunately, the length of every subinterval depends on Z, and computing
+
+Z requires O(K) time. So, we shall compute an upper bound for Z in constant
+
+time. This upper bound will yield a lower bound for each length p(zi = j|¯z′, ¯w).
+
+We shall divide each subinterval into two parts, where the length of the ﬁrst part
+
+is the lower bound, and the second part is the remainder. If the random number
+
+indexes into the ﬁrst part of any subinterval, then all other lengths are irrelevant,
+
+which means that the O(K) computation of Z is not needed.
+
+To obtain the ﬁrst part for any given j, we want a lower bound on p(zi =
+
+j|¯z′, ¯w). In general, a lower bound for a fraction is obtainable from a lower bound
+
+for its numerator and an upper bound for its denominator. Below, we provide an
+
+upper bound for Z. The rest of the expression for p(zi = j|¯z′, ¯w) can be evaluated
+
+in constant time, so there is no need to ﬁnd an approximation for it.
+
+However, we do want to evaluate the righthand side of (6) for as few j values
+
+as possible. Therefore, we shall sort the j values into an ordering that makes the
+
+largest values of p(zi = j|¯z′, ¯w) likely to be evaluated ﬁrst. In other words, we
+
+shall attempt to order the subintervals in decreasing length. If the random number
+
+drawn is small, then we will only need to evaluate a few subinterval lengths (ac-
+
+tually, lower bounds) before ﬁnding the subinterval in which the random number
+
+lies.
+
+For each document m, the factors Q′
+
+j + β and n′
+
+mj + αj are almost constant
+
+regardless of i. Therefore, we sort the topics j by descending order of
+
+nmj + αj
+
+Qj + β .
+
+Intuitively, this ordering tries ﬁrst topics that are common in document m and rare
+
+in the whole corpus, that is with high nmj and low Qj.
+
+Now we shall derive an upper bound that is computable in constant time for
+
+the partition function. First, let us remove the dependence on the current topic
+
+13
+
+
+assignment of i:
+
+Z(i) =
+
+K
+
+�
+
+j=1
+
+(q′
+
+jwi + βwi)(Q′
+
+j + β)−1(n′
+
+mj + αj)
+
+≤
+
+K
+
+�
+
+j=1
+
+(qjwi + βwi)(Qj − 1 + β)−1(nmj + αj).
+
+Next, the generalized H¨older inequality gives
+
+Z(i) ≤ ||qjwi + βwi||p · ||nmj + αj||q · ||(Qj − 1 + β)−1||r
+
+where 1/p + 1/q + 1/r = 1. Assuming that the three norms to be multiplied are
+
+available, this upper bound for Z(i) can be computed in constant time for each i.
+
+The norms can be kept updated as follows:
+
+• Every time some instance of wi changes topic, ||qjwi + βwi||p is updated in
+
+constant time by adding to one entry and subtracting from one entry in the
+
+sum of K vector components each raised to the power p.
+
+• Every time any word in document m changes topic, ||nmj +αj||q is updated
+
+in a similar way in constant time.
+
+• Every time any word in any document changes topic, ||(Qj − 1 + β)−1||r is
+
+also updated similarly in constant time.
+
+Many choices are possible for p, q, and r. It may be advantageous to entertain
+
+three choices simultaneously, namely
+
+⟨p, q, r⟩ = ⟨2, 2, ∞⟩
+
+⟨p, q, r⟩ = ⟨2, ∞, 2⟩
+
+⟨p, q, r⟩ = ⟨∞, 2, 2⟩
+
+and to choose for each i the smallest of the three corresponding upper bounds. For
+
+the L∞ norm, note that
+
+||xj||∞ = max
+
+j
+
+xj
+
+and therefore
+
+||x−1
+
+j ||∞ = (min
+
+j
+
+xj)−1.
+
+
+CSE 250B Quiz 8, February 24, 2011
+
+In the bag-of-words approach, a document is represented by a vector x of counts
+
+that has V entries, where V is the size of the vocabulary. Let p(x; θ) be the prob-
+
+ability of x according to a multinomial distribution with parameters θ. The above
+
+is as seen in class.
+
+Dr. Justin Bieber says “The total probability over all possible documents is
+
+one: �
+
+x∈X p(x; θ) = 1 where X is the set of all vectors of length V with entries
+
+that are counts (i.e., non-negative integers).”
+
+Explain why Dr. Bieber is wrong.
+
+
+CSE 250B Quiz 10, March 10, 2011
+
+The ﬁnal equation that we obtained for Gibbs sampling for latent Dirichlet allo-
+
+cation is
+
+p(zi = j|¯z′, ¯w) ∝
+
+�
+
+q′
+
+jwi + βwi
+
+�V
+
+t=1 q′
+
+jt + βt
+
+��
+
+n′
+
+mj + αj
+
+�K
+
+k=1 n′
+
+mk + αk
+
+�
+
+.
+
+The intuitive explanation of q′
+
+jwi and n′
+
+mj is as follows: position number i in doc-
+
+ument number m is more likely to belong to topic j if the same word wi occurs
+
+often with topic j in all documents, and/or if topic j occurs often elsewhere inside
+
+document m.
+
+[3 points] Give a similar brief intuitive explanation of βwi and of αj in the numer-
+
+ators above.
+
+Hint: The scalars βwi and αj are pseudocounts. Consider the effect of them being
+
+large.
+

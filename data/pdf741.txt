@@ -1,0 +1,3088 @@
+
+recurrent neural 
+
+language models
+
+CS 585, Fall 2019
+
+Introduction to Natural Language Processing
+
+http://people.cs.umass.edu/~miyyer/cs585/
+
+Mohit Iyyer
+
+College of Information and Computer Sciences
+
+University of Massachusetts Amherst
+
+some slides from Richard Socher
+
+
+stuﬀ from last time…
+
+• HW1 due next Monday, project proposal due 
+
+next Friday 
+
+• project groups? 
+
+• can you post readings earlier? 
+
+• can you give us a timeline of all due dates?
+
+ 2
+
+
+ 3
+
+Probabilistic Language Modeling
+
+•Goal: compute the probability of a sentence or 
+
+sequence of words: 
+
+ P(W) = P(w1,w2,w3,w4,w5…wn) 
+
+•Related task: probability of an upcoming word: 
+
+      P(w5|w1,w2,w3,w4) 
+
+•A model that computes either of these: 
+
+      P(W)  or P(wn|w1,w2…wn-1)   is called a language model or LM
+
+language model review
+
+
+ 4
+
+p(wj|students opened their) =
+
+count(students opened their wj)
+
+count(students opened their)
+
+what is the order of this n-gram model? (i.e., what is n?)
+
+
+ 5
+
+
+
+Problems with	n-gram	Language	Models
+
+Note: Increasing	n makes	sparsity	problems	worse.
+
+Typically	we	can’t	have	n bigger	than	5.
+
+Problem: What	if	“students	
+
+opened	their” never	occurred	in	
+
+data?	Then	we	can’t	calculate	
+
+probability	for	any
+
+!
+
+
+
+Sparsity	Problem	2
+
+Problem: What	if	“students	
+
+opened	their						” never	
+
+occurred	in	data?	Then	
+
+has	probability	0!
+
+
+
+
+
+Sparsity	Problem	1
+
+(Partial)	Solution: Add	small	!
+
+to	count	for	every																.	
+
+This	is	called	smoothing.
+
+
+
+(Partial)	Solution: Just	condition	
+
+on	“opened	their” instead.	
+
+This	is	called	backoff.
+
+2/1/18
+
+12
+
+p(wj|students opened their) =
+
+count(students opened their wj)
+
+count(students opened their)
+
+
+ 6
+
+
+
+Problems with	n-gram	Language	Models
+
+Note: Increasing	n makes	sparsity	problems	worse.
+
+Typically	we	can’t	have	n bigger	than	5.
+
+Problem: What	if	“students	
+
+opened	their” never	occurred	in	
+
+data?	Then	we	can’t	calculate	
+
+probability	for	any
+
+!
+
+
+
+Sparsity	Problem	2
+
+Problem: What	if	“students	
+
+opened	their						” never	
+
+occurred	in	data?	Then	
+
+has	probability	0!
+
+
+
+
+
+Sparsity	Problem	1
+
+(Partial)	Solution: Add	small	!
+
+to	count	for	every																.	
+
+This	is	called	smoothing.
+
+
+
+(Partial)	Solution: Just	condition	
+
+on	“opened	their” instead.	
+
+This	is	called	backoff.
+
+2/1/18
+
+12
+
+p(wj|students opened their) =
+
+count(students opened their wj)
+
+count(students opened their)
+
+
+ 7
+
+
+
+Problems with	n-gram	Language	Models
+
+Note: Increasing	n makes	sparsity	problems	worse.
+
+Typically	we	can’t	have	n bigger	than	5.
+
+Problem: What	if	“students	
+
+opened	their” never	occurred	in	
+
+data?	Then	we	can’t	calculate	
+
+probability	for	any
+
+!
+
+
+
+Sparsity	Problem	2
+
+Problem: What	if	“students	
+
+opened	their						” never	
+
+occurred	in	data?	Then	
+
+has	probability	0!
+
+
+
+
+
+Sparsity	Problem	1
+
+(Partial)	Solution: Add	small	!
+
+to	count	for	every																.	
+
+This	is	called	smoothing.
+
+
+
+(Partial)	Solution: Just	condition	
+
+on	“opened	their” instead.	
+
+This	is	called	backoff.
+
+2/1/18
+
+12
+
+
+ 8
+
+
+
+Problems with	n-gram	Language	Models
+
+Note: Increasing	n makes	sparsity	problems	worse.
+
+Typically	we	can’t	have	n bigger	than	5.
+
+Problem: What	if	“students	
+
+opened	their” never	occurred	in	
+
+data?	Then	we	can’t	calculate	
+
+probability	for	any
+
+!
+
+
+
+Sparsity	Problem	2
+
+Problem: What	if	“students	
+
+opened	their						” never	
+
+occurred	in	data?	Then	
+
+has	probability	0!
+
+
+
+
+
+Sparsity	Problem	1
+
+(Partial)	Solution: Add	small	!
+
+to	count	for	every																.	
+
+This	is	called	smoothing.
+
+
+
+(Partial)	Solution: Just	condition	
+
+on	“opened	their” instead.	
+
+This	is	called	backoff.
+
+2/1/18
+
+12
+
+
+ 9
+
+Problems with	n-gram	Language	Models
+
+2/1/18
+
+13
+
+
+
+Storage:	Need	to	store	count	
+
+for	all	possible	n-grams.	So	
+
+model	size	is	O(exp(n)).
+
+Increasing	n makes	model	size	huge!
+
+
+ 10
+
+How	to	build	a	neural Language	Model?
+
+• Recall	the	Language	Modeling	task:
+
+• Input:	sequence	of	words
+
+• Output:	prob dist of	the	next	word	
+
+• How	about	a	window-based	neural	model?
+
+• We	saw	this	applied	to	Named	Entity	Recognition	in	Lecture	4
+
+
+
+
+
+2/1/18
+
+20
+
+
+ 11
+
+A	fixed-window	neural	Language	Model
+
+the
+
+students
+
+opened
+
+their
+
+as	
+
+the	 proctor	
+
+started	
+
+the
+
+clock
+
+______
+
+
+
+discard
+
+fixed	window
+
+2/1/18
+
+21
+
+
+ 12
+
+A	fixed-window	neural	Language	Model
+
+the
+
+students
+
+opened
+
+their
+
+books
+
+laptops
+
+concatenated	word	embeddings
+
+
+
+words	/	one-hot	vectors	
+
+
+
+
+
+
+
+
+
+
+
+hidden	layer
+
+
+
+
+
+
+
+
+
+a
+
+zoo
+
+output	distribution	
+
+
+
+
+
+2/1/18
+
+22
+
+c1, c2, c3, c4
+
+̂y = softmax(W2h + b2)
+
+W1
+
+W2
+
+c1
+
+c2
+
+c3
+
+c4
+
+h = f(W1c + b1)
+
+c = [c1; c2; c3; c4]
+
+
+ 13
+
+A	fixed-window	neural	Language	Model
+
+the
+
+students
+
+opened
+
+their
+
+books
+
+laptops
+
+concatenated	word	embeddings
+
+
+
+words	/	one-hot	vectors	
+
+
+
+
+
+
+
+
+
+
+
+hidden	layer
+
+
+
+
+
+
+
+
+
+a
+
+zoo
+
+output	distribution	
+
+
+
+
+
+2/1/18
+
+22
+
+W1
+
+W2
+
+c1
+
+c2
+
+c3
+
+c4
+
+how does this compare to a  
+
+normal n-gram model?
+
+A	fixed-window	neural	Language	Model
+
+the
+
+students
+
+opened
+
+their
+
+books
+
+laptops
+
+
+
+
+
+a
+
+zoo
+
+
+
+
+
+
+
+
+
+Improvements over	n-gram	LM:
+
+•
+
+No	sparsity	problem
+
+•
+
+Model	size	is	O(n)	not	O(exp(n))
+
+Remaining	problems:
+
+•
+
+Fixed	window	is	too	small
+
+•
+
+Enlarging	window	enlarges	
+
+•
+
+Window	can	never	be	large	
+
+enough!
+
+•
+
+Each									uses	different	rows	
+
+of						.	We	don’t	share	weights	
+
+across	the	window.
+
+
+
+
+
+
+
+We	need	a	neural	
+
+architecture	that	can	
+
+process	any	length	input
+
+
+
+
+
+ci
+
+
+ 14
+
+A	fixed-window	neural	Language	Model
+
+the
+
+students
+
+opened
+
+their
+
+books
+
+laptops
+
+concatenated	word	embeddings
+
+
+
+words	/	one-hot	vectors	
+
+
+
+
+
+
+
+
+
+
+
+hidden	layer
+
+
+
+
+
+
+
+
+
+a
+
+zoo
+
+output	distribution	
+
+
+
+
+
+2/1/18
+
+22
+
+W1
+
+W2
+
+c1
+
+c2
+
+c3
+
+c4
+
+how does this compare to a  
+
+normal n-gram model?
+
+A	fixed-window	neural	Language	Model
+
+the
+
+students
+
+opened
+
+their
+
+books
+
+laptops
+
+
+
+
+
+a
+
+zoo
+
+
+
+
+
+
+
+
+
+Improvements over	n-gram	LM:
+
+•
+
+No	sparsity	problem
+
+•
+
+Model	size	is	O(n)	not	O(exp(n))
+
+Remaining	problems:
+
+•
+
+Fixed	window	is	too	small
+
+•
+
+Enlarging	window	enlarges	
+
+•
+
+Window	can	never	be	large	
+
+enough!
+
+•
+
+Each									uses	different	rows	
+
+of						.	We	don’t	share	weights	
+
+across	the	window.
+
+
+
+
+
+
+
+We	need	a	neural	
+
+architecture	that	can	
+
+process	any	length	input
+
+
+
+
+
+ci
+
+
+Recurrent Neural Networks!
+
+
+ 16
+
+A	RNN	Language	Model
+
+the
+
+students
+
+opened
+
+their
+
+words	/	one-hot	vectors	
+
+
+
+
+
+
+
+
+
+
+
+books
+
+laptops
+
+
+
+
+
+
+
+
+
+
+
+word	embeddings
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+a
+
+zoo
+
+output	distribution	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Note:	this	input	sequence	could	be	much	
+
+longer,	but	this	slide	doesn’t	have	space!
+
+
+
+
+
+
+
+hidden	states	
+
+
+
+
+
+
+
+is	the	initial	hidden	state
+
+2/1/18
+
+25
+
+c1, c2, c3, c4
+
+c1
+
+c2
+
+c3
+
+c4
+
+the
+
+students
+
+opened
+
+their
+
+̂y = softmax(W2h(t) + b2)
+
+W2
+
+h(t) = f(Whh(t−1) + Wect + b1)
+
+h(0) is initial hidden state!
+
+
+ 17
+
+A	RNN	Language	Model
+
+the
+
+students
+
+opened
+
+their
+
+words	/	one-hot	vectors	
+
+
+
+
+
+
+
+
+
+
+
+books
+
+laptops
+
+
+
+
+
+
+
+
+
+
+
+word	embeddings
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+a
+
+zoo
+
+output	distribution	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Note:	this	input	sequence	could	be	much	
+
+longer,	but	this	slide	doesn’t	have	space!
+
+
+
+
+
+
+
+hidden	states	
+
+
+
+
+
+
+
+is	the	initial	hidden	state
+
+2/1/18
+
+25
+
+c1
+
+c2
+
+c3
+
+c4
+
+the
+
+students
+
+opened
+
+their
+
+W2
+
+A	RNN	Language	Model
+
+the
+
+students
+
+opened
+
+their
+
+
+
+
+
+
+
+
+
+books
+
+laptops
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+a
+
+zoo
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+RNN Advantages:
+
+•
+
+Can	process	any	length
+
+input
+
+•
+
+Model	size	doesn’t	
+
+increase for	longer	input
+
+•
+
+Computation	for	step	t
+
+can	(in	theory)	use	
+
+information	from many	
+
+steps	back
+
+•
+
+Weights	are	shared
+
+across	timesteps à
+
+representations	are	
+
+shared
+
+RNN	Disadvantages:
+
+•
+
+Recurrent	computation	
+
+is	slow
+
+•
+
+In	practice,	difficult	to	
+
+access	information	from	
+
+many	steps	back	
+
+More	on	
+
+these	next	
+
+week
+
+2/1/18
+
+26
+
+why is this good?
+
+
+let’s look at the derivatives!
+
+ 18
+
+
+ 19
+
+Training	a	RNN	Language	Model
+
+•
+
+Get	a	big	corpus	of	text	which	is	a	sequence	of	words
+
+•
+
+Feed	into	RNN-LM;	compute	output	distribution									for	every	step	t.
+
+• i.e.	predict	probability	dist of	every	word,	given	words	so	far
+
+•
+
+Loss	function	on	step	t	is	usual	cross-entropy	between	our	predicted	
+
+probability	distribution								,	and	the	true	next	word																						:
+
+•
+
+Average	this	to	get	overall	loss	for	entire	training	set:
+
+
+
+
+
+
+
+
+
+
+
+
+
+2/1/18
+
+27
+
+
+ 20
+
+Training	a	RNN	Language	Model
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+=	negative	log	prob
+
+of	“students”
+
+the
+
+students
+
+opened
+
+their
+
+…
+
+exams
+
+Corpus
+
+Loss
+
+…
+
+2/1/18
+
+28
+
+c1
+
+c2
+
+c3
+
+c4
+
+W2
+
+W2
+
+W2
+
+W2
+
+
+ 21
+
+Training	a	RNN	Language	Model
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+=	negative	log	prob
+
+of	“opened”
+
+Corpus
+
+the
+
+students
+
+opened
+
+their
+
+…
+
+exams
+
+Loss
+
+…
+
+2/1/18
+
+29
+
+c1
+
+c2
+
+c3
+
+c4
+
+W2
+
+W2
+
+W2
+
+W2
+
+
+ 22
+
+Training	a	RNN	Language	Model
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+=	negative	log	prob
+
+of	“their”
+
+Corpus
+
+the
+
+students
+
+opened
+
+their
+
+…
+
+exams
+
+Loss
+
+…
+
+2/1/18
+
+30
+
+c1
+
+c2
+
+c3
+
+c4
+
+W2
+
+W2
+
+W2
+
+W2
+
+
+ 23
+
+Training	a	RNN	Language	Model
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+=	negative	log	prob
+
+of	“exams”
+
+Corpus
+
+the
+
+students
+
+opened
+
+their
+
+…
+
+exams
+
+Loss
+
+…
+
+2/1/18
+
+31
+
+c1
+
+c2
+
+c3
+
+c4
+
+W2
+
+W2
+
+W2
+
+W2
+
+
+ 24
+
+Training	a	RNN	Language	Model
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
++																		+																			+																		+	…						=
+
+
+
+Corpus
+
+the
+
+students
+
+opened
+
+their
+
+…
+
+exams
+
+Loss
+
+…
+
+2/1/18
+
+32
+
+c1
+
+c2
+
+c3
+
+c4
+
+W2
+
+W2
+
+W2
+
+W2
+
+
+ 25
+
+Training	a	RNN	Language	Model
+
+• However:	Computing	loss	and	gradients	across	entire	corpus is	
+
+too	expensive!
+
+• Recall: Stochastic	Gradient	Descent	allows	us	to	compute	loss	
+
+and	gradients	for	small	chunk	of	data,	and	update.
+
+• à In	practice,	consider																							as	a	sentence
+
+• Compute	loss										for	a	sentence	(actually	usually	a	batch	of	
+
+sentences),	compute	gradients	and	update	weights.	Repeat.
+
+
+
+
+
+
+
+2/1/18
+
+33
+
+
+ 26
+
+RNNs	have	greatly	improved	perplexity
+
+
+
+n-gram	model
+
+Increasingly	
+
+complex	RNNs
+
+Perplexity	improves	
+
+(lower	is	better)
+
+Source: https://research.fb.com/building-an-efficient-neural-language-model-over-a-billion-words/
+
+2/1/18
+
+44
+
+
+okay… enough with the 
+
+unconditional LMs. let’s 
+
+switch to conditional LMs!
+
+ 27
+
+we’ll start with machine translation
+
+
+MT goals
+
+• Motivation: Human translation is expensive
+
+• Rough translation vs. none
+
+• Interactive assistance for human translators
+
+• e.g. Lilt
+
+•
+
+https://www.youtube.com/watch?v=YZ7G3gQgpfI
+
+•
+
+https://lilt.com/app/projects/details/1887/edit-document/2306
+
+• [compare to bilingual dictionary]
+
+ 28
+
+
+MT paradigms
+
+• Rule-based transfer rules
+
+• Manually program lexicons/rules
+
+• SYSTRAN (AltaVista Babelﬁsh; originally from 70s)
+
+• Statistical MT
+
+• Word-to-word, phrase-to-phrase probs
+
+• Learn phrase- or syntax-tree translation rules from data, 
+
+search for high-scoring translation outputs
+
+• Key research in the early 90s
+
+• Google Translate (mid 00s)
+
+• Open-source: Moses
+
+• Neural MT
+
+• Research in early 10s;  very recently deployed
+
+• Latent representations of words/phrases
+
+ 29
+
+
+Machine learning for MT
+
+• MT as ML:   Translation is something people do 
+
+naturally.  Learn rules from data?
+
+• Parallel data:  (source, target) text pairs
+
+• E.g. 20 million words of European Parliament 
+
+proceedings 
+
+http://www.statmt.org/europarl/
+
+• Training: learn parameters to predict 
+
+{source =&gt; target}
+
+• Test time: given source sentence, search for 
+
+high-scoring target  (e.g. beam search)
+
+ 30
+
+
+ 31
+
+MT History: Hype vs. Reality
+
+
+
+
+ 32
+
+How Good is Machine Translation?
+
+Chinese &gt; English
+
+
+
+
+ 33
+
+How Good is Machine Translation?
+
+French &gt; English
+
+
+
+
+ 34
+
+What is MT good (enough) for?
+
+• Assimilation: reader initiates translation, wants to know content
+
+• User is tolerant of inferior quality
+
+• Focus of majority of research
+
+• Communication: participants in conversation don’t speak same language
+
+• Users can ask questions when something is unclear
+
+• Chat room translations, hand-held devices
+
+• Often combined with speech recognition
+
+• Dissemination: publisher wants to make content available in other 
+
+languages
+
+• High quality required
+
+• Almost exclusively done by human translators
+
+
+today: neural MT
+
+• we’ll use French (f) to English (e) as a running 
+
+example 
+
+• goal: given French sentence f with tokens f1, 
+
+f2, … fn  produce English translation e with 
+
+tokens e1, e2, … em
+
+ 35
+
+is n always equal to m?
+
+
+today: neural MT
+
+• we’ll use French (f) to English (e) as a running 
+
+example 
+
+• goal: given French sentence f with tokens f1, 
+
+f2, … fn  produce English translation e with 
+
+tokens e1, e2, … em 
+
+• real goal: compute 
+
+ 36
+
+is n always equal to m?
+
+arg max
+
+e
+
+p(e| f )
+
+
+today: neural MT
+
+• let’s use an NN to directly model 
+
+ 37
+
+p(e| f )
+
+p(e| f ) = p(e1, e2, …, em| f )
+
+= p(e1| f ) ⋅ p(e2|e1, f ) ⋅ p(e3|e2, e1, f ) ⋅ …
+
+=
+
+m
+
+∏
+
+i=1
+
+p(ei|e1, …, ei−1, f )
+
+how does this formulation relate to the language 
+
+models we discussed previously?
+
+
+seq2seq models
+
+• use two different RNNs to model  
+
+• ﬁrst we have the encoder, which encodes the 
+
+French sentence f 
+
+• then, we have the decoder, which produces 
+
+the English sentence e
+
+ 38
+
+m
+
+∏
+
+i=1
+
+p(ei|e1, …, ei−1, f )
+
+
+ 39
+
+Encoder RNN
+
+Neural Machine Translation (NMT)
+
+2/15/18
+
+23
+
+&lt;START&gt;
+
+Source sentence (input)
+
+les    pauvres sont démunis
+
+The sequence-to-sequence model
+
+Target sentence (output)
+
+Decoder RNN
+
+Encoder RNN produces 
+
+an encoding of the 
+
+source sentence.
+
+Encoding of the source sentence.
+
+Provides initial hidden state 
+
+for Decoder RNN.
+
+Decoder RNN is a Language Model that generates 
+
+target sentence conditioned on encoding.
+
+the
+
+argmax
+
+the
+
+argmax
+
+poor
+
+poor
+
+argmax
+
+don’t
+
+Note: This diagram shows test time behavior: 
+
+decoder output is fed in           as next step’s input
+
+have      any    money  &lt;END&gt;
+
+don’t    have      any    money
+
+argmax
+
+argmax
+
+argmax
+
+argmax
+
+
+ 40
+
+Encoder RNN
+
+Neural Machine Translation (NMT)
+
+2/15/18
+
+23
+
+&lt;START&gt;
+
+Source sentence (input)
+
+les    pauvres sont démunis
+
+The sequence-to-sequence model
+
+Target sentence (output)
+
+Decoder RNN
+
+Encoder RNN produces 
+
+an encoding of the 
+
+source sentence.
+
+Encoding of the source sentence.
+
+Provides initial hidden state 
+
+for Decoder RNN.
+
+Decoder RNN is a Language Model that generates 
+
+target sentence conditioned on encoding.
+
+the
+
+argmax
+
+the
+
+argmax
+
+poor
+
+poor
+
+argmax
+
+don’t
+
+Note: This diagram shows test time behavior: 
+
+decoder output is fed in           as next step’s input
+
+have      any    money  &lt;END&gt;
+
+don’t    have      any    money
+
+argmax
+
+argmax
+
+argmax
+
+argmax
+
+
+ 41
+
+Training a Neural Machine Translation system
+
+2/15/18
+
+25
+
+Encoder RNN
+
+Source sentence (from corpus)
+
+&lt;START&gt;   the      poor    don’t    have      any    money
+
+les    pauvres sont démunis
+
+Target sentence (from corpus)
+
+Seq2seq is optimized as a single system.
+
+Backpropagation operates “end to end”.
+
+Decoder RNN
+
+!"#
+
+!"$
+
+!"%
+
+!"&amp;
+
+!"'
+
+!"(
+
+!")
+
+*#
+
+*$
+
+*%
+
+*&amp;
+
+*'
+
+*(
+
+*)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+= negative log 
+
+prob of “the”
+
+* = 1
+
+- .
+
+/0#
+
+1
+
+*/
+
+=                 +          +         +         +          +         +
+
+= negative log 
+
+prob of &lt;END&gt;
+
+= negative log 
+
+prob of “have”
+
+what are the parameters of this model?
+
+
+ 42
+
+Training a Neural Machine Translation system
+
+2/15/18
+
+25
+
+Encoder RNN
+
+Source sentence (from corpus)
+
+&lt;START&gt;   the      poor    don’t    have      any    money
+
+les    pauvres sont démunis
+
+Target sentence (from corpus)
+
+Seq2seq is optimized as a single system.
+
+Backpropagation operates “end to end”.
+
+Decoder RNN
+
+!"#
+
+!"$
+
+!"%
+
+!"&amp;
+
+!"'
+
+!"(
+
+!")
+
+*#
+
+*$
+
+*%
+
+*&amp;
+
+*'
+
+*(
+
+*)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+= negative log 
+
+prob of “the”
+
+* = 1
+
+- .
+
+/0#
+
+1
+
+*/
+
+=                 +          +         +         +          +         +
+
+= negative log 
+
+prob of &lt;END&gt;
+
+= negative log 
+
+prob of “have”
+
+what are the parameters of this model?
+
+Wenc
+
+h , Wenc
+
+e , Cenc, Wdec
+
+h , Wdec
+
+e , Cdec, Wout
+
+C is word embedding matrix
+
+
+decoding
+
+• given that we trained a seq2seq model, how 
+
+do we ﬁnd the most probable English 
+
+sentence?  
+
+• more concretely, how do we ﬁnd  
+
+• can we enumerate all possible English 
+
+sentences e? 
+
+ 43
+
+arg max
+
+m
+
+∏
+
+i=1
+
+p(ei|e1, …, ei−1, f )
+
+
+decoding
+
+• given that we trained a seq2seq model, how 
+
+do we ﬁnd the most probable English 
+
+sentence?  
+
+• easiest option: greedy decoding
+
+ 44
+
+Better-than-greedy decoding?
+
+• We showed how to generate (or “decode”) the target sentence 
+
+by taking argmax on each step of the decoder
+
+• This is greedy decoding (take most probable word on each step)
+
+&lt;START&gt;
+
+the
+
+argmax
+
+the
+
+argmax
+
+poor
+
+poor
+
+argmax
+
+don’t
+
+have      any    money  &lt;END&gt;
+
+don’t    have      any    money
+
+argmax
+
+argmax
+
+argmax
+
+argmax
+
+issues?
+
+
+Beam search
+
+• in greedy decoding, we cannot go back and 
+
+revise previous decisions!  
+
+• fundamental idea of beam search: explore 
+
+several different hypotheses instead of just a 
+
+single one 
+
+•
+
+keep track of k most probable partial translations 
+
+at each decoder step instead of just one! 
+
+Better-than-greedy decoding?
+
+• Greedy decoding has no way to undo decisions! 
+
+• les pauvres sont démunis (the poor don’t have any money)
+
+• → the ____
+
+• → the poor ____
+
+• → the poor are ____
+
+• Better option: use beam search (a search algorithm) to explore 
+
+several hypotheses and select the best one
+
+the beam size k is usually 5-10
+
+
+ 46
+
+Beam search decoding: example
+
+Beam size = 2
+
+&lt;START&gt;
+
+the
+
+a
+
+-1.05
+
+-1.39
+
+
+ 47
+
+Beam search decoding: example
+
+Beam size = 2
+
+poor
+
+people
+
+poor
+
+person
+
+&lt;START&gt;
+
+the
+
+a
+
+-1.90
+
+-1.54
+
+-2.3
+
+-3.2
+
+
+ 48
+
+Beam search decoding: example
+
+Beam size = 2
+
+poor
+
+people
+
+poor
+
+person
+
+are
+
+don’t
+
+person
+
+but
+
+&lt;START&gt;
+
+the
+
+a
+
+-2.42
+
+-3.12
+
+-2.13
+
+-3.53
+
+
+ 49
+
+Beam search decoding: example
+
+Beam size = 2
+
+poor
+
+people
+
+poor
+
+person
+
+are
+
+don’t
+
+person
+
+but
+
+always
+
+not
+
+have
+
+take
+
+&lt;START&gt;
+
+the
+
+a
+
+-3.82
+
+-3.32
+
+-2.67
+
+-3.61
+
+and so on…
+
+
+ 50
+
+Beam search decoding: example
+
+Beam size = 2
+
+poor
+
+people
+
+poor
+
+person
+
+are
+
+don’t
+
+person
+
+but
+
+always
+
+not
+
+have
+
+take
+
+in
+
+with
+
+any
+
+enough
+
+&lt;START&gt;
+
+the
+
+a
+
+
+ 51
+
+Beam search decoding: example
+
+Beam size = 2
+
+poor
+
+people
+
+poor
+
+person
+
+are
+
+don’t
+
+person
+
+but
+
+always
+
+not
+
+have
+
+take
+
+in
+
+with
+
+any
+
+enough
+
+money
+
+funds
+
+money
+
+funds
+
+&lt;START&gt;
+
+the
+
+a
+
+
+ 52
+
+Beam search decoding: example
+
+Beam size = 2
+
+poor
+
+people
+
+poor
+
+person
+
+are
+
+don’t
+
+person
+
+but
+
+always
+
+not
+
+have
+
+take
+
+in
+
+with
+
+any
+
+enough
+
+money
+
+funds
+
+money
+
+funds
+
+&lt;START&gt;
+
+the
+
+a
+
+
+ 53
+
+what are the termination 
+
+conditions for beam search?
+
+does beam search always produce the best 
+
+translation (i.e., does it always ﬁnd the argmax?)
+
+
+ 54
+
+Sequence-to-sequence: the bottleneck problem
+
+Encoder RNN
+
+Source sentence (input)
+
+&lt;START&gt;   the      poor    don’t    have      any    money
+
+les    pauvres sont démunis
+
+the      poor    don’t    have      any    money  &lt;END&gt;
+
+Decoder RNN
+
+Target sentence (output)
+
+Encoding of the 
+
+source sentence. 
+
+This needs to capture all 
+
+information about the 
+
+source sentence.
+
+Information bottleneck!
+
+next class preview: attention!
+
+
+onto evaluation…
+
+ 55
+
+
+ 56
+
+How good is a translation?
+
+Problem: no single right answer
+
+
+
+
+ 57
+
+Evaluation
+
+• How good is a given machine translation system?
+
+• Many different translations acceptable
+
+• Evaluation metrics
+
+• Subjective judgments by human evaluators
+
+• Automatic evaluation metrics
+
+• Task-based evaluation
+
+
+ 58
+
+Adequacy and Fluency
+
+• Human judgment
+
+• Given: machine translation output
+
+• Given: input and/or reference translation
+
+• Task: assess quality of MT output
+
+• Metrics
+
+• Adequacy: does the output convey the meaning of the input sentence? Is 
+
+part of the message lost, added, or distorted?
+
+• Fluency: is the output fluent? Involves both grammatical correctness and 
+
+idiomatic word choices.
+
+
+ 59
+
+Fluency and Adequacy: Scales
+
+
+
+
+ 60
+
+
+
+
+ 61
+
+Let’s try:
+
+rate fluency &amp; adequacy on 1-5 scale
+
+
+
+
+what are some issues 
+
+with human evaluation?
+
+ 62
+
+
+ 63
+
+Automatic Evaluation Metrics
+
+• Goal: computer program that computes quality of translations
+
+• Advantages: low cost, optimizable, consistent
+
+• Basic strategy
+
+• Given: MT output
+
+• Given: human reference translation
+
+• Task: compute similarity between them
+
+
+ 64
+
+Precision and Recall of Words
+
+
+
+
+ 65
+
+Precision and Recall of Words
+
+
+
+
+ 66
+
+BLEU 
+
+Bilingual Evaluation Understudy
+
+
+
+In the MT ﬁnal project, we will 
+
+use BLEU to evaluate models
+
+
+ 67
+
+Multiple Reference Translations
+
+
+
+
+ 68
+
+BLEU examples
+
+
+
+
+ 69
+
+BLEU examples
+
+
+
+why does BLEU 
+
+not account for 
+
+recall?
+
+
+what are some drawbacks of BLEU?
+
+ 70
+
+
+what are some drawbacks of BLEU?
+
+• all words/n-grams treated as equally relevant 
+
+• operates on local level 
+
+• scores are meaningless (absolute value not 
+
+informative) 
+
+• human translators also score low on BLEU
+
+ 71
+
+
+ 72
+
+Yet automatic metrics such as BLEU 
+
+correlate with human judgement
+
+
+

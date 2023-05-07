@@ -1,0 +1,2751 @@
+
+Chapter 8
+
+Probabilistic Language Models
+
+In this chapter, we consider probability models that are speciﬁcally linguistic:
+
+Hidden Markov Models (HMMs) and Probabilistic Context-free Grammars
+
+(PCFGs).
+
+These models can be used to directly encode probability values in linguis-
+
+tic formalism. While such models have well-understood formal properties and
+
+are widely used in computational research, they are extremely controversial
+
+in the theory of language. It is a hotly debated question whether grammar
+
+itself should incorporate probabilistic information.
+
+8.1
+
+The Chain Rule
+
+To understand HMMs, we must ﬁrst understand the Chain Rule. The Chain
+
+Rule is one simple consequence of the deﬁnition of conditional probability:
+
+the joint probability of some set of events a1, a2, a3, a4 can also be expressed
+
+as a ‘chain’ of conditional probabilities, e.g.:
+
+(8.1) p(a1, a2, a3, a4) = p(a1)p(a2|a1)p(a3|a1, a2)p(a4|a1, a2, a3)
+
+This follows algebraically from the deﬁnition of conditional probability. If
+
+we substitute by the deﬁnition of conditional probability for each of the
+
+conditional probabilities in the preceeding equation and then cancel terms,
+
+we get the original joint probability.
+
+142
+
+
+CHAPTER 8. PROBABILISTIC LANGUAGE MODELS
+
+143
+
+(8.2)
+
+p(a1, a2, a3, a4)
+
+=
+
+p(a1) × p(a2|a1) × p(a3|a1, a2) × p(a4|a1, a2, a3)
+
+=
+
+p(a1) × p(a1,a2)
+
+
+
+p(a1) × p(a1,a2,a3)
+
+
+
+p(a1,a2) × p(a1,a2,a3,a4)
+
+
+
+p(a1,a2,a3)
+
+=
+
+p(a1, a2, a3, a4)
+
+Notice also that the chain rule can be used to express any dependency among
+
+the terms of the original joint probability. For example:
+
+(8.3) p(a1, a2, a3, a4) = p(a4)p(a3|a4)p(a2|a3, a4)p(a1|a2, a3, a4)
+
+Here we express the ﬁrst events as conditional on the later events, rather
+
+than vice versa.
+
+8.2
+
+N-gram models
+
+Another preliminary to both HMMs and PCGFs are N-gram models. These
+
+are the very simplest kind of statistical language model. The basic idea is
+
+to consider the structure of a text, corpus, or language as the probability
+
+of diﬀerent words occurring alone or occurring in sequence. The simplest
+
+model, the unigram model, treats the words in isolation.
+
+8.2.1
+
+Unigrams
+
+Take a very simple text like the following:
+
+Peter Piper picked a peck of pickled pepper.
+
+Where’s the pickled pepper that Peter Piper picked?
+
+There are sixteen words in this text.1 The word “Peter” occurs twice and
+
+thus has a probability of
+
+2
+
+
+
+16 = .125. On the other hand, “peck” occurs only
+
+once and has the probability of
+
+1
+
+
+
+16 = .0625.
+
+This kind of information can be used to judge the well-formedness of
+
+texts. This is analogous to, say, identifying some new text as being in the
+
+same language, or written by the same author, or on the same topic. The
+
+
+
+1We leave aside issues of text normalization, i.e. capitalization and punctuation.
+
+
+CHAPTER 8. PROBABILISTIC LANGUAGE MODELS
+
+144
+
+
+
+
+
+
+
+
+
+xy
+
+
+
+p(x) × p(y)
+
+
+
+
+
+
+
+
+
+
+
+
+
+aa
+
+
+
+.1089
+
+
+
+
+
+
+
+
+
+
+
+ab
+
+
+
+.1089
+
+
+
+
+
+
+
+
+
+
+
+ac
+
+
+
+.1089
+
+
+
+
+
+
+
+
+
+
+
+ba
+
+
+
+.1089
+
+
+
+
+
+
+
+
+
+
+
+bb
+
+
+
+.1089
+
+
+
+
+
+
+
+
+
+
+
+bc
+
+
+
+.1089
+
+
+
+
+
+
+
+
+
+
+
+ca
+
+
+
+.1089
+
+
+
+
+
+
+
+
+
+
+
+cb
+
+
+
+.1089
+
+
+
+
+
+
+
+
+
+
+
+cc
+
+
+
+.1089
+
+
+
+
+
+
+
+
+
+
+
+
+
+total
+
+
+
+1
+
+
+
+
+
+
+
+
+
+Figure 8.1: With identical probabilities
+
+way this works is that we calculate the overall probability of the new text as
+
+a function of the individual probabilities of the words that occur in it.
+
+On this view, the likelihood of a text like “Peter pickled pepper” would
+
+be a function of the probabilities of its parts: .125, .125, and .125. If we
+
+assume the choice of each word is independent, then the probability of the
+
+whole string is the product of the independent words, in this case: .125 ×
+
+.125 × .125 = .00195.
+
+We can make this more intuitive by considering a restricted hypothetical
+
+case. Imagine we have a language with only three words: {a, b, c}. Each
+
+word has an equal likelihood of occurring: .33 each. There are nine possible
+
+two-word texts, each having a probability of .1089 (Table 8.1). The range
+
+of possible texts thus exhibits a probability distribution; the probabilities of
+
+the set of possible outcomes sums to 1 (9 × .1089).
+
+This is also the case if the individual words exhibit an asymmetric distri-
+
+bution. Assume a vocabulary with the same words, but where the individual
+
+word probabilities are diﬀerent, i.e. p(a) = .5, p(b) = .25, and p(c) = .25
+
+(Table 8.2). The way this model works is that the well-formedness of a text
+
+fragment is correlated with its overall probability. Higher-probability text
+
+fragments are more well-formed than lower-probability texts, e.g. aa is a
+
+
+CHAPTER 8. PROBABILISTIC LANGUAGE MODELS
+
+145
+
+
+
+
+
+
+
+
+
+xy
+
+
+
+p(x) × p(y)
+
+
+
+
+
+
+
+
+
+
+
+
+
+aa
+
+
+
+.25
+
+
+
+
+
+
+
+
+
+
+
+ab
+
+
+
+.125
+
+
+
+
+
+
+
+
+
+
+
+ac
+
+
+
+.125
+
+
+
+
+
+
+
+
+
+
+
+ba
+
+
+
+.125
+
+
+
+
+
+
+
+
+
+
+
+bb
+
+
+
+.0625
+
+
+
+
+
+
+
+
+
+
+
+bc
+
+
+
+.0625
+
+
+
+
+
+
+
+
+
+
+
+ca
+
+
+
+.125
+
+
+
+
+
+
+
+
+
+
+
+cb
+
+
+
+.0625
+
+
+
+
+
+
+
+
+
+
+
+cc
+
+
+
+.0625
+
+
+
+
+
+
+
+
+
+
+
+
+
+total
+
+
+
+1
+
+
+
+
+
+
+
+
+
+Figure 8.2: With diﬀerent probabilities
+
+better exemplar of L than cb.2
+
+A major shortcoming of this model is that it makes no distinction among
+
+texts in terms of ordering. Thus this model cannot distinguish ab from ba.
+
+This, of course, is something that we as linguists think is essential, but we can
+
+ask the question whether it’s really necessary for computational applications.
+
+A second major shortcoming is that the model makes the same predictions
+
+at any point in the text. For example, in the second example above, the most
+
+frequent word is a. Imagine we want to predict the ﬁrst word of some text.
+
+The model above would tell us it should be a. Imagine we want to predict
+
+the nth word. Once again, the model predicts a. The upshot is that the
+
+current model predicts that a text should simply be composed of the most
+
+frequent item in the lexicon: aaa . . ..
+
+8.2.2
+
+Bigrams
+
+Let’s go on to consider a more complex model that captures some of the
+
+ordering restrictions that may occur in some language or text: bigrams. The
+
+basic idea behind higher-order N-gram models is to consider the probability
+
+of a word occurring as a function of its immediate context.
+
+In a bigram
+
+model, this context is the immediately preceeding word:
+
+
+
+2Note that we have made an interesting leap here.
+
+We are characterizing “well-
+
+formedness” in terms of frequency. Is this fair?
+
+
+CHAPTER 8. PROBABILISTIC LANGUAGE MODELS
+
+146
+
+(8.4) p(w1w2 . . . wi) = p(w1) × p(w2|w1) × . . . × p(wi|wi−1)
+
+We calculate conditional probability in the usual fashion. (We use absolute
+
+value notation to denote the number of instances of some element.)
+
+(8.5) p(wi|wi−1) = |wi−1wi|
+
+
+
+|wi−1|
+
+It’s important to notice that this is not the Chain Rule; here the context for
+
+the conditional probabilities is the immediate context, not the whole context.
+
+As a consequence we cannot return to the joint probability algebraically, as
+
+we did at the end of the preceding section (equation 8.2 on page 143). We
+
+will see that this limit on the context for the conditional probabilities in a
+
+higher-order N-gram model has important consequences for how we might
+
+actually manipulate such models computationally.
+
+Let’s work out the bigrams in our tongue twister (repeated here).
+
+Peter Piper picked a peck of pickled pepper.
+
+Where’s the pickled pepper that Peter Piper picked?
+
+The frequency of the individual words is as in Table 8.3. The bigram fre-
+
+quencies are as in Table 8.4. Calculating conditional probabilities is then a
+
+straightforward matter of division. For example, the conditional probability
+
+of “Piper” given “Peter”:
+
+(8.6) p(Piper|Peter) = |Peter Piper|
+
+
+
+|Peter|
+
+= 2
+
+
+
+2 = 1
+
+However, the conditional probability of “Piper” given “a”:
+
+(8.7) p(Piper|a) = |a Piper|
+
+
+
+|a|
+
+= 0
+
+
+
+1 = 0
+
+Using conditional probabilities thus captures the fact that the likelihood of
+
+“Piper” varies by preceeding context: it is more likely after “Peter” than
+
+after “a”.
+
+
+CHAPTER 8. PROBABILISTIC LANGUAGE MODELS
+
+147
+
+
+
+
+
+
+
+
+
+Word
+
+
+
+Frequency
+
+
+
+
+
+
+
+
+
+
+
+
+
+Peter
+
+
+
+2
+
+
+
+
+
+
+
+
+
+
+
+Piper
+
+
+
+2
+
+
+
+
+
+
+
+
+
+
+
+picked
+
+
+
+2
+
+
+
+
+
+
+
+
+
+
+
+a
+
+
+
+1
+
+
+
+
+
+
+
+
+
+
+
+peck
+
+
+
+1
+
+
+
+
+
+
+
+
+
+
+
+of
+
+
+
+1
+
+
+
+
+
+
+
+
+
+
+
+pickled
+
+
+
+2
+
+
+
+
+
+
+
+
+
+
+
+pepper
+
+
+
+2
+
+
+
+
+
+
+
+
+
+
+
+Where’s
+
+
+
+1
+
+
+
+
+
+
+
+
+
+
+
+the
+
+
+
+1
+
+
+
+
+
+
+
+
+
+
+
+that
+
+
+
+1
+
+
+
+
+
+
+
+
+
+Figure 8.3: Tongue twister frequencies
+
+
+
+
+
+
+
+
+
+Bigrams
+
+
+
+Bigram frequencies
+
+
+
+
+
+
+
+
+
+
+
+
+
+picked a
+
+
+
+1
+
+
+
+
+
+
+
+
+
+
+
+pepper that
+
+
+
+1
+
+
+
+
+
+
+
+
+
+
+
+peck of
+
+
+
+1
+
+
+
+
+
+
+
+
+
+
+
+a peck
+
+
+
+1
+
+
+
+
+
+
+
+
+
+
+
+pickled pepper
+
+
+
+2
+
+
+
+
+
+
+
+
+
+
+
+Where s
+
+
+
+1
+
+
+
+
+
+
+
+
+
+
+
+Piper picked
+
+
+
+2
+
+
+
+
+
+
+
+
+
+
+
+the pickled
+
+
+
+1
+
+
+
+
+
+
+
+
+
+
+
+Peter Piper
+
+
+
+2
+
+
+
+
+
+
+
+
+
+
+
+of pickled
+
+
+
+1
+
+
+
+
+
+
+
+
+
+
+
+pepper Where
+
+
+
+1
+
+
+
+
+
+
+
+
+
+
+
+that Peter
+
+
+
+1
+
+
+
+
+
+
+
+
+
+
+
+s the
+
+
+
+1
+
+
+
+
+
+
+
+
+
+Figure 8.4: Twister bigram frequencies
+
+
+CHAPTER 8. PROBABILISTIC LANGUAGE MODELS
+
+148
+
+The bigram model addresses both of the problems we identiﬁed with the
+
+unigram model above. First, recall that the unigram model could not distin-
+
+guish among diﬀerent orderings. Diﬀerent orderings are distinguished in the
+
+bigram model. Consider, for example, the diﬀerence between “Peter Piper”
+
+and “Piper Peter”. We’ve already seen that the former has a conditional
+
+probability of 1. The latter, on the other hand:
+
+(8.8) p(Peter|Piper) = |Piper Peter|
+
+
+
+|Piper|
+
+= 0
+
+
+
+2 = 0
+
+The unigram model also made the prediction that the most well-formed
+
+text should be composed of repetitions of the highest-probability items. The
+
+bigram model excludes this possibility as well.
+
+Contrast the conditional
+
+probability of “Peter Piper” with “Peter Peter”:
+
+(8.9) p(Peter|Peter) = |Peter Peter|
+
+
+
+|Peter|
+
+= 0
+
+
+
+2 = 0
+
+The bigram model presented doesn’t actually give a probability distri-
+
+bution for a string or sentence without adding something for the edges of
+
+sentences. To get a correct probability distribution for the set of possible
+
+sentences generated from some text, we must factor in the probability that
+
+some word begins the sentence, and that some word ends the sentence. To
+
+do this, we deﬁne two markers that delimit all sentences: &lt;s&gt; and &lt;/s&gt;.
+
+This transforms our text as follows.
+
+&lt;s&gt; Peter Piper picked a peck of pickled pepper. &lt;/s&gt;
+
+&lt;s&gt; Where’s the pickled pepper that Peter Piper picked? &lt;/s&gt;
+
+Thus the probability of some sentence w1w2 . . . wn is given as:
+
+(8.10) p(w1|&lt;s&gt;) × p(w2|w1) × . . . × p(&lt;/s&gt;|wn)
+
+Given the very restricted size of this text, and the conditional probabilities
+
+dependent on the newly added edge markers, there are only several speciﬁc
+
+ways to add acceptable strings without reducing the probabilities to zero.
+
+Given the training text, these have the probabilities given below:
+
+
+CHAPTER 8. PROBABILISTIC LANGUAGE MODELS
+
+149
+
+(8.11)
+
+p(Peter Piper picked)
+
+=
+
+p(Peter|&lt;s&gt;) × p(Piper|Peter) × p(picked|Piper)×
+
+p(&lt;/s&gt;|picked)
+
+=
+
+.5 × 1 × 1 × .5
+
+=
+
+.25
+
+(8.12)
+
+p(Where’s the pickled pepper)
+
+=
+
+p(Where’s|&lt;s&gt;) × p(the|Where’s) × p(pickled|the)×
+
+p(pepper|pickled) × p(&lt;/s&gt;|pepper)
+
+=
+
+.5 × 1 × 1 × 1 × .5
+
+=
+
+.25
+
+(8.13)
+
+p
+
+�
+
+Where’s the pickled pepper that Peter
+
+Piper picked a peck of pickled pepper
+
+�
+
+=
+
+p(Where’s|&lt;s&gt;) × p(the|Where’s) × p(pickled|the)×
+
+p(pepper|pickled) × p(that|pepper) × p(Peter|that)×
+
+p(Piper|Peter) × p(picked|Piper) × p(a|picked)×
+
+p(peck|a) × p(of|peck) × p(pickled|of)×
+
+p(peper|pickled) × p(&lt;/s&gt;|pepper)
+
+=
+
+.5 × 1 × 1 × 1 × .5 × 1 × 1 × 1 × .5 × 1 × 1 × 1 × 1 × .5
+
+=
+
+.0625
+
+(8.14)
+
+p
+
+�
+
+Peter Piper picked a peck of pickled pepper
+
+that Peter Piper picked
+
+�
+
+=
+
+p(Peter|&lt;s&gt;) × p(Piper|Peter) × p(picked|Piper)×
+
+p(a|picked) × p(peck|a) × p(of|peck)×
+
+p(pickled|of) × p(pepper|pickled) × p(that|pepper)×
+
+p(Peter|that) × p(Piper|Peter) × p(picked|Piper)×
+
+p(&lt;/s&gt;|picked)
+
+=
+
+.5 × 1 × 1 × .5 × 1 × 1 × 1 × 1 × .5 × 1 × 1 × .5
+
+=
+
+.0625
+
+
+CHAPTER 8. PROBABILISTIC LANGUAGE MODELS
+
+150
+
+Notice how the text that our bigram frequencies were calculated on only
+
+leaves very restricted “choice” points. There are really only four:
+
+1. What is the ﬁrst word of the sentence: “Peter” or “Where’s”?
+
+2. What is the last word of the sentence: “pepper” or “picked”?
+
+3. What follows the word “picked”: “a” or &lt;/s&gt;”?
+
+4. What follows the word “pepper”: “that” or &lt;/s&gt;?
+
+The only sequences of words allowed are those sequences that occur in the
+
+training text. However, even with these restrictions, this allows for sentences
+
+of unbounded length; an example like 8.14 can be extended inﬁnitely.
+
+Notice, however, that these restrictions do not guarantee that all sen-
+
+tences produced in conformity with this language model will be grammatical
+
+(by normal standards); example (8.13) is ungrammatical.
+
+Since the only
+
+dependencies captured in a bigram model are local/immediate ones, such
+
+sentences will emerge as well-formed.3
+
+8.2.3
+
+Higher-order N-grams
+
+N-gram models are not restricted to unigrams and bigrams; higher-order N-
+
+gram models are also used. These higher-order models are characterized as we
+
+would expect. For example, a trigram model would view a text w1w2 . . . wn
+
+as the product of a series of conditional probabilities:
+
+(8.15) p(w1w2 . . . wn) = p(w1) × p(w2|w1) ×
+
+�
+
+p(wn|wn−2wn−1)
+
+8.2.4
+
+N-gram approximation
+
+One way to try to appreciate the success of N-gram language models is to use
+
+them to approximate text in a generative fashion. That is, we can compute
+
+all the occurring N-grams over some text, and then use those N-grams to
+
+generate new text.4
+
+
+
+3Notice too, of course, that very simple sentences compatible with the vocabulary of
+
+this text would receive a null probability, e.g. “Where’s the pepper?” or “Peter picked a
+
+peck”, etc.
+
+4See Shannon (1951).
+
+
+CHAPTER 8. PROBABILISTIC LANGUAGE MODELS
+
+151
+
+Here is an example. The following ten “sentences” were constructed in
+
+the following way.
+
+The frequency of all words in the short story “White
+
+Fang” by Jack London was calculated. Then each sentence was constructed
+
+by taking a random sample of those words whose frequency was above .002.
+
+1. so her they dog no but there with in so
+
+2. as not him they so he a that away then
+
+3. be when dogs then up there he fang by a
+
+4. on dogs out his and out he the away out
+
+5. they then that on his into upon been their she
+
+6. fang him this up dogs were he dogs no
+
+7. by fang to into when him their when upon
+
+8. up them at the was a been with there down
+
+9. then down be him and on time one as into
+
+10. as them be to for were that his at when
+
+It’s easy to see that though the words used are relatively common, these are
+
+hardly compelling as plausible sentences of English.
+
+The following ten examples were constructed by a similar technique using
+
+bigrams extracted from the same text. Here the bigram frequencies exceed
+
+.0002.
+
+1. half feet on everywhere upon itself as strongest dog
+
+2. far outweighed a hostile movement beside scott you know
+
+3. judge unknown was because it toward personal life
+
+4. everybody gave himself to cheapen himself oﬀ with
+
+5. it bristled ﬁercely belligerent and save once and death
+
+6. because they spoke matt should be used his tail
+
+
+CHAPTER 8. PROBABILISTIC LANGUAGE MODELS
+
+152
+
+7. turn ’m time i counted the horse up live
+
+8. beast that cautiously it discovered an act of plenty
+
+9. fatty’s gone before had thought in matt argued stubbornly
+
+10. what evil that night was ﬂying brands from weakness
+
+Notice that this latter set of sentences is far more natural sounding.
+
+8.3
+
+Hidden Markov Models
+
+In this section, we treat Hidden Markov Models (HMMs). These are inti-
+
+mately associated with N-gram models and widely used as a computational
+
+model for language processing.
+
+8.3.1
+
+Markov Chains
+
+To understand Hidden Markov Models, we must ﬁrst understand Markov
+
+chains. These are basically DFAs with associated probabilities. Each arc is
+
+associated with a probability value and all arcs leaving any particular node
+
+must exhibit a probability distribution, i.e. their values must range between 0
+
+and 1, and must total 1. In addition, one node is designated as the “starting”
+
+node.5 A simple example is given below.
+
+(8.16)
+
+s1
+
+a .3
+
+s2
+
+b .7
+
+a .2
+
+b .8
+
+As with an FSA, the machine moves from state to state following the arcs
+
+given. The sequence of arc symbols denotes the string generated—accepted—
+
+by the machine. The diﬀerence between a Markov chain and an FSA is that
+
+
+
+5It’s not clear whether there is a set F of ﬁnal states or if any state is a ﬁnal state.
+
+The probability values associated with arcs do the work of selecting a ﬁnal state.
+
+
+CHAPTER 8. PROBABILISTIC LANGUAGE MODELS
+
+153
+
+in the former case there are probabilities associated with each arc. These
+
+probabilities are multiplied together to produce the probability that the ma-
+
+chine might follow any particular sequence of arcs/states, generating the
+
+appropriate string. For example, the probability of producing a single a and
+
+returning to s1 is .3; the probability of going from s1 to s2 and emitting a b is
+
+.7. Hence the probability of ab is .3 × .7 = .21. The probability of producing
+
+the sequence ba, however, is .7 × .2 = .14. In the ﬁrst case we go from s1 to
+
+s1 to s2; in the second case from s1 to s2 to s1.
+
+There are several key facts to note about a Markov chain.
+
+First, as
+
+we stated above, the probabilities associated with the arcs from any state
+
+exhibit a probability distribution. For example, in the Markov chain above,
+
+the arcs from s1 are .3 + .7 = 1. Second, Markov chains are analogous to
+
+a deterministic ﬁnite state automaton: there are no choices at any point
+
+either in terms of start state or in terms of what arcs to follow. Thus there is
+
+precisely one and only one arc labelled with each symbol in the alphabet from
+
+each state in the chain. Third, it follows that any symbol string uniquely
+
+determines a state sequence. That is, for any particular string, there is one
+
+and only one corresponding sequence of states through the chain.
+
+8.3.2
+
+Hidden Markov Models
+
+It’s also possible to imagine a non-deterministic Markov chain; these are
+
+referred to as Hidden Markov Models (HMMs). Once we’ve introduced inde-
+
+terminacy anywhere in the model, we can’t uniquely identify a state sequence
+
+for all strings. A legal string may be compatible with several paths; hence
+
+the state sequence is “hidden”. Given the model above, we can introduce
+
+indeterminacy in several ways. First, we can allow for multiple start states.
+
+The example below is of this sort. Here each state is associated with a
+
+“start” probability. (Those must, of course, exhibit a probability distribution
+
+and sum to 1.) This means, that for any particular string, one must factor
+
+in all possible start probabilities. For example, a string b could be gener-
+
+ated/accepted by starting in s1 and then following the arc to s2 (.4×.7 = .28).
+
+We could also start in s2 and then follow the arc back to s1 (.6 × .8 = .48).
+
+
+CHAPTER 8. PROBABILISTIC LANGUAGE MODELS
+
+154
+
+(8.17)
+
+s1 .4
+
+a .3
+
+s2 .6
+
+b .7
+
+a .2
+
+b .8
+
+The overall probability of the string b is the sum of the probabilities of
+
+all possible paths through the HMM: .28 + .48 = .76. Notice then that we
+
+cannot really be sure which path may have been taken to get to b, though if
+
+the paths have diﬀerent probabilities then we can calculate the most likely
+
+path. In the case at hand, this is s2 ⊢ s1.
+
+Indeterminacy can also be introduced by adding multiple arcs from the
+
+same state for the same symbol. For example, the HMM below is a minimal
+
+modiﬁcation of the Markov chain above.
+
+(8.18)
+
+s1
+
+a .3
+
+s2
+
+a .2
+
+b .5
+
+a .2
+
+b .8
+
+Consider how this HMM deals with a string ab. Here only s1 is a legal start
+
+state. We can generate/accept a by either following the arc back to s1 (.3) or
+
+by following the arc to s2 (.2). In the former case, we can get b by following
+
+
+CHAPTER 8. PROBABILISTIC LANGUAGE MODELS
+
+155
+
+the arc from s1 to s2. In the latter case, we can get b by following the arc
+
+from s2 back to s1. This gives the following total probabilities for the two
+
+state sequences given.
+
+(8.19)
+
+s1 ⊢ s1 ⊢ s2 = .3 × .5 = .15
+
+s1 ⊢ s2 ⊢ s1 = .2 × .8 = .16
+
+This results in an overall probability of .31 for ab. The second state sequence
+
+is of course the more likely one since it exhibits a higher overall probability.
+
+A HMM can naturally include both extra arcs and multiple start states.
+
+The HMM below exempliﬁes.
+
+(8.20)
+
+s1 .1
+
+a .3
+
+s2 .9
+
+a .2
+
+b .5
+
+a .2
+
+b .8
+
+This generally results in even more choices for any particular string. For
+
+example, the string ab can be produced with all the following sequences:
+
+(8.21)
+
+s1 ⊢ s1 ⊢ s2 = .1 × .3 × .5 = .015
+
+s1 ⊢ s2 ⊢ s1 = .1 × .2 × .8 = .016
+
+s2 ⊢ s1 ⊢ s2 = .9 × .2 × .5 = .09
+
+The overall probability is then .121.
+
+
+CHAPTER 8. PROBABILISTIC LANGUAGE MODELS
+
+156
+
+8.3.3
+
+Formal HMM properties
+
+There are a number of formal properties of Markov chains and HMMs that
+
+are useful. One extremely important property is Limited Horizon:
+
+(8.22) p(Xt+1 = sk|X1, . . . , Xt) = p(Xt+1 = sk|Xt)
+
+This says that the probability of some state sk given the set of states that
+
+have occurred before it is the same as the probability of that state given the
+
+single state that occurs just before it.
+
+As a consequence of the structure of a HMM, there is a probability dis-
+
+tribution over strings of any particular length:
+
+(8.23) ∀n
+
+�
+
+w1n
+
+p(w1n) = 1
+
+What this means is that when we sum the probabilities of all possible strings
+
+of any length n, their total is 1.
+
+For example, consider the set of strings two characters long with respect
+
+to the HMM in (8.20).
+
+(8.24)
+
+string
+
+
+
+path
+
+
+
+probability
+
+
+
+aa
+
+
+
+s1 ⊢ s1 ⊢ s1
+
+
+
+.1 × .3 × .3
+
+=
+
+.009
+
+
+
+s1 ⊢ s1 ⊢ s2
+
+
+
+.1 × .3 × .2
+
+=
+
+.006
+
+
+
+s1 ⊢ s2 ⊢ s1
+
+
+
+.1 × .2 × .2
+
+=
+
+.004
+
+
+
+s2 ⊢ s1 ⊢ s1
+
+
+
+.9 × .2 × .3
+
+=
+
+.054
+
+
+
+s2 ⊢ s1 ⊢ s2
+
+
+
+.9 × .2 × .2
+
+=
+
+.036
+
+
+
+ab
+
+
+
+s1 ⊢ s1 ⊢ s2
+
+
+
+.1 × .3 × .5
+
+=
+
+.015
+
+
+
+s1 ⊢ s2 ⊢ s1
+
+
+
+.1 × .2 × .8
+
+=
+
+.016
+
+
+
+s2 ⊢ s1 ⊢ ss
+
+
+
+.9 × .2 × .5
+
+=
+
+.09
+
+
+
+ba
+
+
+
+s1 ⊢ s2 ⊢ s1
+
+
+
+.1 × .5 × .2
+
+=
+
+.01
+
+
+
+s2 ⊢ s1 ⊢ s1
+
+
+
+.9 × .8 × .3
+
+=
+
+.216
+
+
+
+s2 ⊢ s1 ⊢ s2
+
+
+
+.9 × .8 × .2
+
+=
+
+.144
+
+
+
+bb
+
+
+
+s1 ⊢ s2 ⊢ s1
+
+
+
+.1 × .5 × .8
+
+=
+
+.04
+
+
+
+s1 ⊢ s2 ⊢ s1
+
+
+
+.9 × .8 × .5
+
+=
+
+.36
+
+
+
+total
+
+
+
+
+
+=
+
+1
+
+
+CHAPTER 8. PROBABILISTIC LANGUAGE MODELS
+
+157
+
+8.3.4
+
+Bigrams and HMMs
+
+It is a straightforward matter to treat bigram models in terms of HMMs. In
+
+fact, we can simplify our model considerably and still get the right eﬀect.
+
+Let us assume that the name of each state corresponds to a symbol in the
+
+alphabet. All arcs leading to some state s would thus be labeled s.
+
+Imagine now that we have a vocabulary of three words {a, b, c}.
+
+We
+
+simply create a HMM with a state for each item in the vocabulary and then
+
+arcs indicate the conditional probability of each bigram. Thus an arc from
+
+state si to state sj indicates the conditional probability: p(sj|si). An example
+
+is given below. Here, for example, the conditional probability p(b|a) = .5. A
+
+complete text given this model would get an overall probability in the usual
+
+fashion.
+
+(8.25)
+
+a
+
+.1
+
+b
+
+.5
+
+c
+
+.4
+
+.3
+
+.3
+
+.6
+
+.2
+
+.4
+
+.4
+
+8.3.5
+
+Higher-order N-grams
+
+How would such a model be extended to higher-order N-grams?
+
+At ﬁrst
+
+blush, we might think there’s a problem. After all, the limited horizon prop-
+
+erty says that the history an HMM is sensitive to can be restricted to the
+
+immediately preceding state. A trigram model would appear to require more.
+
+This, however, doesn’t reckon with the assumption of a ﬁnite vocabulary
+
+(albeit a large ﬁnite vocabulary). In the previous example, we took each state
+
+as equivalent to a vocabulary item. To treat a trigram model, we must allow
+
+for states to be equivalent to both single words in the vocabulary and every
+
+possible combination of words in the vocabulary. For example, to construct a
+
+HMM for a trigram model for the same vocabulary as the previous examples,
+
+
+CHAPTER 8. PROBABILISTIC LANGUAGE MODELS
+
+158
+
+we would augment the model to include nine additional states representing
+
+each combination of words. This is shown below. (Probabilities have been
+
+left oﬀ to enhance legibility.)
+
+(8.26)
+
+a
+
+aa
+
+ab
+
+ac
+
+ba
+
+bb
+
+bc
+
+ca
+
+cb
+
+cc
+
+b
+
+c
+
+8.4
+
+Probabilistic Context-free Grammars
+
+Context-free grammars can also be converted into statistical models: prob-
+
+abilistic context-free grammars (PCFGs). In this section we consider the
+
+structure of these models.
+
+A PCFG is a context-free grammar where each rule has an associated
+
+probability. In addition, the rules that expand any particular non-terminal
+
+A must exhibit a probability distribution, i.e. their probabilities must sum
+
+to one (Suppes, 1970).
+
+Let’s exemplify this with a very simple grammar of a subset of English.
+
+This grammar produces transitive and intransitive sentences with two verbs
+
+and two proper nouns.
+
+
+CHAPTER 8. PROBABILISTIC LANGUAGE MODELS
+
+159
+
+(8.27)
+
+S
+
+→
+
+NP V P
+
+V P
+
+→
+
+V
+
+V P
+
+→
+
+V NP
+
+V
+
+→
+
+sees
+
+V
+
+→
+
+helps
+
+NP
+
+→
+
+Mindy
+
+NP
+
+→
+
+Mary
+
+This produces parse trees as follows for sentences like Mindy sees Mary.
+
+(8.28)
+
+S
+
+NP
+
+
+
+Mindy
+
+VP
+
+V
+
+
+
+sees
+
+NP
+
+
+
+Mary
+
+To convert this into a probabilistic context-free grammar, we simply asso-
+
+ciate each production rule with a probability, such that—as noted above—the
+
+probabilities for all rules expanding any particular non-terminal sum to one.
+
+A sample PCFG that satisﬁes these properties is given below. Notice how
+
+the single rule expanding S has a probability of 1, since there is only one such
+
+rule. In all the other cases, there are two rules expanding each non-terminal
+
+and the probabilities associated with each pair sum to 1.
+
+(8.29)
+
+S
+
+→
+
+NP V P
+
+1
+
+V P
+
+→
+
+V
+
+.3
+
+V P
+
+→
+
+V NP
+
+.7
+
+V
+
+→
+
+sees
+
+.4
+
+V
+
+→
+
+helps
+
+.6
+
+NP
+
+→
+
+Mindy
+
+.2
+
+NP
+
+→
+
+Mary
+
+.8
+
+
+CHAPTER 8. PROBABILISTIC LANGUAGE MODELS
+
+160
+
+The probability of some parse of a sentence is then the product of the
+
+probabilities of all the rules used.6 In the example at hand, Mindy sees Mary,
+
+we get: 1 × .2 × .7 × .4 × .8 = .0448. The probability of a sentence s, e.g.
+
+any particular string of words, is the sum of the probabilities of all its parses
+
+t1, t2, . . . , tn.
+
+(8.30) p(s) =
+
+�
+
+j
+
+p(tj)p(s|tj)
+
+In the case at hand, there are no structural ambiguities; there is only one
+
+possible structure for any acceptable sentence. Let’s consider another ex-
+
+ample, but one where there are structural ambiguities. The very simpliﬁed
+
+context-free grammar for noun conjunction below has these properties.
+
+(8.31)
+
+NP
+
+→
+
+NP C NP
+
+.4
+
+NP
+
+→
+
+Mary
+
+.3
+
+NP
+
+→
+
+Mindy
+
+.2
+
+NP
+
+→
+
+Mark
+
+.1
+
+C
+
+→
+
+and
+
+1
+
+This grammar results in multiple trees for conjoined nouns like Mary
+
+and Mindy and Mark as below. The ambiguity surrounds whether the ﬁrst
+
+two conjuncts are grouped together or the last two.
+
+The same rules are
+
+used in each parse, so the probability of either one of them is: .3 × .2 ×
+
+.1 × 1 × 1 × .4 × .4 = .00096. The overall probability of the string is then
+
+.00096 + .00096 = .00192.
+
+
+
+6Note that if any rule is used more than once then it’s probability is factored in as
+
+many times as it is used.
+
+
+CHAPTER 8. PROBABILISTIC LANGUAGE MODELS
+
+161
+
+(8.32)
+
+NP
+
+
+
+NP
+
+
+
+Mary
+
+C
+
+
+
+and
+
+NP
+
+
+
+NP
+
+
+
+Mindy
+
+C
+
+
+
+and
+
+NP
+
+
+
+Mark
+
+(8.33)
+
+NP
+
+
+
+NP
+
+
+
+NP
+
+
+
+Mary
+
+C
+
+
+
+and
+
+NP
+
+
+
+Mindy
+
+C
+
+
+
+and
+
+NP
+
+
+
+Mark
+
+Notice that the probability values get problematic when the PCFG is
+
+recursive, that is, when the grammar generates an inﬁnite number of sen-
+
+tences. It then follows that at least some parses have inﬁnitely small values.
+
+Let’s consider a toy grammar that allows recursive clausal embedding. This
+
+grammar allows optional recursion on S, but a very restricted vocabulary.
+
+(8.34)
+
+p(S → NP V P)
+
+=
+
+1
+
+p(NP → N)
+
+=
+
+1
+
+p(N → John)
+
+=
+
+1
+
+p(V → knows)
+
+=
+
+1
+
+p(V P → V )
+
+=
+
+.6
+
+p(V P → V S)
+
+=
+
+.4
+
+Do we get a probability distribution? Let’s look at a few examples:
+
+
+CHAPTER 8. PROBABILISTIC LANGUAGE MODELS
+
+162
+
+(8.35)
+
+S
+
+NP
+
+
+
+N
+
+
+
+John
+
+VP
+
+
+
+V
+
+
+
+knows
+
+We have p(John knows) = 1 × 1 × 1 × .6 × 1 = .6
+
+(8.36)
+
+S
+
+NP
+
+
+
+N
+
+
+
+John
+
+VP
+
+V
+
+
+
+knows
+
+S
+
+NP
+
+
+
+N
+
+
+
+John
+
+VP
+
+
+
+V
+
+
+
+knows
+
+We have p(John knows John knows) = 1×1×1×.4×1×1×1×1×.6×1 = .24.
+
+
+CHAPTER 8. PROBABILISTIC LANGUAGE MODELS
+
+163
+
+(8.37)
+
+S
+
+NP
+
+
+
+N
+
+
+
+John
+
+VP
+
+V
+
+
+
+knows
+
+S
+
+NP
+
+
+
+N
+
+
+
+John
+
+VP
+
+V
+
+
+
+knows
+
+S
+
+NP
+
+
+
+N
+
+
+
+John
+
+VP
+
+
+
+V
+
+
+
+knows
+
+We have p(John knows John knows John knows) = 1 × 1 × 1 × .4 × 1 ×
+
+1 × 1 × 1 × .4 × 1 × 1 × 1 × 1 × .6 = .096.
+
+You can see that every time we add a new clause, the probability value
+
+of the new sentence is the previous sentence multiplied by .4. This gives us
+
+this chart showing the decrease in probabilities as a function of the number
+
+of clauses.
+
+(8.38)
+
+clauses
+
+
+
+probability
+
+
+
+1
+
+
+
+.6
+
+2
+
+
+
+.24
+
+3
+
+
+
+.096
+
+4
+
+
+
+.0384
+
+5
+
+
+
+.0153
+
+6
+
+
+
+.0061
+
+n
+
+
+
+?
+
+We need some calculus to prove whether, in the limit, this totals to 1.
+
+
+CHAPTER 8. PROBABILISTIC LANGUAGE MODELS
+
+164
+
+Chi (1999) shows formally that PCFGs don’t exhibit a probability dis-
+
+tribution. He argues as follows. FIrst, assume a grammar with only two
+
+rules:
+
+(8.39)
+
+S → S S
+
+S → a
+
+If p(S → S S) = n then p(S → a) = 1−n. Chi argues as follows: “Let xh be
+
+the total probability of all parses with height no larger than h. Clearly, xh
+
+is increasing. It is not hard to see that xh+l = (1 − n) + nx2
+
+h. Therefore, the
+
+limit of xh, which is the total probability of all parses, is a solution for the
+
+equation x = (1 − n) + nx2. The equation has two solutions: 1 and 1
+
+
+
+n − 1. It
+
+can be shown that x is the smaller of the two: x = min(1, 1
+
+
+
+n − 1). Therefore,
+
+if n &gt; 1
+
+
+
+2, x &lt; 1—an improper probability.”
+
+8.5
+
+Summary
+
+This chapter links the ideas about probability from the preceding chapter
+
+with the notions of grammar and automaton developed earlier.
+
+We began with the notion of N-gram modeling. The basic idea is that we
+
+can view a strings of words or symbols in terms of the likelihood that each
+
+word might follow the preceding one or two words. While this is a stagger-
+
+ingly simple idea, it actually can go quite some distance toward describing
+
+natural language data.
+
+We next turned to Markov Chains and Hidden Markov Models (HMMs).
+
+These are probabilistically weighted ﬁnite state devices and can be used to
+
+associate probabilities with FSAs.
+
+We showed in particular how a simpliﬁed Markov Model could be used to
+
+implement N-grams, showing that those models could be treated in restrictive
+
+terms.
+
+Finally, we very brieﬂy considered probabilistic context-free grammars.
+
+8.6
+
+Exercises
+
+None yet.
+

@@ -1,0 +1,3504 @@
+
+Interactive Query Reﬁnement
+
+Chaitanya Mishra
+
+University of Toronto
+
+cmishra@cs.toronto.edu
+
+Nick Koudas
+
+University of Toronto
+
+koudas@cs.toronto.edu
+
+ABSTRACT
+
+We investigate the problem of reﬁning SQL queries to satisfy
+
+cardinality constraints on the query result. This has appli-
+
+cations to the many/few answers problems often faced by
+
+database users. We formalize the problem of query reﬁne-
+
+ment and propose a framework to support it in a database
+
+system.
+
+We introduce an interactive model of reﬁnement
+
+that incorporates user feedback to best capture user prefer-
+
+ences. Our techniques are designed to handle queries having
+
+range and equality predicates on numerical and categorical
+
+attributes. We present an experimental evaluation of our
+
+framework implemented in an open source data manager
+
+and demonstrate the feasibility and practical utility of our
+
+approach.
+
+1.
+
+INTRODUCTION
+
+Traditional relational database systems support a boolean
+
+retrieval model, in which constraints are speciﬁed on prop-
+
+erties of individual tuples and not on the result table as a
+
+whole. As a consequence of this model, an SQL query can-
+
+not ensure a result cardinality when executed on a given
+
+database. However, there are several situations where one
+
+would like the associated queries to satisfy a cardinality con-
+
+straint on the result size. Such cases often occur in Busi-
+
+ness Intelligence applications, where analysts pose queries
+
+on existing corporate databases.
+
+For instance, consider a
+
+marketing scenario, in which a bank seeks to extend a pro-
+
+motional oﬀer to ten thousand young, high-income profes-
+
+sionals. Given a customer database, one can express these
+
+conditions as predicates on the dateOfBirth, salary and
+
+profession attributes. However there exists no means other
+
+than a cumbersome trial and error procedure for setting the
+
+predicates such that the resulting query returns 10K tuples
+
+when executed on the given database. In general, today’s
+
+relational database management systems lack support for
+
+tying the query predicates to the output cardinality of a
+
+query in an automated fashion. This paper seeks to address
+
+this gap.
+
+Permission to copy without fee all or part of this material is granted pro-
+
+vided that the copies are not made or distributed for direct commercial ad-
+
+vantage, the ACM copyright notice and the title of the publication and its
+
+date appear, and notice is given that copying is by permission of the ACM.
+
+To copy otherwise, or to republish, to post on servers or to redistribute to
+
+lists, requires a fee and/or special permissions from the publisher, ACM.
+
+EDBT 2009, March 24–26, 2009, Saint Petersburg, Russia.
+
+Copyright 2009 ACM 978-1-60558-422-5/09/0003 ...$5.00
+
+We refer to the problem of queries returning too many
+
+or too few tuples as the many/few answers problem. For
+
+the many answers case, Carey and Kossmann [4] proposed
+
+a STOP AFTER operator in SQL to limit the cardinality of
+
+a query.
+
+Typically, this clause is combined with an OR-
+
+DER BY clause, resulting in a Top-k query processing prob-
+
+lem [11]. Top-k based approaches have been proposed for
+
+the few answers problem as well [1]. A fundamental require-
+
+ment of these techniques is that they require a scoring func-
+
+tion. Deﬁning such a scoring function is often a non-trivial
+
+task especially when deﬁned on multiple semantically dis-
+
+tinct attributes. For instance, to consider the bank example
+
+described above, a Top-k approach would require a scoring
+
+function that combines temporal (dateOfBirth), monetary
+
+(salary) and categorical (profession) attributes to return
+
+a single score.
+
+An important feature of the many/few answers problem
+
+is that users often have preferences on how to transform the
+
+original query to increase/decrease the result size. To con-
+
+sider the bank query above, a bank might prefer younger
+
+customers if it is oﬀering a new account, while it might
+
+prefer high-income customers if it is extending a new in-
+
+vestment opportunity. Deﬁning scoring functions to express
+
+such application-speciﬁc preferences over multiple attributes
+
+is challenging. Moreover, such functions provide at best in-
+
+direct control over the set of tuples returned.
+
+In this paper, we propose the Stretch ‘n’ Shrink (SnS)
+
+framework for the many/few answers problem which enables
+
+interactive user-aided reﬁnement of queries to a given result
+
+cardinality through transformations of the selection predi-
+
+cates. The transformations take the form of relaxations i.e
+
+stretching query predicates to increase the query cardinality,
+
+and contractions i.e shrinking query predicates to decrease
+
+the cardinality. This model of reﬁnement oﬀers the advan-
+
+tage of not requiring the user to deﬁne a separate scoring
+
+function. Therefore, it generates queries which can utilize
+
+traditional query processing primitives without the need of
+
+additional infrastructure for processing ranking queries eﬃ-
+
+ciently [19]. Additionally, by casting the many/few answers
+
+problem as a predicate transformation problem, this frame-
+
+work is able to explicitly capture preferences on how the
+
+query is to be reﬁned, as detailed in the following examples.
+
+Example 1. Consider a query with the predicates year
+
+&gt; 1990 AND cost &lt; 5000 returning too few answers. There
+
+are many ways in which the query could be reﬁned to satisfy
+
+the target result size.
+
+For instance, one could change the
+
+predicate on year to year &gt; 1980 while leaving the other
+
+predicate unchanged. Alternatively, one could change only
+
+862
+
+
+the predicate on cost to cost &lt; 7000. Or, both the predi-
+
+cates could be modiﬁed together to year &gt; 1987 AND cost &lt;
+
+6500. Each of these choices involves relaxing one or more of
+
+the predicates i.e increasing the selectivity of the predicates.
+
+Similarly, for the case of categorical predicates:
+
+Example 2. Consider a query with predicates country
+
+= ’USA’ AND state = ’California’ , returning too many
+
+answers. This query could be reﬁned by adding additional
+
+predicates such as city = ’Santa Cruz’ OR city = ’Mil-
+
+pitas’
+
+or predicates city = ’San Francisco’ AND Zip =
+
+’94112’. These additional predicates further constrain the
+
+results returned by the query and reduce its cardinality to the
+
+target answer size.
+
+These examples illustrate that there might be multiple
+
+queries that satisfy the result cardinality constraint. Our
+
+goal in this paper is to provide a navigational framework
+
+that enables users to interactively reﬁne queries as per their
+
+preferences.
+
+We make the following contributions in this
+
+work:
+
+• We formally deﬁne the problem of query reﬁnement for
+
+queries with range and/or equality predicates which
+
+return too many or too few answers.
+
+• We introduce the SnS framework for Interactive Query
+
+Reﬁnement which encompasses all the cases outlined
+
+above. SnS supports a novel model of query reﬁnement
+
+which keeps a user “in the loop” guiding one towards
+
+a query that best satisﬁes the target cardinality.
+
+• We describe the sampling and indexing procedures un-
+
+derlying SnS, which are designed to aid accurate and
+
+eﬃcient query reﬁnement. We present an implemen-
+
+tation and evaluation of the framework in a database
+
+system, demonstrating its practical utility.
+
+2.
+
+RELATED WORK
+
+There has been some research on modifying query predi-
+
+cates with the intent to relax the query and generate more
+
+answers. Chaudhuri [5] introduced a formal model for mod-
+
+ifying SQL queries in order to increase their output cardi-
+
+nality. Similarly, Chu and Chen [10] also deﬁned a formal
+
+model of query relaxation using a type abstraction hierar-
+
+chy on attributes, and proposed an extension (CSQL) of
+
+SQL to specify such queries.
+
+However, both of these are
+
+primarily formal models, and the papers do not investigate
+
+issues in practically realizing such models, especially with re-
+
+spect to ensuring a target cardinality. More recently, Kadlag
+
+et al. [21] introduced algorithms for relaxing multiple pred-
+
+icates using multidimensional histograms.
+
+However, their
+
+technique is does not consider join queries, nor does it in-
+
+corporate user preferences.
+
+The typical solution proposed in the literature to handle
+
+the many answers problem is to utilize scoring functions and
+
+return only the Top-k ranked results [11, 7]. The primary
+
+problem with this approach is the requirement of a scoring
+
+function which may not be readily available. In addition,
+
+Top-k query processing is typically performed over single
+
+tables; optimizing Top-k queries over joins is a challenging
+
+problem [19]. An alternative approach, used in the many an-
+
+swers case, is to compute the skyline of the query results [2].
+
+However, skyline computation over joins is expensive and
+
+predicting the size of the skyline is diﬃcult [13, 6].
+
+There has been much research on detecting and relaxing
+
+queries with empty results. Agrawal et al. [1] introduced a
+
+technique utilizing ranking algorithms in this context. More
+
+recently Luo [23] proposed a method for detecting empty re-
+
+sult queries using information collected from previously exe-
+
+cuted queries. This technique, which uses materialized view
+
+matching cannot be generalized to the few answers problem
+
+though. Similarly, Koudas et al. [22] introduce a technique
+
+for relaxing an empty query by computing the set of re-
+
+sults which are closest to the original query as per skyline
+
+semantics. However, the method requires expensive skyline
+
+computation and cannot provide guarantees on the relaxed
+
+result size. In the context of text search, Fontoura et al. [12]
+
+recently introduced a model of query relaxation along mul-
+
+tiple hierarchical taxonomies. However, their model incor-
+
+porates a cost based procedure for relaxation, and does not
+
+incorporate individual user preferences on query relaxation.
+
+Recently, there has been increasing interest in the problem
+
+of generating targeted test queries that satisfy cardinality
+
+constraints on multiple intermediate subexpressions [3, 26].
+
+This paper extends the applicability of such frameworks by
+
+adding support for categorical predicates, and introducing
+
+techniques for incorporating user preferences.
+
+3.
+
+PRELIMINARIES
+
+3.1
+
+Model
+
+Consider a conjunctive SPJ (Select-Project-Join) query Q
+
+with selection predicates. We consider selection predicates
+
+to include range (&lt;, ≤, &gt;, ≥) and equality (=) predicates.
+
+Each predicate can be deﬁned on a numeric or categorical
+
+domain. We consider a numeric domain to be any domain
+
+on which a range predicate is deﬁned.
+
+In the rest of the
+
+paper, for ease of presentation, we assume that the numeric
+
+domain is the domain of integers, although our techniques
+
+work for general numeric domains.
+
+Unlike numeric domains, categorical domains permit only
+
+equality predicates. In this paper, we consider the class of
+
+hierarchical categorical predicates. Categorical predicates in
+
+databases often implicitly express hierarchies e.g (Country,
+
+State, City, Street, No.) or (Genre, Artist, Song). Each
+
+attribute is thus at some level of a hierarchy, with the root
+
+at the smallest level. For instance, Country is at level 1,
+
+and Street is at level 4. We deﬁne the level of a categorical
+
+hierarchical predicate to denote the maximum level at which
+
+a predicate is deﬁned on the hierarchy.
+
+Thus Country =
+
+’US’ and State = ’FL’ has a level of 2.
+
+We assume knowledge of the hierarchies deﬁned by a database
+
+schema. Such hierarchies can be speciﬁed by the user or the
+
+schema designer. We note that the presence of hierarchies
+
+is a feature and not a requirement of SnS framework. In
+
+the absence of information about hierarchies, we treat each
+
+attribute as a single level hierarchy by itself.
+
+Given query Q, and a target result cardinality k, we gen-
+
+erate a new query Q′ by reﬁning the selection predicates of
+
+Q. We term the predicate transformations that increase the
+
+cardinality of Q as relaxations, and the transformations that
+
+decrease the cardinality as contractions. We next deﬁne the
+
+rules for relaxing and contracting numeric and categorical
+
+predicates.
+
+863
+
+
+3.1.1
+
+Numeric Predicate Reﬁnement
+
+Consider a numeric predicate Pi : xi &lt; Ci. A relaxation of
+
+Pi is any predicate P ′
+
+i : xi &lt; C′
+
+i s.t C′
+
+i ≥ Ci. Eﬀectively, we
+
+have Pi ⊆ P ′
+
+i. Likewise, a contraction of Pi is any predicate
+
+P ′
+
+i : xi &lt; C′
+
+i such that C′
+
+i ≤ Ci i.e P ′
+
+i ⊆ Pi.
+
+We can convert any predicate on a numeric domain to a
+
+predicate of the form xi &lt; Ci.
+
+For instance, a predicate
+
+xi &gt; Ci can be transformed into −xi &lt; −Ci. We consider
+
+range predicates of the form Cl
+
+i &lt; xi &lt; Cu
+
+i as two separate
+
+predicates −xi &lt; −Cl
+
+i and xi &lt; Cu
+
+i . In the rest of the paper,
+
+for ease of exposition, we assume that the numeric predicates
+
+have been appropriately transformed into predicates of the
+
+form xi &lt; Ci.
+
+3.1.2
+
+Hierarchical Categorical Predicate Reﬁnement
+
+We would like to deﬁne relaxation and contraction to gen-
+
+erate supersets and subsets (respectively) of the original hi-
+
+erarchical predicate in an analogous fashion to numeric pred-
+
+icates. In the following, we use as a running example the
+
+predicate: Country = ’US’ and State = ’FL’.
+
+Hierarchical Relaxation: We consider two notions of re-
+
+laxation, namely Expansion and Roll-up.
+
+Expansion de-
+
+notes the process of disjunctively adding additional predi-
+
+cates at the current level of the hierarchical predicate. Thus,
+
+we can expand the example predicate to Country = ’US’
+
+and ( State = ’FL’ OR State = ’CA’ ). Likewise, roll-up
+
+is the process of removing all predicates from the current
+
+level of the hierarchy. Thus, the example predicate can be
+
+rolled up to obtain Country = ’US’. We note that this no-
+
+tion of roll-up is analogous to the roll-up operation on data
+
+cubes.
+
+Hierarchical Contraction: Similar to the forms of relax-
+
+ation discussed above, we consider two notions of contrac-
+
+tion, namely shrinking and drill-down. Shrinking is the in-
+
+verse operation of expansion, in which predicates are re-
+
+moved from a disjunction at the current level of the hi-
+
+erarchy.
+
+Drill-down is the inverse operation of roll-up, in
+
+which additional predicates are added conjunctively at the
+
+next level of the hierarchy. The example predicate can be
+
+drilled down to obtain Country = ’US’ and State = ’FL’
+
+and City = ’Miami’.
+
+3.2
+
+Problem Deﬁnition
+
+We have deﬁned notions of relaxation and contraction
+
+for numeric and categorical domains. We refer to each nu-
+
+meric predicate or categorical hierarchy as a dimension of
+
+the query.
+
+Example 3. The query:
+
+Select * from T
+
+Where weight &lt; 120 and age &lt; 40
+
+and country = ’US’ and state = ’FL’
+
+has 3 dimensions, one for each of the two range predicates
+
+and one for the hierarchy (Country, State, . . .)
+
+A query is therefore relaxed or contracted along its dimen-
+
+sions. We use d to represent the number of dimensions of a
+
+query. We now deﬁne the problem of Query Reﬁnement as:
+
+Definition 1. Query Reﬁnement Problem: For a given
+
+SPJ query Q, and a target result cardinality k on database
+
+D, generate a query Q′ satisfying the following conditions.
+
+(i) Q′ is generated by using either only relaxations or only
+
+contractions along the dimensions of Q. (ii) Q′ when exe-
+
+cuted on D returns k tuples in its result. (iii) There is no
+
+other query Q′′ satisfying conditions (i) and (ii) such that
+
+the user prefers Q′′ over Q′.
+
+We note that the requirement of using only relaxations
+
+or only contractions (Condition (i)) is to prevent predicate
+
+reﬁnements that cancel each other out. Additionally, it en-
+
+sures that the space of possible reﬁnements can be bounded,
+
+since otherwise one could transform any query to any other
+
+query using these transformations. Eﬀectively, when Q is
+
+estimated to return fewer tuples than k, Q is relaxed; when
+
+Q returns too many tuples, it is contracted.
+
+3.2.1
+
+The Need for Approximation
+
+Condition (ii) in problem deﬁnition above requires the
+
+generation of a query that returns exactly k tuples. This
+
+may be diﬃcult since there might be no query that exactly
+
+satisﬁes the target cardinality. Consider a simple selection
+
+query with only a single predicate x &lt; 20 on column x con-
+
+taining 100 distinct values (1, . . . , 100), with each value hav-
+
+ing a frequency of 10. In this case, if the target cardinality
+
+is 505 tuples, the best one can do is to reﬁne the predi-
+
+cate to x &lt; 52 to obtain 510 tuples. Additionally recent
+
+results show that the problem of generating a query that
+
+satisﬁes an output cardinality is hard to solve exactly [3]
+
+or to approximate to within a constant absolute or relative
+
+error [26]. As a consequence, our framework enables user-
+
+aided exploration of the search space to return a query that
+
+best captures user preferences, with an acceptable (for the
+
+user) error in output cardinality.
+
+3.3
+
+Terminology
+
+Given a query Q with d dimensions, we deﬁne boundaries
+
+within which the predicate along a given dimension can be
+
+relaxed or contracted. This is captured by the notions of
+
+maximal relaxations and contractions, as deﬁned next.
+
+Definition 2. [Maximal Relaxation] (numeric) Given
+
+a numeric predicate Pi : xi &lt; Ci, its maximal relaxation is
+
+a predicate P m
+
+i
+
+: xi &lt; Cm
+
+i
+
+such that (i) Cm
+
+i
+
+≥ Ci. (ii) The
+
+reﬁnement Q′ of Q produced by reﬁning only the predicate Pi
+
+to P m
+
+i
+
+is estimated to return at least k tuples. (iii) There is
+
+no predicate P m′
+
+i
+
+: xi &lt; Cm′
+
+i
+
+such that Cm′
+
+i
+
+&lt; Cm
+
+i
+
+and P m′
+
+i
+
+satisﬁes conditions (i) and (ii). In the absence of a predicate
+
+satisfying all three conditions, the maximal relaxation is set
+
+to xi &lt; ∞.
+
+Eﬀectively, for a numeric predicate, the notion of a max-
+
+imal relaxation deﬁnes the boundary upto which one could
+
+relax the predicate to satisfy the target cardinality. If the
+
+predicate is relaxed further, other predicates must be con-
+
+tracted, violating the requirement of using only relaxations
+
+or only contractions.
+
+An analogous notion of maximal contractions can simi-
+
+larly be deﬁned for numeric predicates.
+
+A maximal con-
+
+traction bounds how much one can contract a given nu-
+
+meric predicate to obtain the target cardinality. We use the
+
+term maximal transformation as a generic term for maxi-
+
+mal relaxations and contractions (depending on whether the
+
+query is to be relaxed or contracted), and denote its value
+
+as P m
+
+i
+
+: xi &lt; Cm
+
+i
+
+or (where the context is clear) as just the
+
+constant Cm
+
+i .
+
+864
+
+
+Definition 3. [Maximal Relaxation] (categorical) Given
+
+a hierarchical categorical predicate Pi : xi1 = Ci1∧. . .∧xil =
+
+Cil having a level l, its maximal relaxation is a predicate
+
+P m
+
+i
+
+: xi1 = Ci1 ∧ . . . ∧ xilm = Cilm such that: (i) The new
+
+level lm ≤ l. (ii) The reﬁnement Q′ of Q produced by re-
+
+ﬁning only the predicate Pi to P m
+
+i
+
+is estimated to return at
+
+least k tuples. (iii) P m
+
+i
+
+is a roll-up of Pi. (iv) There is no
+
+predicate P m′
+
+i
+
+that satisﬁes conditions (i) - (iii), and has
+
+lm′ ≥ lm. In the absence of such a predicate, the level of the
+
+maximal relaxation is set to 0.
+
+Similar to the case of numeric predicates, maximal relax-
+
+ations for hierarchical categorical predicates bound the level
+
+upto which the predicates along the dimension can be rolled
+
+up. However, the analogous notion of maximal contraction
+
+is not deﬁned for categorical hierarchies due to the multiple
+
+possible paths for drilling down a hierarchy.
+
+Given these deﬁnitions of maximal relaxations and con-
+
+tractions, we next deﬁne two queries at the core of our re-
+
+ﬁnement procedures.
+
+Definition 4. [Extended Query] Qe : Given a query
+
+Q with d dimensions, the extended query Qe is the query
+
+which returns tuples satisfying the predicates of Q along at
+
+least d − 1 of the d dimensions.
+
+Example 4. The extended query for the query in Exam-
+
+ple 3 is
+
+Select * from T where
+
+(age &lt; 40 and country = ’US’ and state = ’FL’) OR
+
+(weight &lt; 120 and country = ’US’ and state = ’FL’) OR
+
+(weight &lt; 120 and age &lt; 40)
+
+Observe that Qe is a superset of Q; Qe is also a super-
+
+set of any query generated by relaxing Q along only one
+
+dimension.
+
+Definition 5. [Bounding Query] Qb : Given a query
+
+Q with d dimensions, the bounding query Qb is a reﬁnement
+
+of Q with the predicates along each dimension maximally
+
+relaxed.
+
+If Q is to be contracted, Qb is identical to Q, and is there-
+
+fore a superset of all queries generated by contracting the
+
+predicates of Q. If Q is to be relaxed, Qb is a superset of any
+
+query Q′ satisfying the target cardinality constraint, where
+
+Q′ is generated by relaxing the predicates of Q. Therefore
+
+the bounding query Qb bounds all possible solutions to the
+
+query reﬁnement problem.
+
+Example 5. If the query in Example 3 is to be relaxed, a
+
+possible bounding query is:
+
+Select * from T
+
+Where weight &lt; 170 and age &lt; 60
+
+and country = ’US’
+
+with the values in bold text indicating the maximal relax-
+
+ations along each of the three dimensions.
+
+The bounding query Qb bounds the search space for re-
+
+ﬁnements of Q that satisfy the target cardinality constraint.
+
+Generating Qb requires computation of maximal relaxations
+
+along each dimension of Q. The maximal relaxations can
+
+be computed by utilizing the extended query Qe, which is
+
+a superset of all queries that relax Q along only one dimen-
+
+sion. Before we describe our procedures for performing such
+
+computations, we outline the cardinality estimation scheme
+
+underlying our framework.
+
+3.4
+
+Cardinality Estimation Scheme
+
+Our query reﬁnement framework requires fast and accu-
+
+rate cardinality estimates for any potential reﬁnement Q′
+
+of the original query Q. These estimates could be obtained
+
+from the cardinality estimation component of the database
+
+system.
+
+However, such estimates are often incorrect, es-
+
+pecially for queries with multiple joins and selection predi-
+
+cates [20]. The accuracy of reﬁnement directly depends on
+
+the cardinality estimation scheme deployed. Therefore, we
+
+utilize sampling based estimators for cardinality estimation.
+
+In order to avoid sampling repeatedly for each reﬁnement
+
+considered, we deploy a Superset Sampling Estimator (SSE)
+
+which provides fast and accurate cardinality estimates.
+
+Consider an SPJ query Qs, which we term as a superset
+
+query. Given Qs, SSE provides cardinality estimates for any
+
+query Q′ ⊆ Qs to within an error ǫ|Qs| with high probability.
+
+We next describe SSE if Qs is a single relation or a join
+
+query.
+
+3.4.1
+
+Single Relation Queries
+
+Suppose Qs is a selection query on a single relation A.
+
+Since Qs is deﬁned on a single relation A, a random sam-
+
+ple of Qs can be obtained by sampling from the underlying
+
+relation A, and applying the predicates of Qs. We wish to
+
+specify guarantees for using this random sample for estimat-
+
+ing the cardinality of any query Q′ ⊆ Qs.
+
+A range space is a set system, deﬁned by a set P and a set
+
+of subsets R (ranges) of P. In our current problem setting,
+
+the set P is the superset query Qs while the ranges are all
+
+possible queries Q′ ⊆ Qs. An ǫ-approximation EP of a set
+
+P for a range space R has the property that for any R ∈ R
+
+˛˛˛˛
+
+|P ∩ R|
+
+|P|
+
+− |EP ∩ R|
+
+|EP |
+
+˛˛˛˛ ≤ ǫ
+
+An ǫ-approximation E thus guarantees selectivity estima-
+
+tion to within a 1±ǫ interval. The following lemma of Vapnik
+
+and Chervonenkis [27, 16] links the size of a random sample
+
+of a set, and the error guarantee obtained using the sample
+
+for approximate range counting.
+
+Lemma 3.1. For any range space with ﬁnite VC dimen-
+
+sion, a random sample of size O( 1
+
+ǫ2 log 1
+
+ǫδ ) is an ǫ-approximation
+
+with probability 1 − δ.
+
+This Lemma provides guarantees on the size of the random
+
+sample of Qs required to estimate the cardinality of any
+
+query Q′ ⊆ Qs to within ǫ|Qs| with high probability. We
+
+note that this random sample needs to be computed only
+
+once, and can then be kept in memory.
+
+3.4.2
+
+Join Queries
+
+The SSE procedure for a single relation query relies on
+
+the fact that one can easily obtain random samples of a
+
+base relation. If the superset query Qs is a join query over
+
+multiple relations, then obtaining a uniform random sample
+
+of Qs is known to be diﬃcult [8].
+
+However, utilizing random samples of base relations for
+
+join cardinality estimation is a well known technique in database
+
+literature [14]. In this work we deploy the t index join cardi-
+
+nality estimation scheme [14] which obtains a random sam-
+
+ple from the outer relation, and joins it with indexes on the
+
+other relations. We note however, that SSE for joins can
+
+865
+
+
+utilize any alternative sampling based join cardinality esti-
+
+mation scheme as well.
+
+If a random sample of the outer relation of size n tuples
+
+joins with the inner indexes to produce njoin tuples, the
+
+cardinality of the join can be estimated as njoin × Nouter/n
+
+where Nouter is the size of the outer relation. In terms of
+
+selectivity, Haas et al. [14].
+
+show that, under certain as-
+
+sumptions, if µ is the actual selectivity of the join, and µn
+
+is the estimated selectivity after n tuples have been read,
+
+then:
+
+P{|µn − µ| ≤ ǫµ} ≈ 2φ(ǫµ√n
+
+σ
+
+) − 1
+
+(1)
+
+when n is large and ǫ√n is small. σ2 is the variance and φ
+
+is the c.d.f for a standardized normal random variable.
+
+The t index procedure described here provides a useful
+
+means to obtain accurate cardinality estimates for any join
+
+query. However, the cost of performing such estimation can
+
+be prohibitively high if a join is performed with the inner
+
+indexes for each query for which a cardinality estimate is
+
+required. Instead, SSE executes the t index procedure only
+
+once for the superset query Qs. The tuples produced by this
+
+procedure are stored in an in-memory data structure. This
+
+set of tuples serves as an ǫ-approximation EQs for estimating
+
+the cardinality of any query Q′ ⊆ Qs to within ǫ|Qs| with
+
+conﬁdence bounds derived from Equation 1.
+
+Given a superset query Qs, a target error bound ǫ, and a
+
+conﬁdence probability 1 − δ, an invocation of SSE with Qs
+
+i.e SSE(Qs) generates an ǫ-approximation EQs for the pur-
+
+poses of estimating the cardinality of all queries Q′ ⊆ Qs.
+
+The primary advantage of utilizing SSE is that one can tune
+
+the parameters to obtain estimates of desired accuracy, and
+
+avoid making any independence assumptions. Our query re-
+
+ﬁnement framework invokes either of the two versions of SSE
+
+described here, depending on whether the original query is
+
+a single relation query or a join query.
+
+3.5
+
+The Stretch ‘n’ Shrink Framework
+
+We now provide a high level overview of the Stretch ‘n’
+
+Shrink (SnS) framework for Interactive Query Reﬁnement.
+
+SnS reﬁnes a query in two phases, with each phase utilizing
+
+the SSE procedure described in Section 3.4.
+
+3.5.1
+
+Phase 1: Computing Bounds
+
+The goal of the ﬁrst phase is to:
+
+• Estimate the cardinality of the original query Q and
+
+identify whether it is to be relaxed or contracted.
+
+• Compute maximal relaxations and contractions along
+
+each dimension of Q and generate the bounding query
+
+Qb.
+
+In order to perform such computation, SnS invokes SSE
+
+with the extended query Qe as the superset query to gen-
+
+erate an ǫ-approximation EQe.
+
+Since the original query
+
+Q ⊆ Qe, one can estimate the cardinality of Q using EQe,
+
+and identify whether the query is to be relaxed or contracted.
+
+Maximal relaxations and contractions can similarly be com-
+
+puted using EQe, since they correspond to queries which
+
+relax or contract the original query along only one dimen-
+
+sion. SnS generates the bounding query Qb by reﬁning Q to
+
+its maximal relaxations along each dimension. We provide
+
+further details of the ﬁrst phase in Section 4. We note that
+
+this phase does not require any user intervention.
+
+3.5.2
+
+Phase 2: Query Reﬁnement
+
+Phase 2 of SnS takes as input the bounding query Qb
+
+computed in Phase 1.
+
+Qb is guaranteed to be a superset
+
+of all possible reﬁnements of Q.
+
+Therefore, SnS can in-
+
+voke SSE with Qb as the superset query to compute an
+
+ǫ-approximation EQb which is utilized to estimate the car-
+
+dinality of any query Q′ ⊆ Qb.
+
+As illustrated in Examples 1 and 2, there might be mul-
+
+tiple possible reﬁnements of the original query that satisfy
+
+the target cardinality constraint. Therefore, SnS provides
+
+an interactive procedure which takes into account user feed-
+
+back to reﬁne the query as per one’s preferences. There are
+
+two components of this interactive procedure:
+
+• Index structures for cardinality estimation: SnS
+
+utilizes the in-memory set EQb consisting of tuples pro-
+
+duced by SSE(Qb) to compute cardinality estimates
+
+for each possible reﬁnement Q′ considered by the pro-
+
+cedure.
+
+For eﬃciency purposes, we devise indexing
+
+schemes over EQb which are tailored to the needs of
+
+our reﬁnement framework.
+
+• Navigation Scheme: Our goal is to provide a means
+
+for users to interactively reﬁne queries. Therefore, we
+
+devise user navigation schemes which enable one to
+
+explore the search space for reﬁnements Q′ that best
+
+capture one’s preferences.
+
+We provide further details of our index structures and
+
+navigation schemes for queries with only numeric, only cat-
+
+egorical and both numeric and categorical predicates in Sec-
+
+tion 5.
+
+4.
+
+PHASE 1: COMPUTING BOUNDS
+
+In Phase 1, SnS identiﬁes whether the original query Q
+
+is to be relaxed or contracted, and computes maximal re-
+
+laxations or contractions along all dimensions of Q.
+
+For
+
+this purpose, it generates the extended query Qe, and in-
+
+vokes SSE(Qe) generating an in-memory ǫ-approximation
+
+EQe. EQe can be utilized to estimate the cardinality of Q,
+
+since Q ⊆ Qe. Additionally, EQe enables computation of
+
+the maximal relaxations and contractions of Q as described
+
+next.
+
+4.1
+
+Maximal Transformations (Numeric)
+
+Consider a numeric predicate Pi : xi &lt; Ci.
+
+The SnS
+
+framework computes its maximal transformation P m
+
+i
+
+: xi &lt;
+
+Cm
+
+i through procedure MaxTrans illustrated as Algorithm 1.
+
+In order to compute P m
+
+i , the procedure requires as input
+
+the predicates along the remaining d − 1 dimensions of the
+
+original query, with dimension i set as unknown. MaxTrans
+
+performs a binary search between the lower (Cl
+
+i) and up-
+
+per (Cu
+
+i ) bounds of the domain of dimension i. For each
+
+value val considered, the procedure reﬁnes predicate Pi to
+
+xi &lt; val, and invokes the cardinality estimation component
+
+(encapsulated as CardEst) to obtain a cardinality estimate
+
+for the resulting query.
+
+MaxTrans returns a value Cm
+
+i
+
+such that Q with predicate
+
+Pi reﬁned to xi &lt; Cm
+
+i
+
+best satisﬁes the target cardinal-
+
+ity constraint. This value is then compared to the original
+
+value Ci of the predicate.
+
+If Cm
+
+i
+
+≥ Ci, P m
+
+i
+
+is the maxi-
+
+mal relaxation along dimension i; if Cm
+
+i
+
+≤ Ci, the query is
+
+866
+
+
+Algorithm 1 Binary Search for Maximal Transformations
+
+Var D: Database
+
+Var Q: Query
+
+Var k: Target
+
+MaxTrans(Point p)
+
+i = UnknownDimension(p).
+
+min = Cl
+
+i
+
+Set min, and max
+
+max = Cu
+
+i
+
+to domain boundaries
+
+while (min ≤ max) do
+
+val = (min+max)/2
+
+p[i] = val
+
+New value on dim i
+
+Q′ = GenQuery(p).
+
+Est = CardEst(Q′,D);
+
+Est. card. of resulting query
+
+if Est &lt; k then
+
+min = val
+
+else if (Est &gt; k) then
+
+max = val
+
+else
+
+return Cm
+
+i
+
+= val
+
+end if
+
+end while
+
+End of loop for binary search
+
+return Cm
+
+i
+
+= val
+
+A.x
+
+B.y
+
+A.x
+
+B.y
+
+A.x
+
+B.y
+
+Extended Query
+
+Original Query
+
+A.x
+
+B.y
+
+Relaxation
+
+Contraction
+
+Cx
+
+Cm
+
+x
+
+Cm
+
+y
+
+Cy
+
+Cm
+
+x
+
+Cx
+
+Cy
+
+Cm
+
+y
+
+Cx
+
+A.x &lt; Cx ∧ B.y &lt; Cy
+
+A.x &lt; Cx ∨ B.y &lt; Cy
+
+Cx
+
+Cy
+
+Cy
+
+Ox
+
+Oy
+
+O
+
+Figure 1: Maximal relaxations and contractions for
+
+numeric predicates
+
+to be contracted, and P m
+
+i
+
+is the maximal contraction along
+
+dimension i.
+
+The CardEst procedure utilizes the ǫ-approximation EQe
+
+for cardinality estimation. Consider for instance the 2 pred-
+
+icate query shown in Figure 1 with predicates A.x &lt; Cx ∧
+
+B.y &lt; Cy. The extended query has predicates A.x &lt; Cx ∨
+
+B.y &lt; Cy which divide Qe into three regions O, Ox and
+
+Oy as shown in Figure 1. Observe that one only requires
+
+the tuples of EQe in the region O + Ox in order to com-
+
+pute the maximal transformation Cm
+
+x
+
+along A.x; likewise
+
+one can compute Cm
+
+y using the region O + Oy. More gener-
+
+ally, for a d dimensional query, SnS computes Cm
+
+i
+
+by con-
+
+sidering only the tuples in EQe which satisfy the predicates
+
+along the remaining d−1 dimensions. These tuples are used
+
+to construct an exact histogram sorted along dimension i
+
+in memory. The MaxTrans procedure eﬀectively performs
+
+a binary search on this histogram as accessed through the
+
+CardEst wrapper function.
+
+4.2
+
+Maximal Relaxations (Categorical)
+
+Consider a hierarchical categorical predicate Pi : xi1 =
+
+Ci1 ∧ . . . ∧ xil = Cil. As with numeric predicates, one can
+
+compute the maximal relaxation along dimension i by con-
+
+sidering the tuples in EQe which satisfy the predicates along
+
+all d − 1 remaining dimensions. For example, given the ex-
+
+tended query from Example 4, one only needs to consider
+
+tuples which satisfy the predicates weight &lt; 120 and age
+
+&lt; 40.
+
+For each such tuple t , SnS computes the maximum level
+
+lt such that t satisﬁes all predicates of Pi with level ≤ lt.
+
+Thus, a tuple that satisﬁes all levels of Pi has a lt = l, while
+
+a tuple that fails to satisfy even xi1 = Ci1 has lt = 0. For the
+
+hierarchical predicate considered in Example 4, lt = 2 if the
+
+tuple satisﬁes country = ’US’ and state = ’FL’; lt = 1 if
+
+it satisﬁes only country = ’US’, with lt = 0 otherwise.
+
+SnS maintains a counter N(i) for each level 0 ≤ i ≤ l
+
+of the hierarchical predicate. For each tuple t generated by
+
+SSE(Qe) which satisﬁes all remaining d−1 dimensions, SnS
+
+computes lt and increments N(i) for all 0 ≤ i ≤ lt. At the
+
+end of the SSE procedure, these counts are scaled up as per
+
+the sampling percentage. The level of the maximal relax-
+
+ation is the level lm such that N(lm) ≥ k and either lm = l
+
+or N(lm +1) &lt; k. Accordingly P m
+
+i
+
+: xi1 = Ci1 ∧. . .∧xilm =
+
+Cilm is the maximal relaxation along dimension i.
+
+If no
+
+such predicate is identiﬁed, SnS sets lm = 0 i.e the resulting
+
+bounding query Qb has no predicate on dimension i. For
+
+the example predicate, if N(2) = 20K, N(1) = 60K and
+
+N(0) = 200K, and the target cardinality is 50K, then the
+
+level of the maximal relaxation is 1 i.e the maximal relax-
+
+ation is the predicate country=’US’.
+
+Given a query Q with numeric and/or categorical pred-
+
+icates, SnS simultaneously computes the maximal relax-
+
+ations/contractions along all dimensions of Q with a single
+
+invocation of SSE(Qe) using the procedures outlined above.
+
+This generates the bounding query Qb which is utilized in
+
+the second phase of our framework, as described next.
+
+5.
+
+PHASE 2: QUERY REFINEMENT
+
+Phase 1 of SnS returns a bounding query Qb which bounds
+
+all solutions to the query reﬁnement problem. This section
+
+describes indexing structures and navigation schemes for in-
+
+teractively exploring the search space deﬁned by Qb in order
+
+to generate reﬁnements of the original query. We ﬁrst de-
+
+scribe these techniques for numeric predicates in Section 5.1
+
+and for categorical predicates in Section 5.2 before combin-
+
+ing the techniques in Section 5.3.
+
+5.1
+
+Numeric Predicates
+
+In this section, we assume that the query has only nu-
+
+meric predicates of the form xi &lt; Ci. We ﬁrst state certain
+
+properties of the space enclosed by Qb, before describing an
+
+indexing structure which exploits these properties. We then
+
+describe the navigation scheme supported by SnS for nu-
+
+meric predicates, and illustrate how the index supports the
+
+scheme.
+
+If the original query Q is to be relaxed, let variables Cb
+
+i =
+
+Cm
+
+i
+
+and Cs
+
+i = Ci. If it is to be contracted, let Cb
+
+i = Ci and
+
+Cs
+
+i = Cm
+
+i . Eﬀectively, Cb
+
+i corresponds to the predicate along
+
+dimension i (xi &lt; Cb
+
+i ) of the bounding query Qb, while Cs
+
+i
+
+corresponds to the smaller of Ci and Cm
+
+i .
+
+In the following we use the terms rectangle and hyperrect-
+
+angle interchangeably. The bounding query Qb corresponds
+
+to a d dimensional hyperrectangle Ob : ∀iCl
+
+i &lt; xi &lt; Cb
+
+i
+
+867
+
+
+B.y
+
+A.x
+
+2−dominated
+
+1−dominated
+
+1−dominated
+
+dominant
+
+Cs
+
+y
+
+O0
+
+2
+
+Cb
+
+x
+
+Cs
+
+x
+
+O1
+
+2
+
+O2
+
+2
+
+Cb
+
+y
+
+O1
+
+2
+
+Figure 2: Query Reﬁnement: Phase 2
+
+Every point on the curve in O0
+
+2 dominates k points
+
+where Cl
+
+i is the lower bound of the domain of xi.
+
+Consider the d hyperplanes ⟨xi = Cs
+
+i ⟩. Each hyperplane
+
+splits Ob into 2 halves, and therefore the hyperplanes along
+
+the d dimensions result in 2d smaller rectangles. Out of these
+
+2d rectangles, one is of particular interest.
+
+Definition 6. [Dominant rectangle] (O0
+
+d): This is the
+
+rectangle enclosing the region ∀i : Cs
+
+i &lt; xi &lt; Cb
+
+i .
+
+Property 1. Every solution to the query reﬁnement prob-
+
+lem is deﬁned by a set of selection predicates corresponding
+
+to a point inside the dominant rectangle O0
+
+d.
+
+This property holds because Cs
+
+i corresponds to the maxi-
+
+mal contraction along a dimension.
+
+Definition 7. [l-dominated rectangle] (Ol
+
+d) Any rect-
+
+angle for which there exists l dimensions L = {j1 . . . jl} such
+
+that for any point x ∈ Ol
+
+d
+
+x ∈ Ol
+
+d → ∀i∈Lxi &lt; Cs
+
+i
+
+is an l-dominated rectangle.
+
+Unlike the dominant rectangle, an l-dominated rectangle
+
+is not unique. For instance, there are 2 1-dominated rectan-
+
+gles in Figure 2.
+
+Property 2. Any point in O0
+
+d dominates any point in
+
+Ol
+
+d along at least l dimensions i.e is larger on l dimensions.
+
+We next describe our index structures, which exploit these
+
+properties to optimize space requirements.
+
+5.1.1
+
+Index Structure
+
+Algorithm 2 QuadTree Insertion
+
+QTInsert(Tree,tup)
+
+if (Tree.isroot) N++
+
+Tree.elements++
+
+UpdateMinMax(Tree,tup);
+
+if (Tree.isLeaf == false) then
+
+Child = ComputeChild(tup)
+
+QTInsert(Child,tup)
+
+if (Tree.elements &lt; αN/2) then
+
+Merge(Tree,Children)
+
+end if
+
+else
+
+Insert(tup)
+
+if (Tree.elements &gt; αN) then
+
+Split(Tree)
+
+end if
+
+end if
+
+In Phase 2, SnS invokes SSE(Qb) to generate an ǫ-approximation
+
+EQb. Our procedure constructs an in-memory quadtree on
+
+EQb to support fast range counting. The quadtree structure
+
+is derived from the adaptive spatial partitioning tree intro-
+
+duced in [17]. Algorithm 2 describes our quadtree insertion
+
+algorithm QTInsert. QTInsert maintains a target fraction
+
+α, such that no leaf in the tree may contain more than an α
+
+fraction of the tuples seen (N). If a leaf contains more than
+
+αN tuples, it is split into 2d children. Similarly, if the leaf
+
+descendents of an intermediate node together contain less
+
+than αN/2 tuples, then the subtree at the node is collapsed
+
+into a leaf node. This can happen due to incoming tuples
+
+increasing N. At each node of the quadtree, QTInsert main-
+
+tains the min and max values along each dimension over all
+
+the tuples in the leaves of the subtree at the node
+
+The space requirements of the quadtree described above
+
+can be optimized further. Property 1 asserts that all solu-
+
+tions to the query reﬁnement problem must lie within the
+
+dominant rectangle O0
+
+d. Given a d dimensional point p′ cor-
+
+responding to a query Q′, SnS requires the quadtree index
+
+to return the number of tuples in EQb that are dominated
+
+by p′. Property 2 asserts that p′ must dominate every point
+
+pl in Ol
+
+d along l dimensions. Therefore, for any tuple tpl
+
+represented by a point pl in Ol
+
+d, one only requires the re-
+
+maining d − l dimensions to check whether pl is dominated
+
+by p′ (i.e whether tpl ∈ Q′). Since it is possible to discard
+
+the l dominated dimensions, we modify the quadtree index
+
+to exploit this property by initially splitting the root node
+
+of the tree along the d hyperplanes ⟨xi = Cs
+
+i ⟩. This opti-
+
+mization results in signiﬁcant space savings. For instance,
+
+the quadtree does not keep any attributes of tuples in the
+
+d-dominated rectangle Od
+
+d, only maintaining a counter for
+
+this node.
+
+5.1.2
+
+Navigation Scheme
+
+We now describe the navigation scheme supported by the
+
+SnS framework. Each dimension i of the original query is
+
+initially associated with a range (Cs
+
+i , Cb
+
+i ) deﬁned by the orig-
+
+inal query predicate, and the associated maximal transfor-
+
+mation.
+
+Our goal is to support an interactive reﬁnement
+
+procedure which enables speciﬁcation of one’s preferences
+
+on the choice of values of the reﬁned predicates, within the
+
+constraints deﬁned by these ranges.
+
+The interactive reﬁnement procedure proceeds in the form
+
+of rounds between the user and the SnS framework. Each
+
+round consists of the following two steps:
+
+• The user selects an arbitrary predicate Pj : xj &lt; Cj
+
+and reﬁnes it to a new predicate P′
+
+j : xj &lt; C′
+
+j such
+
+that Cs
+
+j ≤ C′
+
+j ≤ Cb
+
+j i.e C′
+
+j lies within the range for
+
+dimension j.
+
+• SnS recomputes the ranges (Cs
+
+i , Cb
+
+i ) for each unreﬁned
+
+dimension i conditional on the user’s current set of
+
+predicate reﬁnements.
+
+Each predicate reﬁnement further constrains the ranges of
+
+the remaining unreﬁned predicates. This process is repeated
+
+for d−1 rounds, at which point the ﬁnal unreﬁned predicate
+
+is fully constrained, and can be computed automatically. We
+
+illustrate this interactive reﬁnement procedure through the
+
+following example:
+
+Example 6. Consider a query with predicates year &lt; 1960
+
+and age &lt; 25 and salary &lt; 3000 and suppose it returns
+
+868
+
+
+too few answers. In Phase 1, SnS computes maximal relax-
+
+ations (1980, 40, 7000) for year, age, salary respectively.
+
+In Phase 2, one may ﬁrst reﬁne the predicate on age to age
+
+&lt; 30. SnS in turn recomputes the ranges of the remaining
+
+predicates as year: (1960, 1975) and salary:(3000, 6400).
+
+These ranges are smaller than the ranges speciﬁed by the
+
+initial set of maximal relaxations due to the relaxation of
+
+the predicate of age. Given these ranges, one may reﬁne the
+
+predicate on year to year &lt; 1970. SnS computes the best
+
+choice of the ﬁnal predicate, relaxing it to salary &lt; 4100.
+
+The ﬁnal reﬁned query has predicates year &lt; 1970 and age
+
+&lt; 30 and salary &lt; 4100.
+
+Algorithm 3 Numeric Predicate Reﬁnement
+
+1: INumRef()
+
+2: for all Dimensions i do
+
+3:
+
+Cs
+
+i = min(Ci, Cm
+
+i ); Cb
+
+i = max(Ci, Cm
+
+i )
+
+4:
+
+C′
+
+i = Ci
+
+5: end for
+
+6: if ∃i : Cm
+
+i
+
+= ∞ then
+
+7:
+
+RecomputeLowers()
+
+8: end if
+
+9: NumUnRef = d
+
+10: while NumUnRef &gt; 0 do
+
+11:
+
+GetUserRef()
+
+12:
+
+NumUnRef −−
+
+13:
+
+for all UnreﬁnedDimensions i do
+
+14:
+
+Cm
+
+i
+
+= MaxTrans(C′
+
+1, . . . , C′
+
+i−1, ?, C′
+
+i+1, . . . , C′
+
+d)
+
+15:
+
+if Contraction then Cs
+
+i = Cm
+
+i
+
+else Cb
+
+i = Cm
+
+i
+
+16:
+
+if NumUnRef = 1 then C′
+
+i = Cm
+
+i ; return;
+
+17:
+
+end for
+
+18: end while
+
+19: RecomputeLowers()
+
+20: for all Dimensions i do
+
+21:
+
+temp = MaxTrans(Cb
+
+1, . . . , Cb
+
+i−1, ?, Cb
+
+i+1, . . . , Cb
+
+d)
+
+22:
+
+if temp &gt; Cs
+
+i then Cs
+
+i = temp;
+
+23: end for
+
+Algorithm 3 describes the numeric predicate reﬁnement
+
+component (INumRef ) of the SnS framework.
+
+INumRef
+
+initially deﬁnes a range (Cs
+
+i , Cb
+
+i ) for each predicate (as per
+
+Property 1). Each predicate reﬁnement made by the user
+
+(GetUserRef ), results in a recomputation of the ranges for
+
+each unreﬁned predicate (lines 13-17). This is performed by
+
+calling the MaxTrans procedure (Algorithm 1), setting the
+
+unreﬁned dimension i as unknown (’?’), with all remaining
+
+dimensions j set to either the original C′
+
+j = Cj (if unreﬁned)
+
+or the reﬁned C′
+
+j values. When only one unreﬁned dimen-
+
+sion i remains (line 16), INumRef automatically reﬁnes the
+
+associated predicate to its maximal transformation Cm
+
+i .
+
+The version of MaxTrans utilized by INumRef diﬀers from
+
+the description in Algorithm 1 in two minor ways. First, it
+
+performs a binary search over the limited range (Cs
+
+i , Cb
+
+i ).
+
+The second diﬀerence is that the associated cardinality esti-
+
+mation module CardEst now utilizes the quadtree index on
+
+EQb through the function QTQuery outlined as Algorithm 4.
+
+Given a d dimensional point p, QTQuery computes the num-
+
+ber of tuples in the quadtree dominated by p. QTQuery also
+
+uses the min and max values associated with each node of
+
+the quadtree to avoid unnecessary tree traversals.
+
+Recomputing lower bounds for relaxations: The above
+
+discussion assumes that it suﬃces to recompute only the
+
+maximal transformation Cm
+
+i
+
+in each round of the reﬁne-
+
+ment process. While this holds true in general, for certain
+
+special cases of query relaxation the lower bound may be too
+
+tight to achieve the target cardinality due to highly selec-
+
+tive predicates. This is indicated by maximal relaxations for
+
+Algorithm 4 Index Querying Procedure
+
+QTQuery(QuadTree Tree,Point p)
+
+if (DominatesOnAllDims(p,Tree.max)) then
+
+return Tree.elements
+
+else if (DominatesOnOneDim(Tree.min,Point p)) then
+
+return 0
+
+end if
+
+if (Tree.isLeaf) then
+
+return CountDominatedPoints(p,Tree.elementsArray)
+
+else
+
+dom = 0
+
+for all (Child ∈ Tree.Children) do
+
+dom+=QTQuery(Child,p)
+
+end for
+
+end if
+
+return dom
+
+some dimensions being set to inﬁnity. In this case, INumRef
+
+recomputes the lowerbounds by calling the RecomputeLow-
+
+ers procedure (Alg 3 lines 19-23). RecomputeLowers invokes
+
+MaxTrans for each dimension i, with all remaining dimen-
+
+sions j set to their maximal relaxations Cb
+
+j . If the returned
+
+value exceeds the current lower bound Cs
+
+i , then the lower
+
+bound is modiﬁed.
+
+Error Guarantees: Our navigation scheme enables a re-
+
+ﬁnement of all but one of the predicates as per user prefer-
+
+ences. The ﬁnal predicate is however reﬁned by INumRef.
+
+Let the maximum frequency of a value in dimension i in the
+
+bounding query Qb be mi. If i is the ﬁnal dimension reﬁned
+
+by SnS, then in the worst case, the resulting reﬁned query
+
+will have an absolute error of
+
+mi
+
+2
+
+with respect to the tar-
+
+get cardinality. This error is separate from the errors due
+
+to cardinality estimation, and is an artifact of our ﬂexible
+
+navigation scheme. This also suggests that it is best to leave
+
+attributes with uniform distributions and many distinct val-
+
+ues as the ﬁnal unreﬁned dimension, since these would be
+
+expected to have a low value of mi.
+
+5.2
+
+Hierarchical Categorical Predicates
+
+S | G
+
+G | S
+
+C | S
+
+S
+
+C | SG
+
+A | SG
+
+G | SC
+
+A| SGC
+
+C| AGS
+
+A | G
+
+S | AG
+
+G
+
+Figure 3: Navigation paths for 2 hierarchies (S,C)
+
+and (G,A)
+
+In this section, we describe the indexing structures and
+
+navigation schemes supported by SnS for reﬁning queries
+
+with hierarchical categorical predicates only.
+
+Since these
+
+predicates are equality predicates on categorical domains,
+
+one cannot utilize quadtrees and adopt a range shrinking
+
+navigation scheme as with numeric predicates. Instead, the
+
+SnS framework deploys techniques based on materializing
+
+diﬀerent navigation paths on a data cube [15].
+
+Consider a query Q with d hierarchical categorical dimen-
+
+sions. Q can be relaxed by roll-up and expansion operations
+
+869
+
+
+applied in an arbitrary order on the upper levels of the cate-
+
+gorical hierarchies. Likewise, Q can be contracted by shrink-
+
+ing and drill-down operations applied in an arbitrary order
+
+on the lower levels of the hierarchy. We refer to any fea-
+
+sible sequence of such relaxation or contraction operations
+
+for reﬁning Q as a navigation path or NavPath.
+
+For ex-
+
+ample, given two two-level hierarchies (State(S), City(C))
+
+and (Genre(G), Artist(A)), the possible NavPaths for re-
+
+laxation/contraction are illustrated in Figure 3. In the ﬁg-
+
+ure, an entry along a navigation path (NavEntry) of the form
+
+G|SC represents a relaxation/contraction operation on di-
+
+mension G, with predicates on S and C unchanged, and no
+
+predicate on A.
+
+5.2.1
+
+Index Structure
+
+Algorithm 5 Constructing CFDs
+
+1: List NavPaths = CreateNavPaths()
+
+2: HistInsert(Tuple Tup)
+
+3: List HistEntries = NULL
+
+4: for all NavEntry Nav ∈ NavPaths do
+
+5:
+
+childAttr = ExtractChildAttr(Nav,Tup)
+
+6:
+
+HistEntry parent = GetParent(Entries,Nav)
+
+7:
+
+if hasChild(parent,childAttr) then
+
+8:
+
+HistEntry child = GetChild(parent, childAttr);
+
+9:
+
+else
+
+10:
+
+HistEntry child = AddChild(parent,childAttr);
+
+11:
+
+end if
+
+12:
+
+child.freq++
+
+13:
+
+Entries.add(child)
+
+14: end for
+
+As with numeric predicates, SnS invokes SSE(Qb) in or-
+
+der to generate an in-memory ǫ-approximation EQb for the
+
+purposes of cardinality estimation. The goal of our indexing
+
+structure is to support fast cardinality estimation for the op-
+
+erations of relaxing or contracting a hierarchical predicate
+
+by utilizing EQb. SnS accomplishes this by maintaining con-
+
+ditional frequency distributions (CFDs) for each NavEntry
+
+along any possible NavPath for relaxation or contraction.
+
+Algorithm 5 describes our procedure for constructing CFDs
+
+as exact histograms over EQb. Given a query Q with d hi-
+
+erarchies, function CreateNavPaths constructs the possible
+
+NavPaths for query reﬁnement. Having identiﬁed the navi-
+
+gation paths, SnS invokes function HistInsert for each tuple
+
+Tup produced by SSE(Qb). HistInsert traverses the Nav-
+
+Paths in a breadth-ﬁrst top-down fashion.
+
+Each NavEn-
+
+try encountered encodes a particular CFD; for instance G|S
+
+represents the frequency distribution of Genre conditional
+
+on a given value of the State predicate. Given a NavEn-
+
+try, HistInsert identiﬁes the appropriate parent and child
+
+histogram entries (HistEntry) and increments the frequency
+
+of the child accordingly. For instance, given a tuple with
+
+Genre=’Pop’ and State = ’Fl’, for NavEntry G|S, HistIn-
+
+sert (a) identiﬁes the parent HistEntry for State = ’Fl’
+
+(b) looks up its children for a HistEntry corresponding to
+
+Genre=’Pop’, creating a new child if necessary and (c) in-
+
+crements the frequency count of the child.
+
+5.2.2
+
+Navigation Scheme
+
+As with numeric predicates, SnS supports a navigation
+
+scheme for hierarchical categorical predicates which proceeds
+
+in the form of rounds. The process begins with all predicates
+
+as in the original query. In each round:
+
+• The user selects an arbitrary hierarchical predicate,
+
+and either rolls-up/expands the predicate (in the case
+
+of relaxation) or drills-down/shrinks it (for contrac-
+
+tions).
+
+• SnS identiﬁes the current position of the user along the
+
+NavPaths, and displays the appropriate set of CFDs for
+
+any possible next reﬁnement step, utilizing the index
+
+structure.
+
+This process continues until either (a) the reﬁned query
+
+exceeds the target cardinality (for relaxations) or falls below
+
+the target cardinality (for contractions) or (b) one identiﬁes
+
+a ﬁnal predicate, for which SnS computes an appropriate
+
+relaxation or contraction to best satisfy the target cardinal-
+
+ity. We illustrate this process through the following example
+
+featuring only drill-down operations:
+
+Example 7. Consider a query with initially no predicates
+
+which is to be contracted to a target cardinality of 50K tu-
+
+ples along the hierarchies (S, C) and (G, S). SnS initially
+
+presents frequency distributions on State e.g (’FL’, 10M),
+
+(’CA’, 7M),. . ., and Genre e.g (’rock’, 5M), (’pop’, 3M),
+
+. . .. One may then select State = ’FL’. In response, SnS
+
+presents frequency distributions on city e.g (’Miami’, 800K),
+
+(’Tampa’, 400K), . . . and genre e.g. (’rock’, 2M), (’pop’,
+
+1M), . . .. These distributions are conditional on the selection
+
+of State=’FL’. This process is repeated, with one possibly
+
+selecting genre=’Rock’ and artist=’Coldplay’. The ﬁnal
+
+predicate for attribute city is computed by SnS as city=’Miami’
+
+OR city=’Tampa’ OR city=’Alachua’.
+
+Identifying the appropriate set of CFDs to display is straight-
+
+forward At each round of the reﬁnement process, the user is
+
+at some NavEntry, with the current set of predicate reﬁne-
+
+ments corresponding to an associated HistEntry hist. There-
+
+fore for roll-ups, SnS needs to display frequencies of the
+
+parents of hist. Similarly, drill-downs require displaying fre-
+
+quency distributions of the children of hist. Likewise, expan-
+
+sion and shrinking require displaying the frequency distribu-
+
+tions of the siblings of hist and of its children respectively.
+
+We now describe how SnS reﬁnes the ﬁnal predicate.
+
+Reﬁning the ﬁnal predicates: Suppose the ﬁnal pred-
+
+icate to be reﬁned is on attribute xi with possible values
+
+C1
+
+i , . . . , Cn
+
+i with associated (through HistEntries) conditional
+
+frequency estimates f 1
+
+i , . . . , f n
+
+i respectively. The goal of this
+
+step is to disjunctively select a subset J = j1, . . . , jr of these
+
+n values such that P
+
+j∈J f j
+
+i ≈ k. This is the subset-sum
+
+problem, which is known to be NP-hard. Although polyno-
+
+mial time approximation schemes exist for this problem [18,
+
+25], we implement a greedy 2-optimal approximation algo-
+
+rithm [25] described as Algorithm 6. This approximation
+
+guarantee is a worst-case guarantee, and in practice the
+
+greedy algorithm works extremely well.
+
+Procedure FinalPred (Algorithm 6) takes as input a list of
+
+possible values C1
+
+i , . . . , Cn
+
+i for the ﬁnal predicate sorted in
+
+decreasing order of their frequency f j
+
+i . FinalPred greedily
+
+adds new values to the current set (CurrSet) of values unless
+
+the associated sum CurrSum exceeds the target cardinality.
+
+The procedure ensures that CurrSum is guaranteed to be
+
+≤ k. Additionally, FinalPred maintains the greedy set Cur-
+
+rBigSet with minimal error which has a sum CurrBigSum
+
+&gt; k.
+
+FinalPred returns either of CurrSet or CurrBigSet
+
+having minimum error.
+
+To summarize, SnS supports a navigation scheme based
+
+on roll-ups/expansions or drill-downs/shrinking along mul-
+
+870
+
+
+Algorithm 6 Reﬁning the Final Predicate
+
+FinalPred(SortedList values)
+
+CurrSet = NULL; CurrSum = 0; CurrBigSet = NULL; CurrBig-
+
+Sum = 0;
+
+for all (Cj
+
+i , f j
+
+i ) ∈ values do
+
+if CurrSum +f j
+
+i ≤ k then
+
+CurrSet.add(Cj
+
+i )
+
+CurrSum + = f j
+
+i
+
+else if | CurrSum +f j
+
+i − k| &lt; | CurrBigSum −k| &lt; then
+
+CurrBigSet = CurrSet + Cj
+
+i
+
+CurrBigSum = CurrSum +f j
+
+i .
+
+end if
+
+end for
+
+return minErr(CurrSet,CurrBigSet)
+
+tiple navigation paths for a set of hierarchies. It supports
+
+these operations by maintaining conditional frequency dis-
+
+tributions along all such possible navigation paths
+
+5.3
+
+Combining the techniques
+
+In the previous two sections, we have described index
+
+structures and navigation schemes for queries with only nu-
+
+meric, and only hierarchical categorical predicates. In this
+
+section, we illustrate how these techniques can be combined
+
+for queries with both numeric and categorical predicates.
+
+5.3.1
+
+Index Structure
+
+The goal of the index structure is to eﬃciently support
+
+cardinality estimation for range and equality queries over
+
+multidimensional categorical and numeric data. The index
+
+is built on the ǫ-approximation EQb generated by the SSE
+
+procedure.
+
+SnS combines the quadtree index (for numeric predicates)
+
+and navigation path index (for categorical hierarchies) by
+
+adding a quadtree to each histogram entry (HistEntry) to
+
+represent the numeric dimensions of the tuples correspond-
+
+ing to the HistEntry.
+
+This is accomplished by adding an
+
+extra function call QTInsert(child.Tree,Tup) after line 13 of
+
+the HistInsert procedure in Algorithm 5. Thus, for instance,
+
+the numeric attributes for all tuples with state=’FL’ are
+
+indexed by a quadtree associated with the corresponding
+
+HistEntry. Additionally, SnS maintains a global quadtree
+
+which indexes all tuples in the bounding query. This index
+
+structure suﬃces to provide fast cardinality estimates for
+
+any Q′ ⊆ Qb.
+
+5.3.2
+
+Navigation Scheme
+
+The navigation scheme for queries with both numeric and
+
+categorical predicates remains essentially unchanged. As be-
+
+fore, reﬁnement proceeds in rounds. In each round:
+
+• The user selects either a numeric or categorical predi-
+
+cate and reﬁnes it to a new value.
+
+• SnS responds by updating the ranges for unreﬁned nu-
+
+meric predicates, and the appropriate CFDs for the
+
+categorical predicates.
+
+Suppose a numeric predicate Pi : xi &lt; Ci is reﬁned to a
+
+new value C′
+
+i. SnS recomputes the ranges of the remain-
+
+ing unreﬁned predicates by calling the MaxTrans procedure
+
+(Algorithm 1). For the categorical predicates, the relevant
+
+CFDs are updated by calling the QTQuery procedure (Al-
+
+gorithm 4) for the quadtrees associated with each HistEntry.
+
+Likewise, a similar procedure is adopted when a hierarchical
+
+categorical predicate is relaxed or contracted.
+
+6.
+
+EVALUATION
+
+In this section, we describe an implementation and exper-
+
+imental evaluation of our reﬁnement framework
+
+We have instantiated the SSE procedure in the Postgresql
+
+8.0 database system, and implemented the SnS framework
+
+as a Java based frontend.
+
+SnS communicates with SSE
+
+through the JDBC layer and network sockets. Each query
+
+Q submitted for reﬁnement results in two invocations of the
+
+SSE layer, once for the extended query Qe, and once for the
+
+bounding query Qb. Our instantiation of SSE utilizes pre-
+
+computed random samples on base relations. In our eval-
+
+uation, the SSE procedure is halted when it generates an
+
+ǫ-approximation of size 5000 tuples, with a sampling thresh-
+
+old of at most 5%. Varying the sample size (provided it isn’t
+
+too low) did not have a signiﬁcant aﬀect on the cardinality
+
+estimates.
+
+We conducted experiments on three diﬀerent test databases.
+
+The primary test database is a 2.5 GB database generated
+
+using the DMV data generator [24]. The DMV dataset con-
+
+sists of 4 tables. The table sizes of Owner (O) and Car (C)
+
+are 2.5 million tuples; the size of Demographics (D) is ap-
+
+proximately 3.6 million tuples; and the size of Accidents (A)
+
+is approximately 10.7 million tuples. The dataset was gen-
+
+erated with the correlations ﬂag set on. This produces many
+
+interesting correlations between columns on diﬀerent tables.
+
+which makes cardinality estimation highly challenging. Ad-
+
+ditionally, we also performed experiments on two TPC-H
+
+databases of size 1 GB each. One of them is the standard
+
+TPC-H database generated as per the benchmark speciﬁca-
+
+tion. Since this database consists of uniformly distributed
+
+data, we also generated a TPC-H database with zipﬁan skew
+
+Z = 1 using a publicly available tool [9].
+
+To simulate user interaction with the system, we imple-
+
+mented an external function which randomly reﬁnes predi-
+
+cates (within the constraints imposed by the framework) at
+
+each round of the reﬁnement process. In our experiments we
+
+plot the relative error of the reﬁned queries, which is deﬁned
+
+as
+
+Err = |ReﬁnedQueryCard. − TargetCard.|
+
+TargetCard.
+
+The experimental evaluation was conducted on a lightly
+
+loaded machine running Suse Linux with 4 GB memory and
+
+3.60GHz clock speed.
+
+6.1
+
+Accuracy Experiments
+
+10
+
+3
+
+10
+
+4
+
+10
+
+5
+
+10
+
+6
+
+10
+
+3
+
+10
+
+4
+
+10
+
+5
+
+10
+
+6
+
+Target Cardinality
+
+Actual Cardinality
+
+ 
+
+ 
+
+Both
+
+Cat
+
+Num
+
+Figure 4: Single Query Varying Target
+
+Figure 4 describes the results of an experiment using the
+
+871
+
+
+DMV database in which we ﬁxed the original query, and
+
+varied the target cardinality. We generated 3 initial queries.
+
+The query marked as Num is a 3 table join query with 3 nu-
+
+meric range predicates, and original cardinality of approx-
+
+imately 600K. The query marked as Cat is a 3 table join
+
+query with 2 categorical predicates, each a part of a 3 level
+
+hierarchy.
+
+Its original cardinality is approximately 250K.
+
+The query marked as Both is a 3 table join query with 3 nu-
+
+meric and 2 categorical predicates and original cardinality
+
+approximately 125K. We varied the target cardinality from
+
+1K (low selectivity) to 2M (high selectivity) tuples and plot
+
+the cardinality of the queries generated by our system with
+
+respect to the target cardinality. As can be seen, our tech-
+
+nique generates queries that approximately satisfy the target
+
+cardinality constraints for a wide range of target and initial
+
+query cardinalities.
+
+Cat
+
+Num
+
+Both
+
+0
+
+0.1
+
+0.2
+
+0.3
+
+0.4
+
+0.5
+
+0.6
+
+0.7
+
+0.8
+
+0.9
+
+1
+
+Relative Error
+
+ 
+
+ 
+
+10K
+
+100K
+
+1M
+
+Figure 5: Multiple Query Varying Targets
+
+In our next experiment, we generated three random work-
+
+loads of 50 queries each deﬁned on the DMV database having
+
+numeric (Num), categorical (Cat), and both numeric and cat-
+
+egorical (Both) predicates respectively. Each query in each
+
+workload is reﬁned to target cardinalities of 10K, 100K and
+
+1M tuples. We plot the average errors for each workload-
+
+target cardinality combination in Figure 5. As can be seen,
+
+the average errors are low except for the case of queries
+
+with categorical predicates only, and a low target cardinal-
+
+ity (10K). This is primarily due to the underlying data dis-
+
+tribution which prevents contraction to the target cardinal-
+
+ity. For instance, consider a query with predicates make =
+
+’Porsche’ and country = ’GM’, and cardinality 186K tu-
+
+ples, which is to be contracted to 10K tuples. Given two cat-
+
+egorical hierarchies (make, model, color) and (country,
+
+state, city), the best that any query reﬁnement algorithm
+
+can do on the underlying DMV database is to contract the
+
+query to 40K tuples (model = ’Carrera’ and color = ’red’
+
+and city = ’Berlin’ and state = ’Berlin’). Further con-
+
+traction of this query is not possible.
+
+In our next experiment, we examine the eﬀects of the
+
+size of the domains on which categorical predicates are de-
+
+ﬁned. For the experiment shown in Figure 6, we generated
+
+50 queries with 3 categorical predicates deﬁned on domains
+
+with 4, 20 and 197 distinct values on the DMV database.
+
+Each query in the workload has a cardinality less than 100K.
+
+We invoke SnS to relax each query to target cardinalities:
+
+100K, 200K and 300K tuples. We consider each predicate
+
+to form a single level hierarchy, resulting in 3! = 6 possible
+
+navigation paths for query relaxation. Each query is relaxed
+
+by rolling up along every possible navigation path, with the
+
+4
+
+20
+
+197
+
+0
+
+0.05
+
+0.1
+
+0.15
+
+0.2
+
+0.25
+
+0.3
+
+# Distinct Values
+
+Relative Error
+
+Figure 6: Varying # Distinct Values for relaxation
+
+ﬁnal predicate selected using the subset sum procedure Fi-
+
+nalPred (Algorithm
+
+6). In Figure 6, we plot the average
+
+error with respect to the domain size of the ﬁnal predicate.
+
+As can be seen from Figure 6, the average errors for small
+
+(4) and large (197) sized domains are higher. For small do-
+
+mains, this higher error is due to the fact that disjunctively
+
+adding or removing an additional predicate can signiﬁcantly
+
+change the query cardinality.
+
+This leads to a coarse de-
+
+gree of control over the cardinality of the reﬁned query. At
+
+the other extreme, for large domains, the FinalPred proce-
+
+dure has a much ﬁner degree of control on query cardinality.
+
+However attributes with a large number of distinct values
+
+often have many low frequency values, for which cardinality
+
+estimation may be diﬃcult. This illustrates an interesting
+
+tradeoﬀ for categorical domains, in which we need to balance
+
+the ﬁner degree of control provided by large domains, with
+
+the associated higher relative errors in cardinality estimates
+
+for the many low frequency values present. We note that a
+
+similar tradeoﬀ does not arise in numeric predicates, since
+
+one does not require cardinality estimates for each distinct
+
+value within a range, but for the range as whole.
+
+2
+
+3
+
+5
+
+7
+
+0
+
+0.002
+
+0.004
+
+0.006
+
+0.008
+
+0.01
+
+0.012
+
+0.014
+
+0.016
+
+0.018
+
+0.02
+
+# Dimensions
+
+Relative Error
+
+ 
+
+ 
+
+Z = 0
+
+Z = 1
+
+Figure 7: Varying dimensions and skew
+
+In our next experiment illustrated in Figure 7, we examine
+
+the eﬀects of varying the number of predicates (dimensions),
+
+and the skew of the underlying data on the accuracy of our
+
+reﬁnement procedures for numeric predicates. We generate
+
+workloads of 5 table joins deﬁned on TPCH tables, with 2,
+
+3, 5 and 7 numeric predicates, with each workload having
+
+50 queries. The target cardinality was ﬁxed at 100K tuples.
+
+We plot the average error for each workload over both the
+
+uniform (Z=0) and skewed (Z=1) data. As can be seen, the
+
+errors are uniformly low (&lt; 1%) and are not signiﬁcantly
+
+872
+
+
+aﬀected by the number of dimensions or skew of the data.
+
+6.2
+
+Overheads
+
+10K
+
+100K
+
+1M
+
+0
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+7
+
+8
+
+Target Cardinality
+
+Avg Execution Time (s)
+
+ 
+
+ 
+
+Cold Cache
+
+Warm Cache
+
+Figure 8: Execution Times
+
+We measure the execution times of our technique by gen-
+
+erating a workload of 10 queries on the DMV database, with
+
+each query having 3 numeric and 2 categorical hierarchical
+
+predicates. Each query was reﬁned to 10K, 100K and 1M
+
+tuples. We measure the execution times on cold and warm
+
+caches. The execution time is the time to complete the entire
+
+reﬁnement procedure, from the initial query speciﬁcation to
+
+the ﬁnal generation of the reﬁned query. Figure 8 demon-
+
+strates that the average execution times are low (approx.
+
+5s on cold caches) and independent of the target cardinal-
+
+ity. This execution time is primarily concentrated on the
+
+execution of the SSE procedure. Once the SSE procedure
+
+instantiates the indexing structures, each round of the re-
+
+ﬁnement process takes few ms to execute, demonstrating
+
+that our framework can support an interactive reﬁnement
+
+interface with low response times.
+
+7.
+
+CONCLUSIONS
+
+In this paper, we have introduced a new model for solv-
+
+ing the many/few answers problem. We have presented an
+
+interactive query reﬁnement framework, and outlined the
+
+challenges, and our solutions for practically realizing such a
+
+framework. Our experimental evaluation of an implemen-
+
+tation of this framework in a real database system demon-
+
+strates the utility of our approach.
+
+8.
+
+REFERENCES
+
+[1] S. Agrawal, S. Chaudhuri, G. Das, and A. Gionis.
+
+Automated ranking of database query results. CIDR,
+
+2003.
+
+[2] S. B¨orzs¨onyi, D. Kossmann, and K. Stocker. The
+
+skyline operator. ICDE, 2001.
+
+[3] N. Bruno, S. Chaudhuri, and D. Thomas. Generating
+
+queries with cardinality constraints for dbms testing.
+
+IEEE TKDE, 18(12):1721–1725, 2006.
+
+[4] M. J. Carey and D. Kossmann. On saying ”enough
+
+already!” in sql. SIGMOD, pages 219–230, 1997.
+
+[5] S. Chaudhuri. Generalization and a framework for
+
+query modiﬁcation. ICDE, 1990.
+
+[6] S. Chaudhuri, N. N. Dalvi, and R. Kaushik. Robust
+
+cardinality and cost estimation for skyline operator.
+
+ICDE, 2006.
+
+[7] S. Chaudhuri, G. Das, V. Hristidis, and G. Weikum.
+
+Probabilistic ranking of database query results.
+
+VLDB, 2004.
+
+[8] S. Chaudhuri, R. Motwani, and V. Narasayya. On
+
+Random Sampling Over Joins. SIGMOD, 1999.
+
+[9] S. Chaudhuri and V. Narasayya. Program for TPC-D
+
+Data generation with skew.
+
+ftp://ftp.research.microsoft.com/users/viveknar/tpcdskew.
+
+[10] W. W. Chu and Q. Chen. A structured approach for
+
+cooperative query answering. TKDE, 1994.
+
+[11] R. Fagin, A. Lotem, and M. Naor. Optimal
+
+aggregation algorithms for middleware. JCSS,
+
+66(4):614–656, 2003.
+
+[12] M. Fontoura, V. Josifovski, R. Kumar, C. Olston,
+
+A. Tomkins, and S. Vassilvitskii. Relaxation in text
+
+search using taxonomies. VLDB, 2008.
+
+[13] P. Godfrey. Skyline cardinality for relational
+
+processing. FoIKS, 2004.
+
+[14] P. Haas, J. Naughton, S. Seshadri, and A. Swami.
+
+Fixed Precision Estimation Of Join Selectivity. PODS,
+
+June 1993.
+
+[15] V. Harinarayan, A. Rajaraman, and J. D. Ullman.
+
+Implementing data cubes eﬃciently. SIGMOD, 1996.
+
+[16] D. Haussler and E. Welzl. Epsilon-nets and simplex
+
+range queries. SoCG, 1986.
+
+[17] J. Hershberger, N. Shrivastava, S. Suri, and C. D.
+
+T´oth. Adaptive spatial partitioning for
+
+multidimensional data streams. Algorithmica, 46(1),
+
+2006.
+
+[18] O. H. Ibarra and C. E. Kim. Fast approximation
+
+algorithms for the knapsack and sum of subset
+
+problems. J. ACM, 22(4):463–468, 1975.
+
+[19] I. F. Ilyas, W. G. Aref, and A. K. Elmagarmid.
+
+Supporting top-k join queries in relational databases.
+
+VLDB, 2003.
+
+[20] Y. Ioannidis and S. Christodoulakis. Optimal
+
+Histograms for Limiting Worst-Case Error
+
+Propagation in the Size of Join Results. ACM
+
+Transactions on Database Systems, Vol. 18, No. 4,
+
+pages 709–748, Dec. 1993.
+
+[21] A. Kadlag, A. V. Wanjari, J. Freire, and J. R. Haritsa.
+
+Supporting exploratory queries in databases.
+
+DASFAA, 2004.
+
+[22] N. Koudas, C. Li, A. K. H. Tung, and R. Vernica.
+
+Relaxing join and selection queries. VLDB, 2006.
+
+[23] G. Luo. Eﬃcient detection of empty-result queries.
+
+VLDB, 2006.
+
+[24] V. Markl, V. Raman, D. Simmen, G. Lohman,
+
+H. Pirahesh, and M. Cilimdzic. Robust Query
+
+Processing Through Progressive Optimization.
+
+SIGMOD, 2004.
+
+[25] S. Martello and P. Toth. Worst-case analysis of greedy
+
+algorithms for the subset-sum problem. Math.
+
+Programming, 28(2), 1984.
+
+[26] C. Mishra, N. Koudas, and C. Zuzarte. Generating
+
+targeted queries for database testing. SIGMOD, 2008.
+
+[27] V. N. Vapnik and A. Chervonenkis. On the uniform
+
+convergence of relative frequencies of events to their
+
+probabilities. Theory of Probability and its
+
+Applications, 16(2):264–280, 1971.
+
+873
+

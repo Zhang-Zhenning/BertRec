@@ -1,0 +1,3335 @@
+
+A Study of Smoothing Methods for Language Models
+
+Applied to Ad Hoc Information Retrieval
+
+Chengxiang Zhai
+
+School of Computer Science
+
+Carnegie Mellon University
+
+Pittsburgh, PA 15213
+
+John Lafferty
+
+School of Computer Science
+
+Carnegie Mellon University
+
+Pittsburgh, PA 15213
+
+ABSTRACT
+
+Language modeling approaches to information retrieval are
+
+attractive and promising because they connect the problem
+
+of retrieval with that of language model estimation, which
+
+has been studied extensively in other application areas such
+
+as speech recognition. The basic idea of these approaches is
+
+to estimate a language model for each document, and then
+
+rank documents by the likelihood of the query according to
+
+the estimated language model. A core problem in language
+
+model estimation is smoothing, which adjusts the maximum
+
+likelihood estimator so as to correct the inaccuracy due to
+
+data sparseness. In this paper, we study the problem of lan-
+
+guage model smoothing and its inﬂuence on retrieval perfor-
+
+mance. We examine the sensitivity of retrieval performance
+
+to the smoothing parameters and compare several popular
+
+smoothing methods on diﬀerent test collections.
+
+1.
+
+INTRODUCTION
+
+The study of information retrieval models has a long his-
+
+tory.
+
+Over the decades, many diﬀerent types of retrieval
+
+models have been proposed and tested [21]. There has been
+
+a great diversity of approaches and methodology developed,
+
+rather than a single uniﬁed retrieval model that has proven
+
+to be most eﬀective; however, the ﬁeld has progressed in two
+
+diﬀerent ways. On the one hand, theoretical studies of an
+
+underlying model have been developed; this direction is, for
+
+example, represented by the various kinds of logic models
+
+and probabilistic models (e.g., [14, 3, 15, 22]). On the other
+
+hand, there have been many empirical studies of models, in-
+
+cluding many variants of the vector space model (e.g., [17,
+
+18, 19]). In some cases, there have been theoretically moti-
+
+vated models that also perform well empirically; for exam-
+
+ple, the BM25 retrieval function, motivated by the 2-Poisson
+
+probabilistic retrieval model, has proven to be quite eﬀective
+
+in practice [16].
+
+Recently, a new approach based on language modeling
+
+has been successfully applied to the problem of ad hoc re-
+
+Permission to make digital or hard copies of all or part of this work for
+
+personal or classroom use is granted without fee provided that copies are
+
+not made or distributed for proﬁt or commercial advantage and that copies
+
+bear this notice and the full citation on the ﬁrst page. To copy otherwise, to
+
+republish, to post on servers or to redistribute to lists, requires prior speciﬁc
+
+permission and/or a fee.
+
+SIGIR’01, September 9-12, 2001, New Orleans, Louisiana, USA
+
+Copyright 2001 ACM 1-58113-331-6/01/0009 ...$5.00.
+
+trieval [13, 1, 10, 5].
+
+The basic idea behind the new ap-
+
+proach is extremely simple—estimate a language model for
+
+each document, and rank documents by the likelihood of
+
+the query according to the language model. Yet this new
+
+framework is very promising, because of its foundations in
+
+statistical theory, the great deal of complementary work on
+
+language modeling in speech recognition and natural lan-
+
+guage processing, and the fact that very simple language
+
+modeling retrieval methods have performed quite well em-
+
+pirically.
+
+The term smoothing refers to the adjustment of the maxi-
+
+mum likelihood estimator of a language model so that it will
+
+be more accurate. At the very least, it is required to not as-
+
+sign a zero probability to unseen words. When estimating
+
+a language model based on a limited amount of text, such
+
+as a single document, smoothing of the maximum likelihood
+
+model is extremely important. Indeed, many language mod-
+
+eling techniques are centered around the issue of smoothing.
+
+In the language modeling approach to retrieval, the accuracy
+
+of smoothing is directly related to the retrieval performance.
+
+Yet most existing research work has assumed one method
+
+or another for smoothing, and the smoothing eﬀect tends to
+
+be mixed with that of other heuristic techniques. There has
+
+been no direct evaluation of diﬀerent smoothing methods,
+
+and it is unclear how the retrieval performance is aﬀected
+
+by the choice of a smoothing method and its parameters.
+
+In this paper, we study the problem of language model
+
+smoothing in the context of ad hoc retrieval, focusing on
+
+the smoothing of document language models. The research
+
+questions that motivate this work are (1) how sensitive is
+
+retrieval performance to the smoothing of a document lan-
+
+guage model? (2) how should a smoothing method be se-
+
+lected, and how should its parameters be chosen? We com-
+
+pare several of the most popular smoothing methods that
+
+have been developed in speech and language processing, and
+
+study the behavior of each method.
+
+Our study leads to several interesting and unanticipated
+
+conclusions. We ﬁnd that the retrieval performance is highly
+
+sensitive to the setting of smoothing parameters. In some
+
+sense, smoothing is as important to this new family of re-
+
+trieval models as term weighting is to the traditional models.
+
+Interestingly, the eﬀect of smoothing is very sensitive to the
+
+type of queries, which suggests that smoothing plays two
+
+diﬀerent roles in the query-likelihood ranking method: One
+
+role is to improve the accuracy of the estimated document
+
+language model, while the other is to accommodate gen-
+
+eration of common and non-informative words in a query.
+
+Diﬀerent smoothing methods have behaved somehow diﬀer-
+
+343
+
+334
+
+
+ently. Some methods tend to perform better for concise title
+
+queries while others tend to perform better for long verbose
+
+queries. And some methods are more stable than others,
+
+in the sense that their performance is less sensitive to the
+
+choice of parameters.
+
+2.
+
+THE LANGUAGE MODELING
+
+APPROACH
+
+The basic idea of the language modeling approach to in-
+
+formation retrieval can be described as follows. We assume
+
+that a query q is “generated” by a probabilistic model based
+
+on an document d. Given a query q = q1q2...qn and a doc-
+
+ument d = d1d2...dm, we are interested in estimating the
+
+conditional probability p(d | q), i.e., the probability that d
+
+generates the observed q. After applying the Bayes’ formula
+
+and dropping a document-independent constant (since we
+
+are only interested in ranking documents), we have
+
+p(d | q)
+
+∝
+
+p(q | d)p(d)
+
+As discussed in [1], the righthand side of the above equation
+
+has an interesting interpretation, where, p(d) is our prior
+
+belief that d is relevant to any query and p(q | d) is the query
+
+likelihood given the document, which captures how well the
+
+document “ﬁts” the particular query q.
+
+In the simplest case, p(d) is assumed to be uniform, and
+
+so does not aﬀect document ranking. This assumption has
+
+been taken in most existing work [1, 13, 12, 5, 20]. In other
+
+cases, p(d) can be used to capture non-textual information,
+
+e.g., the length of a document or links in a web page, as well
+
+as other format/style features of a document. In our study,
+
+we assume a uniform p(d) in order to focus on the eﬀect
+
+of smoothing. See [10] for an empirical study that exploits
+
+simple alternative priors.
+
+With a uniform prior, the retrieval model reduces to the
+
+calculation of p(q | d), where language modeling comes in.
+
+The language model used in most previous work is the uni-
+
+gram model.1 This is the multinomial model which assigns
+
+the probability
+
+p(q | d) =
+
+
+
+i
+
+p(qi | d)
+
+Clearly, the retrieval problem is now essentially reduced to
+
+a unigram language model estimation problem. In this pa-
+
+per we focus on unigram models only; see [10, 20] for some
+
+explorations of bigram and trigram models.
+
+On the surface, the use of language models appears fun-
+
+damentally diﬀerent from vector space models with TF-IDF
+
+weighting schemes, because the unigram language model
+
+only explicitly encodes term frequency—there appears to
+
+be no use of inverse document frequency weighting in the
+
+model. However, there is an interesting connection between
+
+the language model approach and the heuristics used in the
+
+traditional models. This connection has much to do with
+
+smoothing, and an appreciation of it helps to gain insight
+
+into the language modeling approach.
+
+Most smoothing methods make use of two distributions,
+
+a model ps(w | d) used for “seen” words that occur in the
+
+document, and a model pu(w | d) for “unseen” words that
+
+do not. The probability of a query q can be written in terms
+
+
+
+1The work of Ponte and Croft [13] adopts something similar to,
+
+but slightly diﬀerent from the standard unigram model.
+
+of these models as follows, where c(w; d) denotes the count
+
+of word w in d.
+
+log p(q | d) =
+
+
+
+i
+
+log p(qi | d)
+
+=
+
+
+
+i:c(qi;d)&gt;0
+
+log ps(qi | d) +
+
+
+
+i:c(qi;d)=0
+
+log pu(qi | d)
+
+=
+
+
+
+i:c(qi;d)&gt;0
+
+log ps(qi | d)
+
+
+
+pu(qi | d) +
+
+
+
+i
+
+log pu(qi | d)
+
+The probability of an unseen word is typically taken as
+
+being proportional to the general frequency of the word,
+
+e.g., as computed using the document collection. So, let us
+
+assume that pu(qi | d) = αd p(qi | C), where αd is a document-
+
+dependent constant and p(qi | C) is the collection language
+
+model. Now we have
+
+log p(q | d) =
+
+
+
+i:c(qi;d)&gt;0
+
+log
+
+ps(qi | d)
+
+
+
+αd p(qi | C) + n log αd +
+
+
+
+i
+
+log p(qi | C)
+
+where n is the length of the query. Note that the last term
+
+on the righthand side is independent of the document d, and
+
+thus can be ignored in ranking.
+
+Now we can see that the retrieval function can actually be
+
+decomposed into two parts. The ﬁrst part involves a weight
+
+for each term common between the query and document
+
+(i.e., matched terms) and the second part only involves a
+
+document-dependent constant that is related to how much
+
+probability mass will be allocated to unseen words, accord-
+
+ing to the particular smoothing method used. The weight
+
+of a matched term qi can be identiﬁed as the logarithm of
+
+ps(qi | d)
+
+
+
+αd p(qi | C), which is directly proportional to the document
+
+term frequency, but inversely proportional to the collection
+
+frequency.
+
+Thus, the use of p(qi | C) as a reference smoothing distri-
+
+bution has turned out to play a role very similar to the well-
+
+known IDF. The other component in the formula is just the
+
+product of a document-dependent constant and the query
+
+length. We can think of it as playing the role of document
+
+length normalization, which is another important technique
+
+to improve performance in traditional models. Indeed, αd
+
+should be closely related to the document length, since one
+
+would expect that a longer document needs less smoothing
+
+and thus a smaller αd; thus a long document incurs a greater
+
+penalty than a short one because of this term.
+
+The connection just derived shows that the use of the
+
+collection language model as a reference model for smooth-
+
+ing document language models implies a retrieval formula
+
+that implements TF-IDF weighting heuristics and document
+
+length normalization. This suggests that smoothing plays a
+
+key role in the language modeling approaches to retrieval.
+
+A more restrictive derivation of the connection was given
+
+in [5].
+
+3.
+
+SMOOTHING METHODS
+
+As described above, our goal is to estimate p(w | d), a
+
+unigram language model based on a given document d. The
+
+simplest method is the maximum likelihood estimate, simply
+
+given by relative counts
+
+pml(w | d) =
+
+c(w; d)
+
+
+
+
+
+w c(w; d)
+
+344
+
+335
+
+
+
+
+
+
+Method
+
+
+
+ps(w | d)
+
+
+
+αd
+
+
+
+Parameter
+
+
+
+
+
+
+
+Jelinek-Mercer
+
+
+
+(1 − λ) pml(w | d) + λ p(w | C)
+
+
+
+λ
+
+
+
+λ
+
+
+
+
+
+
+
+Dirichlet
+
+
+
+c(w; d) + µ p(w | C)
+
+
+
+
+
+w c(w; d) + µ
+
+
+
+µ
+
+
+
+
+
+w c(w; d) + µ
+
+
+
+µ
+
+
+
+
+
+
+
+Absolute discount
+
+
+
+max(c(w; d) − δ, 0)
+
+
+
+
+
+w c(w; d)
+
++ δ |d|u
+
+
+
+|d| p(w | C)
+
+
+
+δ|d|u
+
+
+
+|d|
+
+
+
+δ
+
+
+
+
+
+Table 1: Summary of the three primary smoothing methods compared in this paper.
+
+However, the maximum likelihood estimator will generally
+
+under-estimate the probability of any word unseen in the
+
+document, and so the main purpose of smoothing is to assign
+
+a non-zero probability to the unseen words and improve the
+
+accuracy of word probability estimation in general.
+
+There are many smoothing methods that have been pro-
+
+posed, mostly in the context of speech recognition tasks [2].
+
+In general, all smoothing methods are trying to discount
+
+the probabilities of the words seen in the text, and to then
+
+assign the extra probability mass to the unseen words ac-
+
+cording to some “fallback” model. For information retrieval,
+
+it makes much sense, and is very common, to exploit the col-
+
+lection language model as the fallback model. Following [2],
+
+we assume the general form of a smoothed model to be the
+
+following:
+
+p(w | d) =
+
+
+
+ps(w | d)
+
+if word w is seen
+
+αd p(w | C)
+
+otherwise
+
+where ps(w | d) is the smoothed probability of a word seen in
+
+the document, p(w | C) is the collection language model, and
+
+αd is a coeﬃcient controlling the probability mass assigned
+
+to unseen words, so that all probabilities sum to one. In
+
+general, αd may depend on d. Indeed, if ps(w | d) is given,
+
+we must have
+
+αd
+
+=
+
+1 −
+
+
+
+w:c(w;d)&gt;0 ps(w | d)
+
+
+
+1 −
+
+
+
+w:c(w;d)&gt;0 p(w | C)
+
+Thus, individual smoothing methods essentially diﬀer in their
+
+choice of ps(w | d).
+
+A smoothing method may be as simple as adding an extra
+
+count to every word (called additive, or Laplace smoothing),
+
+or more sophisticated as in Katz smoothing, where words of
+
+diﬀerent count are treated diﬀerently. However, because a
+
+retrieval task typically requires eﬃcient computations over
+
+a large collection of documents, our study is constrained by
+
+the eﬃciency of the smoothing method. We selected three
+
+representative methods that are popular and relatively eﬃ-
+
+cient to implement. We excluded some well-known methods,
+
+such as Katz smoothing [7] and Good-Turing estimation [4],
+
+because of the eﬃciency constraint2. Although the methods
+
+we evaluated are simple, the issues that they bring to light
+
+are relevant to more advanced methods. The three methods
+
+are described below.
+
+The Jelinek-Mercer method.
+
+This method involves a lin-
+
+ear interpolation of the maximum likelihood model with the
+
+collection model, using a coeﬃcient λ to control the inﬂu-
+
+ence of each model.
+
+pλ(w | d) = (1 − λ) pml(w | d) + λ p(w | C)
+
+(1)
+
+
+
+2They involve the count of words with the same frequency in a
+
+document, which is expensive to compute.
+
+Thus, this is a simple mixture model (but we preserve the
+
+name of the more general Jelinek-Mercer method which in-
+
+volves deleted-interpolation estimation of linearly interpo-
+
+lated n-gram models).
+
+Bayesian smoothing using Dirichlet priors. A language
+
+model is a multinomial distribution, for which the conju-
+
+gate prior for Bayesian analysis is the Dirichlet distribution
+
+with parameters
+
+(µp(w1 | C), µp(w2 | C), . . . , µp(wn | C))
+
+Thus, the model is given by
+
+pµ(w | d) =
+
+c(w; d) + µ p(w | C)
+
+
+
+
+
+w c(w; d) + µ
+
+(2)
+
+The Laplace method is a special case of this technique.
+
+Absolute discounting. The idea of the absolute discount-
+
+ing method is to lower the probability of seen words by sub-
+
+tracting a constant from their counts [11]. It is similar to
+
+the Jelinek-Mercer method, but diﬀers in that it discounts
+
+the seen word probability by subtracting a constant instead
+
+of multiplying it by (1-λ). The model is given by
+
+pδ(w | d) =
+
+max(c(w; d) − δ, 0)
+
+
+
+
+
+w c(w; d)
+
++ σp(w | C)
+
+(3)
+
+where δ ∈ [0, 1] is a discount constant and σ = δ |d|u/|d|, so
+
+that all probabilities sum to one. Here |d|u is the number
+
+of unique terms in document d, and |d| is the total count of
+
+words in the document, so that |d| =
+
+
+
+w c(w; d).
+
+The three methods are summarized in Table 1 in terms of
+
+ps(w | d) and αd in the general form. It is easy to see that a
+
+larger parameter value means more smoothing in all cases.
+
+Retrieval using any of the three methods can be imple-
+
+mented very eﬃciently, when the smoothing parameter is
+
+given in advance. The α’s can be pre-computed for all doc-
+
+uments at index time. The weight of a matched term w can
+
+be computed easily based on the collection language model
+
+p(w | C), the query term frequency c(w; q), the document
+
+term frequency c(w; d), and the smoothing parameters. In-
+
+deed, the scoring complexity for a query q is O(k |q|), where
+
+|q| is the query length, and k is the average number of doc-
+
+uments in which a query term occurs. It is as eﬃcient as
+
+scoring using a TF-IDF model.
+
+4.
+
+EXPERIMENTAL SETUP
+
+Our goal is to study the behavior of individual smooth-
+
+ing methods as well as to compare diﬀerent methods. As
+
+is well-known, the performance of a retrieval algorithm may
+
+vary signiﬁcantly according to the testing collection used.
+
+It is generally desirable to have larger collections and more
+
+queries. We use the following ﬁve databases from TREC, in-
+
+cluding three of the largest testing collections for ad hoc re-
+
+trieval, i.e., the oﬃcial TREC7 ad hoc, TREC8 ad hoc, and
+
+345
+
+336
+
+
+0.1
+
+0.15
+
+0.2
+
+0.25
+
+0.3
+
+0.35
+
+0.4
+
+0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1
+
+precision
+
+lambda
+
+Precision of Jelinek-Mercer (Small Collections)
+
+fbis7T
+
+fbis8T
+
+ft7T
+
+ft8T
+
+la7T
+
+la8T
+
+fbis7L
+
+fbis8L
+
+ft7L
+
+ft8L
+
+la7L
+
+la8L
+
+0.4
+
+0.5
+
+0.6
+
+0.7
+
+0.8
+
+0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1
+
+recall
+
+lambda
+
+Recall of Jelinek-Mercer (Small Collections)
+
+fbis7T
+
+fbis8T
+
+ft7T
+
+ft8T
+
+la7T
+
+la8T
+
+fbis7L
+
+fbis8L
+
+ft7L
+
+ft8L
+
+la7L
+
+la8L
+
+0.05
+
+0.1
+
+0.15
+
+0.2
+
+0.25
+
+0.3
+
+0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1
+
+precision
+
+lambda
+
+Precision of Jelinek-Mercer (Large Collections)
+
+trec7T
+
+trec8T
+
+web8T
+
+trec7L
+
+trec8L
+
+web8L
+
+0.3
+
+0.4
+
+0.5
+
+0.6
+
+0.7
+
+0.8
+
+0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1
+
+recall
+
+lambda
+
+Recall of Jelinek-Mercer (Large Collections)
+
+trec7T
+
+trec8T
+
+web8T
+
+trec7L
+
+trec8L
+
+web8L
+
+Figure 1: Performance of Jelinek-Mercer smoothing.
+
+
+
+
+
+Document
+
+
+
+
+
+Queries
+
+
+
+
+
+
+
+collection
+
+
+
+
+
+351-400 (Trec7)
+
+
+
+
+
+401-450 (Trec8)
+
+
+
+
+
+
+
+
+
+Title
+
+
+
+Long
+
+
+
+Title
+
+
+
+Long
+
+
+
+
+
+
+
+FBIS
+
+
+
+fbis7T
+
+
+
+fbis7L
+
+
+
+fbis8T
+
+
+
+fbis8L
+
+
+
+
+
+
+
+FT
+
+
+
+ft7T
+
+
+
+ft7L
+
+
+
+ft8T
+
+
+
+ft8L
+
+
+
+
+
+
+
+LA
+
+
+
+la7T
+
+
+
+la7L
+
+
+
+la8T
+
+
+
+la8L
+
+
+
+
+
+
+
+TREC7&amp;8
+
+
+
+trec7T
+
+
+
+trec7L
+
+
+
+trec8T
+
+
+
+trec8L
+
+
+
+
+
+
+
+WEB
+
+
+
+
+
+N/A
+
+
+
+web8T
+
+
+
+web8L
+
+
+
+
+
+Table 2: Labels used for test collections.
+
+TREC8 web track testing collections: (1) Financial Times
+
+on disk 4, (2) FBIS on disk 5, (3) Los Angeles Times on disk
+
+5, (4) Disk 4 and disk 5 minus CR, used for the TREC7 and
+
+TREC8 ad hoc tasks, and (5) the TREC8 Web data.
+
+The queries we use are topics 351–400 (used for the TREC7
+
+ad hoc task), and topics 401–450 (used for the TREC8 ad
+
+hoc and web tasks). In order to study the possible interac-
+
+tion of smoothing and query length/type, we use two diﬀer-
+
+ent versions of each set of queries: (1) title only, (2) long
+
+version (title + description + narrative).
+
+The title queries
+
+are mostly two or three key words, whereas the long queries
+
+have whole sentences and are much more verbose.
+
+In all our experiments, the only tokenization applied is
+
+stemming with a Porter stemmer. We deliberately indexed
+
+all the words in the language, since we do not want to be bi-
+
+ased by any artiﬁcial choice of stop words and we believe that
+
+the eﬀects of stop word removal should be better achieved
+
+by exploiting language modeling techniques.
+
+In Table 2 we give the labels used for all possible retrieval
+
+testing collections, based on the databases and queries de-
+
+scribed above.
+
+For each smoothing method and on each testing collec-
+
+tion, we experiment with a wide range of parameter values.
+
+In each run, the smoothing parameter is set to the same
+
+value across all queries and documents.
+
+(While it is cer-
+
+tainly possible to set the parameters diﬀerently for individ-
+
+ual queries and documents through some kind of training
+
+procedure, this is out of the scope of the present paper.)
+
+For the purpose of studying the behavior of an individual
+
+smoothing method, we select a set of representative parame-
+
+ter values and examine the sensitivity of precision and recall
+
+to the variation in these values. For the purpose of compar-
+
+ing smoothing methods, we ﬁrst optimize the performance of
+
+each method using the non-interpolated average precision as
+
+the optimization criterion, and then compare the best runs
+
+from each method. The optimal parameter is determined by
+
+searching over the entire parameter space.3
+
+5.
+
+BEHAVIOR OF INDIVIDUAL METHODS
+
+In this section, we study the behavior of each smooth-
+
+ing method. We ﬁrst derive the expected inﬂuence of the
+
+smoothing parameter on the term weighting and document
+
+length normalization implied by the corresponding retrieval
+
+function. Then, we examine the sensitivity of retrieval per-
+
+formance by plotting the non-interpolated precision and re-
+
+call at 1,000 documents against the diﬀerent values of the
+
+smoothing parameter.
+
+Jelinek-Mercer smoothing. When using the Jelinek-Mercer
+
+smoothing method with a ﬁxed λ, we see that the parameter
+
+αd in our ranking function (see Section 2) is the same for
+
+
+
+3The search is performed in an iterative way, such that each iter-
+
+ation is more focused than the previous one. We stop searching
+
+when the improvement in average precision is less than 1%.
+
+346
+
+337
+
+
+0
+
+0.1
+
+0.2
+
+0.3
+
+0.4
+
+0.5
+
+0.6
+
+0.7
+
+0.8
+
+0.9
+
+1
+
+lambda
+
+query
+
+Optimal Lambda and Range in Jelinek-Mercer for trec8T
+
+0
+
+0.1
+
+0.2
+
+0.3
+
+0.4
+
+0.5
+
+0.6
+
+0.7
+
+0.8
+
+0.9
+
+1
+
+lambda
+
+query
+
+Optimal Lambda and Range in Jelinek-Mercer for trec8L
+
+Figure 2: Optimal λ range for trec8t (left) and trec8l (right) in Jelinek-Mercer smoothing. The line shows
+
+the optimal value of λ and the bars are the optimal ranges.
+
+all documents, so the length normalization term is a con-
+
+stant. This means that the score can be interpreted as a
+
+sum of weights over each matched term. The term weight
+
+is log(1 + (1 − λ)pml(qi|d)/(λp(qi | C))).
+
+Thus, a small λ
+
+means more emphasis on relative term weighting. Indeed, if
+
+λ approaches one, then all term weights tend to zero, and
+
+the scoring formula approaches coordination level matching,
+
+which is simply the count of matched terms.
+
+The plots in Figure 1 show the average precision and recall
+
+for diﬀerent settings of λ, for both large and small collec-
+
+tions. It is evident that both precision and recall are much
+
+more sensitive to λ for long queries than for title queries.
+
+The web collection, however, is an exception, where perfor-
+
+mance is very sensitive to smoothing even for title queries.
+
+For title queries, the retrieval performance tends to be opti-
+
+mized when λ is small (around 0.1), whereas for long queries,
+
+the optimal point is generally higher, and usually around
+
+0.7. The diﬀerence in the optimal λ value suggests that long
+
+queries need more smoothing, and less emphasis is placed on
+
+the relative weighting of terms. The right end of the curve
+
+(when λ is very close to one) should be close to the perfor-
+
+mance of coordination level matching.
+
+Such sensitivity and trend can be seen more clearly from
+
+the per-topic plot of the optimal range of λ shown in Fig-
+
+ure 2. The optimal range is deﬁned as the maximum range
+
+of λ values that deviate from the optimal average precision
+
+by no more than 0.01.
+
+Dirichlet priors. When using the Dirichlet prior for smooth-
+
+ing, we see that the αd in the retrieval formula is document-
+
+dependent. It is smaller for long documents, so can be inter-
+
+preted as a length normalization component that penalizes
+
+long documents.
+
+The weight for a matched term is now
+
+log(1 + c(qi; d)/(µp(qi | C))). Note that in the Jelinek Mer-
+
+cer method, the term weight has a document length nor-
+
+malization implicit in ps(qi | d), but here the term weight is
+
+aﬀected by only the raw counts of a term, not the length
+
+of the document.
+
+After rewriting the weight as log(1 +
+
+|d|pml(qi | d)/(µp(qi | C))) we see that |d|/µ is playing the
+
+same role as (1 − λ)/λ, but diﬀers in that it is document-
+
+dependent. The relative weighting of terms is emphasized
+
+when we use a smaller µ. As µ gets large, αd tends to 1,
+
+and all term weights tend to zero. Thus, the scoring formula
+
+tends to, again, that of coordination level matching.
+
+The plots in Figure 3 show the average precision and recall
+
+for diﬀerent settings of the prior sample size µ. It is again
+
+clear that both precision and recall are much more sensitive
+
+to µ for long queries than for title queries, especially when µ
+
+is small. However, the optimal value of µ does not seem to
+
+be much diﬀerent for title queries and long queries. While it
+
+still tends to be slightly larger for long queries, the diﬀerence
+
+is not as large as in Jelinek-Mercer. The optimal prior µ
+
+seems to vary from collection to collection, though in most
+
+cases, it is around 2,000. The tail of the curves is generally
+
+ﬂat, as it tends to the performance of coordination level
+
+matching.
+
+Absolute discounting. The term weighting behavior of the
+
+absolute discounting method is a little more complicated.
+
+Obviously, here αd is also document sensitive. It is larger
+
+for a document with a ﬂatter distribution of words, i.e., when
+
+the count of unique terms is relatively large. Thus, it penal-
+
+izes documents with a word distribution highly concentrated
+
+on a small number of words. The weight of a matched term
+
+is log(1+(c(qi; d)−δ)/(δ|d|up(qi | C))). The inﬂuence of δ on
+
+relative term weighting depends on |d|u and p(· | C), in the
+
+following way. If |d|u p(w | C) &gt; 1, a larger δ will make term
+
+weights ﬂatter, but otherwise, it will actually make the term
+
+weight more skewed according to the count of the term in
+
+the document. Thus, a larger δ will amplify the weight dif-
+
+ference for rare words, but ﬂatten the diﬀerence for common
+
+words, where the “rarity” threshold is p(w | C) &lt; 1/|d|u.
+
+The plots in Figure 4 show the average precision and re-
+
+call for diﬀerent settings of the discount constant δ. Once
+
+again it is clear that both precision and recall are much more
+
+sensitive to δ for long queries than for title queries. Similar
+
+to Bayesian smoothing, but diﬀerent from Jelinek-Mercer
+
+smoothing, the optimal value of δ does not seem to be much
+
+diﬀerent for title queries and long queries. Indeed, the op-
+
+timal value of δ tends to be around 0.7. This is true not
+
+only for both title queries and long queries, but also across
+
+all testing collections.
+
+The behavior of each smoothing method indicates that, in
+
+general, the performance of longer queries is much more sen-
+
+sitive to the choice of the smoothing parameters than that
+
+of title queries. This suggests that smoothing plays a more
+
+important role for long verbose queries than for title queries
+
+that are extremely concise. One interesting observation is
+
+that the web collection has behaved quite diﬀerently than
+
+other databases for Jelinek-Mercer and Dirichlet smooth-
+
+ing, but not for absolute discounting. In particular, the title
+
+queries performed much better than the long queries on the
+
+web collection for Dirichlet prior. Further analysis and eval-
+
+uation are needed to understand this observation.
+
+347
+
+338
+
+
+0.1
+
+0.15
+
+0.2
+
+0.25
+
+0.3
+
+0.35
+
+0.4
+
+0
+
+500
+
+1000
+
+1500
+
+2000
+
+2500
+
+3000
+
+3500
+
+4000
+
+4500
+
+5000
+
+precision
+
+prior
+
+Precision of Dirichlet Prior (Small Collections)
+
+fbis7T
+
+fbis8T
+
+ft7T
+
+ft8T
+
+la7T
+
+la8T
+
+fbis7L
+
+fbis8L
+
+ft7L
+
+ft8L
+
+la7L
+
+la8L
+
+0.4
+
+0.5
+
+0.6
+
+0.7
+
+0.8
+
+0
+
+500
+
+1000
+
+1500
+
+2000
+
+2500
+
+3000
+
+3500
+
+4000
+
+4500
+
+5000
+
+recall
+
+prior
+
+Recall of Dirichlet Prior (Small Collections)
+
+fbis7T
+
+fbis8T
+
+ft7T
+
+ft8T
+
+la7T
+
+la8T
+
+fbis7L
+
+fbis8L
+
+ft7L
+
+ft8L
+
+la7L
+
+la8L
+
+0.1
+
+0.12
+
+0.14
+
+0.16
+
+0.18
+
+0.2
+
+0.22
+
+0.24
+
+0.26
+
+0.28
+
+0.3
+
+0
+
+2000
+
+4000
+
+6000
+
+8000
+
+10000
+
+precision
+
+prior
+
+Precision of Dirichlet Prior (Large Collections)
+
+trec7T
+
+trec8T
+
+web8T
+
+trec7L
+
+trec8L
+
+web8L
+
+0.3
+
+0.4
+
+0.5
+
+0.6
+
+0.7
+
+0.8
+
+0
+
+2000
+
+4000
+
+6000
+
+8000
+
+10000
+
+recall
+
+prior
+
+Recall of Dirichlet Prior (Large Collections)
+
+trec7T
+
+trec8T
+
+web8T
+
+trec7L
+
+trec8L
+
+web8L
+
+Figure 3: Performance of Dirichlet smoothing.
+
+6.
+
+COMPARISON OF METHODS
+
+To compare the three smoothing methods, we select a best
+
+run (in terms of non-interpolated average precision ) for each
+
+method on each testing collection and compare the non-
+
+interpolated average precision, precision at 10 documents,
+
+and precision at 20 documents of the selected runs.
+
+The
+
+results are shown in Table 3 for both titles and long queries.
+
+For title queries, there seems to be a clear order among
+
+the three methods in terms of all three precision measures:
+
+Dirichlet prior is better than absolute discounting, which is
+
+better than Jelinek-Mercer. Indeed, Dirichlet prior has the
+
+best average precision in all cases but one. In particular,
+
+it performed extremely well on the Web collection, signiﬁ-
+
+cantly better than the other two. The good performance is
+
+relatively insensitive to the choice of µ. Indeed, many non-
+
+optimal Dirichlet runs are also signiﬁcantly better than the
+
+optimal runs for Jelinek-Mercer and absolute discounting.
+
+For long queries, there is also a partial order.
+
+On av-
+
+erage, Jelinek-Mercer is better than Dirichlet and absolute
+
+discounting by all three precision measures, though its av-
+
+erage precision is almost identical to that of Dirichlet. Both
+
+Jelinek-Mercer and Dirichlet clearly have a better average
+
+precision than absolute discounting.
+
+When comparing each method’s performance on diﬀer-
+
+ent types of queries, we see that the three methods all per-
+
+form better on long queries than on title queries (except
+
+that Dirichlet prior performs worse on long queries than ti-
+
+tle queries on the web collection), but the increase of per-
+
+formance is most signiﬁcant for Jelinek-Mercer.
+
+Indeed,
+
+Jelinek-Mercer is the worst for title queries, but the best
+
+for long queries.
+
+It appears that Jelinek-Mercer is much
+
+more eﬀective when queries are more verbose.
+
+Since the Trec7&amp;8 database diﬀers from the combined set
+
+of FT, FBIS, LA by only the Federal Register database, we
+
+can also compare the performance of a method on the three
+
+smaller databases with that on the large one. We ﬁnd that
+
+the non-interpolated average precision on the large database
+
+is generally much worse than that on the smaller ones, and
+
+is often similar to the worst one among all the three small
+
+databases. However, the precision at 10 (or 20) documents
+
+on large collections is all signiﬁcantly better than that on
+
+small collections. This is not surprising, since a given pre-
+
+cision at a cutoﬀ point of 10 documents would correspond
+
+to a much lower level of recall for a large collection than
+
+for a small collection. This is exactly the same reason as
+
+why one can expect a higher precision at 10 documents
+
+when a query has many more relevant documents. For both
+
+title queries and long queries, the relative performance of
+
+each method tends to remain the same when we merge the
+
+databases.
+
+Interestingly, that the optimal setting for the
+
+smoothing parameters seems to stay within a similar range
+
+when databases are merged.
+
+The strong correlation between the eﬀect of smoothing
+
+and the type of queries is somehow unexpected. If the pur-
+
+pose of smoothing is only to improve the accuracy in es-
+
+timating a unigram language model based on a document,
+
+then, the eﬀect of smoothing should be more aﬀected by the
+
+characteristics of documents and the collection, and should
+
+be relatively insensitive to the type of queries. But the re-
+
+sults above suggest that this is not the case. One possible
+
+explanation is that smoothing actually plays two diﬀerent
+
+roles in the query likelihood retrieval method. One role is to
+
+improve the accuracy of the estimated documents language
+
+model, and can be referred to as the estimation role. The
+
+348
+
+339
+
+
+0.1
+
+0.15
+
+0.2
+
+0.25
+
+0.3
+
+0.35
+
+0.4
+
+0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1
+
+precision
+
+delta
+
+Precision of Absolute Discounting (Small Collections)
+
+fbis7T
+
+fbis8T
+
+ft7T
+
+ft8T
+
+la7T
+
+la8T
+
+fbis7L
+
+fbis8L
+
+ft7L
+
+ft8L
+
+la7L
+
+la8L
+
+0.4
+
+0.5
+
+0.6
+
+0.7
+
+0.8
+
+0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1
+
+recall
+
+delta
+
+Recall of Absolute Discounting (Small Collections)
+
+fbis7T
+
+fbis8T
+
+ft7T
+
+ft8T
+
+la7T
+
+la8T
+
+fbis7L
+
+fbis8L
+
+ft7L
+
+ft8L
+
+la7L
+
+la8L
+
+0.1
+
+0.12
+
+0.14
+
+0.16
+
+0.18
+
+0.2
+
+0.22
+
+0.24
+
+0.26
+
+0.28
+
+0.3
+
+0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1
+
+precision
+
+delta
+
+Precision of Absolute Discounting (Large Collections)
+
+trec7T
+
+trec8T
+
+web8T
+
+trec7L
+
+trec8L
+
+web8L
+
+0.3
+
+0.4
+
+0.5
+
+0.6
+
+0.7
+
+0.8
+
+0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1
+
+recall
+
+delta
+
+Recall of Absolute Discounting (Large Collections)
+
+trec7T
+
+trec8T
+
+web8T
+
+trec7L
+
+trec8L
+
+web8L
+
+Figure 4: Performance of absolute discounting.
+
+other is to “explain” the common and non-informative words
+
+in a query, and can be referred to as the role of query model-
+
+ing. Indeed, this second role is explicitly implemented with
+
+a two-state HMM in [10]. This role is also well-supported by
+
+the connection of smoothing and IDF weighting derived in
+
+Section 2. Intuitively, more smoothing would decrease the
+
+“discrimination power” of common words in the query, be-
+
+cause all documents will rely more on the collection language
+
+model to generate the common words.
+
+The eﬀect of smoothing that we observed is generally
+
+a mixed eﬀect of both roles of smoothing.
+
+But, for title
+
+queries, the eﬀect is more dominated by the estimation role,
+
+since in our experiments the title queries have few or no
+
+non-informative common words, whereas for long queries,
+
+the eﬀect is more inﬂuenced by the role of query modeling
+
+for they often have many non-informative common words.
+
+Thus, the fact that the Dirichlet prior method performs the
+
+best on title queries suggests that it is good for the esti-
+
+mation role, and the fact that Jelinek-Mercer performs the
+
+worst for title queries, but the best for long queries suggests
+
+that Jelinek-Mercer is good for the role of query modeling.
+
+Intuitively this also makes sense, as Dirichlet prior adapts
+
+to the length of documents naturally, which is desirable for
+
+the estimation role, while in Jelinek-Mercer, we set a ﬁxed
+
+smoothing parameter across all documents, which is neces-
+
+sary for query modeling.
+
+7.
+
+INTERPOLATION VS. BACKOFF
+
+The three methods that we have described and tested so
+
+far belong to the category of interpolation-based methods,
+
+in which we discount the counts of the seen words and the
+
+extra counts are shared by both the seen words and unseen
+
+words. One problem of this approach is that a high count
+
+word may actually end up with more than its actual count
+
+in the document, if it is frequent in the fallback model. An
+
+alternative smoothing strategy is “backoﬀ.” Here the main
+
+idea is to trust the maximum likelihood estimate for high
+
+count words, and to discount and redistribute mass only
+
+for the less common terms. As a result, it diﬀers from the
+
+interpolation strategy in that the extra counts are primarily
+
+used for unseen words. The Katz smoothing method is a
+
+well-known backoﬀ method [7]. The backoﬀ strategy is very
+
+popular in speech recognition tasks.
+
+Following [2], we implemented a backoﬀ version of all the
+
+three interpolation-based methods, which is derived as fol-
+
+lows. Recall that in all three methods, ps(w) is written as
+
+the sum of two parts: (1) a discounted maximum likelihood
+
+estimate, which we denote by pdml(w); (2) a collection lan-
+
+guage model term, i.e., αd p(w | C). If we use only the ﬁrst
+
+term for ps(w) and renormalize the probabilities, we will
+
+have a smoothing method that follows the backoﬀ strategy.
+
+It is not hard to show that if an interpolation-based smooth-
+
+ing method is characterized by ps(w) = pdml(w)+αd p(w | C)
+
+and pu(w) = αd p(w | C), then the backoﬀ version is given by
+
+p
+
+′
+
+s(w) = pdml(w) and p
+
+′
+
+u(w) =
+
+αd p(w | C)
+
+
+
+1−
+
+
+
+i:c(wi;d)&gt;0 p(wi | C). The
+
+form of the ranking formula and the smoothing parameters
+
+remain the same. It is easy to see that the αd in the back-
+
+oﬀ version diﬀers from that in the interpolation version by
+
+a document-dependent term which further penalizes long
+
+documents. The weight of a matched term due to backoﬀ
+
+smoothing has a much wider range of values ((−∞, +∞))
+
+than that for interpolation ((0, +∞)). Thus, analytically,
+
+349
+
+340
+
+
+
+
+
+
+Collection
+
+
+
+Jelinek-Mercer
+
+
+
+Dirichlet Prior
+
+
+
+Absolute Discounting
+
+
+
+
+
+
+
+avgpr, pr@10d, pr@20d (λ)
+
+
+
+avgpr, pr@10d, pr@20d (µ)
+
+
+
+avgpr, pr@10d, pr@20d (δ)
+
+
+
+
+
+
+
+fbis7T
+
+
+
+0.172, 0.284, 0.220 (0.05)
+
+
+
+0.197, 0.282, 0.238 (2000)
+
+
+
+0.177, 0.284, 0.233 (0.8)
+
+
+
+
+
+
+
+ft7T
+
+
+
+0.199, 0.263, 0.195 (0.5)
+
+
+
+0.236,0.283, 0.213 (4000)
+
+
+
+0.215, 0.271, 0.196 (0.8)
+
+
+
+
+
+
+
+la7T
+
+
+
+0.179, 0.238, 0.205 (0.4)
+
+
+
+0.220, 0.294, 0.233 (2000)
+
+
+
+0.194, 0.268, 0.216 (0.8)
+
+
+
+
+
+
+
+fbis8T
+
+
+
+0.306, 0.344, 0.282 (0.01)
+
+
+
+0.334, 0.367, 0.292 (500)
+
+
+
+0.319 , 0.363, 0.288(0.5)
+
+
+
+
+
+
+
+ft8T
+
+
+
+0.310, 0.359, 0.283 (0.3)
+
+
+
+0.324, 0.367, 0.297 (800)
+
+
+
+0.326, 0.367, 0.296 (0.7)
+
+
+
+
+
+
+
+la8T
+
+
+
+0.231, 0.264, 0.211 (0.2)
+
+
+
+0.258, 0.271, 0.216 (500)
+
+
+
+0.238, 0.282, 0.224 (0.8)
+
+
+
+
+
+
+
+trec7T
+
+
+
+0.167, 0.366, 0.315 (0.3)
+
+
+
+0.186, 0.412, 0.342 (2000)
+
+
+
+0.172, 0.382, 0.333 (0.7)
+
+
+
+
+
+
+
+trec8T
+
+
+
+0.239, 0.438, 0.378 (0.2)
+
+
+
+0.256, 0.448, 0.398 (800)
+
+
+
+0.245, 0.466, 0.406 (0.6)
+
+
+
+
+
+
+
+web8T
+
+
+
+0.243, 0.348, 0.293 (0.01)
+
+
+
+0.294, 0.448, 0.374 (3000)
+
+
+
+0.242, 0.370, 0.323 (0.7)
+
+
+
+
+
+
+
+Avg.
+
+
+
+0.227, 0.323, 0.265
+
+
+
+0.256, 0.352, 0.289
+
+
+
+0.236, 0.339, 0.279
+
+
+
+
+
+
+
+
+
+
+
+Collection
+
+
+
+Jelinek-Mercer
+
+
+
+Dirichlet Prior
+
+
+
+Absolute Discounting
+
+
+
+
+
+
+
+avgpr, pr@10d, pr@20d (λ)
+
+
+
+avgpr, pr@10d, pr@20d (µ)
+
+
+
+avgpr, pr@10d, pr@20d (δ)
+
+
+
+
+
+
+
+fbis7L
+
+
+
+0.224, 0.339, 0.279 (0.7)
+
+
+
+0.232, 0.313, 0.249 (5000)
+
+
+
+0.185,0.321, 0.259 (0.6)
+
+
+
+
+
+
+
+ft7L
+
+
+
+0.279, 0.331, 0.244 (0.7)
+
+
+
+0.281, 0.329, 0.248 (2000)
+
+
+
+0.249, 0.317, 0.236 (0.8)
+
+
+
+
+
+
+
+la7L
+
+
+
+0.264, 0.350, 0.286 (0.7)
+
+
+
+0.265, 0.354, 0.285 (2000)
+
+
+
+0.251, 0.340, 0.279 (0.7)
+
+
+
+
+
+
+
+fbis8L
+
+
+
+0.341, 0.349, 0.283 (0.5)
+
+
+
+0.347, 0.349, 0.290 (2000)
+
+
+
+0.343, 0.356, 0.274 (0.7)
+
+
+
+
+
+
+
+ft8L
+
+
+
+0.375, 0.427, 0.320(0.8)
+
+
+
+0.347, 0.380, 0.297 (2000)
+
+
+
+0.351, 0.398, 0.309 (0.8)
+
+
+
+
+
+
+
+la8L
+
+
+
+0.290,0.296, 0.238 (0.7)
+
+
+
+0.277, 0.282, 0.231 (500)
+
+
+
+0.267, 0.287, 0.222 (0.6)
+
+
+
+
+
+
+
+trec7L
+
+
+
+0.222, 0.476, 0.401 (0.8)
+
+
+
+0.224, 0.456, 0.383 (3000)
+
+
+
+0.204, 0.460, 0.396 (0.7)
+
+
+
+
+
+
+
+trec8L
+
+
+
+0.265, 0.504, 0.434 (0.8)
+
+
+
+0.260, 0.484, 0.4 (2000)
+
+
+
+0.248, 0.518, 0.428 (0.8)
+
+
+
+
+
+
+
+web8L
+
+
+
+0.259, 0.422, 0.348 (0.5)
+
+
+
+0.275, 0.410, 0.343 (10000)
+
+
+
+0.253, 0.414, 0.333 (0.6)
+
+
+
+
+
+
+
+Avg.
+
+
+
+0.280, 0.388, 0.315
+
+
+
+0.279, 0.373, 0.303
+
+
+
+0.261, 0.379, 0.304
+
+
+
+
+
+Table 3: Comparison of smoothing methods on title queries (top) and long queries (bottom).
+
+The three
+
+numbers in each cell are average precision, precision at 10 documents, and precision at 20 documents. The
+
+parameter chosen for each data set and method is shown in parentheses.
+
+0
+
+0.05
+
+0.1
+
+0.15
+
+0.2
+
+0.25
+
+0.3
+
+0.35
+
+0.4
+
+0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1
+
+precision
+
+lambda
+
+Precision of Interpolation vs. Backoff (Jelinek-Mercer)
+
+fbis8T
+
+fbis8T-bk
+
+fbis8L
+
+fbis8L-bk
+
+0
+
+0.05
+
+0.1
+
+0.15
+
+0.2
+
+0.25
+
+0.3
+
+0.35
+
+0.4
+
+0
+
+500 1000 1500 2000 2500 3000 3500 4000 4500 5000
+
+precision
+
+prior
+
+Precision of Interpolation vs. Backoff (Dirichlet prior)
+
+fbis8T
+
+fbis8T-bk
+
+fbis8L
+
+fbis8L-bk
+
+0
+
+0.05
+
+0.1
+
+0.15
+
+0.2
+
+0.25
+
+0.3
+
+0.35
+
+0.4
+
+0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1
+
+precision
+
+delta
+
+Precision of Interpolation vs. Backoff (Absolute Discounting)
+
+fbis8T
+
+fbis8T-bk
+
+fbis8L
+
+fbis8L-bk
+
+Figure 5: Interpolation versus backoﬀ for Jelinek-Mercer (top), Dirichlet smoothing (middle), and absolute
+
+discounting (bottom).
+
+the backoﬀ version tends to do term weighting and docu-
+
+ment length normalization more aggressively than the cor-
+
+responding interpolated version.
+
+The backoﬀ strategy and the interpolation strategy are
+
+compared for all three methods using the FBIS database
+
+and topics 401-450 (i.e., fbis8T and fbis8L). The results are
+
+shown in Figure 5. We ﬁnd that the backoﬀ performance is
+
+more sensitive to the smoothing parameter than that of in-
+
+terpolation, especially in Jelinek-Mercer and Dirichlet prior.
+
+The diﬀerence is clearly less signiﬁcant in the absolute dis-
+
+counting method, and this may be due to its lower upper
+
+bound ( |d|u
+
+
+
+|d| ) for the original αd, which restricts the aggres-
+
+siveness in penalizing long documents. In general, the back-
+
+oﬀ strategy gives worse performance than the interpolation
+
+strategy, and only comes close to it when αd approaches zero,
+
+which is expected, since analytically, we know that when αd
+
+approaches zero, the diﬀerence between the two strategies
+
+will diminish.
+
+8.
+
+CONCLUSIONS AND FUTURE WORK
+
+We have studied the problem of language model smooth-
+
+ing in the context of information retrieval.
+
+By rewriting
+
+the query-likelihood retrieval model using a smoothed doc-
+
+ument language model, we derived a general retrieval for-
+
+mula where the smoothing of the document language model
+
+can be interpreted in terms of several heuristics used in
+
+traditional models, including TF-IDF weighting and docu-
+
+ment length normalization. We then examined three popu-
+
+lar interpolation-based smoothing methods (Jelinek-Mercer
+
+method, Dirichlet priors, and absolute discounting), as well
+
+as their backoﬀ versions, and evaluated them using several
+
+large and small TREC retrieval testing collections. We ﬁnd
+
+that the retrieval performance is generally sensitive to the
+
+smoothing parameters, suggesting that an understanding
+
+and appropriate setting of smoothing parameters is very im-
+
+portant in the language modeling approach. An interesting
+
+observation is that the eﬀect of smoothing is strongly corre-
+
+lated with the type of queries. The performance is generally
+
+350
+
+341
+
+
+more sensitive to smoothing for long and verbose queries
+
+than for concise title queries. This suggests that smoothing
+
+may be playing two diﬀerent roles in the query likelihood
+
+retrieval method. One role is to improve the accuracy of the
+
+estimated document language model, while the other is to
+
+accommodate generation of non-informative common words
+
+in the query. The results further suggest that Dirichlet prior
+
+may be good for the estimation role, while Jelinek-Mercer
+
+may be good for the query modeling role.
+
+While our results are not completely conclusive as to which
+
+smoothing method is the best, we have made several in-
+
+teresting observations that help us understand each of the
+
+methods better. The Jelinek-Mercer method generally per-
+
+forms well, but tends to perform much better for long queries
+
+than for title queries. The optimal value of λ has a strong
+
+correlation with the query type. For concise title queries,
+
+the optimal value is generally very small (around 0.1), while
+
+for long verbose queries, the optimal value is much larger
+
+(around 0.7).
+
+The Dirichlet prior method generally per-
+
+forms well, but tends to perform much better for concise
+
+title queries than for long verbose queries.
+
+The optimal
+
+value of µ appears to have a wide range (500-10000) and
+
+usually is around 2,000. A large value is “safer,” especially
+
+for long verbose queries. The absolute discounting method
+
+performs well on concise title queries, but not very well on
+
+long verbose queries. Interestingly, there is little variation
+
+in the optimal value for δ (generally around 0.7 in all cases).
+
+Considering the role of query modeling that smoothing is
+
+playing, we believe that the optimal setting of smoothing
+
+parameters may also be sensitive to the application of stop-
+
+word list.
+
+While used successfully in speech recognition, the backoﬀ
+
+strategy did not work well for retrieval in our evaluation.
+
+All interpolated versions perform signiﬁcantly better than
+
+their backoﬀ version.
+
+There are several interesting future research directions
+
+that will help better understand the role of smoothing. First,
+
+it would be interesting to test with queries that are long,
+
+but non-verbose, or short but verbose. This will help clar-
+
+ify whether it is the length or the verbosity of the query
+
+that is interacting with the eﬀect of smoothing.
+
+Second,
+
+one can de-couple the two diﬀerent roles of smoothing by
+
+adopting a two stage smoothing strategy in which Dirich-
+
+let smoothing is ﬁrst applied to implement the estimation
+
+role and Jelinek-Mercer smoothing is then applied to imple-
+
+ment the role of query modeling. Finally, there are many
+
+other eﬀective smoothing algorithms that we have not yet
+
+tested (e.g., Good-Turing smoothing [4], Katz smoothing [7],
+
+Kneser-Ney smoothing [8]); evaluation of them would be a
+
+natural further research direction. It is also very important
+
+to study how to exploit the past relevance judgments, the
+
+current query, and the current database to train the smooth-
+
+ing parameters, since, in practice, it would not be feasible
+
+to search the whole parameter space as we did in this paper.
+
+ACKNOWLEDGEMENTS
+
+We thank Jamie Callan, Bruce Croft, John Prange, and
+
+the three anonymous reviewers for helpful comments on this
+
+work. This research was sponsored in part by the Advanced
+
+Research and Development Activity in Information Tech-
+
+nology (ARDA) under its Statistical Language Modeling for
+
+Information Retrieval Research Program.
+
+REFERENCES
+
+[1] A. Berger and J. Laﬀerty (1999). “Information retrieval as
+
+statistical translation,” In Proceedings of the 1999 ACM SI-
+
+GIR Conference on Research and Development in Informa-
+
+tion Retrieval, pp. 222–229.
+
+[2] S. F. Chen and J. Goodman (1998). “An empirical study
+
+of smoothing techniques for language modeling,” Tech. Rep.
+
+TR-10-98, Harvard University.
+
+[3] N. Fuhr (1992). “Probabilistic models in information re-
+
+trieval”, The Computer Journal, Vol.35, No.3, pp. 243–255.
+
+[4] I. J. Good (1953). “The Population Frequencies of Species
+
+and the Estimation of Population Parameters,” Biometrika,
+
+Volume 40, parts 3,4, pp. 237–264.
+
+[5] D. Hiemstra and W. Kraaij (1998).
+
+“Twenty-one at TREC-
+
+7: Ad-hoc and cross-language track,” in Proc. of Seventh
+
+Text REtrieval Conference (TREC-7), Gaithersburg, MD.
+
+[6] F. Jelinek and R. Mercer (1980). “Interpolated estimation
+
+of Markov source parameters from sparse data”. In Pattern
+
+Recognition in Practice, E. S. Gelsema and L. N. Kanal (ed-
+
+itors), pages 381–402. North Holland, Amsterdam.
+
+[7] S. M. Katz (1987). “Estimation of probabilities from sparse
+
+data for the language model component of a speech recog-
+
+nizer,” IEEE Transactions on Acoustics, Speech and Signal
+
+Processing, volume ASSP-35, pages 400–401, March 1987.
+
+[8] R. Kneser and H. Ney (1995). “Improved smoothing for m-
+
+gram language modeling,” in Proceedings of the Interna-
+
+tional Conference on Acoustics, Speech and Signal Process-
+
+ing, Detroit, MI.
+
+[9] MacKay, D. and Peto, L. (1995). “A hierarchical Dirichlet
+
+language model.” Natural Language Engineering, 1(3), pp.
+
+289–307.
+
+[10] D. H. Miller, T. Leek, and R. Schwartz (1999). “A hidden
+
+Markov model information retrieval system,” In Proceedings
+
+of the 1999 ACM SIGIR Conference on Research and De-
+
+velopment in Information Retrieval, pp. 214–221.
+
+[11] H. Ney, U. Essen, and R. Kneser (1994). “On structuring
+
+probabilistic dependencies in stochastic language modeling,”
+
+Computer Speech and Language, 8:1-38.
+
+[12] J. Ponte (1998). A language modeling approach to informa-
+
+tion retrieval. Ph.D. thesis, University of Massachusetts at
+
+Amherst.
+
+[13] J. Ponte and W. B. Croft (1998). “A language modeling ap-
+
+proach to information retrieval,” Proceedings of the ACM
+
+SIGIR, pp. 275–281.
+
+[14] C. J. van Rijsbergen (1986). “A Non-classical Logic for In-
+
+formation Retrieval,” The Computer Journal, 29(6).
+
+[15] S. E. Robertson, C. J. van-Rijsbergen, and M. F. Porter
+
+(1981). “Probabilistic models of indexing and searching”, in
+
+Oddy R. N. et al. (Eds.) Information Retrieval Research,
+
+Butterworths, London, 1981, pp. 35–56.
+
+[16] S. E. Robertson, S. Walker, S. Jones, M. M. Hancock-
+
+Beaulieu, and M. Gatford (1995). “Okapi at TREC-3,” The
+
+Third Text REtrieval Conference (TREC-3), in D. K. Har-
+
+man (ed), NIST Special Publication.
+
+[17] G. Salton
+
+and
+
+C. Buckley
+
+(1988).
+
+“Term-weighting
+
+ap-
+
+proaches in automatic text retrieval,” Information Process-
+
+ing and Management, 24, pp. 513–523.
+
+[18] G. Salton and C. Buckley (1990), “Improving retrieval per-
+
+formance by relevance feedback”, Journal of the American
+
+Society for Information Science, Vol. 44, No. 4, 288–297.
+
+[19] A. Singhal, C. Buckley, and M. Mitra (1996). “Pivoted doc-
+
+ument length normalization,” in Proceedings of the 1996
+
+ACM SIGIR Conference on Research and Development in
+
+Information Retrieval, pp. 21–29.
+
+[20] F. Song and B. Croft (1999). “A general language model
+
+for information retrieval,” in Proceedings of the 1999 ACM
+
+SIGIR Conference on Research and Development in Infor-
+
+mation Retrieval, pp. 279–280.
+
+[21] K. Sparck Jones (1997). Readings in Information Retrieval,
+
+P. Willett, ed., Morgan Kaufmann Publishers.
+
+[22] S. K. M. Wong and Y. Y. Yao (1995), “On modeling infor-
+
+mation retrieval with probabilistic inference,” ACM Trans-
+
+actions on Information Systems, 13(1), pp. 69–99.
+
+351
+
+342
+

@@ -1,0 +1,349 @@
+
+
+
+Research 
+
+
+
+In 2004, Microsoft Research and Microsoft’s Web Search team started a joint effort to improve the relevance of our web
+
+search results. There followed a sustained effort that, over the next several years, resulted in our shipping three generations of
+
+web search ranking algorithms, culminating in the boosted tree ensembles that Bing uses today. We called the first of these
+
+ranking algorithms RankNet. Recently the RankNet paper, which was published in the International Conference on Machine
+
+Learning (ICML) in 2005, won ICML’s “Test of Time” award, an award given each year to that single paper presented at the
+
+conference ten years earlier which was judged to have had the highest overall academic impact over the intervening years.
+
+This is a great honor and also an opportunity to take a look back and assess our progress over the last decade. In this article, I
+
+would like to tell this story.
+
+Web search works by essentially taking the user’s query and assessing the relevance of every indexed document to it. Not
+
+every web page is in the index, but the index nevertheless contains hundreds of billions of documents, stored in a special data
+
+structure to make lookup fast. Since the top results must be presented to the user in a few hundred milliseconds, this requires
+
+an extremely efficient filtering and ranking process. The rankers described here work on a (still large) subset of the documents,
+
+chosen using this fast initial filtering process. Basically, a ranker works by taking a list of numbers, each of which measures the
+
+quality of a particular query/document match in one particular way (for example, a binary number representing whether or
+
+not the query contains a word in the title of the document). The ranker then maps that list of numbers to a single measure of
+
+relevance, which is then used to rank order all the documents for that query. The ordered list of numbers that the ranker maps
+
+to a single score is called a feature vector.
+
+Thus when used at runtime, for a given query, the ranker takes the feature vector for each query/document pair and maps it to
+
+a number that captures the relevance of that document to the query. RankNet is a feedforward neural network model. Before
+
+it can be used its parameters must be learned using a large amount of labeled data, called the training set. The training set
+
+consists of a large number of query/document pairs, where for each pair, a number assessing the quality of the relevance of
+
+the document to that query is assigned by human experts. Although the labeling of the data is a slow and human-intensive
+
+task, training the net, given the labeled data, is fully automatic and quite fast. The system used by Microsoft in 2004 for
+
+training the ranker was called The Flying Dutchman. We found that, whereas The Flying Dutchman took several days and a
+
+cluster to produce a trained model, RankNet was able to produce a ranking model in only a couple of hours using just one
+
+machine. RankNet also gave significantly improved relevance over the previously used ranker, since neural nets can model a
+
+very wide range of possible mappings, whereas the previous system was limited to just linear mappings.
+
+ Return to Blog Home
+
+Microsoft Research Blog
+
+RankNet: A ranking retrospective
+
+Published July 7, 2015
+
+Share this page
+
+ 
+
+SPOTLIGHT: MICROSOFT RESEARCH PODCAST
+
+
+So far so good, but could we have done better? The answer is Yes, but to see why, I need to explain a little about how RankNet
+
+is trained. For each query in the training set, for each pair of documents to be ranked for that query, RankNet is shown the two
+
+feature vectors and it then adjusts its parameters a little, using a method called Stochastic Gradient Descent (SGD), so that the
+
+adjusted output scores for the two features move in the right direction – that is, the score for the more relevant document
+
+increases, and that for the less, decreases. But that means that RankNet will work hard to raise highly relevant documents that
+
+are very low in the rankings, and also to lower high scoring but less relevant documents. In spending its resources in this way,
+
+it doesn’t pay as much attention as it should to just the top few links that are shown to the user. In fact at the time, our
+
+evaluation metric was a score called NDCG, which gives a single number that assesses the overall ranking quality, with a much
+
+higher emphasis on the top few results that are shown to the user. NDCG is thus a more natural measure for web search than
+
+pairwise error. This presented us with a challenge: SGD boils down to a search in a continuous space, but NDCG is
+
+fundamentally a discrete measure, in that its value only changes when at least two documents change position in the ranked
+
+list. Sufficiently small changes in model scores give no change in NDCG, and since SGD works by exploring small changes in
+
+scores, it’s hard to see how to optimize NDCG using SGD.
+
+We found an answer to this puzzle, which we called LambdaRank. The trick was to notice that the entire training procedure for
+
+a neural net only needs the gradients of the cost function, not the cost function itself. You can think of these gradients as little
+
+arrows attached to each document in the ranked list, indicating which direction we’d like those documents to move.
+
+LambdaRank simply took the RankNet gradients, which we knew worked well, and scaled them by the change in NDCG found
+
+by swapping each pair of documents. We found that this training generated models with significantly improved relevance (as
+
+measured by NDCG) and had an added bonus of uncovering a further trick that improved overall training speed (for both
+
+RankNet and LambdaRank). Furthermore, surprisingly, we found empirical evidence (see also this paper) that the training
+
+procedure does actually optimize NDCG, even though the method, although intuitive and sensible, has no such guarantee.
+
+So far so good, but again, could we have done better? The answer was again Yes. We knew of a class of models called boosted
+
+tree ensembles that were known to make very strong multiclass classifiers. What happens if you just treat the ranking
+
+problem as a multiclass classification problem, with one class for each of the five levels of relevance identified in the training
+
+
+
+AI Frontiers: AI for health and the future of research with Peter Lee
+
+Peter Lee, head of Microsoft Research, and Ashley Llorens, AI scientist and engineer, discuss the future of AI research and
+
+the potential for GPT-4 as a medical copilot.
+
+
+
+Listen now
+
+
+
+
+set? We found that this gave improved results over LambdaRank (especially a flavor called ordinal multiclass classification).
+
+Boosted trees have the further advantage that they can easily handle categorical and other kinds of discrete features, which
+
+are less well suited to neural nets. We believed that these results were due to the better suitability of this class of models to
+
+our data, and so the natural question was, can we combine boosted tree models, with the LambdaRank idea, to get the best of
+
+both worlds? Training a boosted tree model can also be viewed as a form of SGD, and so the answer was Yes, in the form of a
+
+model we called LambdaMART. LambdaMART had an added advantage: the training of tree ensemble models can be very
+
+significantly sped up over the neural net equivalent (this work, led by O. Dekel, is not yet published). This allows us to train
+
+with much larger data sets, which again gives improved ranking accuracy.
+
+How do our rankers compare with others in the industry? In 2010, Yahoo! organized a learning to rank challenge, one track of
+
+which was designed to see who had the best web search ranking algorithm. 1,055 teams registered for the challenge. Our
+
+team won the challenge, using an ensemble of LambdaMART models.
+
+Looking back over the last decade, perhaps the most salient technical lesson is the importance of training speed. Faster
+
+training allows for both more experimentation and the use of larger data sets. I believe that these two factors are in the end
+
+more important than the underlying algorithms used, as long as the latter are sufficiently expressive models for the task at
+
+hand. The other “life lesson” that I draw from this experience is the importance of being persistent, but most of all, of the
+
+importance of the gift of being able to work with wonderful colleagues, in the product groups, in Microsoft Research, and in
+
+academia.
+
+
+
+Chris Burges is a Principal Researcher and Research Manager at Microsoft Research, where he has been since 2000. Before
+
+that he worked at AT&amp;T Bell Labs, which he joined in 1986. Prior to that he was a postdoctoral fellow at the Theoretical Physics
+
+Department at MIT, which he joined after getting his PhD in Physics from Brandeis, following a degree with First Class Honors
+
+in Physics and Mathematics from Oxford. His interests have spanned the systems engineering of large communications
+
+networks (AT&amp;T still uses his algorithms to route several key networks), neural networks for handwriting and machine print
+
+recognition (he worked on a system now used to read millions of checks daily, and in fact his long descent into machine
+
+learning was triggered by a particularly cool demo of a neural net recognizing handwritten digits in the early 90s), support
+
+vector machines (he was fortunate enough to work with Vladimir Vapnik, SVM’s co-creator, in the early days, and he wrote a
+
+tutorial that some people liked), audio fingerprinting (his work is currently used in Xbox and Windows Media Player to identify
+
+music), speaker verification, information retrieval, and ranking (his ranking algorithm is currently used by Bing for web
+
+search). Chris’s current passion is on developing new approaches to the scalable, actionable machine comprehension of text,
+
+which although admittedly wildly ambitious, is still likely to teach us something, unless we stop trying. Chris was Program Co-
+
+chair of Neural Information Processing Systems 2012 and General Co-chair of NIPS 2013.
+
+For more computer science research news, visit ResearchNews.com.
+
+Follow us: 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+Share this page: 
+
+ 
+
+ 
+
+ 
+
+
+What's new
+
+Surface Pro 9
+
+Surface Laptop 5
+
+Surface Studio 2+
+
+Surface Laptop Go 2
+
+Surface Laptop Studio
+
+Surface Go 3
+
+Microsoft 365
+
+Windows 11 apps
+
+Microsoft Store
+
+Account profile
+
+Download Center
+
+Microsoft Store support
+
+Returns
+
+Order tracking
+
+Virtual workshops and training
+
+Microsoft Store Promise
+
+Flexible Payments
+
+Education
+
+Microsoft in education
+
+Devices for education
+
+Microsoft Teams for Education
+
+Microsoft 365 Education
+
+How to buy for your school
+
+Educator training and development
+
+Deals for students and parents
+
+Azure for students
+
+Business
+
+Microsoft Cloud
+
+Microsoft Security
+
+Dynamics 365
+
+Microsoft 365
+
+Microsoft Power Platform
+
+Microsoft Teams
+
+Microsoft Industry
+
+Small Business
+
+
+Developer &amp; IT
+
+Azure
+
+Developer Center
+
+Documentation
+
+Microsoft Learn
+
+Microsoft Tech Community
+
+Azure Marketplace
+
+AppSource
+
+Visual Studio
+
+Company
+
+Careers
+
+About Microsoft
+
+Company news
+
+Privacy at Microsoft
+
+Investors
+
+Diversity and inclusion
+
+Accessibility
+
+Sustainability
+
+Sitemap
+
+ Contact Microsoft
+
+ Privacy  Terms of use
+
+ Trademarks
+
+ Safety &amp; eco
+
+ Recycling
+
+ About our ads
+
+ © Microsoft 2023
+

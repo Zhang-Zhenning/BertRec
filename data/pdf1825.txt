@@ -1,0 +1,1324 @@
+
+1 
+
+1 
+
+ 
+
+ 
+
+ 
+
+Language Model 
+
+ 
+
+ 
+
+(COSC 488)  
+
+ 
+
+Nazli Goharian 
+
+nazli@ir.cs.georgetown.edu 
+
+ 
+
+See the reference section for the resources used to prepare these lecture notes.  
+
+ 
+
+Retrieval using Language Model  
+
+• A probabilistic model of text  
+
+– Documents or queries are modeled based on probability 
+
+distribution over sequences of words  
+
+•
+
+Ponte and Croft’s pioneering paper [ACM SIGIR 1998] 
+
+•
+
+Variations studied since then 
+
+ 
+
+• Three main approaches:  
+
+– Query likelihood model : generating query from the 
+
+document language model  
+
+– Document likelihood model: generating document from 
+
+query language model 
+
+– KL-Divergence model: Can compare the document and 
+
+query language models 
+
+ 
+
+2 
+
+
+2 
+
+Retrieval Using Language Models 
+
+(from: C. Manning, P. Raghavan &amp; H. Schütze, Introduction to Information Retrieval, 
+
+Cambridge University Press., 2008) 
+
+Query Model 
+
+Query 
+
+Doc Model 
+
+Doc 
+
+)
+
+|
+
+(
+
+Query
+
+w
+
+P
+
+)
+
+|
+
+(
+
+Doc
+
+w
+
+P
+
+Retrieval: Query likelihood (1), Document likelihood (2), Model comparison (3) 
+
+1 
+
+2 
+
+3 
+
+Query Likelihood Scoring Method: 
+
+Computing p(Q|D) or p(Q|θD) 
+
+• Goal: determine which document or document model best 
+
+derives (specific) query  Q  
+
+ 
+
+• A query is sample of words drawn from a document based on the 
+
+model defined for the document (document language model θD) 
+
+ 
+
+• Documents are then ranked based on their likelihood of giving 
+
+(generating) that query 
+
+ 
+
+• Document models that give a higher probability to the query 
+
+indicate having more terms of the query (capturing the notion of 
+
+TF)           score(Q,D) = p(Q|θD) 
+
+ 
+
+4 
+
+
+3 
+
+5 
+
+Query Likelihood Model 
+
+•
+
+Unigram query likelihood  
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+Example: 
+
+ 
+
+ 
+
+Q:  “computer virus,” 
+
+ 
+
+ 
+
+p(computer|D) = 0.1, p(virus|D) = 0.05    p(Q|θD) = 0.1 ∗ 0.05 = 0.005  
+
+ 
+
+• Problems:  
+
+• Results in zero if a term is missing in document (estimation problem) 
+
+• Document may be relevant to query but the query term is 
+
+absent from document (data sparsity problem) 
+
+ 
+
+  Need smoothing! 
+
+ 
+
+|
+
+|
+
+)
+
+|
+
+(
+
+)
+
+|
+
+(
+
+)
+
+|
+
+(
+
+,
+
+1
+
+D
+
+tf
+
+D
+
+q
+
+P
+
+D
+
+q
+
+P
+
+D
+
+Q
+
+P
+
+D
+
+iq
+
+i
+
+n
+
+i
+
+i
+
+
+
+
+
+
+
+
+
+Maximum liklihood  (ML) estimate, 
+
+ defined as: 
+
+Tf of query term appearing in doc 
+
+ divided by document length 
+
+ 
+
+Query:  Virus 
+
+Topic of document D1:  Epidemic   
+
+Assume P(virus|D1) = 0      
+
+ 
+
+Need for Smoothing: Example 
+
+(example from: Grossman &amp; Frieder, Information Retrieval Algorithms and Heuristics,  1998, 2nd 
+
+Edition, Springer, 2004.) 
+
+ 
+
+• If a term in a query does not occur in a document, the whole 
+
+similarity measure becomes zero 
+
+• Example:  
+
+ 
+
+ 
+
+Q: “gold silver truck” 
+
+ 
+
+ 
+
+D1: “Shipment of gold damaged in a fire” 
+
+ 
+
+ 
+
+D2: “Delivery of silver arrived in a silver truck” 
+
+ 
+
+ 
+
+D3: “Shipment of gold arrived in a truck” 
+
+• Term Silver does not appear in D1. Similarly, silver does not 
+
+appear in D3 and gold does not appear in D2.  
+
+• This would result in Score=0 for all 3 documents. 
+
+ 
+
+0
+
+|
+
+|
+
+)
+
+,
+
+(
+
+)
+
+|
+
+(
+
+
+
+
+
+i
+
+i
+
+i
+
+ml
+
+D
+
+D
+
+silver
+
+tf
+
+D
+
+silver
+
+p
+
+
+
+
+4 
+
+ 
+
+Need for Smoothing: Example 
+
+ ( example from: Viktor Lavrenko and Chengxiang Zhai)  
+
+ 
+
+Query  = “the    algorithms     for      data       mining” 
+
+d1:                0.04        0.001             0.02        0.002        0.003        
+
+d2:                0.02        0.001             0.01        0.003        0.004 
+
+ 
+
+p( “algorithms”|d1)  = p(“algorithm”|d2) 
+
+p( “data”|d1)  &lt; p(“data”|d2) 
+
+p( “mining”|d1)  &lt; p(“mining”|d2) 
+
+ 
+
+But    p(q|d1)&gt;p(q|d2)! 
+
+We should make p(“the”) and p(“for”) less different for all docs. 
+
+ 
+
+Variations of Language Modeling Approach 
+
+• Variations of  basic language modeling approach, 
+
+based on: 
+
+– Estimating document model θD 
+
+– Various smoothing methods (Jelinek-Mercer, Dirichlet,…) 
+
+– Document Prior P(D) (document features such as page 
+
+rank, url length, time, anchor text….) 
+
+8 
+
+
+5 
+
+9 
+
+Smoothing Query Likelihood Model 
+
+• To deal with the estimation problem and data sparsity, 
+
+smooth the probability estimates by: 
+
+ 
+
+• Lowering the probability estimate of the terms in document 
+
+ 
+
+• Assigning probabilities to unseen terms in document 
+
+(calculated generally based on the entire collection – collection 
+
+language model / background language / background probability) 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+|
+
+|
+
+|
+
+|
+
+)
+
+1
+
+(
+
+)
+
+|
+
+(
+
+)
+
+|
+
+(
+
+)
+
+|
+
+(
+
+)
+
+1
+
+(
+
+)
+
+|
+
+(
+
+,
+
+,
+
+C
+
+tf
+
+D
+
+tf
+
+D
+
+q
+
+P
+
+C
+
+q
+
+P
+
+D
+
+q
+
+P
+
+D
+
+q
+
+P
+
+C
+
+q
+
+D
+
+D
+
+q
+
+D
+
+i
+
+i
+
+D
+
+i
+
+D
+
+i
+
+i
+
+i
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+• Various smoothing based on how to handle  
+
+D
+
+
+
+occurrences of query term i  
+
+in the collection 
+
+No. of terms in the entire collection 
+
+10 
+
+Jelinek-Mercer Smoothing 
+
+• Set the coefficient to a constant                  :  
+
+ 
+
+ 
+
+ 
+
+ 
+
+   Query similar to Boolean AND 
+
+ Larger          Query similar to Boolean  OR 
+
+ 
+
+      In TREC evaluations:      = 0.1 for short queries 
+
+ 
+
+ 
+
+ 
+
+ 
+
+           = 0.7 for long queries 
+
+ (if no training data, generally: 0.5) 
+
+ 
+
+ 
+
+ 
+
+|
+
+|
+
+|
+
+|
+
+)
+
+1(
+
+)
+
+|
+
+(
+
+,
+
+,
+
+C
+
+tf
+
+D
+
+tf
+
+D
+
+q
+
+P
+
+C
+
+q
+
+D
+
+q
+
+i
+
+i
+
+i
+
+
+
+
+
+
+
+
+
+
+
+0
+
+
+
+
+
+
+
+
+
+
+
+
+
+1
+
+,0
+
+
+
+ 
+
+D
+
+
+6 
+
+11 
+
+Jelinek-Mercer Smoothing (Cont’d) 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+)|
+
+|
+
+|
+
+|
+
+)
+
+1
+
+((
+
+log
+
+)
+
+|
+
+(
+
+log
+
+)|
+
+|
+
+|
+
+|
+
+)
+
+1
+
+((
+
+)
+
+|
+
+(
+
+|
+
+|
+
+|
+
+|
+
+)
+
+1(
+
+)
+
+|
+
+(
+
+,
+
+,
+
+1
+
+1
+
+,
+
+,
+
+,
+
+,
+
+C
+
+tf
+
+D
+
+tf
+
+D
+
+Q
+
+P
+
+C
+
+tf
+
+D
+
+tf
+
+D
+
+Q
+
+P
+
+C
+
+tf
+
+D
+
+tf
+
+D
+
+q
+
+P
+
+C
+
+q
+
+D
+
+q
+
+n
+
+i
+
+n
+
+i
+
+C
+
+q
+
+D
+
+q
+
+C
+
+q
+
+D
+
+q
+
+i
+
+i
+
+i
+
+i
+
+i
+
+i
+
+i
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+12 
+
+Dirichlet Smoothing 
+
+• Considers document length  (  terms are added to increase 
+
+the chance of match) 
+
+ 
+
+ 
+
+ 
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+|
+
+|
+
+|
+
+|
+
+log
+
+)
+
+|
+
+(
+
+log
+
+|
+
+|
+
+|
+
+|
+
+)
+
+|
+
+(
+
+,
+
+,
+
+1
+
+,
+
+,
+
+D
+
+C
+
+tf
+
+tf
+
+D
+
+Q
+
+P
+
+D
+
+C
+
+tf
+
+tf
+
+D
+
+q
+
+P
+
+C
+
+q
+
+D
+
+q
+
+n
+
+i
+
+C
+
+q
+
+D
+
+q
+
+i
+
+i
+
+i
+
+i
+
+i
+
+•  Longer documents are impacted less by     ( should be tuned or 
+
+pick average document length)  
+
+ 
+
+• Comparable to well-tuned retrieval models  of TF-IDF with 
+
+pivoted length normalization, and BM25 
+
+ 
+
+ 
+
+
+
+
+
+
+7 
+
+KL-Divergence Model: 
+
+Computing P(θQ||θD) 
+
+ 
+
+• A state-of-the-art LM approach to rank documents  
+
+ 
+
+• Similar concept as to vector space model ; however, 
+
+probabilistic representation of text and distance function 
+
+ 
+
+• The difference between document model and query model 
+
+(relevance model) is measured 
+
+ 
+
+ 
+
+ 
+
+ 
+
+13 
+
+
+
+ 
+
+
+
+
+
+v
+
+m
+
+D
+
+w
+
+p
+
+Q
+
+w
+
+P
+
+Q
+
+D
+
+score
+
+)
+
+|
+
+(
+
+log
+
+)
+
+|
+
+(
+
+,
+
+
+
+
+
+
+
+ 
+
+
+
+
+
+v
+
+m
+
+Q
+
+w
+
+D
+
+w
+
+p
+
+Q
+
+f
+
+Q
+
+D
+
+score
+
+)
+
+|
+
+(
+
+log
+
+|
+
+|
+
+,
+
+,
+
+
+
+Use Dirichlet smoothing 
+
+ML Estimate 
+
+Language Models vs. Traditional 
+
+Retrieval Models 
+
+ 
+
+• Query likelihood with Dirichlet smoothing offers 
+
+similar performance to TF-IDF  &amp; BM25 retrieval 
+
+functions 
+
+ 
+
+• Sophisticated language models can be  computationally 
+
+expensive  
+
+ 
+
+ 
+
+14 
+
+
+8 
+
+References 
+
+•
+
+Ponte and Croft’s pioneering paper [ACM SIGIR 1998] 
+
+•
+
+D. Grossman &amp; O. Frieder, Information Retrieval Algorithms and Heuristics,  
+
+1998, 2nd Edition, Springer, 2004. 
+
+•
+
+ChengXiang Zhai, Statistical Language Models for Information Retrieval: A 
+
+Critical Review, Foundation &amp; Trends in Information Retrieval, 2008 
+
+ 
+
+•
+
+C. Manning, P. Raghavan &amp; H. Schütze, Introduction to Information 
+
+Retrieval, Cambridge University Press., 2008.  
+
+ 
+
+•
+
+W. Croft, D. Metzler, T. Strohman, Search Engines: Information Retrieval in 
+
+Practice, Addison Wesley, 2010 
+
+ 
+
+•
+
+S. Buttcher, C. Clarke, G. Cormack, Information Retrieval: Implementing 
+
+and Evaluating search Engines, Addison Wesley, 2010 
+
+ 
+
+15 
+

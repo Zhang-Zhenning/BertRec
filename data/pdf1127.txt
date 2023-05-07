@@ -1,0 +1,781 @@
+
+
+
+Bytepawn
+
+home github linkedin arxiv   a/b testing pytorch python
+
+Cross entropy, joint entropy,
+
+conditional entropy and
+
+relative entropy
+
+Marton Trencseni - Sat 09 October 2021 - Math
+
+Introduction
+
+In the previous article I discussed entropy. As a follow-up, I revisit more advanced variations of entropy and
+
+related concepts:
+
+1. Joint entropy
+
+2. Conditional entropy
+
+3. Cross entropy
+
+4. Relative entropy (also known as Kullback–Leibler divergence)
+
+5. Mutual information (also known as Information gain)
+
+Everything I cover here is elementary information theory, mostly found in the first chapter of the classic Cover,
+
+Thomas: Elements of Information Theory or the wikipedia pages linked above.
+
+Entropy
+
+Entropy is the amount of uncertainty of a random variable, expressed in bits. Imagine Alice has a random
+
+variable and she needs to communicate the outcome over a digital binary channel to Bob. What is a good
+
+encoding to minimizes the average amount of bits she sends? In the previous article I discussed the case of a fair
+
+coin, so let's make it a bit more complicated here, and use a 4-sided dice, ie. a tetrahedron. Let's say it's a fair
+
+tetrahedron, so each side comes up with 
+
+ probability.
+
+p= 1
+
+4
+
+
+
+
+
+
+
+
+
+
+There are 4 outcomes, so she needs to use 2 bits:
+
+1 -&gt; 00
+
+2 -&gt; 01
+
+3 -&gt; 10
+
+4 -&gt; 11
+
+Since all outcomes are equally likely, there is no reason for her to deviate from this trivial encoding. So, on
+
+average she will use 2 bits per message.
+
+What if one of the sides is more likely to come up? Suppose the distribution is 
+
+. In this case, it makes
+
+sense to use less bits for the first side, since it will come up more, so she sends less bits on average. Eg. she can
+
+try:
+
+1 -&gt; 0
+
+2 -&gt; 10
+
+3 -&gt; 110
+
+4 -&gt; 111
+
+With this encoding, on average she's sending 
+
+ bits per message.
+
+The formula for entropy is 
+
+. For the fair tetrahedron, 
+
+, which means that the trivial
+
+encoding is optimal. For the biased tetrahedron above, 
+
+ bits, which is less than the encoding above. This
+
+means that there are better encodings, we can still save about 0.04 bits per message. To do this, we need to do
+
+block encoding, encode several messages, like:
+
+11 -&gt; 0
+
+12 -&gt; ...
+
+14 -&gt; ...
+
+14 -&gt; ...
+
+21 -&gt; ...
+
+...
+
+By creating larger and larger block encodings, we can arbitrarily approach the theoretical limit of 
+
+, but we can
+
+never do better than that.
+
+The formula 
+
+ for entropy can be made intuitive: the number of bits we should use to encode an
+
+outcome with probability 
+
+ is of length 
+
+ bits. Eg. for 
+
+ this is 1 bit, for 
+
+ this is 2 bits. Considering
+
+the examples above, this is intuitive. And the 
+
+ multiplier is just how often this outcome will occur. So it makes
+
+sense that this is the average number of bits sent per message.
+
+Also note the entropy of a random variable that has just one outcomes is 0, we don't need any bits if we already
+
+know what the outcome is going to be.
+
+Joint entropy
+
+Just as there is probability 
+
+,  and joint probability 
+
+, we can define entropy 
+
+ and joint entropy 
+
+.
+
+If  and  are independent, then 
+
+. This is easy to see, because then 
+
+, so:
+
+p= [ , , , ]
+
+1
+
+2
+
+1
+
+6
+
+1
+
+6
+
+1
+
+6
+
+[ , , , ] × [1,2,3,3] =
+
+= 1.83
+
+1
+
+2
+
+1
+
+6
+
+1
+
+6
+
+1
+
+6
+
+11
+
+6
+
+H(X) = −∑ip(xi)log[p(xi)]
+
+H(X) = 2
+
+H(X) = 1.79
+
+H(X)
+
+H(X) = −∑ip(xi)log[p(xi)]
+
+p(xi)
+
+−log[p(xi)]
+
+p(xi) = 1
+
+2
+
+p(xi) = 1
+
+4
+
+p(xi)
+
+p(x)
+
+p(y)
+
+p(x, y)
+
+H(X)
+
+H(X, Y)
+
+H(X, Y) = −∑ijp(xi, yj)log[p(xi, yj)]
+
+X
+
+Y
+
+H(X, Y) = H(X) + H(Y)
+
+p(x, y) = p(x)p(y)
+
+H(X, Y) = −∑ijp(xi, yj)log[p(xi, yj)] = −∑ijp(xi)p(yj)log[p(xi)p(yj)]
+
+
+Now we use 
+
+:
+
+.
+
+If  and  are not indepedent, then:
+
+.
+
+A simple example of the above is the 4 sided dice. Suppose  is the random variable for each side coming up (4
+
+outcomes each with probability ,  is the random variable for even or odd numbered sides coming up (2
+
+outcomes, like a toin coss), referring to the same toss.  and  are not independent, eg. 
+
+ but 
+
+and 
+
+. Obviously, 
+
+ bits and 
+
+ bits, but 
+
+ bits, because knowing  already tells us
+
+everything about .
+
+Conditional entropy
+
+Suppose we have two random variables  and . Suppose that we know the outcome of , and the question is,
+
+how much entropy is "left" in ? Another mental model: suppose we have Alice and Bob communicating over a
+
+digital channel. Alice needs to encode the outcome of  in bits and send it over to Bob (many times), but there is a
+
+second random variable , whose outcome both Alice and Bob have access to. For example, Alice has a
+
+thermometer ( ) and is encoding and sending the reading to Bob who is a mile away, but both Alice and Bob
+
+experience the same weather ( ). Can Alice use less bits to encode ?
+
+We define conditional entropy like:
+
+We go through all the values  can take, calculate the entropy of 
+
+ of , and we average this over the
+
+outcomes of . Note that this is similar to the formula for conditional expectation. 
+
+ is just the entropy over
+
+the conditional probabilities:
+
+.
+
+Since 
+
+ conditional entropy can also be written as:
+
+.
+
+Let's look at conditional entropy in the above example of the tetrahedron. 
+
+ is easy, if we know , the outcome
+
+of the toss, then we don't need any additional bits to communicate whether it's even or odd, so 
+
+ bits. 
+
+is also easy, if we know whether the side landed on an even or odd number, in each case we have 2 options left (if
+
+it landed odd, it can be 1 or 3, if it landed even, it can be 2 or 4), all have the same 
+
+, so it's like a coin toss, so 
+
+ bits.
+
+If  and  are independent, 
+
+, since knowing  doesn't tell us anything about .
+
+Finally, for all random variables: 
+
+ (chain rule). We can check this again with the tetrahedron
+
+example: 
+
+ and 
+
+.
+
+Cross entropy
+
+Suppose Alice and Bob are communicating again, but this time there is no out-of-bounds communication. Alice
+
+wants to encode the outcomes of a random variable  and send it to Bob, with the least number of average bits
+
+per outcome. However, let's assume Alice has incomplete or incorrect information about : she mistakenly thinks
+
+that the distribution is per another random variable , and she constructs her encoding per . How many bits will
+
+Alice use on average?
+
+Let's look at the tetrahedron again, but this time it's uneven, let the probabilities be 
+
+. It would make
+
+sense for Alice to encode it with a prefix code like [0, 10, 110, 111], to save bits on the most likely outcomes.
+
+However, if she mistakenly thinks that the probabilities are 
+
+, she will choose the encoding [110, 111, 10,
+
+0]. She will send 3 bits in the most common case and 1 bit in the least common case.
+
+log(ab) = log(a) + log(b)
+
+H(X, Y) = −∑ijp(xi, yj)log[p(xi, yj)] = −∑ijp(xi)p(yj)[log[p(xi)] + log[p(yj)]]
+
+H(X, Y) = −∑jp(yj)∑ip(xi)log[p(xi)] − ∑ip(xi)∑yp(yj)log[p(yj)]
+
+H(X, Y) = −∑jp(yj)H(X) − ∑ip(xi)H(Y) = H(X)∑jp(yj) + H(Y)∑ip(xi) = H(X) + H(Y)
+
+X
+
+Y
+
+H(X, Y) &lt; H(X) + H(Y)
+
+X
+
+1
+
+4
+
+Y
+
+X
+
+Y
+
+P(X= 1, Y = even) = 0
+
+P(X= 1) = 1
+
+4
+
+P(Y = even) = 1
+
+2
+
+H(X) = 2
+
+H(Y) = 1
+
+H(X, Y) = H(X) = 2
+
+X
+
+Y
+
+X
+
+Y
+
+X
+
+Y
+
+Y
+
+X
+
+Y
+
+X
+
+Y
+
+H(Y|X) = ∑ip(xi)H(Y|X= xi)
+
+X
+
+H(Y|X= xi)
+
+Y
+
+X
+
+H(Y|X= xi)
+
+H(Y|X= xi) = −∑jp(yj|xi)log[p(yj|xi)]
+
+p(yj|xi)p(xi) = p(yj, xi)
+
+H(Y|X) = −∑ijp(yj, xi)log[p(yj|xi)] = −∑ijp(yj, xi)log
+
+p(yj,xi)
+
+p(xi)
+
+H(Y|X)
+
+X
+
+H(Y|X) = 0
+
+H(X|Y)
+
+p= 1
+
+2
+
+H(X|Y) = 1
+
+X
+
+Y
+
+H(Y|X) = H(Y)
+
+X
+
+Y
+
+H(Y|X) = H(X, Y) − H(X)
+
+H(Y|X) = 0 = H(X, Y) − H(X) = H(X) − H(X)
+
+H(X|Y) = H(X, Y) − H(Y) = 1 = 2 − 1 = 1
+
+X
+
+X
+
+Y
+
+Y
+
+X [ , , , ]
+
+4
+
+8
+
+2
+
+8
+
+1
+
+8
+
+1
+
+8
+
+Y [ , , , ]
+
+1
+
+8
+
+1
+
+8
+
+2
+
+8
+
+4
+
+8
+
+
+Let  be the probabilities for ,  be the probabilities for , then the cross entropy is:
+
+.
+
+Note that this is not symmetric, ie. in general 
+
+. Obviously, if 
+
+, then 
+
+, ie.
+
+if Alice has the right distribution, she can construct an encoding that is maximally optimal and approaches the
+
+entropy.
+
+The definition is very intuitive: as mentioned for regular entropy, if an outcome has probability , it's best to
+
+encode it with a message of length 
+
+ bits. For example, if 
+
+, then 
+
+ bit, and in that case we should
+
+encode that as a 0 (or 1). On average, this outcome occurs  times, so this outcome contributes 
+
+ bits on
+
+average. However, if Alice believes the probabilities are , she will pick an encoding where this outcomes in
+
+encoded as 
+
+ bits, but in reality this occurs  times, so it contributes 
+
+ bits on average.
+
+Relative entropy (Kullback–Leibler divergence)
+
+In the above example, Alice thought that events arrive per 
+
+, but in reality the distribution is 
+
+. She uses 
+
+bits on average to communicate her outcomes, instead of using the 
+
+ bits she'd use if she knew the correct
+
+distribution. The difference between the two is called relative entropy, also known as Kullback–Leibler
+
+divergence:
+
+.
+
+Writing out the two definitions for 
+
+ and 
+
+, we get:
+
+.
+
+So, relative entropy 
+
+ is the extra bits that Alice wastes. Like cross entropy, relative entropy is also not
+
+symmetric.
+
+Mutual information (Information gain)
+
+Mutual information is a measure of the mutual dependence between the two variables. More specifically, it
+
+quantifies the "amount of information" obtained about one random variable by observing the other random
+
+variable. For two random variables  and , the mutual information is the relative entropy between their joint
+
+distribution and the product of their individual distributions:
+
+If you compare this to the relative entropy formula above, it's the same with 
+
+ and 
+
+. It follows trivially
+
+from the definition that mutual information is symmetric, 
+
+. What if  and  are independent? In that
+
+case, 
+
+ because 
+
+ and 
+
+. If  and  completely determine another, eg. 
+
+, then one contains
+
+all the information about the other, so 
+
+. This is because in such a case, certain 
+
+ combinations
+
+will be non-zero (eg. when 
+
+), and for these non-zero cases 
+
+, so 
+
+.
+
+The following image explains the relationship between entropy, conditional entropy, join entropy and mutual
+
+information.
+
+
+
+pi
+
+X qi
+
+Y
+
+H(p, q) = −∑ipilog[qi]
+
+H(p, q) = −∑ipilog[qi] ≠ H(q, p) = −∑iqilog[pi]
+
+p= q
+
+H(p, q) = H(p) = H(q)
+
+pi
+
+−log[pi]
+
+pi = 1
+
+2
+
+−log[pi] = 1
+
+pi
+
+−pilog[pi]
+
+qi
+
+−log[qi]
+
+pi
+
+−pilog[qi]
+
+Y ∼ q
+
+X∼ p
+
+H(p, q)
+
+H(p)
+
+DKL(p|q) = H(p, q) − H(p)
+
+H(p, q)
+
+H(p)
+
+DKL(p|q) = H(p, q) − H(p) = −∑ipilog
+
+qi
+
+pi
+
+DKL(p|q)
+
+X
+
+Y
+
+I(X, Y) = −∑p(x, y)log
+
+p(x)p(y)
+
+p(x,y)
+
+p= p(x, y)
+
+q = p(x)p(y)
+
+I(X, Y) = I(Y, X)
+
+X
+
+Y
+
+I(X, Y) = 0
+
+p(x, y) = p(x)p(y)
+
+log[1] = 0
+
+X
+
+Y
+
+X= Y + 1
+
+I(X, Y) = H(X) = H(Y)
+
+p(x, y)
+
+x = y+ 1
+
+p(x, y) = p(x) = p(y)
+
+I(X, Y) = −∑p(x)log[p(x)] = H(X)
+
+
+So, for example 
+
+.
+
+Mutual information does not have a useful interpretation in terms of channel coding.
+
+Conclusion
+
+Everything I cover here is introductory information theory, mostly found in the first chapter of the classic Cover,
+
+Thomas: Elements of Information Theory or the wikipedia pages linked above. I plan to write a follow-up post to
+
+give examples of using these metrics in Data Science and Machine Learning.
+
+entropy cross-entropy joint-entropy conditional-entropy relative-entropy kullback–leibler-diverence
+
+© Marton Trencseni
+
+Built using Pelican - Flex theme by Alexandre Vicenzi
+
+H(X, Y) = H(X|Y) + I(X, Y) + H(Y|X)
+

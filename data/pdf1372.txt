@@ -1,0 +1,211 @@
+
+
+
+Welcome to Assignment 2!
+
+In this assignment, your primary goal is to implement unigram and bigram language models and evaluate their performance. You'll
+
+use the equations from Chapter 3 of SLP; in particular you will implement maximum likelihood estimation (equations 3.11 and 3.12)
+
+with add-k smoothing (equation 3.25), as well as a perplexity calculation to test your models (equation 3.16, but explained more in
+
+this document and skeleton code).
+
+The skeleton code for this assignment is available at
+
+https://faculty.wcas.northwestern.edu/robvoigt/courses/2021_fall/ling334/assignments/a2.zip. I expect this assignment to potentially
+
+be more tricky for many of you than the last one, so start early!
+
+There is a small interface given so you can test your program by running:
+
+python language_modeling.py
+
+And it will run your model on some data accompanying the assignment (specifically, Sam I Am) and report its performance.
+
+A Note on Object-Oriented Programming
+
+Many of you may not be familiar with the idea of object-oriented programming, or how it plays out in python. You don't need to go
+
+deep into the details, but if you're interested in getting more detail on what's going on, you can start with Chapters 15-17 of Think
+
+Python.
+
+For the purposes of this assignment, notice that there is a large structure at the top level (leftmost indentation) that is defined with
+
+a keyword class . This is us making a definition of a new type of object, an NgramLanguageModel . Doing so allows us to
+
+associate all the various data (for instance, counts from a corpus) and functions (for instance, to accumulate those counts or
+
+produce a probability) with a given "instance" of that object in a persistent manner.
+
+Once the class is defined, we can produce an instance as follows:
+
+ngram_lm = NgramLanguageModel()
+
+The parens on the end look like a function call, and that's because they are - specifically a special "constructor" function that
+
+creates an object of the NgramLanguageModel  type. In the above ngram_lm  now contains an instance of that object, setup
+
+according to the special __init__(self)  function at the top of the class (e.g., it has the *_counts  dicts and the k  value set).
+
+A note on self : this is a special self-referential keyword, by which a class can reference the variables (== attributes of the class)
+
+and functions (== methods of the class) it contains from inside itself. In this assignment, you'll be updating the 
+
+self.unigram_counts  and self.bigram_counts  variables - you have to use self.  as a prefix to access them.
+
+This is all for your information - the object-oriented setup is done for you in the skeleton code, your job is to modify the functions
+
+inside the class to do the various things we need to do.
+
+Your Jobs
+
+There are a number of ways to build a language model; I've set up a basic interface which I'd like you to stick with for the basic
+
+submission, but you can change things around wildly in any extensions.
+
+For this assignment the main things you need to do are to write the train , predict_unigram , predict_bigram , and 
+
+test_perplexity  functions.
+
+train
+
+The way it's set up, the train  function need only accumulate counts, the resulting probabilities can be calculated at test time in
+
+the predict_*  functions. This is slower at test time though, so one simple extension is to modify this (see below).
+
+You can expect the training corpus to contain one sentence per line, already tokenized, so you can split it up on whitespace (e.g., 
+
+sentence.split() ). Important reminder that you must add &lt;s&gt;  tokens to the beginning and &lt;/s&gt;  tokens to the end of every
+
+sentence.
+
+predict_unigram , predict_bigram
+
+These functions should take a sentence (as a string), split it into tokens on whitespace, add start and end tokens, and then
+
+calculate the probability of that sentence sequence using a unigram or bigram language model, respectively.
+
+
+
+
+calculate the probability of that sentence sequence using a unigram or bigram language model, respectively.
+
+Notes:
+
+Use add-k smoothing in this calculation. This is very similar to maximum likelihood estimation, but adding k  to the numerator
+
+and k * vocab_size  to the denominator (see Equation 3.25 in the textbook).
+
+Return log probabilities! As talked about in class, we want to do these calculations in log-space because of floating point
+
+underflow problems. Do this per word! Even a long sentence could easily get us to an underflow. So create a float that starts at
+
+0.0, and for each word where you get the probability, do += math.log(prob)  onto that float variable. Return this sum in the
+
+end.
+
+test_perplexity
+
+This function takes the path to a new corpus as input and calculates its perplexity (normalized total log-likelihood) relative to a new
+
+test corpus.
+
+The basic gist here is quite simple - use your predict_*  functions to calculate sentence-level log probabilities and sum them up,
+
+then convert to perplexity by doing the following:
+
+math.exp(-1 * total_log_prob / N)
+
+Where N  is the total number of words seen. There are some additional details given in the function docstring in the skeleton code.
+
+Autograder
+
+The autograder will create an instance of your NgramLanguageModel class, train it on the first part of Sam I Am, test it on the last
+
+part, and check that the results roughly line up with what I get in my solution. To run it, use this command:
+
+python /projects/e31408/autograders/a2.py
+
+At a minimum, your assignment should run and pass all tests using this autograder before you submit!
+
+Extensions
+
+If you've got more gas in the tank, journey onward!
+
+When implementing any of these, please leave your working NgramLanguageModel  class intact and perhaps copy-paste it to a
+
+new class or new script to be modified, so the autograder still works. I suggest doing cp language_modeling.py 
+
+language_modeling_ext.py  once your initial class works, and editing the _ext.py  file instead of the original.
+
+1. Add generation. Flip it around! Add a method to the class which uses your model to generate text. This is a bit tricky but I
+
+think very useful for better understanding these models. To generate a sentence with a bigram model, for instance, start with
+
+the &lt;s&gt;  token and sample from the next word in proportion to their probabilities of following that token. The easiest way to do
+
+this in my view is using numpy , specifically the numpy.random.choice  function - you can put the words into the a
+
+argument and the corresponding probabilities into the p  argument and sample the word. Now look at all the words that follow
+
+that word, and sample again. Continue sampling until you happen to sample the end-of-sentence token &lt;/s&gt; , at which point
+
+complete the generation.
+
+2. Try with more and varied data. In the course data directory there is an a2  subfolder ( /projects/e31408/data/a2 )
+
+where there are a few additional corpora you could try out your models on. In particular there is a copy of the Brown Corpus
+
+split into train/dev/test splits (1.1M words total), a large set of presidential speeches split into train/dev/test splits (4.5M words
+
+total), all the works of Shakespeare, and all the lyrics of Beyonce and TSwift. In addition to simply trying on simply more data,
+
+you can see how models trained on certain data work when applied to other data.
+
+3. Speed up test time performance. You can change the structure of the NgramLanguageModel class to calculate all possible
+
+probabilities at training time, which will substantially increase the speed of test-time inference since that will become a matter of
+
+looking up log probabilities and adding them up rather than performing the calculation each time a given n-gram appears.
+
+4. Add trigrams. Extend your LM to include trigram estimation as well. Is it better or worse on the Sam-I-Am data? What about on
+
+larger datasets? Why or why not? Does generation look qualitatively different compared to bigrams?
+
+5. Add arbitrary n-grams. While unigram LMs are something of a special case, n-gram LMs where n &gt;= 2 can be coded in an
+
+arbitrary manner where you can simply pass the integer for the n-gram size you want to use. Try refactoring your code to do
+
+this.
+
+6. Add backoff, interpolation, or more complex smoothing. The book notes that add-k smoothing is actually not ideal in
+
+practice and lists several follow-ups of various types that improve model performance. Pick one or more, try implementing
+
+them, and see how low you can get your perplexity!
+
+7. Neural LMs. If you want to go buck wild here, you could read about neural language models like in SLP here or in this D2L
+
+book and have a go at implementing, for instance, a basic RNN! Something along these lines could easily be substantial
+
+enough to be a final project as well, so keep this in your back pocket if you're interested.
+
+8. Read and report. Read a relevant article, post about it on Ed!
+
+
+
+
+8. Read and report. Read a relevant article, post about it on Ed!
+
+And as usual, whatever else you can dream up is also welcome!
+
+Submission
+
+To officially submit your assignment, please fill out this form:
+
+https://forms.gle/FCdncfDdetuZ43ud7
+
+This will let us know your assignment is ready for us to go check out!
+

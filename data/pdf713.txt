@@ -1,0 +1,485 @@
+
+Identify relevant sentences
+
+Identify relevant keywords
+
+Example text
+
+Textrank for keyword extraction
+
+Textrank for sentence ranking
+
+Define sentences and terminology
+
+Applying textrank_sentences
+
+Minhash
+
+Support in text mining
+
+
+
+Textrank for summarizing text
+
+Jan Wijffels
+
+2020-10-12
+
+Textrank
+
+TextRank – is a graph-based ranking model for text processing which can be used in order to find the most relevant sentences
+
+in text and also to find keywords. The algorithm is explained in detail in the paper at
+
+https://web.eecs.umich.edu/~mihalcea/papers/mihalcea.emnlp04.pdf
+
+Identify relevant sentences
+
+In order to find the most relevant sentences in text, a graph is constructed where the vertices of the graph represent each
+
+sentence in a document and the edges between sentences are based on content overlap, namely by calculating the number
+
+of words that 2 sentences have in common.
+
+Based on this network of sentences, the sentences are fed into the Pagerank algorithm which identifies the most important
+
+sentences. When we want to extract a summary of the text, we can now take only the most important sentences.
+
+Identify relevant keywords
+
+In order to find relevant keywords, the textrank algorithm constructs a word network. This network is constructed by looking
+
+which words follow one another. A link is set up between two words if they follow one another, the link gets a higher weight if
+
+these 2 words occur more frequenctly next to each other in the text.
+
+On top of the resulting network the Pagerank algorithm is applied to get the importance of each word. The top 1/3 of all these
+
+words are kept and are considered relevant. After this, a keywords table is constructed by combining the relevant words
+
+together if they appear following one another in the text.
+
+Example text
+
+To show how you can apply textrank, the package includes a job description, which is printed below. We want to extract the
+
+most important sentences in the job description as well as keywords.
+
+library(textrank)
+
+data(joboffer)
+
+cat(unique(joboffer$sentence), sep = "\n")
+
+Textrank
+
+
+
+
+
+
+Statistical expert / data scientist / analytical developer
+
+BNOSAC (Belgium Network of Open Source Analytical Consultants), is a Belgium consultancy company 
+
+specialized in data analysis and statistical consultancy using open source tools.
+
+In order to increase and enhance the services provided to our clients, we are on the lookout for 
+
+an all-round statistical expert, data scientist and analytical developer.
+
+Function:
+
+Your main task will be the execution of a diverse range of consultancy services in the field of s
+
+tatistics and data science.
+
+You will be involved in a small team where you handle the consultancy services from the start of 
+
+the project until the end.
+
+This covers:
+
+Joint meeting with clients on the topic of the analysis.
+
+Acquaintance with the data.
+
+Analysis of the techniques that are required to execute the study.
+
+Mostly standard statistical and biostatistical modelling, predictive analytics &amp; machine learning
+
+techniques.
+
+Perform statistical design, modeling and analysis, together with more seniors.
+
+Building the report on the data analysis.
+
+Automating and R/Python package development.
+
+Integration of the models into the existing architecture.
+
+Giving advise to the client on the research questions, design or integration.
+
+Next to that, you will help in building data products and help sell them.
+
+These cover text mining, integration of predictive analytics in existing tools and the creation o
+
+f specific data analysis tools and web services.
+
+You also might be involved in providing data science related courses for clients.
+
+Profile:
+
+You have a master degree in the domain of Statistics, Biostatistics, Mathematics, Commercial or I
+
+ndustrial Engineering, Economics or similar.
+
+You have a strong interest in statistics and data analysis.
+
+You have good communication skills, are fluent in English and know either Dutch or French.
+
+You soak up new knowledge and either just make things work or have the attitude of 'I can do this
+
+'.
+
+Besides this, you have attention to detail and adapt to changes quickly.
+
+You have programming experience in R or you really want to switch to using R.
+
+You have a sound knowledge of another data analysis language (Python, SQL, javascript) and you do
+
+n't care in which relational database, Excel, bigdata or noSQL store your data is located.
+
+Interested in robotics is a plus.
+
+Offer:
+
+A half or full-time employment depending on your personal situation.
+
+The ability to get involved in a whole range of sectors and topics and the flexibility to shape y
+
+our own future.
+
+The usage of a diverse range of statistical &amp; data science techniques.
+
+Support in getting up to speed quickly in the usage of R.
+
+An environment in which you can develop your talent and make your own proposals the standard way 
+
+to go.
+
+Liberty in managing your open source projects during working hours.
+
+Contact:
+
+To apply or in order to get more information about the job content, please contact us at: http://
+
+bnosac.be/index.php/contact/get-in-touch
+
+The textrank algorithm (keyword extraction / sentence ranking) requires as input the identification of words which are relevant
+
+in your domain. This is normally done by doing Parts of Speech tagging which can be done using a broad range of R
+
+packages.
+
+In the example on the joboffer, we did Parts of Speech tagging using the udpipe R package (https://github.com/bnosac/udpipe)
+
+so that we have a sentence identifier and a parts of speech tag for each word in the job offer. Which is exactly what we need
+
+for extracting keywords as well as for sentence ranking as the Parts of Speech tag allows us to easily remove irrelevant words.
+
+head(joboffer[, c("sentence_id", "lemma", "upos")], 10)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   sentence_id       lemma  upos
+
+1            1 Statistical   ADJ
+
+2            1      expert  NOUN
+
+3            1           / PUNCT
+
+4            1        data  NOUN
+
+5            1   scientist  NOUN
+
+6            1           / PUNCT
+
+7            1  analytical   ADJ
+
+8            1   developer  NOUN
+
+9            2      BNOSAC PROPN
+
+10           2           ( PUNCT
+
+You can get that joboffer data.frame as follows.
+
+job_rawtxt &lt;- readLines(system.file(package = "textrank", "extdata", "joboffer.txt"))
+
+job_rawtxt &lt;- paste(job_rawtxt, collapse = "\n")
+
+library(udpipe)
+
+tagger &lt;- udpipe_download_model("english")
+
+tagger &lt;- udpipe_load_model(tagger$file_model)
+
+joboffer &lt;- udpipe_annotate(tagger, job_rawtxt)
+
+joboffer &lt;- as.data.frame(joboffer)
+
+Textrank for keyword extraction
+
+For extracting keywords in the job description, we are providing it a vector of words and a vector of logicals indicating for each
+
+word if it is relevant. In the below case we consider only nouns, verbs and adjectives as relevant.
+
+keyw &lt;- textrank_keywords(joboffer$lemma,
+
+                          relevant = joboffer$upos %in% c("NOUN", "VERB", "ADJ"))
+
+subset(keyw$keywords, ngram &gt; 1 &amp; freq &gt; 1)
+
+               keyword ngram freq
+
+4        data-analysis     2    4
+
+9         data-science     2    3
+
+14 consultancy-service     2    2
+
+Textrank for sentence ranking
+
+The algorithm basically computes weights between sentences by looking which words are overlapping.
+
+You probably do not want to look for overlap in words like ‘the’, ‘and’, ‘or’, … That is why, most of the time you probably will
+
+have already executed some Parts of Speech tagging in order to identify nouns, verbs, adjectives, … or you might have set up
+
+your own dictionary of words which you want to consider to find overlap between sentences.
+
+head(joboffer[, c("sentence_id", "lemma", "upos")], 10)
+
+   sentence_id       lemma  upos
+
+1            1 Statistical   ADJ
+
+2            1      expert  NOUN
+
+3            1           / PUNCT
+
+4            1        data  NOUN
+
+5            1   scientist  NOUN
+
+6            1           / PUNCT
+
+7            1  analytical   ADJ
+
+8            1   developer  NOUN
+
+9            2      BNOSAC PROPN
+
+10           2           ( PUNCT
+
+Define sentences and terminology
+
+In order to apply textrank for sentence ranking, we need to feed the function textrank_sentences  2 inputs: - a data.frame
+
+with sentences and - a data.frame with words which are part of each sentence.
+
+In the following example we start by creating a sentence identifier which is a combination of a document/paragraph and
+
+sentence identifier and we take only nouns and adjectives for finding overlap between sentences.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+library(udpipe)
+
+joboffer$textrank_id &lt;- unique_identifier(joboffer, c("doc_id", "paragraph_id", "sentence_id"))
+
+sentences &lt;- unique(joboffer[, c("textrank_id", "sentence")])
+
+terminology &lt;- subset(joboffer, upos %in% c("NOUN", "ADJ"))
+
+terminology &lt;- terminology[, c("textrank_id", "lemma")]
+
+head(terminology)
+
+  textrank_id       lemma
+
+1           1 Statistical
+
+2           1      expert
+
+4           1        data
+
+5           1   scientist
+
+7           1  analytical
+
+8           1   developer
+
+Applying textrank_sentences
+
+When applying textrank_sentences  it looks for word (nouns/adjectives in this case) which are the same in sentences and
+
+next applies Google Pagerank on the sentence network. The result is an object of class textrank_sentences  which
+
+contains the sentences, the links between the sentences and the result of Google’s Pagerank.
+
+## Textrank for finding the most relevant sentences
+
+tr &lt;- textrank_sentences(data = sentences, terminology = terminology)
+
+names(tr)
+
+[1] "sentences"      "sentences_dist" "pagerank"      
+
+plot(sort(tr$pagerank$vector, decreasing = TRUE), 
+
+     type = "b", ylab = "Pagerank", main = "Textrank")
+
+
+
+Using the summary function, we can extract the top n most relevant sentences. By default it gives the sentences in order of
+
+Pagerank importance but you can also get the n most important sentences and keep the sentence order as provided in the
+
+original sentences data.frame.
+
+s &lt;- summary(tr, n = 4)
+
+s &lt;- summary(tr, n = 4, keep.sentence.order = TRUE)
+
+cat(s, sep = "\n")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+BNOSAC (Belgium Network of Open Source Analytical Consultants), is a Belgium consultancy company 
+
+specialized in data analysis and statistical consultancy using open source tools.
+
+Building the report on the data analysis.
+
+You have a strong interest in statistics and data analysis.
+
+The usage of a diverse range of statistical &amp; data science techniques.
+
+Mark that the textrank_sentences  function has a textrank_dist  argument, which allows you to provide any distance
+
+type of calculation you prefer. This can e.g. be used to change the distance calculation to something based on word vectors if
+
+you like, based on Levenshtein distances, functions from the textreuse package, based on stemming or any complex
+
+calculation you prefer.
+
+Minhash
+
+In the above example, there were 37 sentences. Which gives 666 combinations of sentences to calculate word overlap. If you
+
+have a large number of sentences, this becomes computationally unfeasible.
+
+That is why you can provide in the argument textrank_candidates  a data.frame with sentence combinations for which you
+
+want to compute the Jaccard distance. This can be used for example to reduce the number of sentence combinations by
+
+applying the Minhash algorithm as shown below.
+
+The result is a you saving computation time. For good settings on n  and bands  which should be set in conjunction with the
+
+textrank_dist  function, have a look at the vignette of the textreuse package.
+
+## Limit the number of candidates with the minhash algorithm
+
+library(textreuse)
+
+minhash &lt;- minhash_generator(n = 1000, seed = 123456789)
+
+candidates &lt;- textrank_candidates_lsh(x = terminology$lemma, 
+
+                                      sentence_id = terminology$textrank_id,
+
+                                      minhashFUN = minhash, 
+
+                                      bands = 500)
+
+dim(candidates)
+
+[1] 85  2
+
+head(candidates)
+
+  textrank_id_1 textrank_id_2
+
+1             1             3
+
+2            13            22
+
+3            10            32
+
+4            12            32
+
+5            11             2
+
+6            12             2
+
+tr &lt;- textrank_sentences(data = sentences, terminology = terminology, textrank_candidates = candi
+
+dates)
+
+s &lt;- summary(tr, n = 4, keep.sentence.order = TRUE)
+
+cat(s, sep = "\n")
+
+BNOSAC (Belgium Network of Open Source Analytical Consultants), is a Belgium consultancy company 
+
+specialized in data analysis and statistical consultancy using open source tools.
+
+Building the report on the data analysis.
+
+You have a strong interest in statistics and data analysis.
+
+The usage of a diverse range of statistical &amp; data science techniques.
+
+Support in text mining
+
+Need support in text mining. Contact BNOSAC: http://www.bnosac.be
+

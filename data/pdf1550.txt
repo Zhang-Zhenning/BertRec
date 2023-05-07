@@ -1,0 +1,377 @@
+
+Published in
+
+MTI Technology
+
+
+
+Jul 7, 2020
+
+·
+
+25 min read
+
+N-gram language models
+
+Part 3: Optimize model interpolation
+
+Background
+
+n-gram models
+
+The vertical line denotes the probability of “dream” given the previous words “have a”
+
+average log likelihood
+
+
+
+
+
+
+N_eval: total number of words in the evaluation text
+
+Problem
+
+Bigram model
+
+unigram model
+
+trigram model and up
+
+uniform model
+
+interpolate different n-gram models with one another
+
+What to interpolate?
+
+uniform model
+
+unigram model
+
+bigram model
+
+higher n-gram models
+
+Coding the interpolation
+
+
+Coding the interpolation
+
+All probability matrices are represented as numpy arrays. Each probability in the matrix was estimated from the
+
+training text “Game of Thrones”.
+
+Add the relevant columns of the matrix with equal weights
+
+Average the log of these probabilities
+
+
+Result
+
+Numbers in x-axis indicate the length of the n-gram (e.g. 1 = unigram)
+
+How to interpolate?
+
+Grid search
+
+grid search
+
+We try different interpolation weights and see which ones have the
+
+highest average log likelihood on the combined evaluation text.
+
+computationally
+
+expensive
+
+gamma
+
+C
+
+our interpolation weights have to always sum to 1
+
+Optimization algorithms
+
+optimization algorithms
+
+We use an algorithm to automatically find the interpolation weights with
+
+
+the highest average log likelihood on the combined evaluation text.
+
+We maximize the average log probability across words in the combined evaluation text
+
+N_word
+
+P̂ (word)
+
+a_i
+
+P_i(word)
+
+gradient descent
+
+expectation-maximization (EM) algorithm
+
+Gradient descent
+
+all 6 interpolation weights have to sum to one
+
+Initialize
+
+Differentiate
+
+j � {1, 2, 3, 4, 5}
+
+Update
+
+1.
+
+2.
+
+3.
+
+
+optimize_gd
+
+Result for two-model interpolation
+
+
+uniform and unigram
+
+Uniform weight = 1 - unigram weight
+
+optimize_gd
+
+
+expectation-maximization (EM) algorithm
+
+Expectation-maximization (EM) algorithm
+
+Initialize
+
+E-step
+
+M-step
+
+Repeat
+
+Why must the lower bound be tight?
+
+A, B: objective function at previous weights and updated weights. A’, B’: lower bound at previous weights and
+
+updated weights
+
+1.
+
+2.
+
+3.
+
+4.
+
+
+E-step
+
+M-step
+
+E-step
+
+A concave function applied to a weighted combination of two values, x�
+
+and x�, is always greater or equal to the weighted combination of the
+
+function applied on each value, f(x�) and f(x�).
+
+concave functions
+
+z�, z�: combination weights
+
+
+Lower bound as expectation
+
+E-step
+
+expectation
+
+Finding z� and z�
+
+Interpretation of z� and z�
+
+
+posterior probability
+
+posterior probability
+
+M-step
+
+maximize
+
+average of the posterior probabilities for the unigram model!
+
+
+Repeat E-step and M-step
+
+Extend EM algorithm for more than 2 models
+
+Construct lower bound
+
+E-step
+
+E-step
+
+ⱼ
+
+ⱼ
+
+ⱼ
+
+M-step
+
+M-step
+
+ⱼ
+
+ⱼ
+
+ⱼ
+
+
+ⱼ
+
+ⱼ
+
+ⱼ
+
+ⱼ
+
+ⱼ
+
+average of the posterior probabilities zⱼ
+
+Coding the EM algorithm
+
+E-step
+
+M-step
+
+optimize_em
+
+
+Compare EM to gradient descent
+
+Left: gradient descent with learning rate of 0.1. Right: EM algorithm
+
+
+We don’t need to set a learning rate for EM algorithm
+
+EM vs gradient descent (GD) for uniform-unigram interpolation. Models were initialized with equal weights.
+
+The weights at each EM iteration are always between 0 and 1, and their sum is
+
+always 1
+
+Updated weights follow valid probability distribution
+
+EM vs gradient descent (GD) for interpolation of all 6 models (unigram + 5 n-gram). Models were initialized with
+
+equal weights.
+
+Disadvantage of EM
+
+local maxima
+
+ⱼ
+
+j � {1, 2, 3, 4, 5}
+
+1.
+
+2.
+
+
+global maxima
+
+Result
+
+Models were initialized with equal weights (1/6)
+
+Interpretation
+
+lower n-gram models
+
+higher n-gram models
+
+uniform model
+
+Testing EM-optimized model
+
+
+dev1, dev2: texts on which EM was trained on. test1, test2: new texts to evaluate interpolated models
+
+Current landscape of language models
+
+Varieties of n-gram models
+
+Laplace smoothing
+
+expectation-maximization algorithm
+
+smoothing techniques
+
+Interpolated Kneser-Ney smoothing for bigrams (Source)
+
+backoff models
+
+Katz backoff (Source)
+
+Problems of n-gram models
+
+They are big
+
+783k unique n-grams vs 321k words in our training text
+
+1.
+
+
+They are dumb
+
+sparsity
+
+Source
+
+The rise of neural language models
+
+surface features
+
+Left: recurrent neural network (hidden state hᵢ, source). Right: BERT transformer (hidden state Oᵢ, source)
+
+Final remarks
+
+Reference
+
+2.
+
+
+1
+
+A place where MTI-ers can publish ideas about new technologies, agile concepts and their working experiences
+
+
+
+Read more from MTI Technology
+
+
+
+
+
+Naturallanguageprocessing
+
+Data Science
+
+Machine Learning
+
+Statistics
+
+Ngrams
+

@@ -1,0 +1,2477 @@
+
+Speech and Language Processing.
+
+Daniel Jurafsky &amp; James H. Martin.
+
+Copyright © 2023.
+
+All
+
+rights reserved.
+
+Draft of January 7, 2023.
+
+CHAPTER
+
+A
+
+Hidden Markov Models
+
+Chapter 8 introduced the Hidden Markov Model and applied it to part of speech
+
+tagging. Part of speech tagging is a fully-supervised learning task, because we have
+
+a corpus of words labeled with the correct part-of-speech tag. But many applications
+
+don’t have labeled data. So in this chapter, we introduce the full set of algorithms for
+
+HMMs, including the key unsupervised learning algorithm for HMM, the Forward-
+
+Backward algorithm. We’ll repeat some of the text from Chapter 8 for readers who
+
+want the whole story laid out in a single chapter.
+
+A.1
+
+Markov Chains
+
+The HMM is based on augmenting the Markov chain. A Markov chain is a model
+
+Markov chain
+
+that tells us something about the probabilities of sequences of random variables,
+
+states, each of which can take on values from some set. These sets can be words, or
+
+tags, or symbols representing anything, like the weather. A Markov chain makes a
+
+very strong assumption that if we want to predict the future in the sequence, all that
+
+matters is the current state. The states before the current state have no impact on the
+
+future except via the current state. It’s as if to predict tomorrow’s weather you could
+
+examine today’s weather but you weren’t allowed to look at yesterday’s weather.
+
+
+
+
+
+
+
+WARM3
+
+HOT1
+
+COLD2
+
+.8
+
+.6
+
+.1
+
+.1
+
+.3
+
+.6
+
+.1
+
+.1
+
+.3
+
+
+
+
+
+
+
+charming
+
+uniformly
+
+are
+
+.1
+
+.4
+
+.5
+
+.5
+
+.5
+
+.2
+
+.6
+
+.2
+
+(a)
+
+(b)
+
+Figure A.1
+
+A Markov chain for weather (a) and one for words (b), showing states and
+
+transitions. A start distribution π is required; setting π = [0.1, 0.7, 0.2] for (a) would mean a
+
+probability 0.7 of starting in state 2 (cold), probability 0.1 of starting in state 1 (hot), etc.
+
+More formally, consider a sequence of state variables q1,q2,...,qi. A Markov
+
+model embodies the Markov assumption on the probabilities of this sequence: that
+
+Markov
+
+assumption
+
+when predicting the future, the past doesn’t matter, only the present.
+
+Markov Assumption:
+
+P(qi = a|q1...qi−1) = P(qi = a|qi−1)
+
+(A.1)
+
+Figure A.1a shows a Markov chain for assigning a probability to a sequence of
+
+weather events, for which the vocabulary consists of HOT, COLD, and WARM. The
+
+states are represented as nodes in the graph, and the transitions, with their probabil-
+
+ities, as edges. The transitions are probabilities: the values of arcs leaving a given
+
+
+2
+
+APPENDIX A
+
+•
+
+HIDDEN MARKOV MODELS
+
+state must sum to 1. Figure A.1b shows a Markov chain for assigning a probabil-
+
+ity to a sequence of words w1...wn. This Markov chain should be familiar; in fact,
+
+it represents a bigram language model, with each edge expressing the probability
+
+p(wi|w j)! Given the two models in Fig. A.1, we can assign a probability to any
+
+sequence from our vocabulary.
+
+Formally, a Markov chain is speciﬁed by the following components:
+
+Q = q1q2 ...qN
+
+a set of N states
+
+A = a11a12 ...an1 ...ann
+
+a transition probability matrix A, each aij represent-
+
+ing the probability of moving from state i to state j, s.t.
+
+�n
+
+j=1 aij = 1 ∀i
+
+π = π1,π2,...,πN
+
+an initial probability distribution over states. πi is the
+
+probability that the Markov chain will start in state i.
+
+Some states j may have π j = 0, meaning that they cannot
+
+be initial states. Also, �N
+
+i=1 πi = 1
+
+Before you go on, use the sample probabilities in Fig. A.1a (with π = [.1,.7.,2])
+
+to compute the probability of each of the following sequences:
+
+(A.2) hot hot hot hot
+
+(A.3) cold hot cold hot
+
+What does the difference in these probabilities tell you about a real-world weather
+
+fact encoded in Fig. A.1a?
+
+A.2
+
+The Hidden Markov Model
+
+A Markov chain is useful when we need to compute a probability for a sequence
+
+of observable events. In many cases, however, the events we are interested in are
+
+hidden: we don’t observe them directly. For example we don’t normally observe
+
+hidden
+
+part-of-speech tags in a text. Rather, we see words, and must infer the tags from the
+
+word sequence. We call the tags hidden because they are not observed.
+
+A hidden Markov model (HMM) allows us to talk about both observed events
+
+Hidden
+
+Markov model
+
+(like words that we see in the input) and hidden events (like part-of-speech tags) that
+
+we think of as causal factors in our probabilistic model. An HMM is speciﬁed by
+
+the following components:
+
+Q = q1q2 ...qN
+
+a set of N states
+
+A = a11 ...ai j ...aNN
+
+a transition probability matrix A, each aij representing the probability
+
+of moving from state i to state j, s.t. �N
+
+j=1 aij = 1 ∀i
+
+O = o1o2 ...oT
+
+a sequence of T observations, each one drawn from a vocabulary V =
+
+v1,v2,...,vV
+
+B = bi(ot)
+
+a sequence of observation likelihoods, also called emission probabili-
+
+ties, each expressing the probability of an observation ot being generated
+
+from a state i
+
+π = π1,π2,...,πN
+
+an initial probability distribution over states. πi is the probability that
+
+the Markov chain will start in state i. Some states j may have πj = 0,
+
+meaning that they cannot be initial states. Also, �n
+
+i=1 πi = 1
+
+A ﬁrst-order hidden Markov model instantiates two simplifying assumptions.
+
+
+A.2
+
+•
+
+THE HIDDEN MARKOV MODEL
+
+3
+
+First, as with a ﬁrst-order Markov chain, the probability of a particular state depends
+
+only on the previous state:
+
+Markov Assumption:
+
+P(qi|q1...qi−1) = P(qi|qi−1)
+
+(A.4)
+
+Second, the probability of an output observation oi depends only on the state that
+
+produced the observation qi and not on any other states or any other observations:
+
+Output Independence: P(oi|q1 ...qi,...,qT,o1,...,oi,...,oT) = P(oi|qi)
+
+(A.5)
+
+To exemplify these models, we’ll use a task invented by Jason Eisner (2002).
+
+Imagine that you are a climatologist in the year 2799 studying the history of global
+
+warming. You cannot ﬁnd any records of the weather in Baltimore, Maryland, for
+
+the summer of 2020, but you do ﬁnd Jason Eisner’s diary, which lists how many ice
+
+creams Jason ate every day that summer. Our goal is to use these observations to
+
+estimate the temperature every day. We’ll simplify this weather task by assuming
+
+there are only two kinds of days: cold (C) and hot (H). So the Eisner task is as
+
+follows:
+
+Given a sequence of observations O (each an integer representing the
+
+number of ice creams eaten on a given day) ﬁnd the ‘hidden’ sequence
+
+Q of weather states (H or C) which caused Jason to eat the ice cream.
+
+Figure A.2 shows a sample HMM for the ice cream task. The two hidden states
+
+(H and C) correspond to hot and cold weather, and the observations (drawn from the
+
+alphabet O = {1,2,3}) correspond to the number of ice creams eaten by Jason on a
+
+given day.
+
+
+
+
+
+
+
+
+
+
+
+π = [.2,.8]
+
+HOT2
+
+COLD1
+
+B2
+
+P(1 | HOT)           .2
+
+P(2 | HOT)     =    .4
+
+P(3 | HOT)           .4
+
+.6
+
+.5
+
+.4
+
+.5
+
+P(1 | COLD)         .5
+
+P(2 | COLD)   =    .4
+
+P(3 | COLD)         .1
+
+B1
+
+Figure A.2
+
+A hidden Markov model for relating numbers of ice creams eaten by Jason (the
+
+observations) to the weather (H or C, the hidden variables).
+
+An inﬂuential tutorial by Rabiner (1989), based on tutorials by Jack Ferguson in
+
+the 1960s, introduced the idea that hidden Markov models should be characterized
+
+by three fundamental problems:
+
+Problem 1 (Likelihood):
+
+Given an HMM λ = (A,B) and an observation se-
+
+quence O, determine the likelihood P(O|λ).
+
+Problem 2 (Decoding):
+
+Given an observation sequence O and an HMM λ =
+
+(A,B), discover the best hidden state sequence Q.
+
+Problem 3 (Learning):
+
+Given an observation sequence O and the set of states
+
+in the HMM, learn the HMM parameters A and B.
+
+We already saw an example of Problem 2 in Chapter 8. In the next two sections
+
+we introduce the Forward and Forward-Backward algorithms to solve Problems 1
+
+and 3 and give more information on Problem 2
+
+
+4
+
+APPENDIX A
+
+•
+
+HIDDEN MARKOV MODELS
+
+A.3
+
+Likelihood Computation: The Forward Algorithm
+
+Our ﬁrst problem is to compute the likelihood of a particular observation sequence.
+
+For example, given the ice-cream eating HMM in Fig. A.2, what is the probability
+
+of the sequence 3 1 3? More formally:
+
+Computing Likelihood: Given an HMM λ = (A,B) and an observa-
+
+tion sequence O, determine the likelihood P(O|λ).
+
+For a Markov chain, where the surface observations are the same as the hidden
+
+events, we could compute the probability of 3 1 3 just by following the states labeled
+
+3 1 3 and multiplying the probabilities along the arcs. For a hidden Markov model,
+
+things are not so simple. We want to determine the probability of an ice-cream
+
+observation sequence like 3 1 3, but we don’t know what the hidden state sequence
+
+is!
+
+Let’s start with a slightly simpler situation. Suppose we already knew the weather
+
+and wanted to predict how much ice cream Jason would eat. This is a useful part
+
+of many HMM tasks. For a given hidden state sequence (e.g., hot hot cold), we can
+
+easily compute the output likelihood of 3 1 3.
+
+Let’s see how. First, recall that for hidden Markov models, each hidden state
+
+produces only a single observation. Thus, the sequence of hidden states and the
+
+sequence of observations have the same length. 1
+
+Given this one-to-one mapping and the Markov assumptions expressed in Eq. A.4,
+
+for a particular hidden state sequence Q = q0,q1,q2,...,qT and an observation se-
+
+quence O = o1,o2,...,oT, the likelihood of the observation sequence is
+
+P(O|Q) =
+
+T�
+
+i=1
+
+P(oi|qi)
+
+(A.6)
+
+The computation of the forward probability for our ice-cream observation 3 1 3 from
+
+one possible hidden state sequence hot hot cold is shown in Eq. A.7. Figure A.3
+
+shows a graphic representation of this computation.
+
+P(3 1 3|hot hot cold) = P(3|hot)×P(1|hot)×P(3|cold)
+
+(A.7)
+
+
+
+
+
+
+
+cold
+
+hot
+
+3
+
+.4
+
+hot
+
+1
+
+3
+
+.2
+
+.1
+
+Figure A.3
+
+The computation of the observation likelihood for the ice-cream events 3 1 3
+
+given the hidden state sequence hot hot cold.
+
+But of course, we don’t actually know what the hidden state (weather) sequence
+
+was. We’ll need to compute the probability of ice-cream events 3 1 3 instead by
+
+1
+
+In a variant of HMMs called segmental HMMs (in speech recognition) or semi-HMMs (in text pro-
+
+cessing) this one-to-one mapping between the length of the hidden state sequence and the length of the
+
+observation sequence does not hold.
+
+
+A.3
+
+•
+
+LIKELIHOOD COMPUTATION: THE FORWARD ALGORITHM
+
+5
+
+summing over all possible weather sequences, weighted by their probability. First,
+
+let’s compute the joint probability of being in a particular weather sequence Q and
+
+generating a particular sequence O of ice-cream events. In general, this is
+
+P(O,Q) = P(O|Q)×P(Q) =
+
+T�
+
+i=1
+
+P(oi|qi)×
+
+T�
+
+i=1
+
+P(qi|qi−1)
+
+(A.8)
+
+The computation of the joint probability of our ice-cream observation 3 1 3 and one
+
+possible hidden state sequence hot hot cold is shown in Eq. A.9. Figure A.4 shows
+
+a graphic representation of this computation.
+
+P(3 1 3,hot hot cold) = P(hot|start)×P(hot|hot)×P(cold|hot)
+
+×P(3|hot)×P(1|hot)×P(3|cold)
+
+(A.9)
+
+
+
+
+
+
+
+cold
+
+hot
+
+3
+
+.4
+
+hot
+
+.6
+
+1
+
+3
+
+.4
+
+.2
+
+.1
+
+Figure A.4
+
+The computation of the joint probability of the ice-cream events 3 1 3 and the
+
+hidden state sequence hot hot cold.
+
+Now that we know how to compute the joint probability of the observations
+
+with a particular hidden state sequence, we can compute the total probability of the
+
+observations just by summing over all possible hidden state sequences:
+
+P(O) =
+
+�
+
+Q
+
+P(O,Q) =
+
+�
+
+Q
+
+P(O|Q)P(Q)
+
+(A.10)
+
+For our particular case, we would sum over the eight 3-event sequences cold cold
+
+cold, cold cold hot, that is,
+
+P(3 1 3) = P(3 1 3,cold cold cold)+P(3 1 3,cold cold hot)+P(3 1 3,hot hot cold)+...
+
+For an HMM with N hidden states and an observation sequence of T observa-
+
+tions, there are NT possible hidden sequences. For real tasks, where N and T are
+
+both large, NT is a very large number, so we cannot compute the total observation
+
+likelihood by computing a separate observation likelihood for each hidden state se-
+
+quence and then summing them.
+
+Instead of using such an extremely exponential algorithm, we use an efﬁcient
+
+O(N2T) algorithm called the forward algorithm. The forward algorithm is a kind
+
+forward
+
+algorithm
+
+of dynamic programming algorithm, that is, an algorithm that uses a table to store
+
+intermediate values as it builds up the probability of the observation sequence. The
+
+forward algorithm computes the observation probability by summing over the prob-
+
+abilities of all possible hidden state paths that could generate the observation se-
+
+quence, but it does so efﬁciently by implicitly folding each of these paths into a
+
+single forward trellis.
+
+Figure A.5 shows an example of the forward trellis for computing the likelihood
+
+of 3 1 3 given the hidden state sequence hot hot cold.
+
+
+6
+
+APPENDIX A
+
+•
+
+HIDDEN MARKOV MODELS
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+π
+
+H
+
+C
+
+H
+
+C
+
+H
+
+C
+
+P(C|start) * P(3|C)
+
+.2 * .1
+
+P(H|H) * P(1|H)
+
+.6 * .2
+
+P(C|C) * P(1|C)
+
+.5 * .5
+
+P(C|H) * P(1|C)
+
+.4 * .5
+
+P(H|C) * P(1|H)
+
+.5 * .2
+
+P(H|start)*P(3|H)
+
+.8 * .4
+
+α1(2)=.32
+
+α1(1) = .02
+
+α2(2)= .32*.12 + .02*.1 = .0404
+
+α2(1) = .32*.2 + .02*.25 = .069
+
+t
+
+C
+
+H
+
+q2
+
+q1
+
+o1
+
+3
+
+o2
+
+o3
+
+1
+
+3
+
+Figure A.5
+
+The forward trellis for computing the total observation likelihood for the ice-cream events 3 1 3.
+
+Hidden states are in circles, observations in squares. The ﬁgure shows the computation of αt(j) for two states at
+
+two time steps. The computation in each cell follows Eq. A.12: αt(j) = �N
+
+i=1 αt−1(i)ai jbj(ot). The resulting
+
+probability expressed in each cell is Eq. A.11: αt( j) = P(o1,o2 ...ot,qt = j|λ).
+
+Each cell of the forward algorithm trellis αt( j) represents the probability of be-
+
+ing in state j after seeing the ﬁrst t observations, given the automaton λ. The value
+
+of each cell αt( j) is computed by summing over the probabilities of every path that
+
+could lead us to this cell. Formally, each cell expresses the following probability:
+
+αt( j) = P(o1,o2 ...ot,qt = j|λ)
+
+(A.11)
+
+Here, qt = j means “the tth state in the sequence of states is state j”. We compute
+
+this probability αt( j) by summing over the extensions of all the paths that lead to
+
+the current cell. For a given state qj at time t, the value αt( j) is computed as
+
+αt(j) =
+
+N
+
+�
+
+i=1
+
+αt−1(i)aijbj(ot)
+
+(A.12)
+
+The three factors that are multiplied in Eq. A.12 in extending the previous paths
+
+to compute the forward probability at time t are
+
+αt−1(i)
+
+the previous forward path probability from the previous time step
+
+ai j
+
+the transition probability from previous state qi to current state qj
+
+bj(ot)
+
+the state observation likelihood of the observation symbol ot given
+
+the current state j
+
+Consider the computation in Fig. A.5 of α2(2), the forward probability of being
+
+at time step 2 in state 2 having generated the partial observation 3 1. We compute by
+
+extending the α probabilities from time step 1, via two paths, each extension con-
+
+sisting of the three factors above: α1(1)×P(H|C)×P(1|H) and α1(2)×P(H|H)×
+
+P(1|H).
+
+Figure A.6 shows another visualization of this induction step for computing the
+
+value in one new cell of the trellis.
+
+We give two formal deﬁnitions of the forward algorithm: the pseudocode in
+
+Fig. A.7 and a statement of the deﬁnitional recursion here.
+
+
+A.3
+
+•
+
+LIKELIHOOD COMPUTATION: THE FORWARD ALGORITHM
+
+7
+
+
+
+
+
+
+
+
+
+
+
+
+
+ot-1
+
+ot
+
+a1j
+
+a2j
+
+aNj
+
+a3j
+
+bj(ot)
+
+αt(j)= Σi αt-1(i) aij bj(ot) 
+
+q1
+
+q2
+
+q3
+
+qN
+
+q1
+
+qj
+
+q2
+
+q1
+
+q2
+
+ot+1
+
+ot-2
+
+q1
+
+q2
+
+q3
+
+q3
+
+qN
+
+qN
+
+αt-1(N)
+
+αt-1(3)
+
+αt-1(2)
+
+αt-1(1)
+
+αt-2(N)
+
+αt-2(3)
+
+αt-2(2)
+
+αt-2(1)
+
+Figure A.6
+
+Visualizing the computation of a single element αt(i) in the trellis by summing
+
+all the previous values αt−1, weighted by their transition probabilities a, and multiplying by
+
+the observation probability bi(ot). For many applications of HMMs, many of the transition
+
+probabilities are 0, so not all previous states will contribute to the forward probability of the
+
+current state. Hidden states are in circles, observations in squares. Shaded nodes are included
+
+in the probability computation for αt(i).
+
+function FORWARD(observations of len T, state-graph of len N) returns forward-prob
+
+create a probability matrix forward[N,T]
+
+for each state s from 1 to N do
+
+; initialization step
+
+forward[s,1]←πs ∗ bs(o1)
+
+for each time step t from 2 to T do
+
+; recursion step
+
+for each state s from 1 to N do
+
+forward[s,t]←
+
+N
+
+�
+
+s′=1
+
+forward[s′,t −1] ∗ as′,s ∗ bs(ot)
+
+forwardprob←
+
+N
+
+�
+
+s=1
+
+forward[s,T]
+
+; termination step
+
+return forwardprob
+
+Figure A.7
+
+The forward algorithm, where forward[s,t] represents αt(s).
+
+1. Initialization:
+
+α1( j) = πjbj(o1) 1 ≤ j ≤ N
+
+2. Recursion:
+
+αt( j) =
+
+N
+
+�
+
+i=1
+
+αt−1(i)aijbj(ot); 1 ≤ j ≤ N,1 &lt; t ≤ T
+
+3. Termination:
+
+P(O|λ) =
+
+N
+
+�
+
+i=1
+
+αT(i)
+
+
+8
+
+APPENDIX A
+
+•
+
+HIDDEN MARKOV MODELS
+
+A.4
+
+Decoding: The Viterbi Algorithm
+
+For any model, such as an HMM, that contains hidden variables, the task of deter-
+
+mining which sequence of variables is the underlying source of some sequence of
+
+observations is called the decoding task. In the ice-cream domain, given a sequence
+
+decoding
+
+of ice-cream observations 3 1 3 and an HMM, the task of the decoder is to ﬁnd the
+
+best hidden weather sequence (H H H). More formally,
+
+Decoding: Given as input an HMM λ = (A,B) and a sequence of ob-
+
+servations O = o1,o2,...,oT, ﬁnd the most probable sequence of states
+
+Q = q1q2q3 ...qT.
+
+We might propose to ﬁnd the best sequence as follows: For each possible hid-
+
+den state sequence (HHH, HHC, HCH, etc.), we could run the forward algorithm
+
+and compute the likelihood of the observation sequence given that hidden state se-
+
+quence. Then we could choose the hidden state sequence with the maximum obser-
+
+vation likelihood. It should be clear from the previous section that we cannot do this
+
+because there are an exponentially large number of state sequences.
+
+Instead, the most common decoding algorithms for HMMs is the Viterbi algo-
+
+rithm. Like the forward algorithm, Viterbi is a kind of dynamic programming
+
+Viterbi
+
+algorithm
+
+that makes uses of a dynamic programming trellis. Viterbi also strongly resembles
+
+another dynamic programming variant, the minimum edit distance algorithm of
+
+Chapter 2.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+π
+
+H
+
+C
+
+H
+
+C
+
+H
+
+C
+
+P(C|start) * P(3|C)
+
+.2 * .1
+
+P(H|H) * P(1|H)
+
+.6 * .2
+
+P(C|C) * P(1|C)
+
+.5 * .5
+
+P(C|H) * P(1|C)
+
+.4 * .5
+
+P(H|C) * P(1|H)
+
+.5 * .2
+
+P(H|start)*P(3|H)
+
+.8 * .4
+
+v1(2)=.32
+
+v1(1) = .02
+
+v2(2)= max(.32*.12, .02*.10) = .038
+
+v2(1) = max(.32*.20, .02*.25) = .064
+
+t
+
+C
+
+H
+
+q2
+
+q1
+
+o1
+
+o2
+
+o3
+
+3
+
+1
+
+3
+
+Figure A.8
+
+The Viterbi trellis for computing the best path through the hidden state space for the ice-cream
+
+eating events 3 1 3. Hidden states are in circles, observations in squares. White (unﬁlled) circles indicate illegal
+
+transitions. The ﬁgure shows the computation of vt(j) for two states at two time steps. The computation in each
+
+cell follows Eq. A.14: vt( j) = max1≤i≤N−1 vt−1(i) ai j bj(ot). The resulting probability expressed in each cell
+
+is Eq. A.13: vt( j) = P(q0,q1,...,qt−1,o1,o2,...,ot,qt = j|λ).
+
+Figure A.8 shows an example of the Viterbi trellis for computing the best hidden
+
+state sequence for the observation sequence 3 1 3. The idea is to process the ob-
+
+servation sequence left to right, ﬁlling out the trellis. Each cell of the trellis, vt( j),
+
+represents the probability that the HMM is in state j after seeing the ﬁrst t obser-
+
+vations and passing through the most probable state sequence q1,...,qt−1, given the
+
+
+A.4
+
+•
+
+DECODING: THE VITERBI ALGORITHM
+
+9
+
+automaton λ. The value of each cell vt(j) is computed by recursively taking the
+
+most probable path that could lead us to this cell. Formally, each cell expresses the
+
+probability
+
+vt( j) =
+
+max
+
+q1,...,qt−1 P(q1...qt−1,o1,o2 ...ot,qt = j|λ)
+
+(A.13)
+
+Note that we represent the most probable path by taking the maximum over all
+
+possible previous state sequences
+
+max
+
+q1,...,qt−1. Like other dynamic programming algo-
+
+rithms, Viterbi ﬁlls each cell recursively. Given that we had already computed the
+
+probability of being in every state at time t −1, we compute the Viterbi probability
+
+by taking the most probable of the extensions of the paths that lead to the current
+
+cell. For a given state qj at time t, the value vt(j) is computed as
+
+vt( j) =
+
+N
+
+max
+
+i=1 vt−1(i) aij bj(ot)
+
+(A.14)
+
+The three factors that are multiplied in Eq. A.14 for extending the previous paths to
+
+compute the Viterbi probability at time t are
+
+vt−1(i)
+
+the previous Viterbi path probability from the previous time step
+
+ai j
+
+the transition probability from previous state qi to current state qj
+
+bj(ot)
+
+the state observation likelihood of the observation symbol ot given
+
+the current state j
+
+function VITERBI(observations of len T,state-graph of len N) returns best-path, path-prob
+
+create a path probability matrix viterbi[N,T]
+
+for each state s from 1 to N do
+
+; initialization step
+
+viterbi[s,1]←πs ∗ bs(o1)
+
+backpointer[s,1]←0
+
+for each time step t from 2 to T do
+
+; recursion step
+
+for each state s from 1 to N do
+
+viterbi[s,t]←
+
+N
+
+max
+
+s′=1 viterbi[s′,t −1] ∗ as′,s ∗ bs(ot)
+
+backpointer[s,t]←
+
+N
+
+argmax
+
+s′=1
+
+viterbi[s′,t −1] ∗ as′,s ∗ bs(ot)
+
+bestpathprob←
+
+N
+
+max
+
+s=1
+
+viterbi[s,T]
+
+; termination step
+
+bestpathpointer←
+
+N
+
+argmax
+
+s=1
+
+viterbi[s,T]
+
+; termination step
+
+bestpath←the path starting at state bestpathpointer, that follows backpointer[] to states back in time
+
+return bestpath, bestpathprob
+
+Figure A.9
+
+Viterbi algorithm for ﬁnding optimal sequence of hidden states. Given an observation sequence
+
+and an HMM λ = (A,B), the algorithm returns the state path through the HMM that assigns maximum likelihood
+
+to the observation sequence.
+
+Figure A.9 shows pseudocode for the Viterbi algorithm. Note that the Viterbi
+
+algorithm is identical to the forward algorithm except that it takes the max over the
+
+previous path probabilities whereas the forward algorithm takes the sum. Note also
+
+that the Viterbi algorithm has one component that the forward algorithm doesn’t
+
+
+10
+
+APPENDIX A
+
+•
+
+HIDDEN MARKOV MODELS
+
+have: backpointers. The reason is that while the forward algorithm needs to pro-
+
+duce an observation likelihood, the Viterbi algorithm must produce a probability and
+
+also the most likely state sequence. We compute this best state sequence by keeping
+
+track of the path of hidden states that led to each state, as suggested in Fig. A.10, and
+
+then at the end backtracing the best path to the beginning (the Viterbi backtrace).
+
+Viterbi
+
+backtrace
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+π
+
+H
+
+C
+
+H
+
+C
+
+H
+
+C
+
+P(C|start) * P(3|C)
+
+.2 * .1
+
+P(H|H) * P(1|H)
+
+.6 * .2
+
+P(C|C) * P(1|C)
+
+.5 * .5
+
+P(C|H) * P(1|C)
+
+.4 * .5
+
+P(H|C) * P(1|H)
+
+.5 * .2
+
+P(H|start)*P(3|H)
+
+.8 * .4
+
+v1(2)=.32
+
+v1(1) = .02
+
+v2(2)= max(.32*.12, .02*.10) = .038
+
+v2(1) = max(.32*.20, .02*.25) = .064
+
+t
+
+C
+
+H
+
+q2
+
+q1
+
+o1
+
+o2
+
+o3
+
+3
+
+1
+
+3
+
+Figure A.10
+
+The Viterbi backtrace. As we extend each path to a new state account for the next observation,
+
+we keep a backpointer (shown with broken lines) to the best path that led us to this state.
+
+Finally, we can give a formal deﬁnition of the Viterbi recursion as follows:
+
+1. Initialization:
+
+v1(j) = π jb j(o1)
+
+1 ≤ j ≤ N
+
+bt1(j) = 0
+
+1 ≤ j ≤ N
+
+2. Recursion
+
+vt( j) =
+
+N
+
+max
+
+i=1 vt−1(i)aij b j(ot); 1 ≤ j ≤ N,1 &lt; t ≤ T
+
+btt( j) =
+
+N
+
+argmax
+
+i=1
+
+vt−1(i)aij bj(ot); 1 ≤ j ≤ N,1 &lt; t ≤ T
+
+3. Termination:
+
+The best score:
+
+P∗ =
+
+N
+
+max
+
+i=1 vT(i)
+
+The start of backtrace:
+
+qT∗ =
+
+N
+
+argmax
+
+i=1
+
+vT(i)
+
+A.5
+
+HMM Training: The Forward-Backward Algorithm
+
+We turn to the third problem for HMMs: learning the parameters of an HMM, that
+
+is, the A and B matrices. Formally,
+
+Learning: Given an observation sequence O and the set of possible
+
+states in the HMM, learn the HMM parameters A and B.
+
+
+A.5
+
+•
+
+HMM TRAINING: THE FORWARD-BACKWARD ALGORITHM
+
+11
+
+The input to such a learning algorithm would be an unlabeled sequence of ob-
+
+servations O and a vocabulary of potential hidden states Q. Thus, for the ice cream
+
+task, we would start with a sequence of observations O = {1,3,2,...,} and the set of
+
+hidden states H and C.
+
+The standard algorithm for HMM training is the forward-backward, or Baum-
+
+Forward-
+
+backward
+
+Welch algorithm (Baum, 1972), a special case of the Expectation-Maximization
+
+Baum-Welch
+
+or EM algorithm (Dempster et al., 1977). The algorithm will let us train both the
+
+EM
+
+transition probabilities A and the emission probabilities B of the HMM. EM is an
+
+iterative algorithm, computing an initial estimate for the probabilities, then using
+
+those estimates to computing a better estimate, and so on, iteratively improving the
+
+probabilities that it learns.
+
+Let us begin by considering the much simpler case of training a fully visible
+
+Markov model, where we know both the temperature and the ice cream count for
+
+every day. That is, imagine we see the following set of input observations and mag-
+
+ically knew the aligned hidden state sequences:
+
+3
+
+3
+
+2
+
+1
+
+1
+
+2
+
+1
+
+2
+
+3
+
+hot
+
+hot cold
+
+cold cold cold
+
+cold hot hot
+
+This would easily allow us to compute the HMM parameters just by maximum
+
+likelihood estimation from the training data. First, we can compute π from the count
+
+of the 3 initial hidden states:
+
+πh = 1/3
+
+πc = 2/3
+
+Next we can directly compute the A matrix from the transitions, ignoring the ﬁnal
+
+hidden states:
+
+p(hot|hot) = 2/3
+
+p(cold|hot) = 1/3
+
+p(cold|cold) = 2/3
+
+p(hot|cold) = 1/3
+
+and the B matrix:
+
+P(1|hot) = 0/4 = 0
+
+p(1|cold) = 3/5 = .6
+
+P(2|hot) = 1/4 = .25
+
+p(2|cold = 2/5 = .4
+
+P(3|hot) = 3/4 = .75
+
+p(3|cold) = 0
+
+For a real HMM, we cannot compute these counts directly from an observation
+
+sequence since we don’t know which path of states was taken through the machine
+
+for a given input. For example, suppose I didn’t tell you the temperature on day 2,
+
+and you had to guess it, but you (magically) had the above probabilities, and the
+
+temperatures on the other days. You could do some Bayesian arithmetic with all the
+
+other probabilities to get estimates of the likely temperature on that missing day, and
+
+use those to get expected counts for the temperatures for day 2.
+
+But the real problem is even harder: we don’t know the counts of being in any
+
+of the hidden states!! The Baum-Welch algorithm solves this by iteratively esti-
+
+mating the counts. We will start with an estimate for the transition and observation
+
+probabilities and then use these estimated probabilities to derive better and better
+
+probabilities. And we’re going to do this by computing the forward probability for
+
+an observation and then dividing that probability mass among all the different paths
+
+that contributed to this forward probability.
+
+To understand the algorithm, we need to deﬁne a useful probability related to the
+
+forward probability and called the backward probability. The backward probabil-
+
+backward
+
+probability
+
+
+12
+
+APPENDIX A
+
+•
+
+HIDDEN MARKOV MODELS
+
+ity β is the probability of seeing the observations from time t + 1 to the end, given
+
+that we are in state i at time t (and given the automaton λ):
+
+βt(i) = P(ot+1,ot+2 ...oT|qt = i,λ)
+
+(A.15)
+
+It is computed inductively in a similar manner to the forward algorithm.
+
+1. Initialization:
+
+βT(i) = 1, 1 ≤ i ≤ N
+
+2. Recursion
+
+βt(i) =
+
+N
+
+�
+
+j=1
+
+aij bj(ot+1) βt+1( j), 1 ≤ i ≤ N,1 ≤ t &lt; T
+
+3. Termination:
+
+P(O|λ) =
+
+N
+
+�
+
+j=1
+
+π j bj(o1) β1(j)
+
+Figure A.11 illustrates the backward induction step.
+
+
+
+
+
+
+
+
+
+
+
+
+
+ot+1
+
+ot
+
+ai1
+
+ai2
+
+aiN
+
+ai3
+
+b1(ot+1)
+
+βt(i)= Σj βt+1(j) aij  bj(ot+1) 
+
+q1
+
+q2
+
+q3
+
+qN
+
+q1
+
+qi
+
+q2
+
+q1
+
+q2
+
+ot-1
+
+q3
+
+qN
+
+βt+1(N)
+
+βt+1(3)
+
+βt+1(2)
+
+βt+1(1)
+
+b2(ot+1)
+
+b3(ot+1)
+
+bN(ot+1)
+
+Figure A.11
+
+The computation of βt(i) by summing all the successive values βt+1( j)
+
+weighted by their transition probabilities ai j and their observation probabilities bj(ot+1).
+
+We are now ready to see how the forward and backward probabilities can help
+
+compute the transition probability aij and observation probability bi(ot) from an ob-
+
+servation sequence, even though the actual path taken through the model is hidden.
+
+Let’s begin by seeing how to estimate ˆaij by a variant of simple maximum like-
+
+lihood estimation:
+
+ˆai j = expected number of transitions from state i to state j
+
+expected number of transitions from state i
+
+(A.16)
+
+How do we compute the numerator? Here’s the intuition. Assume we had some
+
+estimate of the probability that a given transition i → j was taken at a particular
+
+point in time t in the observation sequence. If we knew this probability for each
+
+particular time t, we could sum over all times t to estimate the total count for the
+
+transition i → j.
+
+
+A.5
+
+•
+
+HMM TRAINING: THE FORWARD-BACKWARD ALGORITHM
+
+13
+
+More formally, let’s deﬁne the probability ξt as the probability of being in state
+
+i at time t and state j at time t +1, given the observation sequence and of course the
+
+model:
+
+ξt(i, j) = P(qt = i,qt+1 = j|O,λ)
+
+(A.17)
+
+To compute ξt, we ﬁrst compute a probability which is similar to ξt, but differs in
+
+including the probability of the observation; note the different conditioning of O
+
+from Eq. A.17:
+
+not-quite-ξt(i, j) = P(qt = i,qt+1 = j,O|λ)
+
+(A.18)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ot+2
+
+ot+1
+
+αt(i)
+
+ot-1
+
+ot
+
+aijbj(ot+1) 
+
+si
+
+sj
+
+βt+1(j)
+
+Figure A.12
+
+Computation of the joint probability of being in state i at time t and state j at
+
+time t + 1. The ﬁgure shows the various probabilities that need to be combined to produce
+
+P(qt = i,qt+1 = j,O|λ): the α and β probabilities, the transition probability ai j and the
+
+observation probability bj(ot+1). After Rabiner (1989) which is ©1989 IEEE.
+
+Figure A.12 shows the various probabilities that go into computing not-quite-ξt:
+
+the transition probability for the arc in question, the α probability before the arc, the
+
+β probability after the arc, and the observation probability for the symbol just after
+
+the arc. These four are multiplied together to produce not-quite-ξt as follows:
+
+not-quite-ξt(i, j) = αt(i)aijbj(ot+1)βt+1( j)
+
+(A.19)
+
+To compute ξt from not-quite-ξt, we follow the laws of probability and divide by
+
+P(O|λ), since
+
+P(X|Y,Z) = P(X,Y|Z)
+
+P(Y|Z)
+
+(A.20)
+
+The probability of the observation given the model is simply the forward proba-
+
+bility of the whole utterance (or alternatively, the backward probability of the whole
+
+utterance):
+
+P(O|λ) =
+
+N
+
+�
+
+j=1
+
+αt( j)βt(j)
+
+(A.21)
+
+
+14
+
+APPENDIX A
+
+•
+
+HIDDEN MARKOV MODELS
+
+So, the ﬁnal equation for ξt is
+
+ξt(i, j) = αt(i)aijbj(ot+1)βt+1( j)
+
+�N
+
+j=1 αt( j)βt(j)
+
+(A.22)
+
+The expected number of transitions from state i to state j is then the sum over all
+
+t of ξ. For our estimate of aij in Eq. A.16, we just need one more thing: the total
+
+expected number of transitions from state i. We can get this by summing over all
+
+transitions out of state i. Here’s the ﬁnal formula for ˆaij:
+
+ˆaij =
+
+�T−1
+
+t=1 ξt(i, j)
+
+�T−1
+
+t=1
+
+�N
+
+k=1 ξt(i,k)
+
+(A.23)
+
+We also need a formula for recomputing the observation probability. This is the
+
+probability of a given symbol vk from the observation vocabulary V, given a state j:
+
+ˆb j(vk). We will do this by trying to compute
+
+ˆbj(vk) = expected number of times in state j and observing symbol vk
+
+expected number of times in state j
+
+(A.24)
+
+For this, we will need to know the probability of being in state j at time t, which
+
+we will call γt( j):
+
+γt( j) = P(qt = j|O,λ)
+
+(A.25)
+
+Once again, we will compute this by including the observation sequence in the
+
+probability:
+
+γt( j) = P(qt = j,O|λ)
+
+P(O|λ)
+
+(A.26)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ot+1
+
+αt(j)
+
+ot-1
+
+ot
+
+sj
+
+βt(j)
+
+Figure A.13
+
+The computation of γt( j), the probability of being in state j at time t. Note
+
+that γ is really a degenerate case of ξ and hence this ﬁgure is like a version of Fig. A.12 with
+
+state i collapsed with state j. After Rabiner (1989) which is ©1989 IEEE.
+
+As Fig. A.13 shows, the numerator of Eq. A.26 is just the product of the forward
+
+probability and the backward probability:
+
+γt(j) = αt( j)βt( j)
+
+P(O|λ)
+
+(A.27)
+
+
+A.5
+
+•
+
+HMM TRAINING: THE FORWARD-BACKWARD ALGORITHM
+
+15
+
+We are ready to compute b. For the numerator, we sum γt( j) for all time steps
+
+t in which the observation ot is the symbol vk that we are interested in. For the
+
+denominator, we sum γt( j) over all time steps t. The result is the percentage of the
+
+times that we were in state j and saw symbol vk (the notation �T
+
+t=1 s.t.Ot=vk means
+
+“sum over all t for which the observation at time t was vk”):
+
+ˆbj(vk) =
+
+�T
+
+t=1 s.t.Ot=vk γt( j)
+
+�T
+
+t=1 γt( j)
+
+(A.28)
+
+We now have ways in Eq. A.23 and Eq. A.28 to re-estimate the transition A and ob-
+
+servation B probabilities from an observation sequence O, assuming that we already
+
+have a previous estimate of A and B.
+
+These re-estimations form the core of the iterative forward-backward algorithm.
+
+The forward-backward algorithm (Fig. A.14) starts with some initial estimate of the
+
+HMM parameters λ = (A,B). We then iteratively run two steps. Like other cases of
+
+the EM (expectation-maximization) algorithm, the forward-backward algorithm has
+
+two steps: the expectation step, or E-step, and the maximization step, or M-step.
+
+E-step
+
+M-step
+
+In the E-step, we compute the expected state occupancy count γ and the expected
+
+state transition count ξ from the earlier A and B probabilities. In the M-step, we use
+
+γ and ξ to recompute new A and B probabilities.
+
+function FORWARD-BACKWARD(observations of len T, output vocabulary V, hidden
+
+state set Q) returns HMM=(A,B)
+
+initialize A and B
+
+iterate until convergence
+
+E-step
+
+γt( j) = αt( j)βt(j)
+
+αT (qF)
+
+∀ t and j
+
+ξt(i, j) = αt(i)ai jb j(ot+1)βt+1( j)
+
+αT (qF)
+
+∀ t, i, and j
+
+M-step
+
+ˆaij =
+
+T−1
+
+�
+
+t=1
+
+ξt(i, j)
+
+T−1
+
+�
+
+t=1
+
+N
+
+�
+
+k=1
+
+ξt(i,k)
+
+ˆbj(vk) =
+
+T
+
+�
+
+t=1s.t. Ot=vk
+
+γt( j)
+
+T
+
+�
+
+t=1
+
+γt( j)
+
+return A, B
+
+Figure A.14
+
+The forward-backward algorithm.
+
+Although in principle the forward-backward algorithm can do completely unsu-
+
+pervised learning of the A and B parameters, in practice the initial conditions are
+
+very important. For this reason the algorithm is often given extra information. For
+
+example, for HMM-based speech recognition, the HMM structure is often set by
+
+hand, and only the emission (B) and (non-zero) A transition probabilities are trained
+
+from a set of observation sequences O.
+
+
+16
+
+APPENDIX A
+
+•
+
+HIDDEN MARKOV MODELS
+
+A.6
+
+Summary
+
+This chapter introduced the hidden Markov model for probabilistic sequence clas-
+
+siﬁcation.
+
+• Hidden Markov models (HMMs) are a way of relating a sequence of obser-
+
+vations to a sequence of hidden classes or hidden states that explain the
+
+observations.
+
+• The process of discovering the sequence of hidden states, given the sequence
+
+of observations, is known as decoding or inference. The Viterbi algorithm is
+
+commonly used for decoding.
+
+• The parameters of an HMM are the A transition probability matrix and the B
+
+observation likelihood matrix. Both can be trained with the Baum-Welch or
+
+forward-backward algorithm.
+
+Bibliographical and Historical Notes
+
+As we discussed in Chapter 8, Markov chains were ﬁrst used by Markov (1913)
+
+(translation Markov 2006), to predict whether an upcoming letter in Pushkin’s Eu-
+
+gene Onegin would be a vowel or a consonant. The hidden Markov model was de-
+
+veloped by Baum and colleagues at the Institute for Defense Analyses in Princeton
+
+(Baum and Petrie 1966, Baum and Eagon 1967).
+
+The Viterbi algorithm was ﬁrst applied to speech and language processing in the
+
+context of speech recognition by Vintsyuk (1968) but has what Kruskal (1983) calls
+
+a “remarkable history of multiple independent discovery and publication”. Kruskal
+
+and others give at least the following independently-discovered variants of the algo-
+
+rithm published in four separate ﬁelds:
+
+Citation
+
+Field
+
+Viterbi (1967)
+
+information theory
+
+Vintsyuk (1968)
+
+speech processing
+
+Needleman and Wunsch (1970) molecular biology
+
+Sakoe and Chiba (1971)
+
+speech processing
+
+Sankoff (1972)
+
+molecular biology
+
+Reichert et al. (1973)
+
+molecular biology
+
+Wagner and Fischer (1974)
+
+computer science
+
+The use of the term Viterbi is now standard for the application of dynamic pro-
+
+gramming to any kind of probabilistic maximization problem in speech and language
+
+processing. For non-probabilistic problems (such as for minimum edit distance), the
+
+plain term dynamic programming is often used. Forney, Jr. (1973) wrote an early
+
+survey paper that explores the origin of the Viterbi algorithm in the context of infor-
+
+mation and communications theory.
+
+Our presentation of the idea that hidden Markov models should be characterized
+
+by three fundamental problems was modeled after an inﬂuential tutorial by Rabiner
+
+(1989), which was itself based on tutorials by Jack Ferguson of IDA in the 1960s.
+
+Jelinek (1997) and Rabiner and Juang (1993) give very complete descriptions of the
+
+forward-backward algorithm as applied to the speech recognition problem. Jelinek
+
+(1997) also shows the relationship between forward-backward and EM.
+
+
+Bibliographical and Historical Notes
+
+17
+
+Baum, L. E. 1972. An inequality and associated maximiza-
+
+tion technique in statistical estimation for probabilistic
+
+functions of Markov processes.
+
+Inequalities III: Pro-
+
+ceedings of the 3rd Symposium on Inequalities. Academic
+
+Press.
+
+Baum, L. E. and J. A. Eagon. 1967. An inequality with appli-
+
+cations to statistical estimation for probabilistic functions
+
+of Markov processes and to a model for ecology. Bulletin
+
+of the American Mathematical Society, 73(3):360–363.
+
+Baum, L. E. and T. Petrie. 1966. Statistical inference for
+
+probabilistic functions of ﬁnite-state Markov chains. An-
+
+nals of Mathematical Statistics, 37(6):1554–1563.
+
+Dempster, A. P., N. M. Laird, and D. B. Rubin. 1977. Max-
+
+imum likelihood from incomplete data via the EM algo-
+
+rithm. Journal of the Royal Statistical Society, 39(1):1–
+
+21.
+
+Eisner, J. 2002.
+
+An interactive spreadsheet for teaching
+
+the forward-backward algorithm.
+
+Proceedings of the
+
+ACL Workshop on Effective Tools and Methodologies for
+
+Teaching NLP and CL.
+
+Forney, Jr., G. D. 1973. The Viterbi algorithm. Proceedings
+
+of the IEEE, 61(3):268–278.
+
+Jelinek, F. 1997. Statistical Methods for Speech Recognition.
+
+MIT Press.
+
+Kruskal, J. B. 1983.
+
+An overview of sequence compar-
+
+ison.
+
+In D. Sankoff and J. B. Kruskal, editors, Time
+
+Warps, String Edits, and Macromolecules:
+
+The The-
+
+ory and Practice of Sequence Comparison, pages 1–44.
+
+Addison-Wesley.
+
+Markov, A. A. 1913. Essai d’une recherche statistique sur
+
+le texte du roman “Eugene Onegin” illustrant la liaison
+
+des epreuve en chain (‘Example of a statistical investiga-
+
+tion of the text of “Eugene Onegin” illustrating the de-
+
+pendence between samples in chain’). Izvistia Impera-
+
+torskoi Akademii Nauk (Bulletin de l’Acad´emie Imp´eriale
+
+des Sciences de St.-P´etersbourg), 7:153–162.
+
+Markov, A. A. 2006.
+
+Classical text in translation: A. A.
+
+Markov, an example of statistical investigation of the text
+
+Eugene Onegin concerning the connection of samples in
+
+chains. Science in Context, 19(4):591–600. Translated by
+
+David Link.
+
+Needleman, S. B. and C. D. Wunsch. 1970.
+
+A general
+
+method applicable to the search for similarities in the
+
+amino-acid sequence of two proteins. Journal of Molec-
+
+ular Biology, 48:443–453.
+
+Rabiner, L. R. 1989. A tutorial on hidden Markov models
+
+and selected applications in speech recognition. Proceed-
+
+ings of the IEEE, 77(2):257–286.
+
+Rabiner, L. R. and B. H. Juang. 1993.
+
+Fundamentals of
+
+Speech Recognition. Prentice Hall.
+
+Reichert, T. A., D. N. Cohen, and A. K. C. Wong. 1973.
+
+An application of information theory to genetic mutations
+
+and the matching of polypeptide sequences. Journal of
+
+Theoretical Biology, 42:245–261.
+
+Sakoe, H. and S. Chiba. 1971.
+
+A dynamic programming
+
+approach to continuous speech recognition. Proceedings
+
+of the Seventh International Congress on Acoustics, vol-
+
+ume 3. Akad´emiai Kiad´o.
+
+Sankoff, D. 1972.
+
+Matching sequences under deletion-
+
+insertion constraints.
+
+Proceedings of the National
+
+Academy of Sciences, 69:4–6.
+
+Vintsyuk, T. K. 1968. Speech discrimination by dynamic
+
+programming. Cybernetics, 4(1):52–57. Russian Kiber-
+
+netika 4(1):81-88. 1968.
+
+Viterbi, A. J. 1967. Error bounds for convolutional codes and
+
+an asymptotically optimum decoding algorithm.
+
+IEEE
+
+Transactions on Information Theory, IT-13(2):260–269.
+
+Wagner, R. A. and M. J. Fischer. 1974. The string-to-string
+
+correction problem. Journal of the ACM, 21:168–173.
+

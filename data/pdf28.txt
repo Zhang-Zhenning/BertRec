@@ -1,0 +1,4795 @@
+
+Chapter 7
+
+EM Algorithms for Text
+
+Processing
+
+Until the end of the 1980s, text processing systems tended to rely on large
+
+numbers of manually written rules to analyze, annotate, and transform text
+
+input, usually in a deterministic way. This rule-based approach can be appeal-
+
+ing: a system’s behavior can generally be understood and predicted precisely,
+
+and, when errors surface, they can be corrected by writing new rules or reﬁning
+
+old ones. However, rule-based systems suﬀer from a number of serious prob-
+
+lems. They are brittle with respect to the natural variation found in language,
+
+and developing systems that can deal with inputs from diverse domains is very
+
+labor intensive. Furthermore, when these systems fail, they often do so catas-
+
+trophically, unable to oﬀer even a “best guess” as to what the desired analysis
+
+of the input might be.
+
+In the last 20 years, the rule-based approach has largely been abandoned in
+
+favor of more data-driven methods, where the “rules” for processing the input
+
+are inferred automatically from large corpora of examples, called training data.
+
+The basic strategy of the data-driven approach is to start with a processing
+
+algorithm capable of capturing how any instance of the kinds of inputs (e.g.,
+
+sentences or emails) can relate to any instance of the kinds of outputs that
+
+the ﬁnal system should produce (e.g., the syntactic structure of the sentence
+
+or a classiﬁcation of the email as spam). At this stage, the system can be
+
+thought of as having the potential to produce any output for any input, but
+
+they are not distinguished in any way. Next, a learning algorithm is applied
+
+which reﬁnes this process based on the training data—generally attempting to
+
+make the model perform as well as possible at predicting the examples in the
+
+training data. The learning process, which often involves iterative algorithms,
+
+typically consists of activities like ranking rules, instantiating the content of
+
+rule templates, or determining parameter settings for a given model. This is
+
+known as machine learning, an active area of research.
+
+Data-driven approaches have turned out to have several beneﬁts over rule-
+
+based approaches to system development. Since data-driven systems can be
+
+113
+
+
+trained using examples of the kind that they will eventually be used to process,
+
+they tend to deal with the complexities found in real data more robustly than
+
+rule-based systems do. Second, developing training data tends to be far less
+
+expensive than developing rules. For some applications, signiﬁcant quantities of
+
+training data may even exist for independent reasons (e.g., translations of text
+
+into multiple languages are created by authors wishing to reach an audience
+
+speaking diﬀerent languages, not because they are generating training data
+
+for a data-driven machine translation system). These advantages come at the
+
+cost of systems that often behave internally quite diﬀerently than a human-
+
+engineered system. As a result, correcting errors that the trained system makes
+
+can be quite challenging.
+
+Data-driven information processing systems can be constructed using a va-
+
+riety of mathematical techniques, but in this chapter we focus on statistical
+
+models, which probabilistically relate inputs from an input set X (e.g., sen-
+
+tences, documents, etc.), which are always observable, to annotations from a
+
+set Y, which is the space of possible annotations or analyses that the sys-
+
+tem should predict.
+
+This model may take the form of either a joint model
+
+Pr(x, y) which assigns a probability to every pair ⟨x, y⟩ ∈ X × Y or a con-
+
+ditional model Pr(y|x), which assigns a probability to every y ∈ Y, given an
+
+x ∈ X. For example, to create a statistical spam detection system, we might
+
+have Y = {Spam, NotSpam} and X be the set of all possible email messages.
+
+For machine translation, X might be the set of Arabic sentences and Y the set
+
+of English sentences.1
+
+There are three closely related, but distinct challenges in statistical text-
+
+processing. The ﬁrst is model selection. This entails selecting a representation
+
+of a joint or conditional distribution over the desired X and Y. For a problem
+
+where X and Y are very small, one could imagine representing these probabil-
+
+ities in look-up tables. However, for something like email classiﬁcation or ma-
+
+chine translation, where the model space is inﬁnite, the probabilities cannot be
+
+represented directly, and must be computed algorithmically. As an example of
+
+such models, we introduce hidden Markov models (HMMs), which deﬁne a joint
+
+distribution over sequences of inputs and sequences of annotations. The second
+
+challenge is parameter estimation or learning, which involves the application of
+
+a optimization algorithm and training criterion to select the parameters of the
+
+model to optimize the model’s performance (with respect to the given training
+
+criterion) on the training data.2 The parameters of a statistical model are the
+
+values used to compute the probability of some event described by the model.
+
+In this chapter we will focus on one particularly simple training criterion for
+
+1In this chapter, we will consider discrete models only. They tend to be suﬃcient for
+
+text processing, and their presentation is simpler than models with continuous densities. It
+
+should be kept in mind that the sets X and Y may still be countably inﬁnite.
+
+2We restrict our discussion in this chapter to models with ﬁnite numbers of parameters
+
+and where the learning process refers to setting those parameters. Inference in and learning
+
+of so-called nonparameteric models, which have an inﬁnite number of parameters and have
+
+become important statistical models for text processing in recent years, is beyond the scope
+
+of this chapter.
+
+
+parameter estimation, maximum likelihood estimation, which says to select the
+
+parameters that make the training data most probable under the model, and
+
+one learning algorithm that attempts to meet this criterion, called expectation
+
+maximization (EM). The ﬁnal challenge for statistical modeling is the problem
+
+of decoding, or, given some x, using the model to select an annotation y. One
+
+very common strategy is to select y according to the following criterion:
+
+y∗ = arg max
+
+y∈Y Pr(y|x)
+
+(7.1)
+
+In a conditional (or direct) model, this is a straightforward search for the best
+
+y under the model. In a joint model, the search is also straightforward, on
+
+account of the deﬁnition of conditional probability:
+
+y∗ = arg max
+
+y∈Y Pr(y|x) = arg max
+
+y∈Y
+
+Pr(x, y)
+
+�
+
+y′ Pr(x, y′) = arg max
+
+y∈Y Pr(x, y)
+
+(7.2)
+
+The speciﬁc form that the search takes will depend on how the model is rep-
+
+resented. Our focus in this chapter will primarily be on the second problem:
+
+learning parameters for models, but we will touch on the third problem as well.
+
+Machine learning is often categorized as either supervised or unsupervised.
+
+Supervised learning of statistical models simply means that the model pa-
+
+rameters are estimated from training data consisting of pairs of inputs and
+
+annotations, that is Z = ⟨⟨x1, y1⟩, ⟨x2, y2⟩, . . .⟩ where ⟨xi, yi⟩ ∈ X × Y and yi
+
+is the gold standard (i.e., correct) annotation of xi. While supervised mod-
+
+els often attain quite good performance, they are often uneconomical to use,
+
+since the training data requires each object that is to be classiﬁed (to pick a
+
+speciﬁc task), xi to be paired with its correct label, yi. In many cases, these
+
+gold standard training labels must be generated by a process of expert annota-
+
+tion, meaning that each xi must be manually labeled by a trained individual.
+
+Even when the annotation task is quite simple for people to carry out (e.g.,
+
+in the case of spam detection), the number of potential examples that could
+
+be classiﬁed (representing a subset of X, which may of course be inﬁnite in
+
+size) will far exceed the amount of data that can be annotated. As the an-
+
+notation task becomes more complicated (e.g., when predicting more complex
+
+structures such as sequences of labels or when the annotation task requires
+
+specialized expertise), annotation becomes far more challenging.
+
+Unsupervised learning, on the other hand, requires only that the training
+
+data consist of a representative collection of objects that should be annotated,
+
+that is Z = ⟨x1, x2, . . .⟩ where xi ∈ X, but without any example annotations.
+
+While it may at ﬁrst seem counterintuitive that meaningful annotations can
+
+be learned without any examples of the desired annotations being given, the
+
+learning criteria and model structure (which crucially deﬁne the space of pos-
+
+sible annotations Y and the process by which annotations relate to observable
+
+inputs) make it possible to induce annotations by relying on regularities in the
+
+unclassiﬁed training instances. While a thorough discussion of unsupervised
+
+learning is beyond the scope of this book, we focus on a particular class of
+
+
+algorithms—expectation maximization (EM) algorithms—that can be used to
+
+learn the parameters of a joint model Pr(x, y) from incomplete data (i.e., data
+
+where some of the variables in the model cannot be observed; in the case of
+
+unsupervised learning, the yi’s are unobserved).
+
+Expectation maximization
+
+algorithms ﬁt naturally into the MapReduce paradigm, and are used to solve
+
+a number of problems of interest in text processing. Furthermore, these al-
+
+gorithms can be quite computationally expensive, since they generally require
+
+repeated evaluations of the training data. MapReduce therefore provides an
+
+opportunity not only to scale to larger amounts of data, but also to improve
+
+eﬃciency bottlenecks at scales where non-parallel solutions could be utilized.
+
+This chapter is organized as follows. In Section 7.1, we describe maximum
+
+likelihood estimation for statistical models, show how this is generalized to
+
+models where not all variables are observable, and then introduce expecta-
+
+tion maximization (EM). We describe hidden Markov models (HMMs) in Sec-
+
+tion 7.2, a very versatile class of models that uses EM for parameter estimation.
+
+Section 7.3 discusses how EM algorithms can be expressed in MapReduce, and
+
+then in Section 7.4 we look at a case study of word alignment for statistical
+
+machine translation. Section 7.5 examines similar algorithms that are appro-
+
+priate for supervised learning tasks. This chapter concludes with a summary
+
+and pointers to additional readings.
+
+7.1
+
+Expectation Maximization
+
+Expectation maximization (EM) algorithms [49] are a family of iterative op-
+
+timization algorithms for learning probability distributions from incomplete
+
+data. They are extensively used in statistical natural language processing where
+
+one seeks to infer latent linguistic structure from unannotated text. To name
+
+just a few applications, EM algorithms have been used to ﬁnd part-of-speech
+
+sequences, constituency and dependency trees, alignments between texts in dif-
+
+ferent languages, alignments between acoustic signals and their transcriptions,
+
+as well as for numerous other clustering and structure discovery problems.
+
+Expectation maximization generalizes the principle of maximum likelihood
+
+estimation to the case where the values of some variables are unobserved (specif-
+
+ically, those characterizing the latent structure that is sought).
+
+Maximum Likelihood Estimation
+
+Maximum likelihood estimation (MLE) is a criterion for ﬁtting the parameters
+
+θ of a statistical model to some given data x. Speciﬁcally, it says to select the
+
+parameter settings θ∗ such that the likelihood of observing the training data
+
+given the model is maximized:
+
+θ∗ = arg max
+
+θ
+
+Pr(X = x; θ)
+
+(7.3)
+
+To illustrate, consider the simple marble game shown in Figure 7.1. In this
+
+game, a marble is released at the position indicated by the black dot, and it
+
+
+
+
+
+
+
+
+a 
+
+
+
+
+
+
+
+b 
+
+
+
+0 
+
+1 
+
+
+
+Figure	  6.1:	  A	  simple	  marble	  game	  where	  a	  released	  marble	  takes	  one	  of	  two	  possible	  paths.	  
+
+This	  game	  can	  be	  modeled	  using	  a	  Bernoulli	  random	  variable	  with	  parameter	  p,	  which	  indicates	  
+
+the	  probability	  that	  the	  marble	  will	  go	  to	  the	  right	  when	  it	  hits	  the	  peg.	  
+
+Figure 7.1: A simple marble game where a released marble takes one of two
+
+possible paths. This game can be modeled using a Bernoulli random variable
+
+with parameter p, which indicates the probability that the marble will go to
+
+the right when it hits the peg.
+
+bounces down into one of the cups at the bottom of the board, being diverted
+
+to the left or right by the peg (indicated by a triangle) in the center. Our
+
+task is to construct a model that predicts which cup the ball will drop into. A
+
+“rule-based” approach might be to take exact measurements of the board and
+
+construct a physical model that we can use to predict the behavior of the ball.
+
+Given sophisticated enough measurements, this could certainly lead to a very
+
+accurate model. However, the construction of this model would be quite time
+
+consuming and diﬃcult.
+
+A statistical approach, on the other hand, might be to assume that the
+
+behavior of the marble in this game can be modeled using a Bernoulli random
+
+variable Y with parameter p. That is, the value of the random variable indicates
+
+whether path 0 or 1 is taken. We also deﬁne a random variable X whose value is
+
+the label of the cup that the marble ends up in; note that X is deterministically
+
+related to Y , so an observation of X is equivalent to an observation of Y .
+
+To estimate the parameter p of the statistical model of our game, we need
+
+some training data, so we drop 10 marbles into the game which end up in cups
+
+x = ⟨b, b, b, a, b, b, b, b, b, a⟩.
+
+What is the maximum likelihood estimate of p given this data? By assuming
+
+that our samples are independent and identically distributed (i.i.d.), we can
+
+write the likelihood of our data as follows:3
+
+Pr(x; p) =
+
+10
+
+�
+
+j=1
+
+pδ(xj,a)(1 − p)δ(xj,b)
+
+(7.4)
+
+= p2 · (1 − p)8
+
+(7.5)
+
+3In this equation, δ is the Kroneker delta function which evaluates to 1 where its argu-
+
+ments are equal and 0 otherwise.
+
+
+Since log is a monotonically increasing function, maximizing log Pr(x; p) will
+
+give us the desired result. We can do this diﬀerentiating with respect to p and
+
+ﬁnding where the resulting expression equals 0:
+
+d log Pr(x; p)
+
+dp
+
+= 0
+
+(7.6)
+
+d[2 · log p + 8 · log(1 − p)]
+
+dp
+
+= 0
+
+(7.7)
+
+2
+
+p −
+
+8
+
+1 − p = 0
+
+(7.8)
+
+Solving for p yields 0.2, which is the intuitive result. Furthermore, it is straight-
+
+forward to show that in N trials where N0 marbles followed path 0 to cup a,
+
+and N1 marbles followed path 1 to cup b, the maximum likelihood estimate of
+
+p is N1/(N0 + N1).
+
+While this model only makes use of an approximation of the true physical
+
+process at work when the marble interacts with the game board, it is an em-
+
+pirical question whether the model works well enough in practice to be useful.
+
+Additionally, while a Bernoulli trial is an extreme approximation of the physi-
+
+cal process, if insuﬃcient resources were invested in building a physical model,
+
+the approximation may perform better than the more complicated “rule-based”
+
+model. This sort of dynamic is found often in text processing problems: given
+
+enough data, astonishingly simple models can outperform complex knowledge-
+
+intensive models that attempt to simulate complicated processes.
+
+A Latent Variable Marble Game
+
+To see where latent variables might come into play in modeling, consider a
+
+more complicated variant of our marble game shown in Figure 7.2. This version
+
+consists of three pegs that inﬂuence the marble’s path, and the marble may
+
+end up in one of three cups. Note that both paths 1 and 2 lead to cup b.
+
+To construct a statistical model of this game, we again assume that the
+
+behavior of a marble interacting with a peg can be modeled with a Bernoulli
+
+random variable. Since there are three pegs, we have three random variables
+
+with parameters θ = ⟨p0, p1, p2⟩, corresponding to the probabilities that the
+
+marble will go to the right at the top, left, and right pegs. We further deﬁne
+
+a random variable X taking on values from {a, b, c} indicating what cup the
+
+marble ends in, and Y , taking on values from {0, 1, 2, 3} indicating which path
+
+was taken. Note that the full joint distribution Pr(X = x, Y = y) is determined
+
+by θ.
+
+How should the parameters θ be estimated? If it were possible to observe
+
+the paths taken by marbles as they were dropped into the game, it would be
+
+trivial to estimate the parameters for our model using the maximum likelihood
+
+estimator—we would simply need to count the number of times the marble
+
+bounced left or right at each peg. If Nx counts the number of times a marble
+
+took path x in N trials, this is:
+
+
+
+
+
+
+
+
+a 
+
+
+
+
+
+
+
+b 
+
+
+
+0 
+
+
+
+
+
+
+
+c 
+
+1 2 
+
+3 
+
+
+
+
+
+
+
+
+
+
+
+Figure	  6.2:	  A	  more	  complicated	  marble	  game	  where	  the	  released	  marble	  takes	  one	  of	  four	  
+
+possible	  paths.	  We	  assume	  that	  we	  can	  only	  observe	  which	  cup	  the	  marble	  ends	  up	  in,	  not	  
+
+the	  speciﬁc	  path	  taken.	  
+
+Figure 7.2: A more complicated marble game where the released marble takes
+
+one of four possible paths. We assume that we can only observe which cup the
+
+marble ends up in, not the speciﬁc path taken.
+
+p0 = N2 + N3
+
+N
+
+p1 =
+
+N1
+
+N0 + N1
+
+p2 =
+
+N3
+
+N2 + N3
+
+(7.9)
+
+However, we wish to consider the case where the paths taken are unobservable
+
+(imagine an opaque sheet covering the center of the game board), but where
+
+we can see what cup a marble ends in. In other words, we want to consider the
+
+case where we have partial data. This is exactly the problem encountered in
+
+unsupervised learning: there is a statistical model describing the relationship
+
+between two sets of variables (X’s and Y ’s), and there is data available from just
+
+one of them. Furthermore, such algorithms are quite useful in text processing,
+
+where latent variables may describe latent linguistic structures of the observed
+
+variables, such as parse trees or part-of-speech tags, or alignment structures
+
+relating sets of observed variables (see Section 7.4).
+
+MLE with Latent Variables
+
+Formally, we consider the problem of estimating parameters for statistical mod-
+
+els of the form Pr(X, Y ; θ) which describe not only an observable variable X
+
+but a latent, or hidden, variable Y .
+
+In these models, since only the values of the random variable X are ob-
+
+servable, we deﬁne our optimization criterion to be the maximization of the
+
+marginal likelihood, that is, summing over all settings of the latent variable Y ,
+
+which takes on values from set designated Y:4 Again, we assume that samples
+
+4For this description, we assume that the variables in our model take on discrete values.
+
+Not only does this simplify exposition, but discrete models are widely used in text processing.
+
+
+in the training data x are i.i.d.:
+
+Pr(X = x) =
+
+�
+
+y∈Y
+
+Pr(X = x, Y = y; θ)
+
+(7.10)
+
+For a vector of training observations x = ⟨x1, x2, . . . , xℓ⟩, if we assume the
+
+samples are i.i.d.:
+
+Pr(x; θ) =
+
+|x|
+
+�
+
+j=1
+
+�
+
+y∈Y
+
+Pr(X = xj, Y = y; θ)
+
+(7.11)
+
+Thus, the maximum (marginal) likelihood estimate of the model parameters
+
+θ∗ given a vector of i.i.d. observations x becomes:
+
+θ∗ = arg max
+
+θ
+
+|x|
+
+�
+
+j=1
+
+�
+
+y∈Y
+
+Pr(X = xj, Y = y; θ)
+
+(7.12)
+
+Unfortunately, in many cases, this maximum cannot be computed analytically,
+
+but the iterative hill-climbing approach of expectation maximization can be
+
+used instead.
+
+Expectation Maximization
+
+Expectation maximization (EM) is an iterative algorithm that ﬁnds a successive
+
+series of parameter estimates θ(0), θ(1), . . . that improve the marginal likelihood
+
+of the training data. That is, EM guarantees:
+
+|x|
+
+�
+
+j=1
+
+�
+
+y∈Y
+
+Pr(X = xj, Y = y; θ(i+1)) ≥
+
+|x|
+
+�
+
+j=1
+
+�
+
+y∈Y
+
+Pr(X = xj, Y = y; θ(i))
+
+(7.13)
+
+The algorithm starts with some initial set of parameters θ(0) and then updates
+
+them using two steps: expectation (E-step), which computes the posterior dis-
+
+tribution over the latent variables given the observable data x and a set of
+
+parameters θ(i),5 and maximization (M-step), which computes new parameters
+
+θ(i+1) maximizing the expected log likelihood of the joint distribution with re-
+
+spect to the distribution computed in the E-step. The process then repeats
+
+with these new parameters.
+
+The algorithm terminates when the likelihood
+
+remains unchanged.6 In more detail, the steps are as follows:
+
+5The term ‘expectation’ is used since the values computed in terms of the posterior
+
+distribution Pr(y|x; θ(i)) that are required to solve the M-step have the form of an expectation
+
+(with respect to this distribution).
+
+6The ﬁnal solution is only guaranteed to be a local maximum, but if the model is fully
+
+convex, it will also be the global maximum.
+
+
+E-step.
+
+Compute the posterior probability of each possible hidden variable
+
+assignments y ∈ Y for each x ∈ X and the current parameter settings, weighted
+
+by the relative frequency with which x occurs in x. Call this q(X = x, Y =
+
+y; θ(i)) and note that it deﬁnes a joint probability distribution over X × Y in
+
+that �
+
+(x,y)∈X×Y q(x, y) = 1.
+
+q(x, y; θ(i)) = f(x|x) · Pr(Y = y|X = x; θ(i))
+
+(7.14)
+
+= f(x|x) ·
+
+Pr(x, y; θ(i))
+
+�
+
+y′ Pr(x, y′; θ(i))
+
+(7.15)
+
+M-step.
+
+Compute new parameter settings that maximize the expected log
+
+of the probability of the joint distribution under the q-distribution that was
+
+computed in the E-step:
+
+θ(i+1) = arg max
+
+θ′
+
+Eq(X=x,Y =y;θ(i)) log Pr(X = x, Y = y; θ′)
+
+(7.16)
+
+= arg max
+
+θ′
+
+�
+
+(x,y)∈X×Y
+
+q(X = x, Y = y; θ(i)) · log Pr(X = x, Y = y; θ′)r
+
+(7.17)
+
+We omit the proof that the model with parameters θ(i+1) will have equal or
+
+greater marginal likelihood on the training data than the model with parame-
+
+ters θ(i), but this is provably true [78].
+
+Before continuing, we note that the eﬀective application of expectation
+
+maximization requires that both the E-step and the M-step consist of tractable
+
+computations. Speciﬁcally, summing over the space of hidden variable assign-
+
+ments must not be intractable. Depending on the independence assumptions
+
+made in the model, this may be achieved through techniques such as dynamic
+
+programming. However, some models may require intractable computations.
+
+An EM Example
+
+Let’s look at how to estimate the parameters from our latent variable marble
+
+game from Section 7.1 using EM. We assume training data x consisting of
+
+N = |x| observations of X with Na, Nb, and Nc indicating the number of
+
+marbles ending in cups a, b, and c. We start with some parameters θ(0) =
+
+⟨p(0)
+
+0 , p(0)
+
+1 , p(0)
+
+2 ⟩ that have been randomly initialized to values between 0 and 1.
+
+E-step.
+
+We need to compute the distribution q(X = x, Y = y; θ(i)), as de-
+
+ﬁned above. We ﬁrst note that the relative frequency f(x|x) is:
+
+f(x|x) = Nx
+
+N
+
+(7.18)
+
+Next, we observe that Pr(Y = 0|X = a) = 1 and Pr(Y = 3|X = c) = 1 since
+
+cups a and c fully determine the value of the path variable Y . The posterior
+
+
+probability of paths 1 and 2 are only non-zero when X is b:
+
+Pr(1|b; θ(i)) =
+
+(1 − p(i)
+
+0 )p(i)
+
+1
+
+(1 − p(i)
+
+0 )p(i)
+
+1 + p(i)
+
+0 (1 − p(i)
+
+2 )
+
+(7.19)
+
+Pr(2|b; θ(i)) =
+
+p(i)
+
+0 (1 − p(i)
+
+2 )
+
+(1 − p(i)
+
+0 )p(i)
+
+1 + p(i)
+
+0 (1 − p(i)
+
+2 )
+
+(7.20)
+
+Except for the four cases just described, Pr(Y = y|X = x) is zero for all other
+
+values of x and y (regardless of the value of the parameters).
+
+M-step.
+
+We now need to maximize the expectation of log Pr(X, Y ; θ′) (which
+
+will be a function in terms of the three parameter variables) under the q-
+
+distribution we computed in the E step. The non-zero terms in the expectation
+
+are as follows:
+
+x
+
+y
+
+q(X = x, Y = y; θ(i))
+
+log Pr(X = x, Y = y; θ′)
+
+a
+
+0
+
+Na/N
+
+log(1 − p′
+
+0) + log(1 − p′
+
+1)
+
+b
+
+1
+
+Nb/N · Pr(1|b; θ(i))
+
+log(1 − p′
+
+0) + log p′
+
+1
+
+b
+
+2
+
+Nb/N · Pr(2|b; θ(i))
+
+log p′
+
+0 + log(1 − p′
+
+2)
+
+c
+
+3
+
+Nc/N
+
+log p′
+
+0 + log p′
+
+2
+
+Multiplying across each row and adding from top to bottom yields the expec-
+
+tation we wish to maximize. Each parameter can be optimized independently
+
+using diﬀerentiation. The resulting optimal values are expressed in terms of
+
+the counts in x and θ(i):
+
+p0 = Pr(2|b; θ(i)) · Nb + Nc
+
+N
+
+(7.21)
+
+p1 =
+
+Pr(1|b; θ(i)) · Nb
+
+Na + Pr(1|b; θ(i)) · Nb
+
+(7.22)
+
+p2 =
+
+Nc
+
+Pr(2|b; θ(i)) · Nb + Nc
+
+(7.23)
+
+It is worth noting that the form of these expressions is quite similar to the
+
+fully observed maximum likelihood estimate. However, rather than depending
+
+on exact path counts, the statistics used are the expected path counts, given x
+
+and parameters θ(i).
+
+Typically, the values computed at the end of the M-step would serve as
+
+new parameters for another iteration of EM. However, the example we have
+
+presented here is quite simple and the model converges to a global optimum
+
+after a single iteration. For most models, EM requires several iterations to
+
+converge, and it may not ﬁnd a global optimum. And since EM only ﬁnds a
+
+locally optimal solution, the ﬁnal parameter values depend on the values chose
+
+for θ(0).
+
+
+7.2
+
+Hidden Markov Models
+
+To give a more substantial and useful example of models whose parameters may
+
+be estimated using EM, we turn to hidden Markov models (HMMs). HMMs
+
+are models of data that are ordered sequentially (temporally, from left to right,
+
+etc.), such as words in a sentence, base pairs in a gene, or letters in a word.
+
+These simple but powerful models have been used in applications as diverse as
+
+speech recognition [78], information extraction [139], gene ﬁnding [143], part
+
+of speech tagging [44], stock market forecasting [70], text retrieval [108], and
+
+word alignment of parallel (translated) texts [150] (more in Section 7.4).
+
+In an HMM, the data being modeled is posited to have been generated from
+
+an underlying Markov process, which is a stochastic process consisting of a ﬁnite
+
+set of states where the probability of entering a state at time t+1 depends only
+
+on the state of the process at time t [130]. Alternatively, one can view a Markov
+
+process as a probabilistic variant of a ﬁnite state machine, where transitions
+
+are taken probabilistically.
+
+As another point of comparison, the PageRank
+
+algorithm considered in the previous chapter (Section 5.3) can be understood
+
+as a Markov process: the probability of following any link on a particular page
+
+is independent of the path taken to reach that page. The states of this Markov
+
+process are, however, not directly observable (i.e., hidden). Instead, at each
+
+time step, an observable token (e.g., a word, base pair, or letter) is emitted
+
+according to a probability distribution conditioned on the identity of the state
+
+that the underlying process is in.
+
+A hidden Markov model M is deﬁned as a tuple ⟨S, O, θ⟩. S is a ﬁnite
+
+set of states, which generate symbols from a ﬁnite observation vocabulary O.
+
+Following convention, we assume that variables q, r, and s refer to states in
+
+S, and o refers to symbols in the observation vocabulary O. This model is
+
+parameterized by the tuple θ = ⟨A, B, π⟩ consisting of an |S| × |S| matrix A
+
+of transition probabilities, where Aq(r) gives the probability of transitioning
+
+from state q to state r; an |S| × |O| matrix B of emission probabilities, where
+
+Bq(o) gives the probability that symbol o will be emitted from state q; and an
+
+|S|-dimensional vector π, where πq is the probability that the process starts
+
+in state q.7 These matrices may be dense, but for many applications sparse
+
+parameterizations are useful. We further stipulate that Aq(r) ≥ 0, Bq(o) ≥ 0,
+
+and πq ≥ 0 for all q, r, and o, as well as that:
+
+�
+
+r∈S
+
+Aq(r) = 1 ∀q
+
+�
+
+o∈O
+
+Bq(o) = 1 ∀q
+
+�
+
+q∈S
+
+πq = 1
+
+(7.24)
+
+A sequence of observations of length τ is generated as follows:
+
+Step 0, let t = 1 and select an initial state q according to the distribution
+
+π.
+
+7This is only one possible deﬁnition of an HMM, but it is one that is useful for many
+
+text processing problems. In alternative deﬁnitions, initial and ﬁnal states may be handled
+
+diﬀerently, observations may be emitted during the transition between states, or continuous-
+
+valued observations may be emitted (for example, from a Gaussian distribution).
+
+
+Step 1, an observation symbol from O is emitted according to the distri-
+
+bution Bq.
+
+Step 2, a new q is drawn according to the distribution Aq.
+
+Step 3, t is incremented, and if t ≤ τ, the process repeats from Step 1.
+
+Since all events generated by this process are conditionally independent, the
+
+joint probability of this sequence of observations and the state sequence used
+
+to generate it is the product of the individual event probabilities.
+
+Figure 7.3 shows a simple example of a hidden Markov model for part-of-
+
+speech tagging, which is the task of assigning to each word in an input sentence
+
+its grammatical category (one of the ﬁrst steps in analyzing textual content).
+
+States S = {det, adj, nn, v} correspond to the parts of speech (determiner,
+
+adjective, noun, and verb), and observations O = {the, a, green, . . .} are a
+
+subset of English words. This example illustrates a key intuition behind many
+
+applications of HMMs: states correspond to equivalence classes or clustering of
+
+observations, and a single observation type may associated with several clusters
+
+(in this example, the word watch can be generated by an nn or v, since wash
+
+can either be a noun or a verb).
+
+Three Questions for Hidden Markov Models
+
+There are three fundamental questions associated with hidden Markov models:8
+
+1. Given a model M = ⟨S, O, θ⟩, and an observation sequence of symbols
+
+from O, x = ⟨x1, x2, . . . , xτ⟩, what is the probability that M generated
+
+the data (summing over all possible state sequences, Y)?
+
+Pr(x) =
+
+�
+
+y∈Y
+
+Pr(x, y; θ)
+
+(7.25)
+
+2. Given a model M = ⟨S, O, θ⟩ and an observation sequence x, what is the
+
+most likely sequence of states that generated the data?
+
+y∗ = arg max
+
+y∈Y Pr(x, y; θ)
+
+(7.26)
+
+3. Given a set of states S, an observation vocabulary O, and a series of
+
+ℓ i.i.d. observation sequences ⟨x1, x2, . . . , xℓ⟩, what are the parameters
+
+θ = ⟨A, B, π⟩ that maximize the likelihood of the training data?
+
+θ∗ = arg max
+
+θ
+
+ℓ
+
+�
+
+i=1
+
+�
+
+y∈Y
+
+Pr(xi, y; θ)
+
+(7.27)
+
+8The organization of this section is based in part on ideas from Lawrence Rabiner’s HMM
+
+tutorial [125].
+
+
+
+
+
+
+
+
+
+
+DET 
+
+
+
+
+
+NN 
+
+
+
+
+
+ADJ 
+
+
+
+
+
+V 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+DET ADJ NN 
+
+V 
+
+DET 0.0 
+
+0.0 
+
+0.0 
+
+0.5 
+
+ADJ 0.3 
+
+0.2 
+
+0.1 
+
+0.2 
+
+NN 0.7 
+
+0.7 
+
+0.4 
+
+0.2 
+
+V 0.0 
+
+0.1 
+
+0.5 
+
+0.1 
+
+Transition Probabilities: 
+
+DET ADJ NN 
+
+V 
+
+0.5 
+
+0.1 
+
+0.3 
+
+0.1 
+
+Initial Probabilities: 
+
+V 
+
+might 
+
+0.2 
+
+watch 
+
+0.3 
+
+watches 
+
+0.2 
+
+loves 
+
+0.1 
+
+reads 
+
+0.19 
+
+books 
+
+0.01 
+
+NN 
+
+book 
+
+0.3 
+
+plants 
+
+0.2 
+
+people 
+
+0.2 
+
+person 
+
+0.1 
+
+John 
+
+0.1 
+
+watch 
+
+0.1 
+
+ADJ 
+
+green 
+
+0.1 
+
+big 
+
+0.4 
+
+old 
+
+0.4 
+
+might 
+
+0.1 
+
+DET 
+
+the 
+
+0.7 
+
+a 
+
+0.3 
+
+Emission Probabilities: 
+
+Examples: 
+
+John 
+
+might watch 
+
+NN 
+
+V 
+
+V 
+
+the 
+
+old  person loves 
+
+big 
+
+books 
+
+DET 
+
+ADJ 
+
+NN 
+
+V 
+
+ADJ 
+
+NN 
+
+Figure 7.3: An example HMM that relates part-of-speech tags to vocabulary
+
+items in an English-like language. Possible (probability &gt; 0) transitions for
+
+the Markov process are shown graphically. In the example outputs, the state
+
+sequences corresponding to the emissions are written beneath the emitted sym-
+
+bols.
+
+
+Using our deﬁnition of an HMM, the answers to the ﬁrst two questions are
+
+in principle quite trivial to compute: by iterating over all state sequences Y,
+
+the probability that each generated x can be computed by looking up and
+
+multiplying the relevant probabilities in A, B, and π, and then summing the
+
+result or taking the maximum. And, as we hinted at in the previous section,
+
+the third question can be answered using EM. Unfortunately, even with all the
+
+distributed computing power MapReduce makes available, we will quickly run
+
+into trouble if we try to use this na¨ıve strategy since there are |S|τ distinct
+
+state sequences of length τ, making exhaustive enumeration computationally
+
+intractable. Fortunately, because the underlying model behaves exactly the
+
+same whenever it is in some state, regardless of how it got to that state, we
+
+can use dynamic programming algorithms to answer all of the above questions
+
+without summing over exponentially many sequences.
+
+The Forward Algorithm
+
+Given some observation sequence, for example x = ⟨John, might, watch⟩, Ques-
+
+tion 1 asks what is the probability that this sequence was generated by an HMM
+
+M = ⟨S, O, θ⟩. For the purposes of illustration, we assume that M is deﬁned
+
+as shown in Figure 7.3.
+
+There are two ways to compute the probability of x having been generated
+
+by M. The ﬁrst is to compute the sum over the joint probability of x and every
+
+possible labeling y′ ∈ {⟨det, det, det⟩, ⟨det, det, nn⟩, ⟨det, det, v⟩, . . .}. As
+
+indicated above this is not feasible for most sequences, since the set of possible
+
+labels is exponential in the length of x. The second, fortunately, is much more
+
+eﬃcient.
+
+We can make use of what is known as the forward algorithm to compute the
+
+desired probability in polynomial time. We assume a model M = ⟨S, O, θ⟩ as
+
+deﬁned above. This algorithm works by recursively computing the answer to a
+
+related question: what is the probability that the process is in state q at time
+
+t and has generated ⟨x1, x2, . . . , xt⟩? Call this probability αt(q). Thus, αt(q)
+
+is a two dimensional matrix (of size |x| × |S|), called a trellis. It is easy to see
+
+that the values of α1(q) can be computed as the product of two independent
+
+probabilities: the probability of starting in state q and the probability of state
+
+q generating x1:
+
+α1(q) = πq · Bq(x1)
+
+(7.28)
+
+From this, it’s not hard to see that the values of α2(r) for every r can be
+
+computed in terms of the |S| values in α1(·) and the observation x2:
+
+α2(r) = Br(x2) ·
+
+�
+
+q∈S
+
+α1(q) · Aq(r)
+
+(7.29)
+
+This works because there are |S| diﬀerent ways to get to state r at time t =
+
+2: starting from state 1, 2, . . . , |S| and transitioning to state r. Furthermore,
+
+because the behavior of a Markov process is determined only by the state it is
+
+
+in at some time (not by how it got to that state), αt(r) can always be computed
+
+in terms of the |S| values in αt−1(·) and the observation xt:
+
+αt(r) = Br(xt) ·
+
+�
+
+q∈S
+
+αt−1(q) · Aq(r)
+
+(7.30)
+
+We have now shown how to compute the probability of being in any state q at
+
+any time t, having generated ⟨x1, x2, . . . , xt⟩, with the forward algorithm. The
+
+probability of the full sequence is the probability of being in time |x| and in
+
+any state, so the answer to Question 1 can be computed simply by summing
+
+over α values at time |x| for all states:
+
+Pr(x; θ) =
+
+�
+
+q∈S
+
+α|x|(q)
+
+(7.31)
+
+In summary, there are two ways of computing the probability that a sequence
+
+of observations x was generated by M: exhaustive enumeration with summing
+
+and the forward algorithm. Figure 7.4 illustrates the two possibilities. The
+
+upper panel shows the na¨ıve exhaustive approach, enumerating all 43 possible
+
+labels y′ of x and computing their joint probability Pr(x, y′). Summing over
+
+all y′, the marginal probability of x is found to be 0.00018. The lower panel
+
+shows the forward trellis, consisting of 4 × 3 cells. Summing over the ﬁnal
+
+column also yields 0.00018, the same result.
+
+The Viterbi Algorithm
+
+Given an observation sequence x, the second question we might want to ask
+
+of M is: what is the most likely sequence of states that generated the ob-
+
+servations?
+
+As with the previous question, the na¨ıve approach to solving
+
+this problem is to enumerate all possible labels and ﬁnd the one with the
+
+highest joint probability. Continuing with the example observation sequence
+
+x = ⟨John, might, watch⟩, examining the chart of probabilities in the upper
+
+panel of Figure 7.4 shows that y∗ = ⟨nn, v, v⟩ is the most likely sequence of
+
+states under our example HMM.
+
+However, a more eﬃcient answer to Question 2 can be computed using the
+
+same intuition in the forward algorithm: determine the best state sequence for a
+
+short sequence and extend this to easily compute the best sequence for longer
+
+ones. This is known as the Viterbi algorithm. We deﬁne γt(q), the Viterbi
+
+probability, to be the most probable sequence of states ending in state q at
+
+time t and generating observations ⟨x1, x2, . . . , xt⟩. Since we wish to be able to
+
+reconstruct the sequence of states, we deﬁne bpt(q), the “backpointer”, to be
+
+the state used in this sequence at time t − 1. The base case for the recursion
+
+is as follows (the state index of −1 is used as a placeholder since there is no
+
+previous best state at time t = 1):
+
+γ1(q) = πq · Bq(x1)
+
+(7.32)
+
+bp1(q) = −1
+
+(7.33)
+
+
+John	   might	  watch	  
+
+DET DET DET 0.0 
+
+DET DET ADJ 
+
+0.0 
+
+DET DET NN 
+
+0.0 
+
+DET DET V 
+
+0.0 
+
+DET ADJ 
+
+DET 0.0 
+
+DET ADJ 
+
+ADJ 
+
+0.0 
+
+DET ADJ 
+
+NN 
+
+0.0 
+
+DET ADJ 
+
+V 
+
+0.0 
+
+DET NN 
+
+DET 0.0 
+
+DET NN 
+
+ADJ 
+
+0.0 
+
+DET NN 
+
+NN 
+
+0.0 
+
+DET NN 
+
+V 
+
+0.0 
+
+DET V 
+
+DET 0.0 
+
+DET V 
+
+ADJ 
+
+0.0 
+
+DET V 
+
+NN 
+
+0.0 
+
+DET V 
+
+V 
+
+0.0 
+
+Pr(x, y)
+
+John	   might	  watch	  
+
+ADJ 
+
+DET DET 0.0 
+
+ADJ 
+
+DET ADJ 
+
+0.0 
+
+ADJ 
+
+DET NN 
+
+0.0 
+
+ADJ 
+
+DET V 
+
+0.0 
+
+ADJ 
+
+ADJ 
+
+DET 0.0 
+
+ADJ 
+
+ADJ 
+
+ADJ 
+
+0.0 
+
+ADJ 
+
+ADJ 
+
+NN 
+
+0.0 
+
+ADJ 
+
+ADJ 
+
+V 
+
+0.0 
+
+ADJ 
+
+NN 
+
+DET 0.0 
+
+ADJ 
+
+NN 
+
+ADJ 
+
+0.0 
+
+ADJ 
+
+NN 
+
+NN 
+
+0.0 
+
+ADJ 
+
+NN 
+
+V 
+
+0.0 
+
+ADJ 
+
+V 
+
+DET 0.0 
+
+ADJ 
+
+V 
+
+ADJ 
+
+0.0 
+
+ADJ 
+
+V 
+
+NN 
+
+0.0 
+
+ADJ 
+
+V 
+
+V 
+
+0.0 
+
+Pr(x, y)
+
+John	   might	  watch	  
+
+NN 
+
+DET DET 0.0 
+
+NN 
+
+DET ADJ 
+
+0.0 
+
+NN 
+
+DET NN 
+
+0.0 
+
+NN 
+
+DET V 
+
+0.0 
+
+NN 
+
+ADJ 
+
+DET 0.0 
+
+NN 
+
+ADJ 
+
+ADJ 
+
+0.0 
+
+NN 
+
+ADJ 
+
+NN 
+
+0.000021 
+
+NN 
+
+ADJ 
+
+V 
+
+0.000009 
+
+NN 
+
+NN 
+
+DET 0.0 
+
+NN 
+
+NN 
+
+ADJ 
+
+0.0 
+
+NN 
+
+NN 
+
+NN 
+
+0.0 
+
+NN 
+
+NN 
+
+V 
+
+0.0 
+
+NN 
+
+V 
+
+DET 0.0 
+
+NN 
+
+V 
+
+ADJ 
+
+0.0 
+
+NN 
+
+V 
+
+NN 
+
+0.00006 
+
+NN 
+
+V 
+
+V 
+
+0.00009 
+
+Pr(x, y)
+
+John	   might	  watch	  
+
+V 
+
+DET DET 0.0 
+
+V 
+
+DET ADJ 
+
+0.0 
+
+V 
+
+DET NN 
+
+0.0 
+
+V 
+
+DET V 
+
+0.0 
+
+V 
+
+ADJ 
+
+DET 0.0 
+
+V 
+
+ADJ 
+
+ADJ 
+
+0.0 
+
+V 
+
+ADJ 
+
+NN 
+
+0.0 
+
+V 
+
+ADJ 
+
+V 
+
+0.0 
+
+V 
+
+NN 
+
+DET 0.0 
+
+V 
+
+NN 
+
+ADJ 
+
+0.0 
+
+V 
+
+NN 
+
+NN 
+
+0.0 
+
+V 
+
+NN 
+
+V 
+
+0.0 
+
+V 
+
+V 
+
+DET 0.0 
+
+V 
+
+V 
+
+ADJ 
+
+0.0 
+
+V 
+
+V 
+
+NN 
+
+0.0 
+
+V 
+
+V 
+
+V 
+
+0.0 
+
+Pr(x, y)
+
+Pr(x) =
+
+�
+
+y∈Y
+
+Pr(x, y; θ) = 0.00018
+
+John 
+
+
+
+
+
+0.0 
+
+
+
+
+
+0.0 
+
+
+
+
+
+0.03 
+
+
+
+
+
+0.0 
+
+might 
+
+
+
+
+
+0.0 
+
+
+
+
+
+0.0003 
+
+
+
+
+
+0.0 
+
+
+
+
+
+0.003 
+
+watch 
+
+
+
+
+
+0.0 
+
+
+
+
+
+0.0 
+
+
+
+
+
+0.000081 
+
+
+
+
+
+0.000099 
+
+DET 
+
+ADJ 
+
+NN 
+
+V 
+
+↵1
+
+↵2
+
+↵3
+
+Pr(x) =
+
+�
+
+q∈S
+
+α3(q) = 0.00018
+
+Figure 7.4: Computing the probability of the sequence ⟨John, might, watch⟩
+
+under the HMM given in Figure 7.3 by explicitly summing over all possible
+
+sequence labels (top) and using the forward algorithm (bottom).
+
+
+John 
+
+
+
+
+
+0.0 
+
+
+
+
+
+0.0 
+
+
+
+
+
+0.03 
+
+
+
+
+
+0.0 
+
+might 
+
+
+
+
+
+0.0 
+
+
+
+
+
+0.0003 
+
+
+
+
+
+0.0 
+
+
+
+
+
+0.003 
+
+watch 
+
+
+
+
+
+0.0 
+
+
+
+
+
+0.0 
+
+
+
+
+
+0.00006 
+
+
+
+
+
+0.00009 
+
+DET 
+
+ADJ 
+
+NN 
+
+V 
+
+
+
+
+
+
+
+
+
+�3
+
+�2
+
+�1
+
+Figure 7.5:
+
+Computing the most likely state sequence that generated
+
+⟨John, might, watch⟩ under the HMM given in Figure 7.3 using the Viterbi
+
+algorithm. The most likely state sequence is highlighted in bold and could
+
+be recovered programmatically by following backpointers from the maximal
+
+probability cell in the last column to the ﬁrst column (thicker arrows).
+
+The recursion is similar to that of the forward algorithm, except rather than
+
+summing over previous states, the maximum value of all possible trajectories
+
+into state r at time t is computed. Note that the backpointer simply records
+
+the index of the originating state—a separate computation is not necessary.
+
+γt(r) = max
+
+q∈S γt−1(q) · Aq(r) · Br(xt)
+
+(7.34)
+
+bpt(r) = arg max
+
+q∈S γt−1(q) · Aq(r) · Br(xt)
+
+(7.35)
+
+To compute the best sequence of states, y∗, the state with the highest prob-
+
+ability path at time |x| is selected, and then the backpointers are followed,
+
+recursively, to construct the rest of the sequence:
+
+y∗
+
+|x| = arg max
+
+q∈S γ|x|(q)
+
+(7.36)
+
+y∗
+
+t−1 = bpt(yt)
+
+(7.37)
+
+Figure 7.5 illustrates a Viterbi trellis, including backpointers that have been
+
+used to compute the most likely state sequence.
+
+Parameter Estimation for HMMs
+
+We now turn to Question 3: given a set of states S and observation vocabulary
+
+O, what are the parameters θ∗ = ⟨A, B, π⟩ that maximize the likelihood of a
+
+set of training examples, ⟨x1, x2, . . . , xℓ⟩?9 Since our model is constructed in
+
+9Since an HMM models sequences, its training data consists of a collection of example
+
+sequences.
+
+
+John 
+
+
+
+
+
+
+
+
+
+might 
+
+
+
+
+
+
+
+
+
+watch 
+
+
+
+
+
+
+
+
+
+DET 
+
+ADJ 
+
+NN 
+
+V 
+
+
+
+
+
+Figure 7.6: A “fully observable” HMM training instance. The output sequence
+
+is at the top of the ﬁgure, and the corresponding states and transitions are
+
+shown in the trellis below.
+
+terms of variables whose values we cannot observe (the state sequence) in the
+
+training data, we may train it to optimize the marginal likelihood (summing
+
+over all state sequences) of x using EM. Deriving the EM update equations
+
+requires only the application of the techniques presented earlier in this chapter
+
+and some diﬀerential calculus. However, since the formalism is cumbersome,
+
+we will skip a detailed derivation, but readers interested in more information
+
+can ﬁnd it in the relevant citations [78, 125].
+
+In order to make the update equations as intuitive as possible, consider a
+
+fully observable HMM, that is, one where both the emissions and the state
+
+sequence are observable in all ℓ training instances.
+
+In this case, a training
+
+instance can be depicted as shown in Figure 7.6. When this is the case, such
+
+as when we have a corpus of sentences in which all words have already been
+
+tagged with their parts of speech, the maximum likelihood estimate for the
+
+parameters can be computed in terms of the counts of the number of times the
+
+process transitions from state q to state r in all training instances, T(q → r);
+
+the number of times that state q emits symbol o, O(q ↑ o); and the number of
+
+times the process starts in state q, I(q). In this example, the process starts in
+
+state nn; there is one nn → v transition and one v → v transition. The nn
+
+state emits John in the ﬁrst time step, and v state emits might and watch in
+
+the second and third time steps, respectively. We also deﬁne N(q) to be the
+
+number of times the process enters state q. The maximum likelihood estimates
+
+of the parameters in the fully observable case are:
+
+πq =
+
+I(q)
+
+ℓ = �
+
+r I(r)
+
+(7.38)
+
+Aq(r) =
+
+T(q → r)
+
+N(q) = �
+
+r′ T(q → r′)
+
+(7.39)
+
+Bq(o) =
+
+O(q ↑ o)
+
+N(q) = �
+
+o′ O(q ↑ o′)
+
+(7.40)
+
+
+For example, to compute the emission parameters from state nn, we simply
+
+need to keep track of the number of times the process is in state nn and
+
+what symbol it generates at each of these times. Transition probabilities are
+
+computed similarly: to compute, for example, the distribution Adet(·), that is,
+
+the probabilities of transitioning away from state det, we count the number
+
+of times the process is in state det, and keep track of what state the process
+
+transitioned into at the next time step.
+
+This counting and normalizing be
+
+accomplished using the exact same counting and relative frequency algorithms
+
+that we described in Section 3.3. Thus, in the fully observable case, parameter
+
+estimation is not a new algorithm at all, but one we have seen before.
+
+How should the model parameters be estimated when the state sequence is
+
+not provided? It turns out that the update equations have the satisfying form
+
+where the optimal parameter values for iteration i+1 are expressed in terms of
+
+the expectations of the counts referenced in the fully observed case, according
+
+to the posterior distribution over the latent variables given the observations x
+
+and the parameters θ(i):
+
+πq = E[I(q)]
+
+ℓ
+
+Aq(r) = E[T(q → r)]
+
+E[N(q)]
+
+Bq(o) = E[O(q ↑ o)]
+
+E[N(q)]
+
+(7.41)
+
+Because of the independence assumptions made in the HMM, the update equa-
+
+tions consist of 2 · |S| + 1 independent optimization problems, just as was the
+
+case with the ‘observable’ HMM. Solving for the initial state distribution, π, is
+
+one problem; there are |S| solving for the transition distributions Aq(·) from
+
+each state q; and |S| solving for the emissions distributions Bq(·) from each
+
+state q. Furthermore, we note that the following must hold:
+
+E[N(q)] =
+
+�
+
+r∈S
+
+E[T(q → r)] =
+
+�
+
+o∈O
+
+E[O(q ↑ o)]
+
+(7.42)
+
+As a result, the optimization problems (i.e., Equations 7.38–7.40) require com-
+
+pletely independent sets of statistics, which we will utilize later to facilitate
+
+eﬃcient parallelization in MapReduce.
+
+How can the expectations in Equation 7.41 be understood? In the fully
+
+observed training case, between every time step, there is exactly one transition
+
+taken and the source and destination states are observable. By progressing
+
+through the Markov chain, we can let each transition count as ‘1’, and we
+
+can accumulate the total number of times each kind of transition was taken
+
+(by each kind, we simply mean the number of times that one state follows
+
+another, for example, the number of times nn follows det). These statistics
+
+can then in turn be used to compute the MLE for an ‘observable’ HMM, as
+
+described above. However, when the transition sequence is not observable (as
+
+is most often the case), we can instead imagine that at each time step, every
+
+possible transition (there are |S|2 of them, and typically |S| is quite small)
+
+is taken, with a particular probability. The probability used is the posterior
+
+probability of the transition, given the model and an observation sequence (we
+
+describe how to compute this value below).
+
+By summing over all the time
+
+
+steps in the training data, and using this probability as the ‘count’ (rather
+
+than ‘1’ as in the observable case), we compute the expected count of the
+
+number of times a particular transition was taken, given the training sequence.
+
+Furthermore, since the training instances are statistically independent, the
+
+value of the expectations can be computed by processing each training instance
+
+independently and summing the results.
+
+Similarly for the necessary emission counts (the number of times each sym-
+
+bol in O was generated by each state in S), we assume that any state could
+
+have generated the observation. We must therefore compute the probability
+
+of being in every state at each time point, which is then the size of the emis-
+
+sion ‘count’. By summing over all time steps we compute the expected count
+
+of the number of times that a particular state generated a particular symbol.
+
+These two sets of expectations, which are written formally here, are suﬃcient
+
+to execute the M-step.
+
+E[O(q ↑ o)] =
+
+|x|
+
+�
+
+i=1
+
+Pr(yi = q|x; θ) · δ(xi, o)
+
+(7.43)
+
+E[T(q → r)] =
+
+|x|−1
+
+�
+
+i=1
+
+Pr(yi = q, yi+1 = r|x; θ)
+
+(7.44)
+
+Posterior probabilities.
+
+The expectations necessary for computing the M-
+
+step in HMM training are sums of probabilities that a particular transition is
+
+taken, given an observation sequence, and that some state emits some observa-
+
+tion symbol, given an observation sequence. These are referred to as posterior
+
+probabilities, indicating that they are the probability of some event whose dis-
+
+tribution we have a prior belief about, after addition evidence has been taken
+
+into consideration (here, the model parameters characterize our prior beliefs,
+
+and the observation sequence is the evidence).
+
+Both posterior probabilities
+
+can be computed by combining the forward probabilities, αt(·), which give the
+
+probability of reaching some state at time t, by any path, and generating the
+
+observations ⟨x1, x2, . . . , xt⟩, with backward probabilities, βt(·), which give the
+
+probability of starting in some state at time t and generating the rest of the
+
+sequence ⟨xt+1, xt+2, . . . , x|x|⟩, using any sequence of states to do so. The algo-
+
+rithm for computing the backward probabilities is given a bit later. Once the
+
+forward and backward probabilities have been computed, the state transition
+
+posterior probabilities and the emission posterior probabilities can be written
+
+as follows:
+
+Pr(yi = q|x; θ) = αi(q) · βi(q)
+
+(7.45)
+
+Pr(yi = q, yi+1 = r|x; θ) = αi(q) · Aq(r) · Br(xi+1) · βi+1(r)
+
+(7.46)
+
+Equation 7.45 is the probability of being in state q at time i, given x, and the
+
+correctness of the expression should be clear from the deﬁnitions of forward
+
+and backward probabilities. The intuition for Equation 7.46, the probability of
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+a 
+
+b 
+
+b 
+
+b 
+
+c 
+
+↵2(s2)
+
+�3(s2)
+
+S1
+
+S2
+
+S3
+
+Figure 7.7: Using forward and backward probabilities to compute the posterior
+
+probability of the dashed transition, given the observation sequence
+
+a b b c
+
+b. The shaded area on the left corresponds to the forward probability α2(s2),
+
+and the shaded area on the right corresponds to the backward probability
+
+β3(s2).
+
+taking a particular transition at a particular time, is also not complicated: it
+
+is the product of four conditionally independent probabilities: the probability
+
+of getting to state q at time i (having generated the ﬁrst part of the sequence),
+
+the probability of taking transition q → r (which is speciﬁed in the parameters,
+
+θ), the probability of generating observation xi+1 from state r (also speciﬁed in
+
+θ), and the probability of generating the rest of the sequence, along any path.
+
+A visualization of the quantities used in computing this probability is shown
+
+in Figure 7.7. In this illustration, we assume an HMM with S = {s1, s2, s3}
+
+and O = {a, b, c}.
+
+The backward algorithm.
+
+Like the forward and Viterbi algorithms intro-
+
+duced above to answer Questions 1 and 2, the backward algorithm uses dynamic
+
+programming to incrementally compute βt(·). Its base case starts at time |x|,
+
+and is deﬁned as follows:
+
+β|x|(q) = 1
+
+(7.47)
+
+To understand the intuition for this base case, keep in mind that since the
+
+backward probabilities βt(·) are the probability of generating the remainder of
+
+the sequence after time t (as well as being in some state), and since there is
+
+nothing left to generate after time |x|, the probability must be 1. The recursion
+
+is deﬁned as follows:
+
+βt(q) =
+
+�
+
+r∈S
+
+βt+1(r) · Aq(r) · Br(xt+1)
+
+(7.48)
+
+
+Unlike the forward and Viterbi algorithms, the backward algorithm is computed
+
+from right to left and makes no reference to the start probabilities, π.
+
+Forward-Backward Training: Summary
+
+In the preceding section, we have shown how to compute all quantities needed
+
+to ﬁnd the parameter settings θ(i+1) using EM training with a hidden Markov
+
+model M = ⟨S, O, θ(i)⟩. To recap: each training instance x is processed inde-
+
+pendently, using the parameter settings of the current iteration, θ(i). For each
+
+x in the training data, the forward and backward probabilities are computed
+
+using the algorithms given above (for this reason, this training algorithm is of-
+
+ten referred to as the forward-backward algorithm). The forward and backward
+
+probabilities are in turn used to compute the expected number of times the un-
+
+derlying Markov process enters into each state, the number of times each state
+
+generates each output symbol type, and the number of times each state tran-
+
+sitions into each other state. These expectations are summed over all training
+
+instances, completing the E-step.
+
+The M-step involves normalizing the ex-
+
+pected counts computed in the E-step using the calculations in Equation 7.41,
+
+which yields θ(i+1). The process then repeats from the E-step using the new
+
+parameters. The number of iterations required for convergence depends on the
+
+quality of the initial parameters, and the complexity of the model. For some
+
+applications, only a handful of iterations are necessary, whereas for others,
+
+hundreds may be required.
+
+Finally, a few practical considerations: HMMs have a non-convex likelihood
+
+surface (meaning that it has the equivalent of many hills and valleys in the num-
+
+ber of dimensions corresponding to the number of parameters in the model).
+
+As a result, EM training is only guaranteed to ﬁnd a local maximum, and the
+
+quality of the learned model may vary considerably, depending on the initial
+
+parameters that are used. Strategies for optimal selection of initial parameters
+
+depend on the phenomena being modeled. Additionally, if some parameter is
+
+assigned a probability of 0 (either as an initial value or during one of the M-step
+
+parameter updates), EM will never change this in future iterations. This can
+
+be useful, since it provides a way of constraining the structures of the Markov
+
+model; however, one must be aware of this behavior.
+
+Another pitfall to avoid when implementing HMMs is arithmetic underﬂow.
+
+HMMs typically deﬁne a massive number of sequences, and so the probability
+
+of any one of them is often vanishingly small—so small that they often under-
+
+ﬂow standard ﬂoating point representations. A very common solution to this
+
+problem is to represent probabilities using their logarithms. Note that expected
+
+counts do not typically have this problem and can be represented using normal
+
+ﬂoating point numbers. See Section 5.4 for additional discussion on working
+
+with log probabilities.
+
+
+7.3
+
+EM in MapReduce
+
+Expectation maximization algorithms ﬁt quite naturally into the MapReduce
+
+programming model. Although the model being optimized determines the de-
+
+tails of the required computations, MapReduce implementations of EM algo-
+
+rithms share a number of characteristics:
+
+• Each iteration of EM is one MapReduce job.
+
+• A controlling process (i.e., driver program) spawns the MapReduce jobs,
+
+keeps track of the number of iterations and convergence criteria.
+
+• Model parameters θ(i), which are static for the duration of the Map-
+
+Reduce job, are loaded by each mapper from HDFS or other data provider
+
+(e.g., a distributed key-value store).
+
+• Mappers map over independent training instances, computing partial la-
+
+tent variable posteriors (or summary statistics, such as expected counts).
+
+• Reducers sum together the required training statistics and solve one or
+
+more of the M-step optimization problems.
+
+• Combiners, which sum together the training statistics, are often quite
+
+eﬀective at reducing the amount of data that must be written to disk.
+
+The degree of parallelization that can be attained depends on the statistical
+
+independence assumed in the model and in the derived quantities required to
+
+solve the optimization problems in the M-step. Since parameters are estimated
+
+from a collection of samples that are assumed to be i.i.d., the E-step can gen-
+
+erally be parallelized eﬀectively since every training instance can be processed
+
+independently of the others. In the limit, in fact, each independent training
+
+instance could be processed by a separate mapper!10
+
+Reducers, however, must aggregate the statistics necessary to solve the opti-
+
+mization problems as required by the model. The degree to which these may be
+
+solved independently depends on the structure of the model, and this constrains
+
+the number of reducers that may be used. Fortunately, many common models
+
+(such as HMMs) require solving several independent optimization problems in
+
+the M-step. In this situation, a number of reducers may be run in parallel.
+
+Still, it is possible that in the worst case, the M-step optimization problem
+
+will not decompose into independent subproblems, making it necessary to use
+
+a single reducer.
+
+10Although the wisdom of doing this is questionable, given that the startup costs associ-
+
+ated with individual map tasks in Hadoop may be considerable.
+
+
+HMM Training in MapReduce
+
+As we would expect, the training of hidden Markov models parallelizes well in
+
+MapReduce. The process can be summarized as follows: in each iteration, map-
+
+pers process training instances, emitting expected event counts computed using
+
+the forward-backward algorithm introduced in Section 7.2. Reducers aggregate
+
+the expected counts, completing the E-step, and then generate parameter es-
+
+timates for the next iteration using the updates given in Equation 7.41.
+
+This parallelization strategy is eﬀective for several reasons. First, the ma-
+
+jority of the computational eﬀort in HMM training is the running of the forward
+
+and backward algorithms. Since there is no limit on the number of mappers
+
+that may be run, the full computational resources of a cluster may be brought
+
+to bear to solve this problem. Second, since the M-step of an HMM training
+
+iteration with |S| states in the model consists of 2 · |S| + 1 independent op-
+
+timization problems that require non-overlapping sets of statistics, this may
+
+be exploited with as many as 2 · |S| + 1 reducers running in parallel. While
+
+the optimization problem is computationally trivial, being able to reduce in
+
+parallel helps avoid the data bottleneck that would limit performance if only a
+
+single reducer is used.
+
+The quantities that are required to solve the M-step optimization problem
+
+are quite similar to the relative frequency estimation example discussed in Sec-
+
+tion 3.3; however, rather than counts of observed events, we aggregate expected
+
+counts of events. As a result of the similarity, we can employ the stripes rep-
+
+resentation for aggregating sets of related values, as described in Section 3.2.
+
+A pairs approach that requires less memory at the cost of slower performance
+
+is also feasible.
+
+HMM training mapper.
+
+The pseudo-code for the HMM training mapper
+
+is given in Figure 7.8. The input consists of key-value pairs with a unique
+
+id as the key and a training instance (e.g., a sentence) as the value. For each
+
+training instance, 2n+1 stripes are emitted with unique keys, and every training
+
+instance emits the same set of keys. Each unique key corresponds to one of
+
+the independent optimization problems that will be solved in the M-step. The
+
+outputs are:
+
+1. the probabilities that the unobserved Markov process begins in each state
+
+q, with a unique key designating that the values are initial state counts;
+
+2. the expected number of times that state q generated each emission symbol
+
+o (the set of emission symbols included will be just those found in each
+
+training instance x), with a key indicating that the associated value is a
+
+set of emission counts from state q; and
+
+3. the expected number of times state q transitions to each state r, with a
+
+key indicating that the associated value is a set of transition counts from
+
+state q.
+
+
+1: class Mapper
+
+2:
+
+method Initialize(integer iteration)
+
+3:
+
+⟨S, O⟩ ← ReadModel
+
+4:
+
+θ ← ⟨A, B, π⟩ ← ReadModelParams(iteration)
+
+5:
+
+method Map(sample id, sequence x)
+
+6:
+
+α ← Forward(x, θ)
+
+▷ cf. Section 7.2
+
+7:
+
+β ← Backward(x, θ)
+
+▷ cf. Section 7.2
+
+8:
+
+I ← new AssociativeArray
+
+▷ Initial state expectations
+
+9:
+
+for all q ∈ S do
+
+▷ Loop over states
+
+10:
+
+I{q} ← α1(q) · β1(q)
+
+11:
+
+O ← new AssociativeArray of AssociativeArray ▷ Emissions
+
+12:
+
+for t = 1 to |x| do
+
+▷ Loop over observations
+
+13:
+
+for all q ∈ S do
+
+▷ Loop over states
+
+14:
+
+O{q}{xt} ← O{q}{xt} + αt(q) · βt(q)
+
+15:
+
+t ← t + 1
+
+16:
+
+T ← new AssociativeArray of AssociativeArray
+
+17:
+
+▷ Transitions
+
+18:
+
+for t = 1 to |x| − 1 do
+
+▷ Loop over observations
+
+19:
+
+for all q ∈ S do
+
+▷ Loop over states
+
+20:
+
+for all r ∈ S do
+
+▷ Loop over states
+
+21:
+
+T{q}{r} ← T{q}{r} + αt(q) · Aq(r) · Br(xt+1) · βt+1(r)
+
+22:
+
+t ← t + 1
+
+23:
+
+Emit(string ‘initial’, stripe I)
+
+24:
+
+for all q ∈ S do
+
+▷ Loop over states
+
+25:
+
+Emit(string ‘emit from ’ + q, stripe O{q})
+
+26:
+
+Emit(string ‘transit from ’ + q, stripe T{q})
+
+Figure 7.8: Mapper pseudo-code for training hidden Markov models using EM.
+
+The mappers map over training instances (i.e., sequences of observations xi)
+
+and generate the expected counts of initial states, emissions, and transitions
+
+taken to generate the sequence.
+
+HMM training reducer.
+
+The reducer for one iteration of HMM training,
+
+shown together with an optional combiner in Figure 7.9, aggregates the count
+
+collections associated with each key by summing them. When the values for
+
+each key have been completely aggregated, the associative array contains all of
+
+the statistics necessary to compute a subset of the parameters for the next EM
+
+iteration. The optimal parameter settings for the following iteration are com-
+
+puted simply by computing the relative frequency of each event with respect
+
+to its expected count at the current iteration. The new computed parameters
+
+are emitted from the reducer and written to HDFS. Note that they will be
+
+spread across 2 · |S| + 1 keys, representing initial state probabilities π, transi-
+
+tion probabilities Aq for each state q, and emission probabilities Bq for each
+
+state q.
+
+
+1: class Combiner
+
+2:
+
+method Combine(string t, stripes [C1, C2, . . .])
+
+3:
+
+Cf ← new AssociativeArray
+
+4:
+
+for all stripe C ∈ stripes [C1, C2, . . .] do
+
+5:
+
+Sum(Cf, C)
+
+6:
+
+Emit(string t, stripe Cf)
+
+1: class Reducer
+
+2:
+
+method Reduce(string t, stripes [C1, C2, . . .])
+
+3:
+
+Cf ← new AssociativeArray
+
+4:
+
+for all stripe C ∈ stripes [C1, C2, . . .] do
+
+5:
+
+Sum(Cf, C)
+
+6:
+
+z ← 0
+
+7:
+
+for all ⟨k, v⟩ ∈ Cf do
+
+8:
+
+z ← z + v
+
+9:
+
+Pf ← new AssociativeArray
+
+▷ Final parameters vector
+
+10:
+
+for all ⟨k, v⟩ ∈ Cf do
+
+11:
+
+Pf{k} ← v/z
+
+12:
+
+Emit(string t, stripe Pf)
+
+Figure 7.9: Combiner and reducer pseudo-code for training hidden Markov
+
+models using EM. The HMMs considered in this book are fully parameterized
+
+by multinomial distributions, so reducers do not require special logic to handle
+
+diﬀerent types of model parameters (since they are all of the same type).
+
+7.4
+
+Case Study: Word Alignment for Statistical
+
+Machine Translation
+
+To illustrate the real-world beneﬁts of expectation maximization algorithms
+
+using MapReduce, we turn to the problem of word alignment, which is an
+
+important task in statistical machine translation that is typically solved using
+
+models whose parameters are learned with EM.
+
+We begin by giving a brief introduction to statistical machine translation
+
+and the phrase-based translation approach; for a more comprehensive intro-
+
+duction, refer to [85, 97]. Fully-automated translation has been studied since
+
+the earliest days of electronic computers. After successes with code-breaking
+
+during World War II, there was considerable optimism that translation of hu-
+
+man languages would be another soluble problem. In the early years, work on
+
+translation was dominated by manual attempts to encode linguistic knowledge
+
+into computers—another instance of the ‘rule-based’ approach we described in
+
+the introduction to this chapter. These early attempts failed to live up to the
+
+admittedly optimistic expectations. For a number of years, the idea of fully
+
+automated translation was viewed with skepticism. Not only was constructing
+
+a translation system labor intensive, but translation pairs had to be developed
+
+
+independently, meaning that improvements in a Russian-English translation
+
+system could not, for the most part, be leveraged to improve a French-English
+
+system.
+
+After languishing for a number of years, the ﬁeld was reinvigorated in the
+
+late 1980s when researchers at IBM pioneered the development of statistical
+
+machine translation (SMT), which took a data-driven approach to solving the
+
+problem of machine translation, attempting to improve both the quality of
+
+translation while reducing the cost of developing systems [29]. The core idea
+
+of SMT is to equip the computer to learn how to translate, using example
+
+translations which are produced for other purposes, and modeling the process
+
+as a statistical process with some parameters θ relating strings in a source
+
+language (typically denoted as f) to strings in a target language (typically
+
+denoted as e):
+
+e∗ = arg max
+
+e
+
+Pr(e|f; θ)
+
+(7.49)
+
+With the statistical approach, translation systems can be developed cheaply
+
+and quickly for any language pair, as long as there is suﬃcient training data
+
+available. Furthermore, improvements in learning algorithms and statistical
+
+modeling can yield beneﬁts in many translation pairs at once, rather than be-
+
+ing speciﬁc to individual language pairs. Thus, SMT, like many other topics
+
+we are considering in this book, is an attempt to leverage the vast quantities
+
+of textual data that is available to solve problems that would otherwise require
+
+considerable manual eﬀort to encode specialized knowledge. Since the advent
+
+of statistical approaches to translation, the ﬁeld has grown tremendously and
+
+numerous statistical models of translation have been developed, with many in-
+
+corporating quite specialized knowledge about the behavior of natural language
+
+as biases in their learning algorithms.
+
+Statistical Phrase-Based Translation
+
+One approach to statistical translation that is simple yet powerful is called
+
+phrase-based translation [86]. We provide a rough outline of the process since
+
+it is representative of most state-of-the-art statistical translation systems, such
+
+as the one used inside Google Translate.11 Phrase-based translation works by
+
+learning how strings of words, called phrases, translate between languages.12
+
+Example phrase pairs for Spanish-English translation might include:
+
+⟨los estudiantes, the students⟩, ⟨los estudiantes, some students⟩, and
+
+⟨soy, i am⟩.
+
+From a few hundred thousand sentences of example translations, many millions
+
+of such phrase pairs may be automatically learned.
+
+11http://translate.google.com
+
+12Phrases are simply sequences of words; they are not required to correspond to the
+
+deﬁnition of a phrase in any linguistic theory.
+
+
+The starting point is typically a parallel corpus (also called bitext), which
+
+contains pairs of sentences in two languages that are translations of each other.
+
+Parallel corpora are frequently generated as the byproduct of an organization’s
+
+eﬀort to disseminate information in multiple languages, for example, proceed-
+
+ings of the Canadian Parliament in French and English, and text generated by
+
+the United Nations in many diﬀerent languages. The parallel corpus is then
+
+annotated with word alignments, which indicate which words in one language
+
+correspond to words in the other. By using these word alignments as a skele-
+
+ton, phrases can be extracted from the sentence that is likely to preserve the
+
+meaning relationships represented by the word alignment. While an explana-
+
+tion of the process is not necessary here, we mention it as a motivation for
+
+learning word alignments, which we show below how to compute with EM.
+
+After phrase extraction, each phrase pair is associated with a number of scores
+
+which, taken together, are used to compute the phrase translation probability,
+
+a conditional probability that reﬂects how likely the source phrase translates
+
+into the target phrase. We brieﬂy note that although EM could be utilized
+
+to learn the phrase translation probabilities, this is not typically done in prac-
+
+tice since the maximum likelihood solution turns out to be quite bad for this
+
+problem. The collection of phrase pairs and their scores are referred to as the
+
+translation model. In addition to the translation model, phrase-based transla-
+
+tion depends on a language model, which gives the probability of a string in the
+
+target language. The translation model attempts to preserve the meaning of
+
+the source language during the translation process, while the language model
+
+ensures that the output is ﬂuent and grammatical in the target language. The
+
+phrase-based translation process is summarized in Figure 7.10.
+
+A language model gives the probability that a string of words:
+
+w = ⟨w1, w2, . . . , wn⟩,
+
+written as wn
+
+1 for short, is a string in the target language. By the chain rule
+
+of probability, we get:
+
+Pr(wn
+
+1 ) = Pr(w1) Pr(w2|w1) Pr(w3|w2
+
+1) . . . Pr(wn|wn−1
+
+1
+
+)
+
+(7.50)
+
+=
+
+n
+
+�
+
+k=1
+
+Pr(wk|wk−1
+
+1
+
+)
+
+(7.51)
+
+Due to the extremely large number of parameters involved in estimating such
+
+a model directly, it is customary to make the
+
+Markov assumption, that the
+
+sequence histories only depend on prior local context.
+
+That is, an n-gram
+
+language model is equivalent to a (n−1)th-order Markov model. Thus, we can
+
+approximate P(wk|wk−1
+
+1
+
+) as follows:
+
+bigrams:P(wk|wk−1
+
+1
+
+) ≈ P(wk|wk−1)
+
+(7.52)
+
+trigrams:P(wk|wk−1
+
+1
+
+) ≈ P(wk|wk−1wk−2)
+
+(7.53)
+
+n-grams:P(wk|wk−1
+
+1
+
+) ≈ P(wk|wk−1
+
+k−n+1)
+
+(7.54)
+
+
+i saw the small table 
+
+vi la mesa pequeña 
+
+(vi, i saw) 
+
+(la mesa pequeña, the small table) 
+
+… 
+
+Parallel Sentences 
+
+Word Alignment 
+
+Phrase Extraction 
+
+he sat at the table 
+
+the service was good 
+
+Target-Language Text 
+
+
+
+
+
+
+
+
+
+
+
+Translation Model 
+
+
+
+
+
+
+
+Language 
+
+Model 
+
+
+
+
+
+
+
+Decoder 
+
+
+
+
+
+Foreign Input Sentence 
+
+English Output Sentence 
+
+maria no daba una bofetada a la bruja verde 
+
+mary did not slap the green witch 
+
+
+
+Training Data 
+
+
+
+
+
+
+
+
+
+
+
+Figure	  6.10:	  The	  standard	  phrase-­‐based	  machine	  translaPon	  architecture.	  The	  translaPon	  
+
+model	  is	  constructed	  with	  phrases	  extracted	  from	  a	  word-­‐aligned	  parallel	  corpus.	  The	  language	  
+
+model	  is	  esPmated	  from	  a	  monolingual	  corpus.	  Both	  serve	  as	  input	  to	  the	  decoder,	  
+
+which	  performs	  the	  actual	  translaPon.	  
+
+Figure 7.10: The standard phrase-based machine translation architecture. The
+
+translation model is constructed with phrases extracted from a word-aligned
+
+parallel corpus. The language model is estimated from a monolingual corpus.
+
+Both serve as input to the decoder, which performs the actual translation.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Maria 
+
+no 
+
+dio 
+
+una 
+
+bofetada 
+
+a 
+
+la 
+
+bruja 
+
+verde 
+
+
+
+
+
+Mary 
+
+
+
+
+
+not 
+
+
+
+
+
+did not 
+
+
+
+
+
+no 
+
+
+
+
+
+did not give 
+
+
+
+
+
+give 
+
+
+
+
+
+a 
+
+
+
+
+
+slap 
+
+
+
+
+
+to 
+
+
+
+
+
+the 
+
+
+
+
+
+witch 
+
+
+
+
+
+green 
+
+
+
+
+
+slap 
+
+
+
+
+
+a slap 
+
+
+
+
+
+to the 
+
+
+
+
+
+to 
+
+
+
+
+
+the 
+
+
+
+
+
+green witch 
+
+
+
+
+
+the witch 
+
+
+
+
+
+by 
+
+
+
+
+
+slap 
+
+Figure	  6.11:	  TranslaPon	  coverage	  of	  the	  sentence	  Maria	  no	  dio	  una	  bofetada	  a	  la	  bruja	  verde	  
+
+by	  a	  phrase-­‐based	  model.	  The	  best	  possible	  translaPon	  path	  is	  indicated	  with	  a	  dashed	  line.	  
+
+Figure 7.11: Translation coverage of the sentence Maria no dio una bofetada a
+
+la bruja verde by a phrase-based model. The best possible translation path is
+
+indicated with a dashed line.
+
+
+The probabilities used in computing Pr(wn
+
+1 ) based on an n-gram language
+
+model are generally estimated from a monolingual corpus of target language
+
+text.
+
+Since only target language text is necessary (without any additional
+
+annotation), language modeling has been well served by large-data approaches
+
+that take advantage of the vast quantities of text available on the web.
+
+To translate an input sentence f, the phrase-based decoder creates a matrix
+
+of all translation possibilities of all substrings in the input string, as an example
+
+illustrates in Figure 7.11.
+
+A sequence of phrase pairs is selected such that
+
+each word in f is translated exactly once.13
+
+The decoder seeks to ﬁnd the
+
+translation that maximizes the product of the translation probabilities of the
+
+phrases used and the language model probability of the resulting string in the
+
+target language. Because the phrase translation probabilities are independent
+
+of each other and the Markov assumption made in the language model, this may
+
+be done eﬃciently using dynamic programming. For a detailed introduction to
+
+phrase-based decoding, we refer the reader to a recent textbook by Koehn [85].
+
+Brief Digression: Language Modeling with MapReduce
+
+Statistical machine translation provides the context for a brief digression on
+
+distributed parameter estimation for language models using MapReduce, and
+
+provides another example illustrating the eﬀectiveness data-driven approaches
+
+in general. We brieﬂy touched upon this work in Chapter 1. Even after mak-
+
+ing the Markov assumption, training n-gram language models still requires
+
+estimating an enormous number of parameters: potentially V n, where V is the
+
+number of words in the vocabulary. For higher-order models (e.g., 5-grams)
+
+used in real-world applications, the number of parameters can easily exceed
+
+the number of words from which to estimate those parameters. In fact, most
+
+n-grams will never be observed in a corpus, no matter how large. To cope
+
+with this sparseness, researchers have developed a number of smoothing tech-
+
+niques [102], which all share the basic idea of moving probability mass from
+
+observed to unseen events in a principled manner. For many applications, a
+
+state-of-the-art approach is known as Kneser-Ney smoothing [35].
+
+In 2007, Brants et al. [25] reported experimental results that answered an
+
+interesting question: given the availability of large corpora (i.e., the web), could
+
+a simpler smoothing strategy, applied to more text, beat Kneser-Ney in a ma-
+
+chine translation task? It should come as no surprise that the answer is yes.
+
+Brants et al. introduced a technique known as “stupid backoﬀ” that was ex-
+
+ceedingly simple and so na¨ıve that the resulting model didn’t even deﬁne a valid
+
+probability distribution (it assigned arbitrary scores as opposed to probabili-
+
+ties). The simplicity, however, aﬀorded an extremely scalable implementations
+
+in MapReduce. With smaller corpora, stupid backoﬀ didn’t work as well as
+
+Kneser-Ney in generating accurate and ﬂuent translations. However, as the
+
+amount of data increased, the gap between stupid backoﬀ and Kneser-Ney
+
+13The phrases may not necessarily be selected in a strict left-to-right order. Being able to
+
+vary the order of the phrases used is necessary since languages may express the same ideas
+
+using diﬀerent word orders.
+
+
+narrowed, and eventually disappeared with suﬃcient data. Furthermore, with
+
+stupid backoﬀ it was possible to train a language model on more data than
+
+was feasible with Kneser-Ney smoothing. Applying this language model to a
+
+machine translation task yielded better results than a (smaller) language model
+
+trained with Kneser-Ney smoothing.
+
+The role of the language model in statistical machine translation is to se-
+
+lect ﬂuent, grammatical translations from a large hypothesis space: the more
+
+training data a language model has access to, the better its description of rel-
+
+evant language phenomena and hence its ability to select good translations.
+
+Once again, large data triumphs! For more information about estimating lan-
+
+guage models using MapReduce, we refer the reader to a forthcoming book
+
+from Morgan &amp; Claypool [26].
+
+Word Alignment
+
+Word alignments, which are necessary for building phrase-based translation
+
+models (as well as many other more sophisticated translation models), can
+
+be learned automatically using EM. In this section, we introduce a popular
+
+alignment model based on HMMs.
+
+In the statistical model of word alignment considered here, the observable
+
+variables are the words in the source and target sentences (conventionally writ-
+
+ten using the variables f and e, respectively), and their alignment is a latent
+
+variable. To make this model tractable, we assume that words are translated in-
+
+dependently of one another, which means that the model’s parameters include
+
+the probability of any word in the source language translating to any word in
+
+the target language. While this independence assumption is problematic in
+
+many ways, it results in a simple model structure that admits eﬃcient infer-
+
+ence yet produces reasonable alignments. Alignment models that make this
+
+assumption generate a string e in the target language by selecting words in the
+
+source language according to a lexical translation distribution. The indices of
+
+the words in f used to generate each word in e are stored in an alignment vari-
+
+able, a.14 This means that the variable ai indicates the source word position
+
+of the ith target word generated, and |a| = |e|. Using these assumptions, the
+
+probability of an alignment and translation can be written as follows:
+
+Pr(e, a|f) =
+
+Pr(a|f, e)
+
+�
+
+��
+
+�
+
+Alignment probability
+
+×
+
+|e|
+
+�
+
+i=1
+
+Pr(ei|fai)
+
+�
+
+��
+
+�
+
+Lexical probability
+
+(7.55)
+
+Since we have parallel corpora consisting of only ⟨f, e⟩ pairs, we can learn the
+
+parameters for this model using EM and treating a as a latent variable. How-
+
+ever, to combat data sparsity in the alignment probability, we must make some
+
+14In the original presentation of statistical lexical translation models, a special null word
+
+is added to the source sentences, which permits words to be inserted ‘out of nowhere’. Since
+
+this does not change any of the important details of training, we omit it from our presentation
+
+for simplicity.
+
+
+further simplifying assumptions. By letting the probability of an alignment
+
+depend only on the position of the previous aligned word we capture a valu-
+
+able insight (namely, words that are nearby in the source language will tend to
+
+be nearby in the target language), and our model acquires the structure of an
+
+HMM [150]:
+
+Pr(e, a|f) =
+
+|e|
+
+�
+
+i=1
+
+Pr(ai|ai−1)
+
+�
+
+��
+
+�
+
+Transition probability
+
+×
+
+|e|
+
+�
+
+i=1
+
+Pr(ei|fai)
+
+�
+
+��
+
+�
+
+Emission probability
+
+(7.56)
+
+This model can be trained using the forward-backward algorithm described in
+
+the previous section, summing over all settings of a, and the best alignment
+
+for a sentence pair can be found using the Viterbi algorithm.
+
+To properly initialize this HMM, it is conventional to further simplify the
+
+alignment probability model, and use this simpler model to learn initial lexical
+
+translation (emission) parameters for the HMM. The favored simpliﬁcation is
+
+to assert that all alignments are uniformly probable:
+
+Pr(e, a|f) =
+
+1
+
+|f||e| ×
+
+|e|
+
+�
+
+i=1
+
+Pr(ei|fai)
+
+(7.57)
+
+This model is known as IBM Model 1. It is attractive for initialization because
+
+it is convex everywhere, and therefore EM will learn the same solution regard-
+
+less of initialization. Finally, while the forward-backward algorithm could be
+
+used to compute the expected counts necessary for training this model by set-
+
+ting Aq(r) to be a constant value for all q and r, the uniformity assumption
+
+means that the expected emission counts can be estimated in time O(|e| · |f|),
+
+rather than time O(|e| · |f|2) required by the forward-backward algorithm.
+
+Experiments
+
+How well does a MapReduce word aligner for statistical machine translation
+
+perform? We describe previously-published results [54] that compared a Java-
+
+based Hadoop implementation against a highly optimized word aligner called
+
+Giza++ [112], which was written in C++ and designed to run eﬃciently on a
+
+single core. We compared the training time of Giza++ and our aligner on a
+
+Hadoop cluster with 19 slave nodes, each with two single-core processors and
+
+two disks (38 cores total).
+
+Figure 7.12 shows the performance of Giza++ in terms of the running time
+
+of a single EM iteration for both Model 1 and the HMM alignment model as a
+
+function of the number of training pairs. Both axes in the ﬁgure are on a log
+
+scale, but the ticks on the y-axis are aligned with ‘meaningful’ time intervals
+
+rather than exact orders of magnitude. There are three things to note. First,
+
+the running time scales linearly with the size of the training data. Second, the
+
+HMM is a constant factor slower than Model 1. Third, the alignment process
+
+
+is quite slow as the size of the training data grows—at one million sentences, a
+
+single iteration takes over three hours to complete! Five iterations are generally
+
+necessary to train the models, which means that full training takes the better
+
+part of a day.
+
+In Figure 7.13 we plot the running time of our MapReduce implementation
+
+running on the 38-core cluster described above. For reference, we plot points
+
+indicating what 1/38 of the running time of the Giza++ iterations would be at
+
+each data size, which gives a rough indication of what an ‘ideal’ parallelization
+
+could achieve, assuming that there was no overhead associated with distribut-
+
+ing computation across these machines. Three things may be observed in the
+
+results. First, as the amount of data increases, the relative cost of the over-
+
+head associated with distributing data, marshaling and aggregating counts,
+
+decreases.
+
+At one million sentence pairs of training data, the HMM align-
+
+ment iterations begin to approach optimal runtime eﬃciency. Second, Model
+
+1, which we observe is light on computation, does not approach the theoretical
+
+performance of an ideal parallelization, and in fact, has almost the same run-
+
+ning time as the HMM alignment algorithm. We conclude that the overhead
+
+associated with distributing and aggregating data is signiﬁcant compared to
+
+the Model 1 computations, although a comparison with Figure 7.12 indicates
+
+that the MapReduce implementation is still substantially faster than the sin-
+
+gle core implementation, at least once a certain training data size is reached.
+
+Finally, we note that, in comparison to the running times of the single-core
+
+implementation, at large data sizes, there is a signiﬁcant advantage to using
+
+the distributed implementation, even of Model 1.
+
+Although these results do confound several variables (Java vs. C++ perfor-
+
+mance, memory usage patterns), it is reasonable to expect that the confounds
+
+would tend to make the single-core system’s performance appear relatively bet-
+
+ter than the MapReduce system (which is, of course, the opposite pattern from
+
+what we actually observe). Furthermore, these results show that when compu-
+
+tation is distributed over a cluster of many machines, even an unsophisticated
+
+implementation of the HMM aligner could compete favorably with a highly
+
+optimized single-core system whose performance is well-known to many people
+
+in the MT research community.
+
+Why are these results important? Perhaps the most signiﬁcant reason is
+
+that the quantity of parallel data that is available to train statistical machine
+
+translation models is ever increasing, and as is the case with so many problems
+
+we have encountered, more data leads to improvements in translation qual-
+
+ity [54]. Recently a corpus of one billion words of French-English data was
+
+mined automatically from the web and released publicly [33].15
+
+Single-core
+
+solutions to model construction simply cannot keep pace with the amount of
+
+translated data that is constantly being produced. Fortunately, several inde-
+
+pendent researchers have shown that existing modeling algorithms can be ex-
+
+pressed naturally and eﬀectively using MapReduce, which means that we can
+
+take advantage of this data. Furthermore, the results presented here show that
+
+15 http://www.statmt.org/wmt10/translation-task.html
+
+
+3 s
+
+10 s
+
+30 s
+
+90 s
+
+5 min
+
+20 min
+
+60 min
+
+3 hrs
+
+ 10000
+
+ 100000
+
+ 1e+06
+
+Average iteration latency (seconds)
+
+Corpus size (sentences)
+
+Model 1
+
+HMM
+
+Figure 7.12: Running times of Giza++ (baseline single-core system) for Model
+
+1 and HMM training iterations at various corpus sizes.
+
+3 s
+
+10 s
+
+30 s
+
+90 s
+
+5 min
+
+20 min
+
+60 min
+
+3 hrs
+
+ 10000
+
+ 100000
+
+ 1e+06
+
+Time (seconds)
+
+Corpus size (sentences)
+
+Optimal Model 1 (Giza/38)
+
+Optimal HMM (Giza/38)
+
+MapReduce Model 1 (38 M/R)
+
+MapReduce HMM (38 M/R)
+
+Figure 7.13: Running times of our MapReduce implementation of Model 1 and
+
+HMM training iterations at various corpus sizes. For reference, 1/38 running
+
+times of the Giza++ models are shown.
+
+
+even at data sizes that may be tractable on single machines, signiﬁcant perfor-
+
+mance improvements are attainable using MapReduce implementations. This
+
+improvement reduces experimental turnaround times, which allows researchers
+
+to more quickly explore the solution space—which will, we hope, lead to rapid
+
+new developments in statistical machine translation.
+
+For the reader interested in statistical machine translation, there is an open
+
+source Hadoop-based MapReduce implementation of a training pipeline for
+
+phrase-based translation that includes word alignment, phrase extraction, and
+
+phrase scoring [56].
+
+7.5
+
+EM-Like Algorithms
+
+This chapter has focused on expectation maximization algorithms and their
+
+implementation in the MapReduce programming framework. These important
+
+algorithms are indispensable for learning models with latent structure from
+
+unannotated data, and they can be implemented quite naturally in MapReduce.
+
+We now explore some related learning algorithms that are similar to EM but
+
+can be used to solve more general problems, and discuss their implementation.
+
+In this section we focus on gradient-based optimization, which refers to a
+
+class of techniques used to optimize any objective function, provided it is diﬀer-
+
+entiable with respect to the parameters being optimized. Gradient-based op-
+
+timization is particularly useful in the learning of maximum entropy (maxent)
+
+models [110] and conditional random ﬁelds (CRF) [87] that have an exponential
+
+form and are trained to maximize conditional likelihood. In addition to being
+
+widely used supervised classiﬁcation models in text processing (meaning that
+
+during training, both the data and their annotations must be observable), their
+
+gradients take the form of expectations. As a result, some of the previously-
+
+introduced techniques are also applicable for optimizing these models.
+
+Gradient-Based Optimization and Log-Linear Models
+
+Gradient-based optimization refers to a class of iterative optimization algo-
+
+rithms that use the derivatives of a function to ﬁnd the parameters that yield
+
+a minimal or maximal value of that function. Obviously, these algorithms are
+
+only applicable in cases where a useful objective exists, is diﬀerentiable, and
+
+its derivatives can be eﬃciently evaluated. Fortunately, this is the case for
+
+many important problems of interest in text processing. For the purposes of
+
+this discussion, we will give examples in terms of minimizing functions.
+
+Assume that we have some real-valued function F(θ) where θ is a k-dimensional
+
+vector and that F is diﬀerentiable with respect to θ. Its gradient is deﬁned as:
+
+∇F(θ) =
+
+� ∂F
+
+∂θ1
+
+(θ), ∂F
+
+∂θ2
+
+(θ), . . . , ∂F
+
+∂θk
+
+(θ)
+
+�
+
+(7.58)
+
+The gradient has two crucial properties that are exploited in gradient-based
+
+optimization. First, the gradient ∇F is a vector ﬁeld that points in the direction
+
+
+of the greatest increase of F and whose magnitude indicates the rate of increase.
+
+Second, if θ∗ is a (local) minimum of F, then the following is true:
+
+∇F(θ∗) = 0
+
+(7.59)
+
+An extremely simple gradient-based minimization algorithm produces a se-
+
+ries of parameter estimates θ(1), θ(2), . . . by starting with some initial parameter
+
+settings θ(1) and updating parameters through successive iterations according
+
+to the following rule:
+
+θ(i+1) = θ(i) − η(i)∇F(θ(i))
+
+(7.60)
+
+The parameter η(i) &gt; 0 is a learning rate which indicates how quickly the
+
+algorithm moves along the gradient during iteration i.
+
+Provided this value
+
+is small enough that F decreases, this strategy will ﬁnd a local minimum of
+
+F.
+
+However, while simple, this update strategy may converge slowly, and
+
+proper selection of η is non-trivial.
+
+More sophisticated algorithms perform
+
+updates that are informed by approximations of the second derivative, which
+
+are estimated by successive evaluations of ∇F(θ), and can converge much more
+
+rapidly [96].
+
+Gradient-based optimization in MapReduce.
+
+Gradient-based optimiza-
+
+tion algorithms can often be implemented eﬀectively in MapReduce. Like EM,
+
+where the structure of the model determines the speciﬁcs of the realization,
+
+the details of the function being optimized determines how it should best be
+
+implemented, and not every function optimization problem will be a good ﬁt
+
+for MapReduce. Nevertheless, MapReduce implementations of gradient-based
+
+optimization tend to have the following characteristics:
+
+• Each optimization iteration is one MapReduce job.
+
+• The objective should decompose linearly across training instances. This
+
+implies that the gradient also decomposes linearly, and therefore map-
+
+pers can process input data in parallel. The values they emit are pairs
+
+⟨F(θ), ∇F(θ)⟩, which are linear components of the objective and gradi-
+
+ent.
+
+• Evaluation of the function and its gradient is often computationally ex-
+
+pensive because they require processing lots of data. This make paral-
+
+lelization with MapReduce worthwhile.
+
+• Whether more than one reducer can run in parallel depends on the speciﬁc
+
+optimization algorithm being used. Some, like the trivial algorithm of
+
+Equation 7.60 treat the dimensions of θ independently, whereas many are
+
+sensitive to global properties of ∇F(θ). In the latter case, parallelization
+
+across multiple reducers is non-trivial.
+
+• Reducer(s) sum the component objective/gradient pairs, compute the
+
+total objective and gradient, run the optimization algorithm, and emit
+
+θ(i+1).
+
+
+• Many optimization algorithms are stateful and must persist their state
+
+between optimization iterations. This may either be emitted together
+
+with θ(i+1) or written to the distributed ﬁle system as a side eﬀect of the
+
+reducer. Such external side eﬀects must be handled carefully; refer to
+
+Section 2.2 for a discussion.
+
+Parameter learning for log-linear models.
+
+Gradient-based optimization
+
+techniques can be quite eﬀectively used to learn the parameters of probabilis-
+
+tic models with a log-linear parameterization [100]. While a comprehensive
+
+introduction to these models is beyond the scope of this book, such models
+
+are used extensively in text processing applications, and their training using
+
+gradient-based optimization, which may otherwise be computationally expen-
+
+sive, can be implemented eﬀectively using MapReduce. We therefore include a
+
+brief summary.
+
+Log-linear models are particularly useful for supervised learning (unlike the
+
+unsupervised models learned with EM), where an annotation y ∈ Y is available
+
+for every x ∈ X in the training data. In this case, it is possible to directly model
+
+the conditional distribution of label given input:
+
+Pr(y|x; θ) =
+
+exp �
+
+i θi · Hi(x, y)
+
+�
+
+y′ exp �
+
+i θi · Hi(x, y′)
+
+(7.61)
+
+In this expression, Hi are real-valued functions sensitive to features of the
+
+input and labeling.
+
+The parameters of the model is selected so as to min-
+
+imize the negative conditional log likelihood of a set of training instances
+
+⟨⟨x, y⟩1, ⟨x, y⟩2, . . .⟩, which we assume to be i.i.d.:
+
+F(θ) =
+
+�
+
+⟨x,y⟩
+
+− log Pr(y|x; θ)
+
+(7.62)
+
+θ∗ = arg min
+
+θ
+
+F(θ)
+
+(7.63)
+
+As Equation 7.62 makes clear, the objective decomposes linearly across training
+
+instances, meaning it can be optimized quite well in MapReduce. The gradient
+
+derivative of F with respect to θi can be shown to have the following form
+
+[141]:16
+
+∂F
+
+∂θi
+
+(θ) =
+
+�
+
+⟨x,y⟩
+
+�
+
+Hi(x, y) − EPr(y′|x;θ)[Hi(x, y′)]
+
+�
+
+(7.64)
+
+The expectation in the second part of the gradient’s expression can be com-
+
+puted using a variety of techniques. However, as we saw with EM, when very
+
+large event spaces are being modeled, as is the case with sequence labeling, enu-
+
+merating all possible values y can become computationally intractable. And, as
+
+was the case with HMMs, independence assumptions can be used to enable eﬃ-
+
+cient computation using dynamic programming. In fact, the forward-backward
+
+16This assumes that when ⟨x, y⟩ is present the model is fully observed (i.e., there are no
+
+additional latent variables).
+
+
+algorithm introduced in Section 7.2 can, with only minimal modiﬁcation, be
+
+used to compute the expectation EPr(y′|x;θ)[Hi(x, y′)] needed in CRF sequence
+
+models, as long as the feature functions respect the same Markov assumption
+
+that is made in HMMs. For more information about inference in CRFs using
+
+the forward-backward algorithm, we refer the reader to Sha et al. [140].
+
+As we saw in the previous section, MapReduce oﬀers signiﬁcant speedups
+
+when training iterations require running the forward-backward algorithm. The
+
+same pattern of results holds when training linear CRFs.
+
+7.6
+
+Summary and Additional Readings
+
+This chapter focused on learning the parameters of statistical models from
+
+data, using expectation maximization algorithms or gradient-based optimiza-
+
+tion techniques. We focused especially on EM algorithms for three reasons.
+
+First, these algorithms can be expressed naturally in the MapReduce program-
+
+ming model, making them a good example of how to express a commonly-used
+
+algorithm in this new framework. Second, many models, such as the widely-
+
+used hidden Markov model (HMM) trained using EM, make independence
+
+assumptions that permit an high degree of parallelism in both the E- and M-
+
+steps. Thus, they are particularly well-positioned to take advantage of large
+
+clusters. Finally, EM algorithms are unsupervised learning algorithms, which
+
+means that they have access to far more training data than comparable super-
+
+vised approaches. This is quite important. In Chapter 1, when we hailed large
+
+data as the “rising tide that lifts all boats” to yield more eﬀective algorithms,
+
+we were mostly referring to unsupervised approaches, given that the manual
+
+eﬀort required to generate annotated data remains a bottleneck in many su-
+
+pervised approaches. Data acquisition for unsupervised algorithms is often as
+
+simple as crawling speciﬁc web sources, given the enormous quantities of data
+
+available “for free”. This, combined with the ability of MapReduce to process
+
+large datasets in parallel, provides researchers with an eﬀective strategy for
+
+developing increasingly-eﬀective applications.
+
+Since EM algorithms are relatively computationally expensive, even for
+
+small amounts of data, this led us to consider how related supervised learn-
+
+ing models (which typically have much less training data available), can also
+
+be implemented in MapReduce. The discussion demonstrates that not only
+
+does MapReduce provide a means for coping with ever-increasing amounts
+
+of data, but it is also useful for parallelizing expensive computations.
+
+Al-
+
+though MapReduce has been designed with mostly data-intensive applications
+
+in mind, the ability to leverage clusters of commodity hardware to parallelize
+
+computationally-expensive algorithms is an important use case.
+
+Additional Readings.
+
+Because of its ability to leverage large amounts of
+
+training data, machine learning is an attractive problem for MapReduce and
+
+an area of active research. Chu et al. [37] presented general formulations of
+
+a variety of machine learning problems, focusing on a normal form for ex-
+
+
+pressing a variety of machine learning algorithms in MapReduce. The Apache
+
+Mahout project is an open-source implementation of these and other learning
+
+algorithms,17 and it is also the subject of a forthcoming book [116]. Issues asso-
+
+ciated with a MapReduce implementation of latent Dirichlet allocation (LDA),
+
+which is another important unsupervised learning technique, with certain sim-
+
+ilarities to EM, have been explored by Wang et al. [151].
+
+17 http://lucene.apache.org/mahout/
+

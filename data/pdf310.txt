@@ -1,0 +1,811 @@
+
+ECE 830 Fall 2011 Statistical Signal Processing
+
+instructor: R. Nowak
+
+Computing the MLE and the EM Algorithm
+
+If X ∼ p(x|θ), θ ∈ Θ, then the MLE is the solution to the equations
+
+∂logp(x|θ)
+
+∂θ
+
+= 0.
+
+Sometimes these
+
+equations have a simple closed form solution, and other times they do not and we must use computational
+
+methods to ﬁnd �θ.
+
+Example 1 In some cases, the MLE is computed by taking a simple average. Suppose Xi
+
+i.i.d
+
+∼ Poisson(λ).
+
+Then the MLE is �λn = 1
+
+n
+
+� Xi.
+
+Example 2 The MLE sometimes requires solving a system of linear equations. Suppose that X ∼ N(Hθ, I),
+
+where H is n × k and known and θ is k × 1 and unknown. Then the MLE is �θ = (HT H)−1HT X
+
+Example 3 The MLE can also be the solution to a nonlinear system of equations. Suppose that Xi
+
+i.i.d
+
+∼
+
+pN(µ0, σ2
+
+0) + (1 − p)N(µ1, σ2
+
+1), i = 1, ..., n, and let θ = [p µ0 σ2
+
+0 µ1 σ2
+
+1]T
+
+p(xi|θ) =
+
+p
+
+�
+
+2πσ2
+
+0
+
+e
+
+− (xi−µ0)2
+
+2σ2
+
+0
+
++
+
+1 − p
+
+�
+
+2πσ2
+
+1
+
+e
+
+− (xi−µ1)2
+
+2σ2
+
+1
+
+
+
+Figure 1: Two-dimensional Gaussian mixture density.
+
+The likelihood is a complicated nonlinear function. Moreover, it is non-convex in θ.
+
+p(x|θ) =
+
+n
+
+�
+
+i=1
+
+p(xi|θ), a product of sums of exponentials.
+
+Taking the logarithm doesn’t simplify things:
+
+log p(x|θ) = a sum of logs of a sum of exponentials.
+
+1
+
+
+Computing the MLE and the EM Algorithm
+
+2
+
+Also recall that the suﬃcient statistic in this case is the whole set of data (X1, X2, ..., Xn); i.e., there is no
+
+small suﬃcient statistic that summarizes them.
+
+What can we do in such situations? We need a computational method to maximize the liklihood fucntion.
+
+There are two common approaches:
+
+1. Gradient/Newton methods
+
+θ(t+1) = θ(t) + ∆ ∂
+
+∂θ log p(x|θ)|θ=θ(t), where ∆ &gt; 0 is a step size.
+
+2. Expectation-Maximization Algorithm (EM algorithm)
+
+Gradient ascent methods should be familiar to most readers. The EM algorithm is a specialized approach
+
+designed for MLE problems, and it has some attractive properties, namely it doesn’t require speciﬁcation
+
+of a step size and under mild conditions it is guaranteed to converge to a local maximum of the likelihood
+
+function. If the likelihood function is concave (i.e., negative log-likelihood is convex), then convergence to a
+
+global maximum likelihood point is possible using gradient methods or EM. The rest of the lecture discusses
+
+the EM algorithm.
+
+1
+
+The EM Algorithm
+
+In many problems MLE based on observed data X would be greatly simpliﬁed if we had additionally observed
+
+another piece of data Y .Y is called the hidden or latent data.
+
+Example 4 X ∼ N(Hθ, I) can be modeled as:
+
+Yk×1
+
+=
+
+θ + W1
+
+Xn×1
+
+=
+
+Hn×kY + W2
+
+such that HW1 + W2 ∼ N(0, I).
+
+If we just have X, then we must solve a system of equations to obtain the MLE. If the dimension is large,
+
+then computing the MLE is quite expensive(i.e. the inversion is at least O(max(nk2, k3))). But if we also
+
+have Y , then the MLE can be computed with O(k) as we know ˆθ = Y .
+
+Example 5
+
+xi
+
+iid
+
+∼
+
+pN(µ0, σ2
+
+0) + (1 − p)N(µ1, σ2
+
+1)
+
+yi
+
+iid
+
+∼
+
+Bernoulli(p) = p1−yi(1 − p)yi
+
+xi|yi = l
+
+∼
+
+N(µl, σ2
+
+l )
+
+Given {(xi, yi)}n
+
+i=1, we have:
+
+ˆµl
+
+=
+
+1
+
+� 1yi=l
+
+�
+
+i:yi=l
+
+xi
+
+ˆσl
+
+=
+
+1
+
+� 1yi=l
+
+�
+
+i:yi=l
+
+(xi − ˆµl)2
+
+ˆp
+
+=
+
+� 1yi=l
+
+n
+
+MLE’s are easy to compute here.
+
+However, if we only have {xi}n
+
+i=1, the computation of MLE is a
+
+complicated, non-convex optimization, where we can apply EM algorithm to compute. The application of
+
+EM algorithm in this situation is shown in Example 4.
+
+
+Computing the MLE and the EM Algorithm
+
+3
+
+Main Idea
+
+Let L(θ) = log p(x|θ) and also deﬁne the complete data log-like:
+
+Lc(θ) = log p(x, y|θ) = log p(y|x, θ)p(x|θ) = log p(y|x, θ) + log p(x|θ) = log p(y|x, θ) + L(θ)
+
+Suppose our current guess of θ is θ(t) and that we would like to imporve this guess. Consider
+
+L(θ) − L(θ(t)) = Lc(θ) − Lc(θ(t)) + log p(y|x, θ(t))
+
+p(y|x, θ)
+
+Now take expectation of both sides with respect to y ∼ p(y|x, θ(t)), we have:
+
+L(θ) − L(θ(t)) = Ey[Lc(θ)] − Ey[Lc(θ(t))] + D(p(y|x, θ(t))∥p(y|x, θ))
+
+Since D(p(y|x, θ(t))∥p(y|x, θ)) ≥ 0, we have the following inequality:
+
+L(θ) − L(θ(t)) ≥ Ey[Lc(θ)] − Ey[Lc(θ(t))] = Q(θ, θ(t)) − Q(θ(t), θ(t))
+
+where Q(θ, θ′) := Ep(y|x,θ′)[log p(x, y|θ)] is the expectation of complete data log-likelihood. We choose θ(t+1)
+
+as the solution of the following optimization problem:
+
+θ(t+1) = arg max
+
+θ
+
+Q(θ, θ(t))
+
+The EM algorithm is an attractive option if the Q function is easily computed and optimized. The relationship
+
+between log p(x, θ), Q(θ, θ(t)), θt and θ(t+1) are depicted in the following ﬁgure:
+
+
+
+Figure 2: Graphical show of EM algorithm
+
+The process of EM algorithm is as follows:
+
+Init: t = 0, θ(0) = 0 or random value
+
+for t=0,1,2,. . .
+
+E step:
+
+Q(θ, θ(t)) = Ep(y|x,θ(t))[log p(x, y|θ)]
+
+M step:
+
+θ(t+1) = arg max
+
+θ
+
+Q(θ, θ(t))
+
+The E-step and M-step repeat until convergence. The two key properties of the EM algorithm are:
+
+
+Computing the MLE and the EM Algorithm
+
+4
+
+1. log p(x|θ(0)) ≤ log p(x|θ(1)) ≤ . . .
+
+2. It converges to stationary point(e.g. local max)
+
+Now let’s look at a few applications of the EM algorithm. The EM algorithm is especially attractive in cases
+
+where the Q function is easy to compute and optimize. There is a bit of art involved in the choice of the
+
+hiddent or latent data Y , and this needs to be worked out on a case-by-case basis.
+
+Example 6 Original model X = Hθ + W:
+
+Complete model:
+
+Y
+
+=
+
+θ + W1
+
+W1 ∼ N(0, α2Ik×k)
+
+X
+
+=
+
+Hn×kY + W2
+
+W2 ∼ N(0, In×n − α2HHT )
+
+Then we construct the complete log-likelihood:
+
+log p(x, y|θ)
+
+=
+
+log p(x|y|θ) + log p(y|θ)
+
+=
+
+constant − ∥y − θ∥2
+
+2α2
+
+=
+
+1
+
+2α2 (2θT y − θT θ − yT y) + constant
+
+=
+
+1
+
+2α2 (2θT y − θT θ) + constant
+
+As the part left after taking away the constant is proportional to y, so we only need to calculate Ep(y|x|θ(t))[y].
+
+Introduce Z1 = Y , Z2 = X − HY , then we have the joint distribution of Z1, Z2 as:
+
+�
+
+Z1
+
+Z2
+
+�
+
+= N(
+
+�
+
+θ
+
+0
+
+�
+
+,
+
+�α2Ik×k
+
+0
+
+0
+
+In×n − α2HHT
+
+�
+
+)
+
+As we know
+
+�X
+
+Y
+
+�
+
+=
+
+� H
+
+In×n
+
+Ik×k
+
+0
+
+� �Z1
+
+Z2
+
+�
+
+, we know:
+
+�
+
+X
+
+Y
+
+�
+
+∼ N(
+
+�
+
+Hθ
+
+θ
+
+�
+
+,
+
+� In×n
+
+α2H
+
+α2HT
+
+α2Ik×k
+
+�
+
+)
+
+Make a linear transformation, we have:
+
+�
+
+X
+
+Y − α2HT X
+
+�
+
+∼ N(
+
+�
+
+Hθ
+
+θ − α2HT Hθ
+
+�
+
+,
+
+�In×n
+
+0
+
+0
+
+α2Ik×k − α4HT H
+
+�
+
+)
+
+So we have:
+
+Ep(y|x|θ(t))[y] = α2HT x + θ(t) − α2HT Hθ(t) = y(t)
+
+As Q(θ, θ(t)) =
+
+1
+
+2α2 (2θT y(t) − θT θ) + constant, set ∂Q
+
+∂θ = 0, we have:
+
+θ(t+1) = y(t)
+
+It is easy to calculate the stationary point in this iteration, let θ(t+1) = θ(t), we have:
+
+θstationary = (HT H)−1HT x
+
+which is the answer we are familiar with.
+
+
+Computing the MLE and the EM Algorithm
+
+5
+
+Example 7 Suppose:
+
+X1, X2, . . . , Xn
+
+iid
+
+∼
+
+m
+
+�
+
+j=1
+
+pjN(µj, σ2
+
+j )
+
+We have:
+
+p(x, y|θ) = Πn
+
+i=1
+
+m
+
+�
+
+j=1
+
+pj
+
+1
+
+√
+
+2πσj
+
+e
+
+−
+
+(xi−µj )2
+
+2σ2
+
+j
+
+1yi=j
+
+Thus,
+
+log p(x, y|θ) =
+
+n
+
+�
+
+i=1
+
+m
+
+�
+
+j=1
+
+log(
+
+pj
+
+√
+
+2πσj
+
+e
+
+−
+
+(xi−µj )2
+
+2σ2
+
+j
+
+)1yi=j
+
+Ep(y|x|θ(t))[log p(x, y|θ)] =
+
+n
+
+�
+
+i=1
+
+m
+
+�
+
+j=1
+
+log(
+
+pj
+
+√
+
+2πσj
+
+e
+
+−
+
+(xi−µj )2
+
+2σ2
+
+j
+
+)Ep(y|x|θ(t))[1yi=j]
+
+=
+
+n
+
+�
+
+i=1
+
+m
+
+�
+
+j=1
+
+log(
+
+pj
+
+√
+
+2πσj
+
+e
+
+−
+
+(xi−µj )2
+
+2σ2
+
+j
+
+)
+
+p(t)
+
+j N(xi; µ(t)
+
+j , (σ(t)
+
+j )2)
+
+�m
+
+l=1 p(t)
+
+l N(xi; µ(t)
+
+l , (σ(t)
+
+l )2)
+
+Denote p(t)(yi = j) =
+
+p(t)
+
+j
+
+N(xi;µ(t)
+
+j
+
+,(σ(t)
+
+j
+
+)2)
+
+Pm
+
+l=1 p(t)
+
+l
+
+N(xi;µ(t)
+
+l
+
+,(σ(t)
+
+l
+
+)2), we have the expression of Q(θ, θ(t)):
+
+Q(θ, θ(t)) =
+
+n
+
+�
+
+i=1
+
+m
+
+�
+
+j=1
+
+p(t)(yi = j) log(p(t)
+
+j N(xi; µj, σ2
+
+j ))
+
+=
+
+n
+
+�
+
+i=1
+
+m
+
+�
+
+j=1
+
+p(t)(yi = j) log(N(xi; µj, σ2
+
+j )) + constant
+
+Set ∂Q
+
+∂θ = 0, we have:
+
+µ(t+1)
+
+j
+
+=
+
+�n
+
+i=1 p(t)(yi = j)xi
+
+�n
+
+i=1 p(t)(yi = j)
+
+(σ(t+1)
+
+j
+
+)2
+
+=
+
+�n
+
+i=1(xi − µ(t+1)
+
+j
+
+)2p(t)(yi = j)
+
+�n
+
+i=1 p(t)(yi = j)
+

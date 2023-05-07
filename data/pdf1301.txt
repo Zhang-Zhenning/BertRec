@@ -1,0 +1,639 @@
+
+
+
+Log in
+
+Sign up
+
+
+
+Sycorax ♦
+
+85.7k
+
+21
+
+213
+
+343
+
+How to construct a cross-entropy loss for general regression targets?
+
+Asked 4 years, 5 months ago
+
+Modified 3 years, 3 months ago
+
+Viewed 4k times
+
+16
+
+ 
+
+ 
+
+It's common short-hand in neural networks literature to refer to categorical cross-entropy loss as simply "cross-entropy." However, this terminology is ambiguous because different probability distributions have different cross-
+
+entropy loss functions.
+
+So, in general, how does one move from an assumed probability distribution for the target variable to defining a cross-entropy loss for your network? What does the function require as inputs? (For example, the categorical cross-
+
+entropy function for one-hot targets requires a one-hot binary vector and a probability vector as inputs.)
+
+A good answer will discuss the general principles involved, as well as worked examples for
+
+categorical cross-entropy loss for one-hot targets
+
+Gaussian-distributed target distribution and how how this reduces to usual MSE loss
+
+A less common example such as a gamma distributed target, or a heavy-tailed target
+
+Explain the relationship between minimizing cross entropy and maximizing log-likelihood.
+
+Share
+
+Improve this question
+
+edited Jan 23, 2020 at 16:24
+
+asked Nov 22, 2018 at 13:53
+
+2
+
+This is quite straightforward. I partially explained it before. stats.stackexchange.com/questions/347431/…. It is simply Maximum Likelihood Estimation. I will make a more visual answer when I have time.
+
+– Cagdas Ozgenc
+
+Nov 22, 2018 at 17:29 
+
+You might be interested in my answer answer to the provoking question: stats.stackexchange.com/a/378994/214971
+
+– dedObed
+
+Nov 27, 2018 at 10:24
+
+2 Answers
+
+Sorted by:
+
+13
+
+ 
+
++100
+
+Suppose that we are trying to infer the parametric distribution p(y|Θ(X)), where Θ(X) is a vector output inverse link function with [θ1,θ2,...,θM].
+
+We have a neural network at hand with some topology we decided. The number of outputs at the output layer matches the number of parameters we would like to infer (it may be less if we don't care about all the parameters, as we
+
+will see in the examples below).
+
+
+
+In the hidden layers we may use whatever activation function we like. What's crucial are the output activation functions for each parameter as they have to be compatible with the support of the parameters.
+
+Ask Question
+
+neural-networks maximum-likelihood loss-functions cross-entropy
+
+Cite
+
+Follow
+
+
+
+
+
+
+
+Highest score (default)
+
+
+
+
+Some example correspondence:
+
+Linear activation: μ, mean of Gaussian distribution
+
+Logistic activation: μ, mean of Bernoulli distribution
+
+Softplus activation: σ, standard deviation of Gaussian distribution, shape parameters of Gamma distribution
+
+Definition of cross entropy:
+
+H(p,q) = −Ep[logq(y)] = −∫p(y)logq(y)dy
+
+where p is ideal truth, and q is our model.
+
+Empirical estimate:
+
+H(p,q) ≈ −
+
+1
+
+N
+
+N
+
+∑
+
+i=1logq(yi)
+
+where N is number of independent data points coming from p.
+
+Version for conditional distribution:
+
+H(p,q) ≈ −
+
+1
+
+N
+
+N
+
+∑
+
+i=1logq(yi|Θ(Xi))
+
+Now suppose that the network output is Θ(W,Xi) for a given input vector Xi and all network weights W, then the training procedure for expected cross entropy is:
+
+Wopt =arg
+
+min
+
+W −
+
+1
+
+N
+
+N
+
+∑
+
+i=1logq(yi|Θ(W,Xi))
+
+which is equivalent to Maximum Likelihood Estimation of the network parameters.
+
+Some examples:
+
+Regression: Gaussian distribution with heteroscedasticity
+
+μ =θ1:linear activation
+
+σ=θ2:softplus activation*
+
+loss= −
+
+1
+
+N
+
+N
+
+∑
+
+i=1log[
+
+1
+
+θ2(W,Xi)√2πe−
+
+(yi −θ1 (W,Xi ) )2
+
+2θ2 (W,Xi )2
+
+]
+
+under homoscedasticity we don't need θ2 as it doesn't affect the optimization and the expression simplifies to (after we throw away irrelevant constants):
+
+loss=
+
+1
+
+N
+
+N
+
+∑
+
+i=1(yi −θ1(W,Xi))2
+
+Binary classification: Bernoulli distribution
+
+μ =θ1:logistic activation
+
+loss= −
+
+1
+
+N
+
+N
+
+∑
+
+i=1log[θ1(W,Xi)yi(1−θ1(W,Xi))(1−yi)]
+
+= −
+
+1
+
+N
+
+N
+
+∑
+
+i=1yilog[θ1(W,Xi)]+(1−yi)log[1−θ1(W,Xi)]
+
+with yi ∈ {0,1}.
+
+Regression: Gamma response
+
+α(shape) =θ1:softplus activation*
+
+β(rate) =θ2:softplus activation*
+
+loss= −
+
+1
+
+N
+
+N
+
+∑
+
+i=1log[
+
+θ2(W,Xi)θ1(W ,Xi)
+
+Γ(θ1(W,Xi))
+
+yθ1(W ,Xi)−1
+
+i
+
+e−θ2(W ,Xi)yi]
+
+Multiclass classification: Categorical distribution
+
+Some constraints cannot be handled directly by plain vanilla neural network toolboxes (but these days they seem to do very advanced tricks). This is one of those cases:
+
+μ1 =θ1:logistic activation
+
+μ2 =θ2:logistic activation
+
+...
+
+μK =θK:logistic activation
+
+We have a constraint ∑θi =1. So we fix it before we plug them into the distribution:
+
+θ′
+
+i =
+
+θi
+
+∑K
+
+j=1θj
+
+loss= −
+
+1
+
+N
+
+N
+
+∑
+
+i=1log[ΠK
+
+j=1θ′
+
+i (W,Xi)yi,j]
+
+
+
+
+Cagdas Ozgenc
+
+4,026
+
+4
+
+30
+
+62
+
+
+
+Neil G
+
+14.5k
+
+3
+
+44
+
+87
+
+Note that y is a vector quantity in this case. Another approach is the Softmax.
+
+*ReLU is unfortunately not a particularly good activation function for (0,∞) due to two reasons. First of all it has a dead derivative zone on the left quadrant which causes optimization algorithms to get trapped. Secondly at exactly
+
+0 value, many distributions would go singular for the value of the parameter. For this reason it is usually common practice to add a small value ϵ to assist off-the shelf optimizers and for numerical stability.
+
+As suggested by @Sycorax Softplus activation is a much better replacement as it doesn't have a dead derivative zone.
+
+
+
+Summary:
+
+1. Plug the network output to the parameters of the distribution and take the -log then minimize the network weights.
+
+2. This is equivalent to Maximum Likelihood Estimation of the parameters.
+
+Share
+
+Improve this answer
+
+edited Jan 24, 2020 at 7:35
+
+answered Jan 21, 2020 at 10:48
+
+What is the input to the network in this case?
+
+– theQman
+
+Feb 14, 2022 at 18:54
+
+2
+
+ 
+
+ 
+
+I'm going to answer for targets whose distribution family is an exponential family. This is typically justified as the minimum assumptive distribution. Let us denote the observed distributions to be X1,X2,…, the predictive
+
+distributions produced by the model to be Y1,Y2,….
+
+Every exponential family admits two important parametrizations: natural and expectation. Let the expectation parameters of the observed distributions be χi, and the natural parameters of the predictive distributions be ηi.
+
+How does one move from an assumed probability distribution for the target variable to defining a cross-entropy loss for your network?
+
+The cross entropy of an exponential family is
+
+H×(X;Y) = −χ⊺
+
+where h is the carrier measure and g the log-normalizer of the exponential family. We typically just want the gradient of the cross entropy with respect to the predictions, which is is just
+
+\frac{dH^\times(X; Y)}{d\eta} = g'(\eta)-\chi.
+
+g'(\eta) is just the expectation parameters of the prediction.
+
+What does the function require as inputs?
+
+We require the pair (\eta_i, \chi_i).
+
+Let's go through your examples:
+
+Categorical cross-entropy loss for one-hot targets. The one-hot vector (without the final element) are the expectation parameters. The natural parameters are log-odds (See Nielsen and Nock for a good reference to conversions).
+
+To optimize the cross entropy, you let the gradient be the difference of one-hot vectors.
+
+Gaussian-distributed target distribution (with known variance). The cross entropy is simply a paraboloid, and therefore corresponds to MSE. Its gradient is linear, and is simply the difference of the observed and predicted means.
+
+A less common example such as a gamma distributed target, or a heavy-tailed target. Same thing: the optimization is done as a difference of expectation parameters. For the gamma distribution, the expectation parameters are
+
+(\frac{k}{\lambda}, \psi(k) - \log \lambda) where k is the shape and \lambda is the rate.
+
+The relationship between minimizing cross entropy and maximizing log-likelihood is a good question. Minimizing log-likelihood is the special case where the target is a sample x (or delta distribution) rather than a distribution X. I
+
+think for the optimization you do the same thing as above except you just use \chi=x. The log-likelihood calculation is just the log-density of the predictive distribution evaluated at x.
+
+Share
+
+Improve this answer
+
+answered Jan 23, 2020 at 16:33
+
+Your Answer
+
+Cite
+
+Follow
+
+
+
+Cite
+
+Follow
+
+
+
+
+CROSS VALIDATED
+
+Tour
+
+Help
+
+Chat
+
+Contact
+
+Feedback
+
+COMPANY
+
+Stack Overflow
+
+Teams
+
+Advertising
+
+Collectives
+
+Talent
+
+About
+
+Press
+
+Legal
+
+Privacy Policy
+
+Terms of Service
+
+Cookie Settings
+
+Cookie Policy
+
+STACK EXCHANGE NETWORK
+
+Technology
+
+Culture &amp; recreation
+
+Life &amp; arts
+
+Science
+
+Professional
+
+Business
+
+By clicking “Post Your Answer”, you agree to our terms of service, privacy policy and cookie policy
+
+Not the answer you're looking for? Browse other questions tagged neural-networks maximum-likelihood loss-functions cross-entropy  or ask your own question.
+
+Linked
+
+0
+
+Why is the objective function for GLM equal to -\ln p(Y | \hat{Y})?
+
+0
+
+If you're trying to match a vector p to x, why doesn't a divisive loss function \frac{p}{x} + \frac{x}{p} work better than negative log loss?
+
+0
+
+How cost function of Logistic Regression is derived?
+
+32
+
+Is logistic regression a specific case of a neural network?
+
+8
+
+Is Wikipedia's page on the sigmoid function incorrect?
+
+21
+
+Tensorflow Cross Entropy for Regression?
+
+30
+
+Do neural networks learn a function or a probability density function?
+
+29
+
+Can we use MLE to estimate Neural Network weights?
+
+12
+
+Reference for log-loss (cross-entropy)?
+
+17
+
+the relationship between maximizing the likelihood and minimizing the cross-entropy
+
+See more linked questions
+
+Related
+
+10
+
+Vectorization of Cross Entropy Loss
+
+124
+
+What loss function for multi-class, multi-label classification tasks in neural networks?
+
+5
+
+What happens if I flip targets and predictions in cross-entropy?
+
+6
+
+Different definitions of cross entropy loss function not equivalent?
+
+72
+
+Should I use a categorical cross-entropy or binary cross-entropy loss for binary predictions?
+
+18
+
+How meaningful is the connection between MLE and cross entropy in deep learning?
+
+5
+
+Cross Entropy with Log Softmax Activation
+
+6
+
+Using cross-entropy for regression problems
+
+Hot Network Questions
+
+
+
+Why an extra drawer face?
+
+
+
+Why does Acts not mention the deaths of Peter and Paul?
+
+
+
+English version of Russian proverb "The hedgehogs got pricked, cried, but continued to eat the cactus"
+
+
+
+Seemed vs seems
+
+
+
+Can the game be left in an invalid state if all state-based actions are replaced?
+
+more hot questions
+
+ Question feed
+
+Post Your Answer
+
+Featured on Meta
+
+
+
+New blog post from our CEO Prashanth: Community is the future of AI
+
+
+
+Improving the copy in the close modal and post notices - 2023 edition
+
+
+API
+
+Data
+
+Blog
+
+Facebook
+
+Twitter
+
+LinkedIn
+
+Instagram
+
+Site design / logo © 2023 Stack Exchange Inc; user contributions licensed under CC BY-SA. rev 2023.4.21.43403
+
+Your privacy
+
+By clicking “Accept all cookies”, you agree Stack Exchange can store cookies on your device and disclose information in accordance with our Cookie Policy.
+
+ 
+
+Accept all cookies
+
+Necessary cookies only
+
+Customize settings
+

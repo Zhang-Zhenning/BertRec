@@ -1,0 +1,770 @@
+
+
+
+
+
+
+
+Navigation
+
+Navigation
+
+
+
+Click to Take the FREE Probability Crash-Course
+
+Search...
+
+
+
+
+
+A Gentle Introduction to Maximum Likelihood Estimation for
+
+Machine Learning
+
+by Jason Brownlee on October 23, 2019 in Probability
+
+Last Updated on November 5, 2019
+
+Density estimation is the problem of estimating the probability distribution for a sample of observations from a problem domain.
+
+There are many techniques for solving density estimation, although a common framework used throughout the field of machine
+
+learning is maximum likelihood estimation. Maximum likelihood estimation involves defining a likelihood function for calculating the
+
+conditional probability of observing the data sample given a probability distribution and distribution parameters. This approach can be
+
+used to search a space of possible distributions and parameters.
+
+This flexible probabilistic framework also provides the foundation for many machine learning algorithms, including important methods
+
+such as linear regression and logistic regression for predicting numeric values and class labels respectively, but also more generally
+
+for deep learning artificial neural networks.
+
+In this post, you will discover a gentle introduction to maximum likelihood estimation.
+
+After reading this post, you will know:
+
+Maximum Likelihood Estimation is a probabilistic framework for solving the problem of density estimation.
+
+It involves maximizing a likelihood function in order to find the probability distribution and parameters that best explain the observed
+
+data.
+
+It provides a framework for predictive modeling in machine learning where finding model parameters can be framed as an
+
+optimization problem.
+
+Kick-start your project with my new book Probability for Machine Learning, including step-by-step tutorials and the Python source
+
+code files for all examples.
+
+Let’s get started.
+
+
+
+ 
+
+ 
+
+ 
+
+Tweet
+
+Tweet
+
+
+
+ Share
+
+
+
+Share
+
+Share
+
+
+
+
+
+
+
+
+A Gentle Introduction to Maximum Likelihood Estimation for Machine Learning
+
+Photo by Guilhem Vellut, some rights reserved.
+
+Overview
+
+This tutorial is divided into three parts; they are:
+
+1. Problem of Probability Density Estimation
+
+2. Maximum Likelihood Estimation
+
+3. Relationship to Machine Learning
+
+Problem of Probability Density Estimation
+
+A common modeling problem involves how to estimate a joint probability distribution for a dataset.
+
+For example, given a sample of observation (X) from a domain (x1, x2, x3, …, xn), where each observation is drawn independently
+
+from the domain with the same probability distribution (so-called independent and identically distributed, i.i.d., or close to it).
+
+Density estimation involves selecting a probability distribution function and the parameters of that distribution that best explain the joint
+
+probability distribution of the observed data (X).
+
+How do you choose the probability distribution function?
+
+How do you choose the parameters for the probability distribution function?
+
+This problem is made more challenging as sample (X) drawn from the population is small and has noise, meaning that any evaluation
+
+of an estimated probability density function and its parameters will have some error.
+
+There are many techniques for solving this problem, although two common approaches are:
+
+Maximum a Posteriori (MAP), a Bayesian method.
+
+Maximum Likelihood Estimation (MLE), frequentist method.
+
+The main difference is that MLE assumes that all solutions are equally likely beforehand, whereas MAP allows prior information about
+
+the form of the solution to be harnessed.
+
+In this post, we will take a closer look at the MLE method and its relationship to applied machine learning.
+
+Want to Learn Probability for Machine Learning
+
+Take my free 7-day email crash course now (with sample code).
+
+Click to sign-up and also get a free PDF Ebook version of the course.
+
+
+
+
+
+Download Your FREE Mini-Course
+
+Maximum Likelihood Estimation
+
+One solution to probability density estimation is referred to as Maximum Likelihood Estimation, or MLE for short.
+
+Maximum Likelihood Estimation involves treating the problem as an optimization or search problem, where we seek a set of
+
+parameters that results in the best fit for the joint probability of the data sample (X).
+
+First, it involves defining a parameter called theta that defines both the choice of the probability density function and the parameters of
+
+
+First, it involves defining a parameter called theta that defines both the choice of the probability density function and the parameters of
+
+that distribution. It may be a vector of numerical values whose values change smoothly and map to different probability distributions
+
+and their parameters.
+
+In Maximum Likelihood Estimation, we wish to maximize the probability of observing the data from the joint probability distribution given
+
+a specific probability distribution and its parameters, stated formally as:
+
+P(X | theta)
+
+This conditional probability is often stated using the semicolon (;) notation instead of the bar notation (|) because theta is not a random
+
+variable, but instead an unknown parameter. For example:
+
+P(X ; theta)
+
+or
+
+P(x1, x2, x3, …, xn ; theta)
+
+This resulting conditional probability is referred to as the likelihood of observing the data given the model parameters and written using
+
+the notation L() to denote the likelihood function. For example:
+
+L(X ; theta)
+
+The objective of Maximum Likelihood Estimation is to find the set of parameters (theta) that maximize the likelihood function, e.g. result
+
+in the largest likelihood value.
+
+maximize L(X ; theta)
+
+We can unpack the conditional probability calculated by the likelihood function.
+
+Given that the sample is comprised of n examples, we can frame this as the joint probability of the observed data samples x1, x2, x3,
+
+…, xn in X given the probability distribution parameters (theta).
+
+L(x1, x2, x3, …, xn ; theta)
+
+The joint probability distribution can be restated as the multiplication of the conditional probability for observing each example given the
+
+distribution parameters.
+
+product i to n P(xi ; theta)
+
+Multiplying many small probabilities together can be numerically unstable in practice, therefore, it is common to restate this problem as
+
+the sum of the log conditional probabilities of observing each example given the model parameters.
+
+sum i to n log(P(xi ; theta))
+
+Where log with base-e called the natural logarithm is commonly used.
+
+— Page 132, Deep Learning, 2016.
+
+Given the frequent use of log in the likelihood function, it is commonly referred to as a log-likelihood function.
+
+It is common in optimization problems to prefer to minimize the cost function, rather than to maximize it. Therefore, the negative of the
+
+log-likelihood function is used, referred to generally as a Negative Log-Likelihood (NLL) function.
+
+minimize -sum i to n log(P(xi ; theta))
+
+— Page 133, Deep Learning, 2016.
+
+This product over many probabilities can be inconvenient […] it is prone to numerical underflow. To obtain a more
+
+convenient but equivalent optimization problem, we observe that taking the logarithm of the likelihood does not change its
+
+arg max but does conveniently transform a product into a sum
+
+
+
+In software, we often phrase both as minimizing a cost function. Maximum likelihood thus becomes minimization of the
+
+negative log-likelihood (NLL) …
+
+
+
+
+— Page 133, Deep Learning, 2016.
+
+Relationship to Machine Learning
+
+This problem of density estimation is directly related to applied machine learning.
+
+We can frame the problem of fitting a machine learning model as the problem of probability density estimation. Specifically, the choice
+
+of model and model parameters is referred to as a modeling hypothesis h, and the problem involves finding h that best explains the
+
+data X.
+
+P(X ; h)
+
+We can, therefore, find the modeling hypothesis that maximizes the likelihood function.
+
+maximize L(X ; h)
+
+Or, more fully:
+
+maximize sum i to n log(P(xi ; h))
+
+This provides the basis for estimating the probability density of a dataset, typically used in unsupervised machine learning algorithms;
+
+for example:
+
+Clustering algorithms.
+
+— Page 365, Data Mining: Practical Machine Learning Tools and Techniques, 4th edition, 2016.
+
+The Maximum Likelihood Estimation framework is also a useful tool for supervised machine learning.
+
+This applies to data where we have input and output variables, where the output variate may be a numerical value or a class label in
+
+the case of regression and classification predictive modeling retrospectively.
+
+We can state this as the conditional probability of the output (y) given the input (X) given the modeling hypothesis (h).
+
+maximize L(y|X ; h)
+
+Or, more fully:
+
+maximize sum i to n log(P(yi|xi ; h))
+
+— Page 133, Deep Learning, 2016.
+
+This means that the same Maximum Likelihood Estimation framework that is generally used for density estimation can be used to find
+
+a supervised learning model and parameters.
+
+This provides the basis for foundational linear modeling techniques, such as:
+
+Linear Regression, for predicting a numerical value.
+
+Logistic Regression, for binary classification.
+
+In the case of linear regression, the model is constrained to a line and involves finding a set of coefficients for the line that best fits the
+
+observed data. Fortunately, this problem can be solved analytically (e.g. directly using linear algebra).
+
+In the case of logistic regression, the model defines a line and involves finding a set of coefficients for the line that best separates the
+
+classes. This cannot be solved analytically and is often solved by searching the space of possible coefficient values using an efficient
+
+optimization algorithm such as the BFGS algorithm or variants.
+
+Using the expected log joint probability as a key quantity for learning in a probability model with hidden variables is better
+
+known in the context of the celebrated “expectation maximization” or EM algorithm.
+
+
+
+The maximum likelihood estimator can readily be generalized to the case where our goal is to estimate a conditional
+
+probability P(y | x ; theta) in order to predict y given x. This is actually the most common situation because it forms the
+
+basis for most supervised learning.
+
+
+
+
+
+
+Both methods can also be solved less efficiently using a more general optimization algorithm such as stochastic gradient descent.
+
+In fact, most machine learning models can be framed under the maximum likelihood estimation framework, providing a useful and
+
+consistent way to approach predictive modeling as an optimization problem.
+
+An important benefit of the maximize likelihood estimator in machine learning is that as the size of the dataset increases, the quality of
+
+the estimator continues to improve.
+
+Further Reading
+
+This section provides more resources on the topic if you are looking to go deeper.
+
+Books
+
+Chapter 5 Machine Learning Basics, Deep Learning, 2016.
+
+Chapter 2 Probability Distributions, Pattern Recognition and Machine Learning, 2006.
+
+Chapter 8 Model Inference and Averaging, The Elements of Statistical Learning, 2016.
+
+Chapter 9 Probabilistic methods, Data Mining: Practical Machine Learning Tools and Techniques, 4th edition, 2016.
+
+Chapter 22 Maximum Likelihood and Clustering, Information Theory, Inference and Learning Algorithms, 2003.
+
+Chapter 8 Learning distributions, Bayesian Reasoning and Machine Learning, 2011.
+
+Articles
+
+Maximum likelihood estimation, Wikipedia.
+
+Maximum Likelihood, Wolfram MathWorld.
+
+Likelihood function, Wikipedia.
+
+Some problems understanding the definition of a function in a maximum likelihood method, CrossValidated.
+
+Summary
+
+In this post, you discovered a gentle introduction to maximum likelihood estimation.
+
+Specifically, you learned:
+
+Maximum Likelihood Estimation is a probabilistic framework for solving the problem of density estimation.
+
+It involves maximizing a likelihood function in order to find the probability distribution and parameters that best explain the observed
+
+data.
+
+It provides a framework for predictive modeling in machine learning where finding model parameters can be framed as an
+
+optimization problem.
+
+Do you have any questions?
+
+Ask your questions in the comments below and I will do my best to answer.
+
+Get a Handle on Probability for Machine Learning!
+
+Develop Your Understanding of Probability
+
+...with just a few lines of python code
+
+Discover how in my new Ebook:
+
+Probability for Machine Learning
+
+It provides self-study tutorials and end-to-end projects on:
+
+Bayes Theorem, Bayesian Optimization, Distributions, Maximum Likelihood, Cross-Entropy, Calibrating Models
+
+and much more...
+
+Finally Harness Uncertainty in Your Projects
+
+Skip the Academics. Just Results.
+
+
+
+SEE WHAT'S INSIDE
+
+
+ A Gentle Introduction to Cross-Entropy for Machine Learning
+
+Develop k-Nearest Neighbors in Python From Scratch 
+
+
+
+
+
+More On This Topic
+
+
+
+
+
+A Gentle Introduction to Logistic Regression With…
+
+
+
+
+
+A Gentle Introduction to Linear Regression With…
+
+
+
+
+
+A Gentle Introduction to Expectation-Maximization…
+
+
+
+
+
+A Gentle Introduction to Cross-Entropy for Machine Learning
+
+
+
+
+
+A Gentle Introduction to Maximum a Posteriori (MAP)…
+
+
+
+
+
+Loss and Loss Functions for Training Deep Learning…
+
+About Jason Brownlee
+
+Jason Brownlee, PhD is a machine learning specialist who teaches developers how to get results with modern machine learning
+
+methods via hands-on tutorials.
+
+View all posts by Jason Brownlee →
+
+ 
+
+ 
+
+ 
+
+Tweet
+
+Tweet
+
+
+
+ Share
+
+
+
+Share
+
+Share
+
+
+
+
+12 Responses to A Gentle Introduction to Maximum Likelihood Estimation for Machine Learning
+
+
+
+Seun Animasahun October 25, 2019 at 7:19 am #
+
+Thanks for your explanation. Highky insightful.
+
+I want to ask that in your practical experience with MLE, does using MLE as an unsupervised learning to first predict a better
+
+estimate of an observed data before using the estimated data as input for a supervised learning helpful in improving generalisation
+
+capability of a model ?
+
+
+
+REPLY 
+
+
+
+Jason Brownlee October 25, 2019 at 1:46 pm #
+
+Thanks.
+
+It is not a technique, more of a probabilistic framework for framing the optimization problem to solve when fitting a model.
+
+Such as linear regression:
+
+https://machinelearningmastery.com/linear-regression-with-maximum-likelihood-estimation/
+
+
+
+REPLY 
+
+
+
+George October 25, 2019 at 3:07 pm #
+
+This product over many probabilities can be inconvenient […] it is prone to numerical underflow. To obtain a more
+
+convenient but equivalent optimization problem, we observe that taking the logarithm of the likelihood does not change its arg max
+
+but does conveniently transform a product into a sum
+
+— Page 132, Deep Learning, 2016.
+
+This quote is from Page 128 – based on the edition of the book in the link
+
+
+
+REPLY 
+
+
+
+Jason Brownlee October 26, 2019 at 4:34 am #
+
+Thanks George.
+
+
+
+REPLY 
+
+
+
+Jose CyC November 5, 2019 at 12:04 pm #
+
+“We can state this as the conditional probability of the output X given the input (y) given the modeling hypothesis (h).”
+
+Shouldn’t this be “the output (y) given the input (X) given the modeling hypothesis (h)”?
+
+Given that we are trying to maximize the probability that given the input and parameters would give us the output.
+
+It would be consistent with maximize L(y|X ; h)
+
+
+
+REPLY 
+
+
+
+Jason Brownlee November 5, 2019 at 1:41 pm #
+
+Yes, that’s a typo.
+
+Fixed. Thanks for pointing it out!
+
+
+
+REPLY 
+
+
+
+BRT February 27, 2020 at 8:30 pm #
+
+How can we know the likelihood function from the data given?
+
+
+
+REPLY 
+
+
+Leave a Reply
+
+
+
+Jason Brownlee February 28, 2020 at 6:05 am #
+
+It is for an algorithm, not for data.
+
+
+
+REPLY 
+
+
+
+Manjit July 22, 2021 at 10:50 pm #
+
+good explanation. I like how you link same technique in different fields like deep learning and unsupervised learning etc.
+
+ultimately if you understand you will know the underlying mechanism the same. thanks for the article
+
+
+
+REPLY 
+
+
+
+Jason Brownlee July 23, 2021 at 5:59 am #
+
+You’re welcome.
+
+
+
+REPLY 
+
+
+
+Yunhao(Ron) June 17, 2022 at 1:56 am #
+
+Dear Jason,
+
+I have a question about ‘MLE applied to solve problem of density function’ and hope to get some help from you.
+
+———————————
+
+For the definition of MLE,
+
+– it is used to estimate ‘Parameters’ that can maximize the likelihood of an event happened.
+
+– For example, Likelihood (Height &gt; 170 |mean = 10, standard devi. = 1.5). The MLE is trying to change two parameters ( which are
+
+mean and standard deviation), and find the value of two parameters that can result in the maximum likelihood for Height &gt; 170
+
+happened.
+
+———————————
+
+When we use MLE to solve the problem of density function, basically we just
+
+(1) change the ‘mean = 10, standard devi. = 1.5’ into –&gt; ‘theta (θ) that defines both the choice of the probability density function
+
+and the parameters of that distribution.’
+
+(2) change the ‘Height &gt; 170’ into –&gt; sample of observation (X) from a domain (x1, x2, x3, · · · , xn),
+
+Simply, we just use the logic/idea/framework of MLE to solve the problem of density function (Just change some elements of MLE
+
+framework).
+
+After modifying the framework of MLE, the parameters (associated with the maximum likelihood or peak value) represents the
+
+parameters of probability density function (PDF) that can best fit for probability distribution of the observed data.
+
+Is that correct?
+
+Sincerely,
+
+Yunhao
+
+
+
+REPLY 
+
+
+
+Yunhao June 17, 2022 at 5:42 am #
+
+Hi Jason,
+
+In the book, you write ‘MLE is a probabilistic framework for estimating the parameters of a model. We wish to maximize the
+
+conditional probability of observing the data (X) given a specific probability distribution and its parameters’
+
+May I ask why ‘ parameters that maximize the conditional probability of observing the data’ are parameters that result in/belong to
+
+the best-fit Probability Density (PDF)?
+
+I cannot understand how to figure out the relationship between maximum likelihood and best-fit.
+
+
+
+REPLY 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Name (required)
+
+Email (will not be published) (required)
+
+
+
+SUBMIT COMMENT
+
+Welcome!
+
+I'm Jason Brownlee PhD 
+
+and I help developers get results with machine learning.
+
+Read more
+
+Never miss a tutorial:
+
+
+
+ 
+
+
+
+ 
+
+
+
+ 
+
+
+
+ 
+
+
+
+Picked for you:
+
+How to Use ROC Curves and Precision-Recall Curves for Classification in Python
+
+How and When to Use a Calibrated Classification Model with scikit-learn
+
+How to Implement Bayesian Optimization from Scratch in Python
+
+How to Calculate the KL Divergence for Machine Learning
+
+A Gentle Introduction to Cross-Entropy for Machine Learning
+
+
+© 2023 Guiding Tech Media. All Rights Reserved.
+
+LinkedIn | Twitter | Facebook | Newsletter | RSS
+
+Privacy | Disclaimer | Terms | Contact | Sitemap | Search
+
+
+
+Loving the Tutorials?
+
+The Probability for Machine Learning EBook is where you'll find the Really Good stuff.
+
+
+
+&gt;&gt; SEE WHAT'S INSIDE
+

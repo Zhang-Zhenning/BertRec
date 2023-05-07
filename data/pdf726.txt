@@ -1,0 +1,5381 @@
+
+A Survey On Neural Word Embeddings
+
+ERHAN SEZERER and SELMA TEKIR, Izmir Institute of Technology
+
+Understanding human language has been a sub-challenge on the way of intelligent machines. The study of meaning in natural
+
+language processing (NLP) relies on the distributional hypothesis where language elements get meaning from the words that co-occur
+
+within contexts. The revolutionary idea of distributed representation for a concept is close to the working of a human mind in that the
+
+meaning of a word is spread across several neurons, and a loss of activation will only slightly affect the memory retrieval process.
+
+Neural word embeddings transformed the whole field of NLP by introducing substantial improvements in all NLP tasks. In this
+
+survey, we provide a comprehensive literature review on neural word embeddings. We give theoretical foundations and describe
+
+existing work by an interplay between word embeddings and language modeling. We provide broad coverage on neural word
+
+embeddings, including early word embeddings, embeddings targeting specific semantic relations, sense embeddings, morpheme
+
+embeddings, and finally, contextual representations. Finally, we describe benchmark datasets in word embeddings’ performance
+
+evaluation and downstream tasks along with the performance results of/due to word embeddings.
+
+1
+
+INTRODUCTION
+
+The recent decade has witnessed a transformation in natural language processing (NLP). This transformation can be
+
+attributed to neural language models, their success in representation learning, and the transfer of this knowledge into
+
+complex NLP tasks.
+
+Before neural representation learning, representations of words or documents have been computed using the vector
+
+space model (VSM) of semantics. Turney and Pantel [131] provide a comprehensive survey on the use of VSM for
+
+semantics. In VSM [120], frequencies of words in documents are considered to form a term-document matrix, and
+
+global co-occurrences of words in context lead to word-context matrices [35, 67, 83]. Although these count-based
+
+representations are proved helpful in addressing semantics, they are the bag of words approaches and are not able to
+
+capture both syntactical and semantic features at the same time, which is required for performing well in NLP tasks.
+
+Neural word embeddings are due to neural language models. Neural network architecture is constructed to predict the
+
+next word given the set of neighboring words in the sequence in neural language modeling. In the iterative processing
+
+of this prediction over a large corpus, the learned weights in the hidden layers serve as neural embeddings for words.
+
+Neural word embeddings have experienced an evolution. Early word embeddings had some problems. Although they
+
+can learn syntactic and semantic regularities, they are not so good at capturing their mixture. Moreover, they provide
+
+just one representation that is shared among the different senses of a word. State-of-the-art contextual embeddings are
+
+responsive to these problems. They lead to a significant performance improvement and find their application throughout
+
+all NLP tasks and in many other fields [60, 64, 137].
+
+In this article, we describe this transition by first providing the theoretical foundations. Then, preliminary realizations
+
+of these ideas by some seminal papers are explained. In the remaining part, generally accepted and efficiently computable
+
+early word embeddings are introduced. Afterward, extensions to early word embeddings are given with respect to some
+
+criteria such as the use of knowledge base, having morphological features, and addressing specific semantic relations
+
+(synonym, antonym, hypernym, hyponym, etc.). Succeedingly, separate sections are devoted to sense, morphological,
+
+and contextual embeddings. We also include performance evaluation of word embeddings on the benchmark datasets.
+
+Authors’ address: Erhan Sezerer, erhansezerer@iyte.edu.tr; Selma Tekir, selmatekir@iyte.edu.tr, Izmir Institute of Technology, Izmir, Turkey, 35430.
+
+1
+
+arXiv:2110.01804v1  [cs.CL]  5 Oct 2021
+
+
+2
+
+Erhan Sezerer and Selma Tekir
+
+Finally, we conclude the article with some historical reflections and future remarks. We have also included a diagram
+
+showing the milestone papers and summarizing the flow of ideas in the field in Appendix A.
+
+Multilingual information requirements and parallel/comparable corpora in different languages pave the way for
+
+cross-lingual representations of words in a joint embedding space. In this survey, we exclude those techniques that
+
+specialize in learning word representations in a multilingual setting. The reader can refer to Ruder et al. [119] for a
+
+comprehensive overview of cross-lingual word embedding models.
+
+2
+
+BACKGROUND
+
+2.1
+
+Distributional Hypothesis
+
+Together with Wittgenstein [141], Harris [50] were one of the first authors to propose that languages have a distributional
+
+structure. He argues that language elements are dispersed to environments that are composed of an existing array
+
+of their co-occurrents. An element’s distribution is the sum of all these environments. Harris’ second contribution is
+
+that we can relate an element’s distribution with its meaning. He states that at least certain aspects of meaning are
+
+due to distributional relations. For instance, synonymy between two words can be defined as having almost identical
+
+environments except chiefly for glosses where they co-occur e.g. oculist and eye-doctor. The author also suggests that
+
+sentences starting with a pronoun should be considered as the same context as the previous sentence where the subject
+
+of the pronoun is given since their occurrence is not arbitrary and the fullest environmental unit for the distributional
+
+investigation is the connected discourse structures of such sentences.
+
+2.2
+
+Distributional Representations
+
+Hinton et al. [52] utilize the idea of distributed representations for concepts. They propose patterns of hidden layer
+
+activations (which are only allowed to be 0 or 1) as the representation of meanings. They argue that the most important
+
+evidence of distributed representations is their degree of similarity to the weaknesses and strengths of human mind.
+
+Unlike computer memory, human brain is able to retrieve memory from partial information. Distributed representations
+
+conform to this notion better than local distributions (i.e. bag of words model, where each meaning is associated with a
+
+single computational unit) since the meaning of a word is distributed across several units and a loss of an activation
+
+will only slightly effect the memory retrieval process. Rest of the activations that are still there will be able to retrieve
+
+the memory. Even if the occlusion of activations are strong enough to lead the system to an incorrect meaning, it will
+
+still result in a meaning close to that of the target word, such as instead of apricot the word peach is recalled. Authors
+
+state that, this phenomenon further reinforces the idea of being similar to human mind by showing the similarities
+
+with deep dyslexia that occurs in adults with certain brain damage.
+
+2.3
+
+Language Modeling
+
+Language modeling is the task of predicting the next word given a sequence of words. Formally, it is the prediction of
+
+the next word’s probability distribution given a sequence of words (Equation 1).
+
+𝑃(𝑥𝑡+1|𝑥𝑡, ...,𝑥1)
+
+(1)
+
+In an alternative interpretation, a language model assigns a probability to a sequence of words. The probability
+
+calculation can be formulated as the product of conditional probabilities in each subsequent step having the assumption
+
+
+A Survey On Neural Word Embeddings
+
+3
+
+that they are independent (Equation 2).
+
+𝑃(𝑥1, ...,𝑥𝑡) = 𝑃(𝑥1)𝑃(𝑥2|𝑥1)𝑃(𝑥3|𝑥2,𝑥1)...𝑃(𝑥𝑡 |𝑥𝑡−1, ...,𝑥1)
+
+=
+
+𝑡�
+
+𝑖=1
+
+𝑃(𝑥𝑖 |𝑥𝑖−1, ...,𝑥1)
+
+(2)
+
+In traditional language modeling, the next word’s probability is calculated based on the statistics of n-gram occurrences.
+
+n-grams are 𝑛 consecutive words. In n-gram language models [22, 62], an n-gram’s probability is computed depending
+
+on the preceding 𝑛 − 1 words instead of using the product of conditional probabilities of bi-grams, tri-grams, etc. to
+
+simplify the computation.
+
+n-gram language models have some issues. When the length of n-grams increases, their occurrence becomes sparse.
+
+This sparsity causes zero or division by zero probability values. The former one is resolved by smoothing and back-off is
+
+used to deal with the latter. Sparsity provides coarse-grained values in the resultant probability distribution. Moreover,
+
+storing all n-gram statistics becomes a major problem when the size of 𝑛 increases. This curse of dimensionality is a
+
+bottleneck for n-gram language models.
+
+2.4
+
+Distributional Representations through Language Modeling
+
+Elman [39] was the first to implement the distributional model proposed by Hinton et al. [52], in a language model.
+
+He proposes a specific recurrent neural network structure with memory, called the Elman network, to predict bits in
+
+temporal sequences. Memory is provided to network through the use of context units that are fully-connected with
+
+hidden units. He makes a simulation to predict bits in XOR problem. The input sequence is in the form of an input pair
+
+followed by an output bit. In the solution scheme, two hidden units are expected to represent two main patterns in the
+
+XOR truth table. That is one hidden unit should have high activation for 01 or 10 pattern and the other should recognize
+
+11 or 00 pattern. As an alternative problem, letter sequences that are generated partially random and partially by a
+
+simple rule are tried to be learned by a recurrent neural network where hidden unit activations are used to represent
+
+word meanings. The idea is that using such network structures, time can be modeled in an implicit way. In other words,
+
+the use of a recurrent neural network helps in learning temporal structure in language.
+
+Xu and Rudnicky [143] create the first language model based on neural networks. Their proposed model is based on
+
+a single fully connected layer and uses one-hot vectors of words as inputs and outputs. They highlight computational
+
+cost as the major problem and in tackling the issue they mention the necessity of update mechanisms which only
+
+update those weights with non-zero input value due to one-hot encoding.
+
+Bengio et al. [7] popularize the distributional representation idea by realizing it through a language model and lead
+
+to numerous other studies that are built on it. In their model architecture, they use a feed forward network with a single
+
+hidden layer and optional direct connections from input layer to softmax layer (Figure 1).
+
+In addition to the advantages discussed by the aforementioned earlier works, they argue that distributional rep-
+
+resentations also break the curse of dimensionality in traditional n-gram models ([22], [62]) where the probability
+
+of each word depends on the discrete n-grams whose numbers can exceed millions. A considerably high number of
+
+such n-grams will highly unlikely to be observed in the training set which results in sparsity problems in conditional
+
+probability calculations. A real valued feature vector representation of words will overcome this problem by working
+
+with a smooth probability function. The conditional probability of seeing a word given a context is calculated by
+
+updating the index of that word on the shared representation matrix of all the vocabulary. The probability function is
+
+smooth in that the updates that are caused by similar contexts are alike.
+
+
+4
+
+Erhan Sezerer and Selma Tekir
+
+
+
+Fig. 1. Neural network architecture in Bengio et al. [7]. Taken from the original article.
+
+A second advantage of the model is the ability to capture context-based similarities. In n-gram models, the sentences
+
+"the cat is walking in the bedroom" and "a dog was running in a room" will be considered as dissimilar since they are
+
+unable to consider contexts further than 1 − 2 words and have no notion of similarity among word meanings. On the
+
+other hand, in the proposed model, increasing the probability of the sentence "the cat is walking in the bedroom" will
+
+increase the probability of all the sentences below and help us generalize better:
+
+"a dog was running in a room"
+
+"the cat is running in a room"
+
+"a dog is walking in a bedroom"
+
+3
+
+WORD EMBEDDINGS WITH IMPROVED LANGUAGE MODELS
+
+Once it is shown that neural language models are efficiently computable by Bengio et al. [7], newer language models
+
+along with better word embeddings are developed successively. All of these models and their properties are summarized
+
+in Table 1.
+
+Alexandrescu and Kirchhoff [2] (FNLM) improve the model proposed by Bengio et al. [7] by including word-shape
+
+features such as stems, affixes, capitalization, POS class, etc. at input.
+
+Morin and Bengio [97] focus on improving the performance of the earlier neural language models. Instead of
+
+using softmax and predicting the output word over the entire dictionary, they propose a hierarchical organization for
+
+vocabulary terms. A binary tree of words is created based on the IS-A relation of Wordnet hierarchy. Instead of directly
+
+predicting each word’s probability, prediction is performed as a binary decision over the constructed tree’s branches
+
+and leaves. This technique is an alternative to importance sampling to increase efficiency. Although the authors report
+
+
+A Survey On Neural Word Embeddings
+
+5
+
+exponential speed-up, the accuracy of the resultant word embeddings is a bit worse than the original method and
+
+importance sampling.
+
+Mnih and Hinton [94] improve the hierarchical language model proposed by Morin and Bengio [97] by constructing
+
+and using a word hierarchy from distributional representations of words rather than a hierarchy built out of Wordnet.
+
+Thus, their approach is entirely unsupervised. They calculate feature vectors for words by training a hierarchical
+
+log-bilinear model (HLBL) and apply EM algorithm on mixture of two Gaussians to construct a data-driven binary tree
+
+for words in the vocabulary. Authors also represent different senses of words as different leaves in the tree which is
+
+proposed in Morin and Bengio [97] but not implemented. Their model outperforms non-hierarchical neural models, the
+
+hierarchical neural language model that is based on Wordnet hierarchy, and the best n-gram models ([22], [62]).
+
+Mnih and Hinton [93] propose three different language models that use distributed representation of words. In
+
+Factored Restricted Boltzmann Machine (RBM), they put an additional hidden layer over the distributed representation
+
+of the preceding words and exploit interactions between this hidden layer and the next word distributed representation.
+
+In temporal RBM, they further put temporal connections among hidden layer units to capture longer dependencies in
+
+the previous set of words, and finally in the log-bilinear model, called LBL, they use linear dependencies between the
+
+next word and the preceding set of words. They report that the log-bilinear model outscores RBM models and also
+
+n-gram models ([22], [62]).
+
+Collobert and Weston [27] and Collobert et al. [28] (C&amp;W) are among the precursors in using distributed represen-
+
+tations in various NLP problems such as part-of-speech tagging, named entity recognition, chunking, and semantic role
+
+labeling. They propose a unified architecture for all of the problems where the words in the sentences are represented
+
+by word vectors trained from the Wikipedia Corpus in an unsupervised fashion. Although they use a feed forward
+
+architecture with a sliding window approach in word-level tasks, they utilize a convolutional neural network (CNN)
+
+architecture in semantic role labeling in order to incorporate the varying lengths of sentences, since in semantic role
+
+labeling, sliding window-based approaches don’t work because target words may depend on some other far away words
+
+in a sentence. By using trained word vectors and neural network architecture, their proposed method can capture the
+
+meaning of words and succeed in various NLP tasks (almost) without using hand-crafted features. Their overall scheme
+
+is described as semi-supervised, being composed of unsupervised language modeling and other supervised tasks.
+
+Mikolov et al. [89] propose a recurrent neural network-based language model (RNNLM), from where word repre-
+
+sentations can be taken. The model is able to consider contexts of arbitrary length, unlike the previous feed-forward
+
+methods where a context size should be defined beforehand. The network can learn longer dependencies. It is proved
+
+useful in tasks involving inflectional languages or languages with large vocabulary when compared to n-gram language
+
+models ([22], [62]).
+
+3.1
+
+Early Word Embeddings
+
+Word2vec [88] is the first neural word embedding model that efficiently computes representations to leverage the
+
+context of target words. Thus, it can be considered as the initiator of early word embeddings.
+
+Mikolov et al. [88] propose word2vec to learn high-quality word vectors. The authors removed the non-linearity
+
+in the hidden layer in the proposed model architecture of Bengio et al. [7] to gain an advantage in computational
+
+complexity. Due to this basic change, the system can be trained using billions of words efficiently. word2vec has two
+
+variants: Continuous bag of words model (CBOW) and Skip-gram model.
+
+In CBOW, a middle word is predicted given its context, the set of neighboring left and right words. When the input
+
+sentence "nature is pleased with simplicity" is processed, the system predicts the middle word "pleased" given the left
+
+
+6
+
+Erhan Sezerer and Selma Tekir
+
+Table 1. Properties of word embedding models.
+
+Model
+
+Year
+
+Dimension
+
+Training Corpus
+
+NN Model
+
+Aim
+
+Knowledge-Base(s)
+
+Feature(s)
+
+Bengio et al. [7]
+
+2003
+
+100
+
+Brown
+
+FFNN
+
+Training
+
+-
+
+-
+
+Morin and Bengio [97]
+
+2005
+
+100
+
+Brown
+
+FFNN
+
+Performance
+
+Wordnet[91]
+
+Hierarchical Binary Tree
+
+FNLM [2]
+
+2006
+
+45-64
+
+LDC ECA[42],
+
+Turkish News[49]
+
+FFNN
+
+Training
+
+LDC ECA[42]
+
+Turkish News[49]
+
+Word Shape Features
+
+LBL [93]
+
+2007
+
+100
+
+APNews
+
+RBM, FFNN
+
+Training
+
+-
+
+-
+
+HLBL [94]
+
+2008
+
+100
+
+APNews
+
+LBL
+
+Performance
+
+-
+
+Hierarchical Binary Tree
+
+C&amp;W [27]
+
+2008
+
+15-100
+
+Wiki
+
+FFNN, CNN
+
+Training
+
+-
+
+-
+
+RNNLM [89]
+
+2010
+
+60-400
+
+Gigaword
+
+RNN
+
+Training
+
+-
+
+-
+
+CBOW [88]
+
+2013
+
+300-1000
+
+Google News
+
+FFNN
+
+Training
+
+-
+
+-
+
+Skip-Gram [88]
+
+2013
+
+300-1000
+
+Google News
+
+FFNN
+
+Training
+
+-
+
+-
+
+SGNS [90]
+
+2013
+
+300
+
+Google News
+
+FFNN
+
+Performance
+
+-
+
+Negative Sampling
+
+ivLBL/vLBL [95]
+
+2013
+
+100-600
+
+Wiki
+
+LBL
+
+Performance
+
+-
+
+NCE [47]
+
+GloVe [109]
+
+2014
+
+300
+
+Wiki, Gigaword,
+
+Commoncrawl
+
+LBL+coocurence Matrix
+
+Training
+
+-
+
+-
+
+DEPS [69]
+
+2014
+
+300
+
+Wiki
+
+CBOW
+
+Training
+
+Stanford tagger[129]
+
+Dependency parser[43]
+
+POS,
+
+Dependency relation
+
+Ling et al. [75]
+
+2015
+
+50
+
+Wiki
+
+CBOW+Attn.
+
+Training
+
+-
+
+-
+
+SWE [78]
+
+2015
+
+300
+
+Wiki
+
+Skip-Gram
+
+Training
+
+Wordnet[91]
+
+Ordinal Semantic Rules
+
+Faruqui et al. [40]
+
+2015
+
+-
+
+-
+
+-
+
+fine-tuning
+
+PPDB[107]
+
+FrameNet[6]
+
+WordNet[91]
+
+Semantic Relations
+
+Yin and Schütze [147]
+
+2016
+
+200
+
+-
+
+-
+
+Ensemble
+
+-
+
+-
+
+Ngram2vec [149]
+
+2017
+
+300
+
+Wiki
+
+SGNS+n-gram
+
+Training
+
+-
+
+-
+
+Dict2vec [128]
+
+2017
+
+300
+
+Wiki
+
+Skip-Gram
+
+Training
+
+Oxford, Cambridge
+
+and Collins dict.
+
+-
+
+and right contexts. Every input word is in one-hot encoding where there is a vocabulary size (𝑉 ) vector of all zeros
+
+except a one in that word’s index. In the single hidden layer, the average of the neighboring left and right vectors
+
+(𝑤𝑐) is computed to represent the context instead of applying a nonlinear transformation. As the order of words is
+
+not considered by averaging, it is named a bag-of-words model. Then the middle word’s (𝑤𝑡) probability given the
+
+context (𝑝(𝑤𝑡 |𝑤𝑐)) is calculated through softmax on the context-middle word dot product vector (Equation 3). Finally,
+
+the output loss is calculated based on the cross-entropy loss between the system predicted output and the ground-truth
+
+middle word.
+
+𝑝(𝑤𝑡 |𝑤𝑐) =
+
+𝑒𝑥𝑝(𝑤𝑐 · 𝑤𝑡)
+
+�
+
+𝑗 ∈𝑉
+
+𝑒𝑥𝑝(𝑤𝑗 · 𝑤𝑡)
+
+(3)
+
+In Skip-gram, system predicts the most probable context words for a given input word. In terms of a language model,
+
+while CBOW predicts an individual word’s probability, Skip-gram outputs the probabilities of a set of words, defined
+
+by a given context size. Due to high dimensionality in the output layer (all vocabulary words have to be considered),
+
+Skip-gram has higher computational complexity compared to CBOW. Rather than traversing all vocabulary in the
+
+output layer, Skip-gram with Negative Sampling (SGNS) [90] formulates the problem as a binary classification where
+
+one class represents the current context’s probability. In contrast, the other class is connected to all other vocabulary
+
+terms’ occurrence probability in the present context. In the latter probability calculation, a negative sampling method is
+
+incorporated [96], which is influenced by Noise Contrastive Estimation (NCE) [47], to speed up the training process.
+
+As vocabulary terms are not distributed uniformly in contexts, sampling is performed from a distribution where the
+
+order of frequency of vocabulary words in corpora is taken into consideration. SGNS incorporates this sampling idea
+
+by replacing the Skip-gram’s objective function. The new objective function (Equation 4) depends on maximizing
+
+𝑃(𝐷 = 1|𝑤,𝑐) where 𝑤,𝑐 is the word-context pair. This probability denotes the probability of (𝑤,𝑐) coming from the
+
+corpus data. Additionally, 𝑃(𝐷 = 0|𝑢𝑖,𝑐) should be maximized if (𝑢𝑖,𝑐) pair is not included in the corpus data. In this
+
+condition, (𝑢𝑖,𝑐) pair is sampled, as the name suggests negative sampled 𝑘 times.
+
+
+A Survey On Neural Word Embeddings
+
+7
+
+∑︁
+
+𝑤,𝑐
+
+�
+
+log𝜎
+
+�−→
+
+𝑤 · −→𝑐
+
+��
+
++
+
+𝑘
+
+∑︁
+
+𝑖=1
+
+�
+
+log𝜎
+
+�−−→
+
+−𝑢𝑖 · −→𝑐
+
+��
+
+(4)
+
+Both word2vec variants produced word embeddings that can capture multiple degrees of similarity including both
+
+syntactic and semantic regularities.
+
+Mnih and Kavukcuoglu [95] introduce speedups to the CBOW and Skip-gram models [88], called vLBL and ivLBL,
+
+by using noise-contrastive estimation (NCE) for the training of the unnormalized counterparts of these models. Training
+
+of the normalized model has a high cost due to the normalization over the whole vocabulary (the denominator term in
+
+Equation 3). NCE trains the unnormalized model by adapting a logistic regression classifier to discriminate between the
+
+samples under the model and the samples from a noise distribution. Thus, the computational cost and accuracy become
+
+dependent on the number of noise samples. With the relatively small number of noise samples, the same accuracy level
+
+with the normalized models is achieved in considerably shorter training times.
+
+Pennington et al. [109] combine global matrix factorization and local context window-based prediction to form
+
+a global log bilinear model called GloVe. GloVe uses ratios of co-occurrence probabilities of words as weights in its
+
+objective function to cancel out the noise from non-discriminative words. As distinct from CBOW and Skip-gram [88],
+
+instead of cross-entropy, GloVe uses the weighted least squares regression in its objective function. For the same corpus,
+
+vocabulary, window size, and training time, GloVe consistently outperforms word2vec.
+
+Zhao et al. [149] (ngram2vec) improve word representations by adding n-gram co-occurrence statistics to the SGNS
+
+[90], GloVe [109], and PPMI models [70]. In order to incorporate these statistics into the SGNS model, instead of just
+
+predicting the context words, they also predict the context n-gram of words. In order to add it to the other systems,
+
+they just add n-gram statistics to the co-occurrence matrix of words. They show improved scores over the models that
+
+they are built upon.
+
+Levy and Goldberg [69] argue that although the word embeddings with Skip-gram are able to capture very useful
+
+representations, they also learn from unwanted co-occurrences in the context, e.g. Australian and discovers in the
+
+sentence "Australian scientist discovers stars with telescope". In order to create a different context, they use dependency
+
+trees to link each word in the sentence to the other according to the relations they have. Their experimental results
+
+show that while their model (DEPS) is significantly better at representing syntactic relationships, it is worse at finding
+
+semantic relationships. In this work, they also share a non-trivial interpretation of how word embeddings learn
+
+representations, which is very rare in neural network solutions, by examining the activations of context for specific
+
+words.
+
+Ling et al. [75] augment CBOW [88] with an attention model in order to solve the shortcomings of it: Inability to
+
+account for word order and lack of treating the importance of context words differently. They show that their method
+
+can obtain better word representations than CBOW while still being faster than its complementary model Skip-gram
+
+[88].
+
+Yin and Schütze [147] put forward the idea of ensembling the existing embeddings in order to achieve performance
+
+enhancement and improved coverage on the vocabulary. They propose four different ensemble approaches on five
+
+different word embeddings: Skip-Gram [90], Glove [109], Collobert&amp;Weston [27], Huang [55], and Turian [130]. The first
+
+method CONC simply concatenates the word embeddings from five different models. SVD reduces the dimensionality
+
+of CONC. 1toN creates metaembeddings and 1to𝑁 + creates out of vocabulary (OOV) words for individual sets by
+
+randomly initializing the embeddings for OOVs and the metaembeddings, then uses a setup similar to 1toN to update
+
+metaembeddings as well as OOV embeddings. They also propose a MUTUALLEARNING method to solve OOV problem
+
+
+8
+
+Erhan Sezerer and Selma Tekir
+
+in CONC, SVD, and 1toN. They show that the ensemble approach outperforms individual embeddings on similarity,
+
+analogy, and POS tagging tasks.
+
+There have been some work to improve early word embeddings through knowledge bases.
+
+Liu et al. [78] (SWE) try to improve word embeddings by subjecting them with ordinal knowledge inequality
+
+constraints. They form three different types of constraints:
+
+(1) Synonym-antonym rule: A synonym of a word should be more similar than an antonym. They find these pair of
+
+words from the WordNet [91] synsets.
+
+(2) Semantic category rule: Similarity of words that belong to the same category should be larger than the similarity
+
+of words that are in different categories. i.e. (hacksaw, jigsaw) similarity should be greater than (hacksaw, mallet).
+
+(3) Semantic hierarchy rule: Shorter distances in hierarchy should infer larger similarities between words compared
+
+to longer distance cases. i.e (mallet, hammer) similarity should be larger than (mallet, tool).
+
+The last two rules are constructed from the hypernymy-hyponymy information from Wordnet. They combine these
+
+constraints with the Skip-gram algorithm [90] to train word embeddings and show that they can improve upon the
+
+baseline algorithm.
+
+Faruqui et al. [40] aim to improve word embeddings with information from lexicons with a method called retrofitting.
+
+They use a word graph where each word is a vertex, and each relation in the knowledge-base is an edge between words.
+
+Their algorithm brings closer the words that are shown to be connected in the word graph and words that are found
+
+to be similar from the text. In other words, while they bring closer the words related in synsets, they also preserve
+
+the similarity in the underlying pre-trained word embeddings (Skip-gram [88], GloVe [109], etc.). They use various
+
+knowledge-bases such as PPDB [107], WordNet [91], and FrameNet [6].
+
+Tissier et al. [128] (dict2vec) improve word2vec [90] by incorporating dictionary information in the form of strong
+
+and weak pair of words into the training process. If a word 𝑎 is in the definition of the word 𝑏 in dictionary and 𝑏 is
+
+in the definition of 𝑎 too, then it is a strong pair. On the other hand, if 𝑎 is in the definition of 𝑏 but 𝑏 is not in the
+
+definition of 𝑎, then they form a weak pair. The authors add this positive sampling information into the training process
+
+proportional to hyperparameters.
+
+Despite the success of these earlier word embeddings, there were still many limitations in terms of the accuracy
+
+of representations, each of which is targeted by many research works. In the succeeding subsections, we discuss
+
+these limitations (such as morphology, senses, antonymy/synonymy, and so on) with the proposed solutions from the
+
+literature.
+
+3.2
+
+Embeddings Targeting Specific Semantic Relations
+
+Although the initial word embedding models successfully identified semantic and syntactic similarities of words,
+
+they still need to be improved to address specific semantic relations among words such as synonymy-antonymy and
+
+hyponymy-hypernymy. To illustrate, consider the sentences "She took a sip of hot coffee" and "He is taking a sip of cold
+
+water." The antonyms "cold" and "hot" are deemed to be similar since their context is similar. Therefore, it becomes an
+
+issue to differentiate the synonyms "warm" and "hot" from the antonyms "cold" and "hot" considering they have similar
+
+contexts in most occurrences.
+
+Table 2 presents the main approaches addressing synonym-antonym relations, hyponym-hypernym relations, and a
+
+study covering all types of relations.
+
+
+A Survey On Neural Word Embeddings
+
+9
+
+Table 2. Embeddings targeting specific semantic relations.
+
+Work
+
+Base Model
+
+Year
+
+Knowledge-Base
+
+Morphological
+
+Features
+
+Specific Semantic Relations
+
+dLCE [104]
+
+SGNS [90])
+
+2016
+
+WordNet [91] and Wordnik
+
+✗
+
+Synonym-Antonym
+
+Mrkšić et al. [98]
+
+GloVe [109] and
+
+paragram-SL999 [139]
+
+2016
+
+WordNet [91] and PPDB 2.0 [107]
+
+✗
+
+Synonym-Antonym
+
+Vulić et al. [134]
+
+SGNS [90])
+
+2017
+
+✗
+
+✓
+
+Synonym-Antonym
+
+Yu et al. [148]
+
+✗
+
+2015
+
+Probase [142]
+
+✗
+
+Hyponym-Hypernym
+
+Luu et al. [85]
+
+✗
+
+2016
+
+WordNet [91]
+
+✗
+
+Hyponym-Hypernym
+
+Nguyen et al. [103]
+
+SGNS [90])
+
+2017
+
+WordNet [91]
+
+✗
+
+Hyponym-Hypernym
+
+Wang et al. [136]
+
+Skip-gram [88]
+
+2019
+
+✗
+
+✗
+
+Synonym-Antonym,
+
+Hyponym-Hypernym, Meronym
+
+Nguyen et al. [104] propose a weight update for SGNS [90] to identify synonyms and antonyms from word embeddings.
+
+Their system (dLCE) increases weights if there is a synonym in the context and makes a reduction in the case of an
+
+antonym. In order to come up with a list of antonyms and synonyms, they use WordNet [91] and Wordnik. They report
+
+state-of-the-art results in similarity tasks and synonym-antonym distinguishing datasets.
+
+Mrkšić et al. [98] propose a counter-fitting method to inject antonymy (REPEL) and synonymy (ATTRACT) constraints
+
+into vector space representations to improve word vectors. The idea behind the ATTRACT rule is that synonymous
+
+words should be closer to each other than any other word in the dictionary. Similarly, the REPEL constraint assumes that
+
+an antonym of a word should be farther away from the word than any other word in the dictionary. As knowledge-bases,
+
+they use WordNet [91] and PPDB 2.0 [107], and as pre-trained word vectors they use GloVe [109] and paragram-SL999
+
+[139]. They report state-of-the-art results on various datasets.
+
+Vulić et al. [134] use ATTRACT and REPEL constraints on pretrained word embeddings. Their algorithm aims to
+
+pull together ATTRACT pairs while pushing REPEL pairs apart. To form the ATTRACT and REPEL constraints, the
+
+inflectional and derivational morphological rules of four languages are used; English, Italian, Russian, and German.
+
+ATTRACT constraints consist of suffixes such as (-s, -ed, -ing) to create ATTRACT word pairs such as (look, looking),
+
+(create, created). On the other hand, REPEL constraints consist of prefixes like (il, dis, anti, mis, ir,..) to create REPEL
+
+word pairs such as (literate, illiterate), (regular, irregular). In order to balance the changes they make to the original
+
+embeddings (they use SGNS [90]), there is a third constraint that tries to pull word embeddings to their original
+
+positions.
+
+In their work, Yu et al. [148] train term embeddings for hypernymy identification. They use Probase [142] as their
+
+training data for hypernym/hyponym pairs and impose three constraints on the training process: 1) hypernyms and
+
+hyponyms should be similar to each other (dog and animal), 2) co-hyponyms should be similar (dog and cat), 3)
+
+co-hypernyms should be similar (car and auto). They create a neural network architecture to update word embeddings
+
+without optimizing parameters. They use 1-norm distance as a similarity measure. They use an SVM on the output
+
+term embeddings to decide whether a word is a hypernym/hyponym to another word.
+
+Luu et al. [85] aim to identify is-a relationship through neural network architecture. First, they extract hypernyms
+
+and hyponyms using the relations in WordNet [91] to form a training set. Second, they create (hypernym, hyponym,
+
+context word) triples by finding all sentences in the dataset containing two hypernym/hyponyms found in the first step
+
+and using the words between the hypernym and hyponym as context words. Then, they give hyponym and context
+
+words as input to the neural network and try to predict the hypernym by aggregating them with a feed-forward neural
+
+network. The resultant hypernym, hyponym pairs along with an offset vector are given to SVM to predict whether
+
+
+10
+
+Erhan Sezerer and Selma Tekir
+
+there is an is-a relationship or not. The authors state that since their method takes context words into account, their
+
+embeddings have good generalization capability and are able to identify unseen words.
+
+Nguyen et al. [103] aim to learn hierarchical embeddings for hypernymy. They leverage hypernymy-hyponymy
+
+information from WordNet [91] and propose objective functions over/above SGNS embeddings [90] to move hypernymy-
+
+hyponymy pairs closer. The first objective function is based on the distributional inclusion hypothesis, while the second
+
+adopts distributional informativeness. They also propose an unsupervised hypernymy measure to be used by their
+
+hierarchical embeddings. In the proposed hypernymy measure, the cosine similarity between the hypernym and
+
+hyponym vectors (to detect the hypernymy) is multiplied by the hypernym to hyponym magnitude ratio (to account
+
+for the directionality of the relation by the assumption that hypernyms are more general terms, being more frequent
+
+and thus having a large magnitude compared to hyponyms). Their evaluation also tests the generalization capability of
+
+their hypernymy solution, which proves that the model learns rather than memorizes prototypical hypernyms.
+
+Wang et al. [136] propose a neural representation learning model for predicting different types of lexical relations,
+
+e.g., hypernymy, synonymy, meronymy, etc. Their solution avoids the "lexical memorization problem" because relation
+
+triples’ embeddings are learned rather than computing those relations through individual word embeddings. In order
+
+to learn a relation embedding for a pair of words, they use the Skip-gram model [88] over the neighborhood pairs
+
+where the similarity between pairs is defined on hyperspheres. Their lexical relation classification results verify the
+
+effectiveness of their approach.
+
+3.3
+
+Sense Embeddings
+
+Another drawback of early word embeddings is they unite all the senses of a word into one representation. In reality,
+
+however, a word gets meaning in its use and can mean different things in varying contexts. For example, even though
+
+the words "hot" and "warm" are very similar when they are used to refer to temperature levels, they are not similar in
+
+the sentences "She took a sip of hot coffee" and "He received a warm welcome". In the transition period to contextual
+
+embeddings, different supervised and unsupervised solutions are proposed for having sense embeddings.
+
+Schütze [121] was the first work aimed at identifying senses in texts. He defines the problem of word sense discrimina-
+
+tion as the decomposition of a word’s occurrences into same sense groups. This definition is unsupervised in its nature.
+
+When the issue becomes labeling those sense groups, the task becomes a supervised one and is named as word sense
+
+disambiguation. The reader can refer to Navigli [99] for a comprehensive survey on word sense disambiguation and
+
+Camacho-Collados and Pilehvar [19] for an in-depth examination of sense embedding methods and their development.
+
+Table 3 provides a classification of the studies that we analyze in this section. The classification dimensions include
+
+unsupervised/supervised, topical or not, knowledge base, probabilistic approach, exploiting syntactic information or
+
+not, and neural network (NN) model.
+
+At the outset, unsupervised learning is used to discriminate the different senses of a word.
+
+Reisinger and Mooney [115] propose a multi-prototype based word sense discovery approach. In their approach
+
+(R&amp;M), a word’s all occurrences are collected as a set of feature vectors and are clustered by a centroid-based clustering
+
+algorithm. The resultant clusters (fixed number) for each word are expected to capture meaningful variation in word
+
+usage rather than matching to traditional word senses. They define the similarity of words 𝐴 and 𝐵 as the "maximum
+
+cosine similarity between one of A’s vectors and one of B’s vectors" and provide experimental evidence on similarity
+
+judgments and near-synonym prediction. Moreover, variance in the prototype similarities is found to predict variation
+
+in human ratings.
+
+
+A Survey On Neural Word Embeddings
+
+11
+
+Table 3. Sense embeddings.
+
+Unsupervised
+
+R&amp;M[115]
+
+Supervised
+
+Work
+
+Topical
+
+Knowledge Base
+
+Probabilistic
+
+Syntactic
+
+NN Model
+
+Information
+
+Huang et al. [55]
+
+✗
+
+✗
+
+Spherical k-means
+
+✗
+
+Custom Language Model using
+
+both local and global context
+
+Pelevina et al. [108]
+
+✗
+
+✗
+
+Graph clustering on ego network
+
+✗
+
+CBOW [88]
+
+TWE [80]
+
+✓
+
+✗
+
+LDA [11]
+
+✗
+
+Skip-gram [88]
+
+SenseEmbed [57]
+
+✗
+
+BabelNet [100]
+
+✗
+
+✗
+
+CBOW [88]
+
+Chen et al. [23]
+
+✗
+
+WordNet [91]
+
+Context clustering
+
+✗
+
+CNN
+
+Jauhar et al. [58]
+
+✗
+
+WordNet [91]
+
+Expectation-Maximization (EM)
+
+✗
+
+Skip-gram [88]
+
+Chen et al. [24]
+
+✗
+
+WordNet [91]
+
+✗
+
+✗
+
+Skip-gram [88]
+
+Tian et al. [127]
+
+✗
+
+✗
+
+Mixture of Gaussians (EM)
+
+✗
+
+Skip-gram [88]
+
+Nieto Piña and Johansson [105]
+
+✗
+
+SALDO [14]
+
+✗
+
+✗
+
+Skip-gram [88]
+
+MSSG [101]
+
+✗
+
+✗
+
+✓
+
+✗
+
+Skip-gram [88]
+
+SAMS [26]
+
+✗
+
+✗
+
+✗
+
+✓
+
+Recursive Neural Network
+
+Li and Jurafsky [71]
+
+✗
+
+✗
+
+Chinese Restaurant Process (CRP)
+
+✗
+
+CBOW-Skip-gram [88], SENNA [28]
+
+MSWE [102]
+
+✓
+
+✗
+
+LDA [11]
+
+✗
+
+Skip-gram [88]
+
+Guo et al. [46]
+
+✗
+
+✗
+
+Affinity Propagation Algorithm
+
+✗
+
+RNNLM model [89]
+
+LSTMEmbed [56]
+
+✗
+
+BabelNet [100]
+
+✗
+
+✗
+
+LSTM
+
+Kumar et al. [63]
+
+✗
+
+Knowledge Graph
+
+Embedding
+
+✗
+
+✗
+
+Framework consisting of
+
+different types of Encoders
+
+Following Reisinger and Mooney [115], Huang et al. [55] also aim at creating multi-prototype word embeddings.
+
+They compute vectors using a feed forward neural network architecture with one layer to produce single prototype
+
+word vectors and then perform spherical k-means to cluster them into multiple prototypes. They also introduce the idea
+
+of using global context where the vectors of words in a document are averaged to create a global semantic vector. The
+
+final score of embeddings is then calculated as the sum of scores of each word vector along with the global semantic
+
+vector.
+
+The authors also argue that available test sets for similarity measurements are not sufficient for testing multi-
+
+prototype word embeddings because the scores of word pairs in those test sets are given in isolation, which lacks the
+
+contextual information for senses. Therefore, they introduce a new test set in which the word pairs are scored within a
+
+context by mechanical turkers, where context is usually a paragraph from Wikipedia that contains the given word.
+
+Finally, they show that their model is capable of outperforming the former models when such a test set is used, although
+
+its performance is similar to others in previous test sets.
+
+Pelevina et al. [108] aim at creating sense embeddings without using knowledge bases. Their model takes the existing
+
+single-prototype word embeddings and transforms them into multi-prototype sense embeddings by constructing an
+
+ego network and performing graph clustering over it. In fact, the senses of a word they learn do not have to correspond
+
+to the senses of that word in the dictionary. They evaluate their method on their crowd-sourced dataset.
+
+Liu et al. [80] propose three different methods to create topical embeddings (TWE). They create their topical
+
+embeddings without the use of any knowledge base, but instead rely on LDA [11] to find the topics of each document
+
+the word occurs in. Topical embeddings they create are similar to sense embeddings with the only difference being that
+
+the number of topics may not correspond to the number of senses in the dictionary.
+
+In their first model, named TWE-1, they learn word embeddings and topic embeddings separately and simultaneously
+
+with the skip-gram method by treating topic embeddings as pseudo-words, which appear in all the positions of words
+
+under this topic. The sense embeddings of a word 𝑤 for topic 𝑡 are then constructed by concatenating the word
+
+
+12
+
+Erhan Sezerer and Selma Tekir
+
+embedding 𝑤 with the corresponding topic embedding 𝑡. Their second model TWE-2 treats word embeddings and topic
+
+embeddings as tuples and train them together. This method may lead to sparsity issues since some words on a specific
+
+topic may not be frequent. The last method they propose, TWE-3, also train word and topic embeddings together, but
+
+this time the weights of embeddings are shared over all word-topic pairs. They show that the TWE-1 method gives
+
+the best results overall, and the independence assumption between words and topics in the first model is given as the
+
+reason behind its performance.
+
+Exploiting vast information in knowledge bases to learn sense representations has proved useful. The approaches
+
+that rely mainly on knowledge bases to compute sense embeddings include Iacobacci et al. [57], Chen et al. [23], Jauhar
+
+et al. [58], and Chen et al. [24].
+
+Iacobacci et al. [57] (SenseEmbed) use BabelNet [100] as a knowledge-base to retrieve word senses and to tag words
+
+with the correct sense. They train the sense-tagged corpora on the CBOW architecture and achieve state-of-the art
+
+results in various word similarity and relatedness datasets.
+
+Chen et al. [23] also use a knowledge-base (WordNet) to solve the sense-embedding problem. They use CNN to
+
+initialize sense-embeddings from the example sentences of synsets in WordNet. Then, they apply context clustering to
+
+create distributed representations of senses. The representations they obtain achieve promising results.
+
+Jauhar et al. [58] propose two models for learning sense-embeddings using ontological resources like WordNet
+
+[91]. In their first model, they retrofit pretrained embeddings by imposing two conditions on them: pulling together
+
+the words that are ontologically-related (by using the graphs constructed from the relationships in WordNet) and
+
+leveraging the tension between sense-agnostic neighbors from the same graph. They implement the first method over
+
+Skip-gram [90] and Huang et al. [55] and show that their method can improve the success of the previous methods.
+
+Their second method constructs embeddings from scratch by training them with an Expectation-Maximization (EM)
+
+objective function that pulls together ontologically-related words similar to the first model and finds the correct sense
+
+of the word from WordNet and creates a vector for each sense.
+
+Chen et al. [24] propose a unified model for word sense representation (WSR) and word sense disambiguation (WSD).
+
+The main idea behind this is that both models may benefit from each other. Their solution is composed of three steps:
+
+First, they initialize single-prototype word vectors using Skip-gram [90] and initialize the sense embeddings using the
+
+glosses in WordNet [91]. They take the average of words in WordNet synset glosses to initialize the sense embeddings.
+
+Second, they perform word sense disambiguation using some rules on the given word vectors and sense vectors. Finally,
+
+using the disambiguated senses, they learn sense vectors by modifying the Skip-gram objective such that both context
+
+words and context words’ senses must be optimized given the middle word in context.
+
+Tian et al. [127] propose a probabilistic approach to provide a solution to sense embeddings. They improve the
+
+Skip-gram algorithm by introducing the mixture of Gaussians idea to represent the given middle word in context in the
+
+objective function. Every Gaussian represents a specific sense, and the mixture is their multi-prototype vector. The
+
+number of Gaussians, in other words, the number of senses, is a hyperparameter of the model. They use Expectation-
+
+Maximization (EM) algorithm to solve the probabilistic model.
+
+Nieto Piña and Johansson [105] extend the Skip-gram [88] method to find sense representations of words. They get
+
+the number of senses from a knowledge-base and for each word in the training corpus, they find the most probable
+
+sense by using the likelihoods of context words. They only train the sense with the highest probability. They train their
+
+system on Swedish text and measure their success by comparing the senses to the ground-truth in the knowledge-base
+
+(SALDO [14]).
+
+
+A Survey On Neural Word Embeddings
+
+13
+
+Neelakantan et al. [101] (MSSG) also aim at creating word vectors for each sense of a word. Unlike most other
+
+models, they do it by introducing the sense prediction into the neural network and jointly performing sense vector
+
+calculation and word sense discrimination. Their first model relies on Skip-gram and induces senses by clustering the
+
+context word representations around each word. Then, the word is assigned to the closest sense by calculating the
+
+distance to the sense clusters’ centers. Here the count of clusters is the same for all words and is a hyperparameter.
+
+Their second model is a non-parametric variant of the first one where a varying number of senses is learned for each
+
+word. A new cluster (sense) for a word type is created with probability proportional to the distance of its context to the
+
+nearest cluster (sense). They show that their second method can outperform the first since it can better learn the senses’
+
+nature.
+
+Cheng and Kartsaklis [26] consider capturing syntactical information to better address senses. They use recursive
+
+neural networks on parsed sentences to learn sense embeddings. Each input is disambiguated to its sense by calculating
+
+the average distance of the words’ embeddings in the sentence to sense cluster means. They define two negative
+
+sampling methods to train the network. One negative example is created to swap the target word with a random word
+
+(as in [90] and [47]), another negative sampling changes the order of words in a sentence, which further enforces the
+
+model (SAMS) to learn syntactic dependencies.
+
+Li and Jurafsky [71] decide the number of senses in an unsupervised fashion by using the Chinese Restaurant Process
+
+(CRP). They combine CRP with neural network training methods by determining the sense of a word by looking at its
+
+context. They also compare sense-embedding methods with single-prototype models across various NLP tasks to see if
+
+they are beneficial. They state that in some tasks (POS tagging, semantic relatedness, semantic relation identification),
+
+sense-embeddings outperform single-prototype methods. Still, they fail to improve their scores on some other tasks
+
+(NER, sentiment analysis).
+
+Instead of getting the number of senses from a knowledge-base, Nguyen et al. [102] (MSWE) use LDA [11] to find
+
+word to topic and topic to document probability distributions. Here the number of topics is a parameter to the model.
+
+They train different weights for each sense of a word using two different optimization methods. The first model learns
+
+word vectors based on the most suitable topic. On the other hand, their second model considers all topics to learn them.
+
+They conclude that this second method can be considered as a generalization of the Skip-gram model [88] given the
+
+fact that it behaves as Skip-gram if the mixture weights are set to zero.
+
+Guo et al. [46] exploit bilingual resources to find sense embeddings, motivated by the idea that if a word in a
+
+source language translates into multiple words in a target language, that means different words in the target language
+
+corresponds to a sense in the source language. For this purpose, they use Chinese to English translation data to induce
+
+senses in an unsupervised fashion. They represent the initial words with the word embeddings from C&amp;W [27] and
+
+use the affinity propagation algorithm to cluster the translated words into dynamic clusters, which means that their
+
+method can learn a different number of senses for each word. Then, they use the RNNLM model [89] to train the sense
+
+embeddings.
+
+Iacobacci and Navigli [56] propose an LSTM-based architecture (LSTMEmbed) to jointly learn word and sense
+
+embeddings. Input contexts are provided from semantically annotated data, and one bidirectional LSTM processes
+
+the left context while another one handles the right one. As an extra layer, the concatenation of both outputs is
+
+linearly projected into a dense representation. Then, the optimization objective tries to maximize the similarity between
+
+the produced dense output and pretrained word embeddings from SGNS. Consideration of these pretrained word
+
+embeddings in the final phase increases the vocabulary use of the proposed system. Their experiments on the word to
+
+sense similarity and word-based semantic evaluations prove the usefulness of their approach.
+
+
+14
+
+Erhan Sezerer and Selma Tekir
+
+Table 4. Morpheme embedding models.
+
+Model
+
+Year
+
+Training Corpus
+
+Knowledge-Base
+
+NN Model
+
+Dimension
+
+Luong et al. [84]
+
+2013
+
+Wiki
+
+Morfessor[31]
+
+recNN
+
+50
+
+CLBL [15]
+
+2014
+
+ACL MT
+
+Morfessor[31]
+
+LBL
+
+-
+
+Qiu et al. [111]
+
+2014
+
+Wiki
+
+Morfessor[31],Root,Syllable[72]
+
+CBOW
+
+200
+
+Bian et al. [9]
+
+2014
+
+Wiki
+
+Morfessor[31], WordNet[91],
+
+Freebase[13], Longman Dict.
+
+CBOW
+
+600
+
+CharWNN [38]
+
+2014
+
+Wiki
+
+-
+
+CNN
+
+100
+
+KNET [32]
+
+2015
+
+Wiki
+
+Morfessor[31], Syllable[72]
+
+Skip-Gram
+
+100
+
+AutoExtend [117]
+
+2015
+
+Google News
+
+WordNet [91]
+
+Autoencoder
+
+300
+
+Morph-LBL [29]
+
+2015
+
+TIGER [16]
+
+TIGER [16]
+
+LBL
+
+200
+
+Soricut and Och [124]
+
+2015
+
+Wiki
+
+-
+
+Skip-Gram
+
+500
+
+C2W [74]
+
+2015
+
+Wiki
+
+-
+
+biLSTM[44]
+
+50
+
+Cotterell et al. [30]
+
+2016
+
+Wiki
+
+CELEX [48]
+
+GGM
+
+100
+
+Fasttext [12]
+
+2016
+
+Wiki
+
+-
+
+Skip-Gram
+
+300
+
+char2vec [20]
+
+2016
+
+text8 (wiki)
+
+-
+
+LSTM[53]+Attn
+
+256
+
+Kim et al. [61]
+
+2016
+
+ACL MT
+
+-
+
+CNN+LSTM
+
+300-650
+
+LMM [144]
+
+2018
+
+Gigaword
+
+Morfessor[31]
+
+CBOW
+
+200
+
+Kumar et al. [63] propose a framework that combines a context encoder with a definition encoder to provide sense
+
+predictions for out of vocabulary words. In the case of rare and unseen words, most word sense disambiguation (WSD)
+
+systems rely on the most frequent sense (MFS) on the training set. In the part of the definition encoder, sentence
+
+encoders along with knowledge graph embeddings are utilized. Here instead of using discrete labels for senses, the score
+
+for each sense in the inventory is calculated by the dot product of the sense embedding with the projected context-aware
+
+embedding.
+
+3.4
+
+Morpheme Embeddings
+
+The quest for morphological representations is a result of two important limitations of earlier word embedding models.
+
+The first point is, words are not the smallest units of meaning in languages, morphemes are. Even if a model does not see
+
+the word unpleasant in the training it should be able to deduce that it is the negative form of pleasant. Word embedding
+
+methods that don’t take morphological information into account can not produce any results in such a situation. The
+
+second limitation is the data scarcity problem of morphologically rich languages and agglutinative languages. Unlike
+
+English, morphologically rich languages have many more noun and/or verb forms inflected by gender, case, or number,
+
+which may not exist in the training corpora. The same thing is also valid for agglutinative languages in which words can
+
+have many forms according to the suffix(es) they take. Therefore, models that take morphemes/lexemes into account is
+
+needed.
+
+Researchers propose several ways to target morphological information in order to obtain sub-word information for
+
+solving the rare/unknown word problem of earlier word embedding methods and also to have better representations of
+
+words for morphologically rich languages. While some of the works are proposed to train embeddings directly from
+
+morphemes/lexemes, others adjust the representations of other word embedding models. Summary of these models and
+
+their properties can be seen in Table 4.
+
+
+A Survey On Neural Word Embeddings
+
+15
+
+3.4.1
+
+Training Morphological Embeddings from Scratch. There are two main ways for training morpheme embeddings
+
+from scratch: While some methods ([84], [15], [111], [9], [32], [29], [144], [124]) propose to use tools or special rules for
+
+dissecting a text to its morphemes, others ([12], [20], [74], [38]) prefer using characters or character n-grams as input
+
+to learn morphemes along with their representations.
+
+Luong et al. [84]’s work is the first work that attempts to incorporate morphological information in word embeddings.
+
+They train morphological embeddings with recursive neural networks. They divide words into (prefix, stem, affix) tuples
+
+by using morfessor [31] and feed them to a recursive neural network. Word embeddings are then constructed by a
+
+word-based neural language model (NLM). Instead of initializing the vectors with random numbers, they initialize them
+
+with the pre-trained word embeddings from Collobert et al. [28] and Huang et al. [55] in order to focus on learning the
+
+morphemic semantics.
+
+Similar to Luong et al. [84], Botha and Blunsom [15] (CLBL) also use morfessor [31] to find the morphemes of words
+
+in text and train both the target word and context words by first factoring them into their morphemes. They learn
+
+the morphology-based word representations with an additive-LBL of their factor embeddings, e.g., surface form, stem,
+
+affixes, etc.
+
+Qiu et al. [111] incorporate morphemes into the CBOW [88] architecture: Instead of predicting a word from the
+
+context words, they propose to use both morphemes and words as input and for prediction. They control the relative
+
+contributions of words and morphemes with two parameters that weigh the information to be extracted from each
+
+input. They use three different tools for extracting morphemes from corpus: Morfessor [31], root, and syllable [72].
+
+Bian et al. [9] investigate three different methods for finding better representations for words and morphemes: First,
+
+they transform CBOW [88] into a new basis by using morphemes (segmented by using morfessor [31]) instead of
+
+words. They later represent words as the aggregate of the morphemes they are composed of. Second, they provide
+
+additional information to their first model by feeding semantic and syntactic information vectors as inputs along with
+
+the morpheme vectors. As semantic and syntactic information, they use synsets, syllables, syntactical transformation,
+
+and antonym and synonyms from Freebase [13], WordNet [91], and Longman dictionaries1. Finally, they use syntactic
+
+knowledge (POS tagging vector) and semantic knowledge (entity vector and relation matrix) as auxiliary tasks, where
+
+they use syntactic/semantic information as outputs around the center word to be predicted. Their relation matrix
+
+consists of relations such as belong-to and is-a relation. They examine the effects of both semantic and syntactic
+
+information compared to the baseline model (CBOW) and report the relative effects in various tasks.
+
+Soricut and Och [124] aim at improving word vectors and solving the rare word problem by using morphology
+
+induction. In their method, they first extract candidate morphological rules. In this step, they find the word pairs
+
+(𝑤1,𝑤2) such that 𝑤2 is formed by substituting prefixes and suffixes up to 6 characters from 𝑤1 (i.e., (𝑏𝑜𝑟𝑒𝑑,𝑏𝑜𝑟𝑖𝑛𝑔) is
+
+produced from the rule (𝑠𝑢𝑓 𝑓 𝑖𝑥 : 𝑒𝑑 : 𝑖𝑛𝑔)). Later they form their rules from word pairs. After training their embeddings
+
+with the Skip-gram method [88], they keep the rule if the word pair (𝑤1,𝑤2) is similar in embedding space; otherwise,
+
+the rule is removed from the candidate rule list. Thus, they use their morphological rules to obtain representations for
+
+rare words that may or may not be in the training set.
+
+Cui et al. [32] (KNET) use co-occurrence statistics to construct word embeddings with sub-word information. They
+
+leverage four different morphological information inspired by the advances in cognitive psychology: i) edit distance
+
+similarity ii) longest common sub-string similarity, iii) morpheme similarity (share roots, affixes, etc. by using morfessor
+
+[31]), and iv) syllable similarity (by using hyphenation tool [73]). They combine the aforementioned morphological
+
+1www.longmandictionariesonline.com
+
+
+16
+
+Erhan Sezerer and Selma Tekir
+
+information into a relation matrix and construct morphological embeddings from it. On the other hand, they also
+
+create word embeddings by using the Skip-gram method [90]. A combination of these two embeddings with weighted
+
+averaging is used in order to obtain the final word embeddings. Unlike most other word embedding methods, authors
+
+do not change the digits in the text with zeros; instead, they change the digits with their text counterparts to reflect the
+
+information better.
+
+Different from other morphology-based models, Cotterell and Schütze [29] implement a semi-supervised approach
+
+(MorphLBL) where a partially morphologically tagged dataset (TIGER dataset of German newspaper [16]) is used.
+
+They augment the LBL model [93] to both predict word and morpheme together. They also introduce a new metric for
+
+measuring the success of morphological models called MorphDist.
+
+Dos Santos and Zadrozny [38], Ling et al. [74], Bojanowski et al. [12], and Cao and Rei [20] come up with character-
+
+based solutions instead of using a tool/knowledge-base to find morphemes in sentences.
+
+In their work (CharWNN), Dos Santos and Zadrozny [38] use word embeddings together with character embeddings
+
+to compensate for the need for hand-crafted features in part-of-speech (POS) tagging, where the morphological structure
+
+of words plays a significant role. In their architecture, they use Skip-gram [88] for word embeddings and train their
+
+character embeddings from scratch.
+
+The compositional model of Ling et al. [74], called C2W, takes the characters of a word as input and uses bidirectional-
+
+LSTM to construct word vectors by concatenating the last state of LSTM in each direction.
+
+Bojanowski et al. [12] propose a model, called Fasttext, that takes character 3- to 6-grams of words and represents
+
+the words with a bag of n-grams. i.e., for the word “where” the 3-grams are: (&lt;wh, whe, her, ere, re&gt;), where &lt; and
+
+&gt; are special characters for denoting the beginning and end of the word, respectively. N-grams are then summed to
+
+produce word embeddings. Thus, as the model shares representations across words, it can have better representations
+
+for rare words. They perform extensive tests on morphologically rich languages to see how their model works and
+
+learns the subword information.
+
+Cao and Rei [20] aim at solving unsupervised morphology induction and learning word embeddings jointly by using
+
+bidirectional LSTMs with the Bahdanau attention [4] on characters. The output of the attention layer is fed to Skip-gram
+
+[88] algorithm to compute word representations. They prove that the attention layer learns to split the words into
+
+multiple morphemes by showing that their algorithm outperforms other morpheme induction methods. However, it is
+
+not only designed for solving that problem. They also show that since their method (char2vec) focused on finding
+
+morpheme representations through characters, it is better at tasks that measure syntactic similarity. On the other hand,
+
+they argue that their method is worse at tasks that measure semantic similarity since characters do not convey any
+
+semantic information of words alone.
+
+To address both syntactic and semantic features, Kim et al. [61] use a mixture of character and word-level features.
+
+In their model, at the lowest level of the hierarchy, character-level features are processed by a CNN; after transferring
+
+these features over a highway network, high-level features are learned using an LSTM. Thus, the resulting embeddings
+
+show good syntactic and semantic patterns. For instance, the closest words to the word richard are returned as eduard,
+
+gerard, edward, and carl, where all of them are person names and have a high syntactic similarity to the query word.
+
+Due to character-aware processing, their models are able to produce good representations for out-of-vocabulary words.
+
+Xu et al. [144] (LMM) also aim at enhancing word representations with morphological information. In incorporating
+
+morphological information, the authors suggest using the latent meaning of morphemes instead of morphemes
+
+themselves. They state that although the words 𝑖𝑛𝑐𝑟𝑒𝑑𝑖𝑏𝑙𝑒 and 𝑢𝑛𝑏𝑒𝑙𝑖𝑒𝑣𝑎𝑏𝑙𝑒 have similar semantics, the methods based
+
+
+A Survey On Neural Word Embeddings
+
+17
+
+on morphemes cannot catch it. Instead, they use the latent meaning of morphemes that they extract from knowledge-
+
+bases (i.e. in=not, un=not, ible=able, able=able, cred=believe, believ=believe). They use CBOW [88] as pretrained word
+
+embeddings and show improvements using their method on them.
+
+3.4.2
+
+Adjusting the Existing Embeddings. Among the models that adjust the pre-trained word embeddings, Rothe and
+
+Schütze [117] take any word embeddings and transform them into embeddings for lexemes and synsets. To do that,
+
+they use WordNet [91] synsets and lexemes although they note that their model (AutoExtend) can get the information
+
+from the other knowledge bases such as Freebase [13]. They consider words and synsets as the sum of their respective
+
+lexemes and enforce three constraints on the system i) synset constraint, ii) lexeme constraint, and iii) WordNet
+
+constraint (because some synsets contain only a single word). They use an autoencoder where the result of the encoding
+
+corresponds to synset vectors, and the hidden layer in encoding and its counterpart in decoding correspond to lexeme
+
+vectors. Two lexeme vectors are then averaged to produce the final lexeme embeddings.
+
+On the other hand, Cotterell et al. [30] use a Gaussian graphical model where word embeddings are represented
+
+as the sum of their morphemes. Their system takes the output of the other word embedding methods as input and
+
+converts them by learning their morpheme embeddings and calculating the word embeddings by summing them. They
+
+also note that it is also possible to extrapolate the embeddings of OOV words with their method since one can compute
+
+their morpheme embeddings from the same morpheme in other words.
+
+4
+
+CONTEXTUAL REPRESENTATIONS
+
+As it is shown in the last section, many methods have been proposed for solving the deficiencies of embedding
+
+methods. Each of them is specialized on a single problem such as sense representation, morpheme representation,
+
+etc., while none of them was able to combine different aspects together into a single model, a single solution. It is
+
+the idea of contextual representations to provide a solution that covers each aspect successfully. The main idea behind
+
+contextual representations is that words should not have a single representation to be used in every context. Instead,
+
+a representation should be calculated separately for different contexts. Contextual representation methods calculate
+
+the embedding of a word from the surrounding words each time the word is seen, contrary to the earlier methods
+
+where each word is represented with a fixed vector of weights. This leads to an implicit solution to many problems
+
+such as sense representations, antonymy/synonymy, and hypernymy/hyponymy, since now multi-sense words can
+
+have different representations according to their context. Furthermore, it has also been proposed to use characters as
+
+input which also incorporates the sub-word information into embeddings. Therefore, contextual representation models,
+
+described below, are able to incorporate different aspects together into a single model. Liu et al. [79] examine contextual
+
+embeddings in detail by comparing their pre-training methods, objectives, and downstream learning approaches.
+
+In such a first attempt to create contextual representations, Melamud et al. [87] developed a neural network architec-
+
+ture based on bidirectional-LSTMs to learn context embeddings with target word embeddings jointly. They feed words
+
+to a 2-layer bidirectional LSTM network in order to predict a target word in a sentence. They use sentences as context
+
+and feed the left side of the target word to left to right (forward) biLSTM and feed the right side of the target word to
+
+right to left (backward) biLSTM. To jointly learn context and target word embeddings, they use the Skip-gram objective
+
+function sampled on context-word occurrences. Furthermore, they show that this is equivalent to the factorization of a
+
+context-target word co-occurrence matrix. Although the previous word embedding models create both context and
+
+target word embeddings, they only use target-target similarity as representations and ignore the context embeddings. In
+
+this work, the authors also use context-context and context-target to show that contextual embeddings can significantly
+
+
+18
+
+Erhan Sezerer and Selma Tekir
+
+improve NLP systems’ performance. They also show that since bidirectional LSTM structures can learn long-term
+
+contextual dependencies, their model, context2vec, is able to differentiate polysemous words with a high success rate.
+
+CoVe [86] uses Glove [109] as the initial word embeddings and feeds them to a machine translation architecture
+
+to learn contextual representations. The authors argue that pre-training the contextual representations on machine
+
+learning tasks, where there are vast amounts of data, can lead to better contextual representations to transfer learning
+
+to other downstream tasks. They concatenate the output of the encoder of a machine translation model (as contextual
+
+embeddings) with the GloVe embeddings to construct their final word representations.
+
+Using language modeling and learning word representations as to the pre-training objective, then fine-tuning the
+
+architecture to downstream tasks is first proposed by Dai and Le [33] and Howard and Ruder [54]. While Dai and Le
+
+[33] propose to use RNNs and autoencoders to tackle the issue, ULMFiT [54] introduces novel fine-tuning ideas such as
+
+discriminative fine-tuning, slanted triangular learning rates, and gradual unfreezing to their LSTM model, inspired
+
+from the advances in transfer learning in computer vision. After the success shown by these models, the aim is shifted
+
+from creating word representations to using their system as pre-trained models and then fine-tuning a classifier on top
+
+to perform downstream tasks.
+
+ELMO [110] improves on the character-aware neural language model by Kim et al. [61]. The architecture takes
+
+characters as input to a CNN network from where it is fed to a 2-layer bidirectional-LSTM network to predict a target
+
+word. They show that this architecture can learn various aspects of words such as semantic, syntactic, and sub-word
+
+information. First, they show that, since the model takes characters as inputs, it is able to learn sub-word information
+
+even for the unseen words. Second, they show that while the first layer of biLSTM better captures the syntactic similarity
+
+of words, the second layer better captures the semantics. Therefore, they propose to use the different layers of the model
+
+to create word representations. They also propose to use a weighted averaging method for combining the different
+
+layers. They show that including ELMO representations can improve many state-of-the-art models in various NLP
+
+tasks.
+
+Instead of using words as input, Flair [1] uses a character-level language model to learn contextual word representa-
+
+tions. Different from ELMO [110] where character level inputs are later converted into word features, in this work, the
+
+authors propose to use characters only. They feed the characters of an input string to a single layer LSTM network and
+
+predict the next character. They later form the word representation by concatenating the backward LSTM output from
+
+the beginning of the word with the forward LSTM output from the end of the word. They also try concatenating other
+
+pre-trained word vectors with their contextual representations in downstream tasks and show that this can improve
+
+the results.
+
+BERT [36] uses bidirectional transformer [132] architecture to learn contextual word representations. Different from
+
+the earlier approaches (ELMO [110], Melamud et al. [87]) BERT is bidirectional. Although ELMO also considers both
+
+sides of a target word, it considers them separately as the left and right sides. Instead, BERT spans the entire sentence
+
+with both right to left and left to right transformers. To do so, without also spanning the target word, they mask the
+
+target word. Therefore, they call this model a masked language model (MLM).
+
+In addition to the token (word) embeddings, they also use segment (sentence) embeddings and position embeddings
+
+(words’ position in segments) as input which enables BERT to consider multiple sentences as context and to represent
+
+inter-sentence relations. Giving multiple sentences as input helps BERT be integrated into most downstream tasks
+
+that require inter-sentence connections such as question answering (QA) and natural language inference (NLI) easily
+
+without requiring any other architecture. For further details, the reader can refer to the work of Rogers et al. [116],
+
+
+A Survey On Neural Word Embeddings
+
+19
+
+which provides an in-depth survey on how exactly BERT works and what kind of information it captures during training
+
+and fine-tuning.
+
+XLNet [145] is an autoregressive method that combines the advantages of two language modeling methods: Au-
+
+toregressive models (i.e. transformer-XL [34]) and autoencoder models (i.e. BERT [36]). Specifically, it considers both
+
+sides of the target word by employing a permutation language modeling object without masking any words like BERT,
+
+which allows their model to capture also the relation between the masked word and the context words, unlike BERT.
+
+ALBERT [66] aims at lowering the memory consumption and training times of BERT [36]. To accomplish this, they
+
+perform two changes on the original BERT model: They factorize the embeddings into two matrices to use smaller
+
+dimensions, and they apply weight sharing to decrease the number of parameters. They state that weight sharing also
+
+allows the model to generalize better. They show that although they can obtain state-of-the-art results over BERT with
+
+fewer parameters, ALBERT requires a longer time to train than BERT.
+
+RoBERTa [81] revises the pre-training design choices of BERT [36] by trying alternatives in a controlled way.
+
+Specifically, dynamic masking for the Masked Language Model (MLM), input format of entire sentences from a single
+
+document with the Next Sentence Prediction (NSP) loss removed, and byte-level Byte Pair Encoding (BPE) vocabulary
+
+give better performance. Moreover, they extend the training set size and the size of mini-batches in training. As a result,
+
+RoBERTa [81] achieves state-of-the-art results in GLUE, RACE, and SQuAD benchmarks.
+
+In their work, called ERNIE, Sun et al. [125] improve on BERT by introducing two knowledge masking strategies
+
+into their masked language modeling. In addition to masking out random words in the sentence, they mask phrases
+
+and named entities to incorporate real-world knowledge into language modeling/representation. In their successive
+
+work, ERNIE 2.0 [126], they implement continual multi-task learning. Including the one in ERNIE, they define seven
+
+pre-training tasks categorized into word-aware, structure-aware, and semantic-aware pre-training tasks, aiming to
+
+capture lexical, syntactic, and semantic relations, respectively.
+
+GPT and its variants rely on a meta-learner idea using a conditional language model in diverse NLP tasks. This
+
+conditional language model predicts the next word conditioned both on an unsupervised pre-trained language model
+
+and the previous set of words in context. In GPT-3, Brown et al. [17] pre-train a 175 billion parameter transformer-based
+
+language model on a sufficiently large and diverse corpus and tests its performance in zero-shot, one-shot, and few-shot
+
+settings. Their learning curves for these three settings show that a larger model better learns a task from contextual
+
+information. Authors apply task-specific input transformations, e.g., delimiting context and question from the answer
+
+in reading comprehension, to test the model’s performance in different NLP tasks. Their few-shot results prove the
+
+effectiveness of their approach by outperforming state-of-the-art on LAMBADA language modeling dataset [106],
+
+TriviaQA closed book open domain question answering dataset [59], and PhysicalQA (PIQA) common sense reasoning
+
+dataset [10].
+
+5
+
+PERFORMANCE OF WORD REPRESENTATIONS
+
+Due to the popularity of the field, many datasets have been proposed and tested upon. In this section, we report the
+
+structure of the datasets and the performance of the aforementioned word embedding models on them.
+
+5.1
+
+Datasets
+
+Depending on their aim, the datasets produced to measure the success of embedding models can be divided into four
+
+categories: Similarity tasks, analogy task, synonym selection tasks, and downstream tasks.
+
+
+20
+
+Erhan Sezerer and Selma Tekir
+
+5.1.1
+
+Similarity Tasks. These datasets provide pairs of words whose similarity is rated by human judgments. They
+
+all use Spearman’s rank correlation (𝜌) with average human judgment to measure the performance and quality of
+
+embeddings.
+
+• WordSim-353 (WS-353): Finkelstein et al. [41] produced a corpus that contains human judgements, rated from 1
+
+to 10, on 353 pairs of words.
+
+• SCWS: Huang et al. [55] introduced this dataset in which the word pairs are scored by mechanical turkers
+
+within a context, which is usually a paragraph from Wikipedia that contains the given word. The reason for
+
+introducing such a dataset is that the available test sets for similarity measurements are not sufficient for testing
+
+multi-prototype word embeddings because the scores of word pairs in those test sets are given in isolation, which
+
+lacks the contextual information for senses.
+
+• RG-65: This dataset, developed by Rubenstein and Goodenough [118], is composed of 65 noun pairs whose
+
+similarity is rated by humans.
+
+• MC-30: The dataset [92] contains 30 pairs of words.
+
+• MEN: It [18] contains 3000 pairs of words together with human assigned similarity scores obtained from Amazon
+
+Mechanical Turk.
+
+• YP-130: Similar to the previous test sets, YP-130 citeYP130 also contains human assigned similarity scores to
+
+130 word pairs.
+
+• RW: Unlike the previous word similarity datasets, RW [84] consists of 2034 pairs of rare words which are not
+
+frequently seen in texts. The motivation behind this dataset is to provide a sufficient number of complex and rare
+
+words to test the expressiveness of morphological models since the previous datasets mostly contain frequent
+
+words that are insufficient for such tests.
+
+• Simlex-999: Simlex-999 dataset [51] contains 999 pairs of words whose similarity is annotated by mechanical
+
+turkers.
+
+5.1.2
+
+Analogy Task. Semantic-syntactic word relationship test set (Google Analogy Task) introduced by Mikolov
+
+et al. [88] consists of pairs of words in the form of 𝑎 is to 𝑎∗ as 𝑏 is to 𝑏∗ (such as Paris is to France as London is
+
+to England). The aim is to find 𝑏∗, given 𝑎, 𝑎∗, and 𝑏 (cosine distance is used as a distance metric to find the miss-
+
+ing word). There are 8869 semantic and 10675 syntactic questions in the dataset, and the success is measured by accuracy.
+
+5.1.3
+
+Synonym Selection Tasks. Given a word as input, this task aims to select the most synonym-like word among the
+
+list of candidates. Accuracy (%) is used to measure the performance.
+
+
+A Survey On Neural Word Embeddings
+
+21
+
+• ESL-50: Contains 50 synonym selection questions from ESL (English as a second language) tests.
+
+• TOEFL-80: Contains 80 synonym selection questions from TOEFL (Test of English as Foreign Language) tests.
+
+• RD-300: Contains 300 synonym selection problems from Reader’s Digest Power Game.
+
+5.1.4
+
+Downstream Tasks. As representations and models get better and the difference between word embedding
+
+methods and language models gets closer, experiments are shifted from similarity tasks to downstream tasks.
+
+GLUE benchmark dataset [135] is introduced to provide a stable testing environment for researchers. It consists of
+
+several downstream tasks:
+
+• CoLA: The Corpus of Linguistic Acceptability [138] is a sentence classification task where the aim is to determine
+
+whether a sentence is linguistically acceptable or not. It contains 9594 sentences from linguistic publications and
+
+the success is measured by Matthew’ Correlation Coefficient (MCC).
+
+• SST-2: The Stanford Sentiment Treebank [123] consists of 68.8𝑘 sentences from movie reviews. The aim is to
+
+classify the sentiment of sentences. Accuracy is used to measure the performance.
+
+• MRPC: Microsoft Research Paraphrase Corpus [37] contains 5800 pairs of sentences from news sources on the
+
+web. Each pair is annotated by humans indicating whether they are semantically equivalent or not. Performance
+
+is measured by accuracy.
+
+• STS-B: Semantic Textual Similarity Benchmark [21] is composed of 8628 pairs of sentences from various sources,
+
+annotated between 1 and 5, determining how similar they are. Success is measured by Spearman’s rank correlation
+
+(𝜌).
+
+• QQP: Quora Question Pairs [25] dataset contains over 400𝑘 question pairs where the aim is to determine whether
+
+the questions are semantically similar or not. Success is measured by accuracy.
+
+• MNLI: Multi-Genre Natural Language Inference [140] dataset is composed of 430𝑘 crowd-sourced sentence pairs
+
+annotated with entailment information. The aim is to predict whether a second sentence is a contradiction,
+
+entailment, or neutral to the first one. Accuracy is used to measure the performance.
+
+• QNLI: Questions Natural Language Inference [112] dataset is a modified version of the SQuAD dataset [114]. It
+
+contains over 100𝑘 sentence/context pairs where the aim is to determine if the context contains an answer to the
+
+question.
+
+• RTE: Recognizing Textual Entailment [8] is similar to MNLI, where the aim is to predict the type of entailment
+
+between a paragraph and a sentence, entailment, contradiction, and unknown being the choices.
+
+• WNLI: Winograd Natural Language Inference [68] dataset also concerns natural language inference similar to
+
+the MNLI and the RTE datasets.
+
+Stanford Question Answering Dataset (SQuAD 1.1 [114] and SQuAD 2.0 [113]) is a reading comprehension dataset
+
+that is composed of Wikipedia articles and questions related to them. The aim is to find the text segment that answers
+
+the related question. There are 150𝑘 questions 50𝑘 of which is unanswerable from the given context article. Any
+
+model built for this task should also determine whether the question is answerable or not in addition to answering the
+
+questions.
+
+
+22
+
+Erhan Sezerer and Selma Tekir
+
+Table 5. Word embedding models’ performances in similarity tasks (in chronological order).
+
+Model
+
+Dim.
+
+WS-353
+
+SCWS (𝜌 × 100)
+
+RG-65
+
+MEN
+
+YP-130
+
+RW
+
+MC-30
+
+Simlex-999
+
+(𝜌 × 100)
+
+avgSim
+
+avgSimC
+
+globalSim
+
+localSim
+
+MaxSimC
+
+(𝜌 × 100)
+
+(𝜌 × 100)
+
+(𝜌 × 100)
+
+(𝜌 × 100)
+
+(𝜌 × 100)
+
+(𝜌 × 100)
+
+HLBL [94]
+
+100
+
+33.23
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+C&amp;W [27]
+
+50
+
+29.53
+
+-
+
+-
+
+57.08
+
+-
+
+-
+
+48.07
+
+57.07
+
+-
+
+-
+
+-
+
+-
+
+C&amp;W [27]
+
+50
+
+49.83
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+R&amp;M [115]
+
+-
+
+73.43
+
+60.43
+
+60.53
+
+62.58
+
+-
+
+60.48
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+RNNLM [89]
+
+640
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+Huang et al. [55]
+
+50
+
+71.3
+
+62.8
+
+65.7
+
+58.62
+
+26.12
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+CBOW [88]
+
+400
+
+69.47
+
+64.27
+
+-
+
+-
+
+-
+
+-
+
+73.27
+
+66.57
+
+34.37
+
+-
+
+-
+
+-
+
+Skip-Gram [88]
+
+100
+
+58.95
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+Skip-Gram [90]
+
+300
+
+70.49
+
+66.66
+
+66.66
+
+65.29
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+Skip-Gram [90]
+
+256
+
+66.71
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+55.71
+
+-
+
+38.81
+
+-
+
+-
+
+Luong et al.[84]
+
+50
+
+64.6
+
+-
+
+-
+
+48.5
+
+-
+
+-
+
+65.4
+
+-
+
+-
+
+34.4
+
+71.7
+
+-
+
+CLBL [15]
+
+-
+
+39.0
+
+-
+
+-
+
+-
+
+-
+
+-
+
+41.0
+
+-
+
+-
+
+30.0
+
+-
+
+-
+
+Tian et al. [127]
+
+50
+
+-
+
+-
+
+65.4
+
+-
+
+-
+
+63.6
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+Qiu et al. [111]
+
+200
+
+65.2
+
+-
+
+-
+
+53.4
+
+-
+
+-
+
+67.4
+
+-
+
+-
+
+32.9
+
+81.6
+
+-
+
+MSSG [101]
+
+300
+
+70.9
+
+67.3
+
+69.1
+
+65.5
+
+59.8
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+Chen et al. [24]
+
+200
+
+-
+
+66.2
+
+68.9
+
+64.2
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+GloVe [109]
+
+300
+
+75.9
+
+-
+
+-
+
+59.6
+
+-
+
+-
+
+82.9
+
+-
+
+-
+
+47.8
+
+83.6
+
+41.015
+
+Guo et al. [46]
+
+50
+
+-
+
+49.3
+
+-
+
+-
+
+-
+
+55.4
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+KNET [32]
+
+100
+
+66.1
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+39.3
+
+-
+
+-
+
+CNN-VMSSG [23]
+
+300
+
+-
+
+65.7
+
+66.4
+
+66.3
+
+61.1
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+AutoExtend [117]
+
+300
+
+-
+
+68.9
+
+69.8
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+SenseEmbed [57]
+
+400
+
+77.9
+
+62.4
+
+-
+
+-
+
+-
+
+-
+
+89.4
+
+80.5
+
+73.4
+
+-
+
+-
+
+-
+
+TWE-1 [80]
+
+400
+
+-
+
+-
+
+68.1
+
+-
+
+-
+
+67.3
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+Jauhar et al. [58]
+
+80
+
+63.9
+
+-
+
+-
+
+65.7
+
+-
+
+-
+
+73.4
+
+64.6
+
+-
+
+-
+
+75.8
+
+-
+
+SAMS [26]
+
+300
+
+-
+
+62.5
+
+-
+
+59.9
+
+58.5
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+SWE [78]
+
+300
+
+72.8
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+Soricut and Och [124]
+
+500
+
+71.2
+
+-
+
+-
+
+-
+
+-
+
+-
+
+75.1
+
+-
+
+-
+
+41.8
+
+-
+
+-
+
+Cotterell et al. [30]
+
+100
+
+58.9
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+char2vec [20]
+
+256
+
+34.5
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+32.2
+
+-
+
+28.2
+
+-
+
+-
+
+Bojanowski et al. [12]
+
+300
+
+71.0
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+47.0
+
+-
+
+-
+
+Yin and Schütze [147]
+
+200
+
+76.0
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+82.5
+
+-
+
+61.6
+
+85.7
+
+48.5
+
+dLCE [104]
+
+500
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+59.0
+
+Ngram2vec [149]
+
+300
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+76.0
+
+-
+
+44.6
+
+-
+
+42.1
+
+MSWE [102]
+
+300
+
+72.4
+
+66.7
+
+66.7
+
+66.8
+
+-
+
+-
+
+-
+
+76.4
+
+-
+
+35.6
+
+-
+
+39.2
+
+Dict2vec [128]
+
+300
+
+75.6
+
+-
+
+-
+
+-
+
+-
+
+-
+
+87.5
+
+75.6
+
+64.6
+
+48.2
+
+86.0
+
+-
+
+LMM [144]
+
+200
+
+61.5
+
+-
+
+-
+
+63.0
+
+-
+
+-
+
+63.1
+
+-
+
+-
+
+43.1
+
+-
+
+-
+
+LSTMEmbed [56]
+
+400
+
+61.2
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+RACE dataset [65] is also a dataset for reading comprehension taken from the English exams for middle and high
+
+school Chinese students. The aim is to find the correct answer to the question about a specific text passage among the
+
+choices. There are approximately 28𝑘 passages and 100𝑘 questions.
+
+One can find the links of the datasets in Appendix B. The leaderboards of current state-ot-the-art can be tracked
+
+either from the respective websites or from the ACL Wiki website (https://aclweb.org/aclwiki/State_of_the_art). The
+
+reader can refer to Bakarov [5] for comparisons, advantages, and disadvantages of the evaluation methods of word
+
+embedding models.
+
+5.2
+
+Results
+
+In this section, we report the results obtained by the models examined in this survey on aforementioned datasets. In
+
+Tables 5,6,7, and 8, the results in similarity, analogy, synonym selection, and downstream tasks are given respectively.
+
+While reporting the results, we follow a few criteria to make it as fair and simple as possible:
+
+• Unless noted otherwise, all of the results are taken from the original papers. (The results taken from other sources
+
+are marked with numbered superscripts. See Appendix B for details.)
+
+• If more than one paper report results on the same model, we take the one in the original paper.
+
+• If the author(s) provide several variations of a model, we report only the one with the best score.
+
+
+A Survey On Neural Word Embeddings
+
+23
+
+Table 6. Word embedding models’ performances in analogy task (in chronological order).
+
+Model
+
+Dimension
+
+Google Analogy Task (acc. %)
+
+Syntactic
+
+Semantic
+
+Total
+
+C&amp;W [27]
+
+50
+
+9.34
+
+12.34
+
+11.04
+
+RNNLM [89]
+
+640
+
+8.64
+
+36.54
+
+24.64
+
+CBOW [88]
+
+1000
+
+57.3
+
+68.9
+
+63.7
+
+Skip-Gram [88]
+
+1000
+
+66.1
+
+65.1
+
+65.6
+
+Skip-Gram [90]
+
+100
+
+36.413
+
+28.013
+
+32.613
+
+Skip-Gram [90]
+
+300
+
+61.0
+
+61.0
+
+61.0
+
+Skip-Gram [90]
+
+256
+
+51.31
+
+33.91
+
+43.61
+
+ivLBL [95]
+
+100
+
+46.1
+
+40.0
+
+43.3
+
+ivLBL [95]
+
+300
+
+63.0
+
+65.2
+
+64.0
+
+vLBL [95]
+
+300
+
+64.8
+
+54.0
+
+60.0
+
+vLBL [95]
+
+600
+
+67.1
+
+60.5
+
+64.1
+
+Qiu et al. [111]
+
+200
+
+58.4
+
+25.0
+
+43.3
+
+MSSG [101]
+
+300
+
+-
+
+-
+
+64.010
+
+GloVe [109]
+
+300
+
+69.3
+
+81.9
+
+75.0
+
+KNET [32]
+
+100
+
+46.9
+
+24.9
+
+36.3
+
+char2vec [20]
+
+256
+
+52.5
+
+2.5
+
+35.5
+
+Bojanowski et al. [12]
+
+300
+
+74.9
+
+77.8
+
+-
+
+Yin and Schütze [147]
+
+200
+
+76.3
+
+92.5
+
+77.0
+
+Ngram2vec [149]
+
+300
+
+71.0
+
+74.2
+
+72.5
+
+MSWE [102]
+
+50
+
+-
+
+-
+
+69.9
+
+LMM [144]
+
+200
+
+20.4
+
+-
+
+-
+
+Although some of the differences in performances of word representations are due to the models themselves, it
+
+should be noted that the size of the datasets that the models are trained on can be different, therefore, can affect the
+
+fairness of comparison.
+
+Table 5 shows word embedding models’ performances in similarity tasks. SenseEmbed [57] is the best performing
+
+model in WS-353, RG-65, and YP-130 datasets according to the reported results. Yin and Schütze [147] has superior
+
+performance in the datasets of MEN and RW, while Dict2vec [128] outperforms others on MC-30. In SCWS, AutoExtend
+
+[117] gives the highest correlation coefficient scores. In general, GloVe [109], SenseEmbed [57], Yin and Schütze [147],
+
+and Dict2vec [128] perform well on similarity datasets.
+
+SenseEmbed’s [57] success can be attributed to its capability to disambiguate senses by being trained on sense-tagged
+
+corpora. Glove [109] is generally robust as it’s a mixture of global co-occurrence and local context-based methods.
+
+When it comes to Yin and Schütze [147], it is an ensemble of existing embeddings, including Glove, which produces
+
+better representations for OOV words due to its ensemble nature. Thus, it has good coverage of words in similarity
+
+datasets. Dict2vec’s [128] performance proves the effectiveness of positive sampling over word2vec [90].
+
+Word embedding models’ performances are tested on Google Analogy Task that includes both syntactic and semantic
+
+analogies (Table 6). The best accuracy scores are obtained by Yin and Schütze [147] in this category. Glove[109] follows it
+
+as the second-best performing model. Results in the Google Analogy task can be interpreted much as those in similarity
+
+tasks.
+
+In synonym-selection tasks, three models’ (Skip-Gram [90], Jauhar et al. [58], SWE [78]) results are reported (Table
+
+7). In ESL-50 and RD-300 datasets, the only model with the reported performance is Jauhar et al. [58]. In TOEFL-80,
+
+SWE[78] outperforms the others. Here, SWE’s success can be explained by its synonym-antonym rule in learning word
+
+embeddings.
+
+In Table 8, word embedding models’ performances on downstream tasks are provided. In GLUE benchmark, CBOW
+
+[88], BiLSTM+Cove+Attn [86], and BiLSTM+Elmo+Attn [110] are behind human baselines except for the task of QQP.
+
+
+24
+
+Erhan Sezerer and Selma Tekir
+
+Table 7. Word embedding models’ performances in synonym selection tasks (in chronological order).
+
+Model
+
+Dimension
+
+ESL-50 (%)
+
+TOEFL-80 (%)
+
+RD-300 (%)
+
+Skip-Gram [90]
+
+300
+
+-
+
+83.711
+
+-
+
+Skip-Gram [90]
+
+400
+
+62.014
+
+87.014
+
+-
+
+GloVe [109]
+
+300
+
+60.014
+
+88.714
+
+-
+
+MSSG [101]
+
+300
+
+57.114
+
+78.314
+
+-
+
+Jauhar et al. [58]
+
+80
+
+63.6
+
+73.3
+
+66.7
+
+Jauhar et al. [58]
+
+80
+
+73.314
+
+80.014
+
+-
+
+Li and Jurafsky [71]
+
+300
+
+50.014
+
+82.614
+
+-
+
+SWE [78]
+
+300
+
+-
+
+88.7
+
+-
+
+LSTMEmbed [56]
+
+400
+
+72.0
+
+92.5
+
+-
+
+Table 8. Word embedding models’ performances in downstream tasks.
+
+Model
+
+CoLA
+
+SST-2
+
+MRPC
+
+STS-B
+
+QQP
+
+MNLI
+
+QNLI
+
+RTE
+
+WNLI
+
+SQuAD 2.0
+
+RACE
+
+(mcc)
+
+(%)
+
+(F1)
+
+(𝜌 × 100)
+
+(F1)
+
+m/mm (%/%)
+
+(%)
+
+(%)
+
+(%)
+
+(F1)
+
+(%)
+
+CBOW [88]
+
+0.0
+
+80.0
+
+81.5
+
+58.7
+
+51.4
+
+56.0/56.4
+
+72.1
+
+54.1
+
+62.3
+
+BiLSTM+Cove+Attn [86]
+
+8.3
+
+80.7
+
+80.0
+
+68.4
+
+60.5
+
+68.1/68.6
+
+72.9
+
+56.0
+
+18.3
+
+-
+
+-
+
+BiLSTM+Elmo+Attn [110]
+
+33.6
+
+90.4
+
+84.4
+
+72.3
+
+63.1
+
+74.1/74.5
+
+79.8
+
+58.9
+
+65.1
+
+-
+
+-
+
+GLUE Human Baselines
+
+66.4
+
+97.8
+
+86.3
+
+92.6
+
+59.5
+
+92.0/92.8
+
+91.2
+
+93.6
+
+95.9
+
+-
+
+-
+
+SQuAD Human Baselines [113]
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+89.4
+
+-
+
+Turkers [65]
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+73.3
+
+BERT [36]
+
+60.5
+
+94.9
+
+89.3
+
+86.5
+
+72.1
+
+86.7/85.9
+
+91.1
+
+70.1
+
+65.1
+
+89.112
+
+72.012
+
+ERNIE 2.0 [126]
+
+63.5
+
+95.6
+
+90.2
+
+90.6
+
+73.8
+
+88.7/88.8
+
+94.6
+
+80.2
+
+67.8
+
+-
+
+-
+
+XLNet [145] (ensemble)
+
+67.8
+
+96.8
+
+92.9
+
+91.6
+
+74.7
+
+90.2/89.7
+
+98.6
+
+86.3
+
+90.4
+
+89.112
+
+81.812
+
+RoBERTa [81] (ensemble)
+
+67.8
+
+96.7
+
+92.3
+
+91.9
+
+74.3
+
+90.8/90.2
+
+98.9
+
+88.2
+
+89.0
+
+89.812
+
+83.212
+
+ALBERT [66]
+
+71.4
+
+96.9
+
+90.9
+
+93.0
+
+-
+
+90.8
+
+95.3
+
+89.2
+
+-
+
+90.9
+
+86.5
+
+ALBERT [66] (ensemble)
+
+69.1
+
+97.1
+
+93.4
+
+92.5
+
+74.2
+
+91.3/91.0
+
+99.2
+
+89.2
+
+91.8
+
+92.2
+
+89.4
+
+GPT-3 Few-Shot [17] -
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+69.0
+
+-
+
+69.8
+
+45
+
+In QQP, CBOW is still underperforming but BiLSTM+Cove+Attn [86] and BiLSTM+Elmo+Attn[110] are superior to
+
+human performance.
+
+As for the original BERT[36] and its variants, in the tasks of MRPC, QQP, QNLI, they consistently outperform
+
+human baselines. In SST-2, MNLI, RTE, and WNLI, human performance is better. In STS-B, the only model with
+
+superior performance to humans is ALBERT[66], In CoLA, and the tasks of question answering (SQuAD 2.0), and
+
+reading comprehension (RACE), starting from XLNET[145] better performances over human are observed. GPT-3
+
+[17] is promising with its language model meta-learner idea and gives its best performance in the Few-Shot setting.
+
+Although it is behind the state-of-the-art by a large margin in GLUE benchmark, in RTE its score is beyond CBOW [88],
+
+BiLSTM+Cove+Attn [86], and BiLSTM+Elmo+Attn [110].
+
+Table 8 proves the success of contextual representations, especially the transformer-based models (BERT [36] and its
+
+successors), by going beyond human performance in most of the downstream tasks. However, it can be said that in
+
+natural language inference tasks such as MNLI, WNLI, and RTE, these probabilistic language representations still have
+
+some limitations in meeting causal inference requirements.
+
+6
+
+CONCLUSION
+
+Human-level language understanding is one of the oldest challenges in computer science. Many scientific works have
+
+been dedicated to finding good representations for semantic units (words, morphemes, characters) in languages since
+
+it is preliminary for all downstream tasks in NLP. Most of these studies use the distributional hypothesis, where the
+
+meaning of a word is measured from its neighboring words.
+
+
+A Survey On Neural Word Embeddings
+
+25
+
+Distributed representation through a neural network is intuitive in that it resembles human mind’s representation
+
+of concepts. Beyond that, pre-trained language models’ knowledge has been transferred to fine-tuned task-specific
+
+models, which introduced a boost in performance. To summarize, neural language models with their updated weights
+
+as well as learned representations in their layers have become a source of knowledge.
+
+From the release of early word embeddings to current contextual representations, the area of semantics has experi-
+
+enced a transformation, which becomes evident by substantial performance improvements in all NLP tasks. The idea of
+
+pre-training a language model then fine-tuning it on a downstream task has become a de facto standard in almost all
+
+subfields of NLP.
+
+Recently, contextual models, such as BERT and its variants, showed great success in downstream NLP tasks using
+
+masked language modeling and transformer structures. They have become state-of-the-art word embeddings and
+
+obtained human-level results on some of the downstream tasks.
+
+Over the last few years, there has been an increase in the studies that consider experiential (visual) information by
+
+building multi-modal language models and representations [82, 122, 146]. The idea of multi-modal language modeling
+
+is based on human language acquisition, where learning starts with concrete concepts through images early on (As
+
+pointed out by the "pointing phase" in children [76, 77]) and then continues with learning abstract ideas through the text
+
+[3, 45, 133]. Fueled by the success of text-based language models and advancements in cognitive psychology, perhaps
+
+this type of multi-modal language modeling can be the next goal to tackle in the future.
+
+ACKNOWLEDGMENTS
+
+We want to thank Tuğkan Tuğlular for his valuable comments and feedback in the development of this survey.
+
+REFERENCES
+
+[1] Alan Akbik, Duncan Blythe, and Roland Vollgraf. 2018. Contextual String Embeddings for Sequence Labeling. In COLING 2018, 27th International
+
+Conference on Computational Linguistics. 1638–1649.
+
+[2] Andrei Alexandrescu and Katrin Kirchhoff. 2006. Factored Neural Language Models. In Proceedings of the Human Language Technology Conference
+
+of the NAACL, Companion Volume: Short Papers (New York, New York) (NAACL-Short ’06). Association for Computational Linguistics, Stroudsburg,
+
+PA, USA, 1–4.
+
+[3] Mark Andrews, Gabriella Vigliocco, and David Vinson. 2009. Integrating experiential and distributional data to learn semantic representations.
+
+Psychological Review 116, 3 (2009), 463–498.
+
+[4] Dzmitry Bahdanau, Kyunghyun Cho, and Yoshua Bengio. 2014. Neural Machine Translation by Jointly Learning to Align and Translate. CoRR
+
+abs/1409.0473 (2014).
+
+[5] Amir Bakarov. 2018. A Survey of Word Embeddings Evaluation Methods. CoRR abs/1801.09536 (2018). arXiv:1801.09536 http://arxiv.org/abs/1801.
+
+09536
+
+[6] Collin F. Baker, Charles J. Fillmore, and John B. Lowe. 1998. The Berkeley FrameNet Project. In Proceedings of the 17th International Conference on
+
+Computational Linguistics - Volume 1 (Montreal, Quebec, Canada) (COLING ’98). Association for Computational Linguistics, Stroudsburg, PA, USA,
+
+86–90. https://doi.org/10.3115/980451.980860
+
+[7] Yoshua Bengio, Réjean Ducharme, Pascal Vincent, and Christian Janvin. 2003. A Neural Probabilistic Language Model. J. Mach. Learn. Res. 3
+
+(March 2003), 1137–1155.
+
+[8] Luisa Bentivogli, Ido Dagan, Hoa Trang Dang, Danilo Giampiccolo, and Bernardo Magnini. 2009. The Fifth PASCAL Recognizing Textual Entailment
+
+Challenge. In In Proc Text Analysis Conference (TAC’09.
+
+[9] Jiang Bian, Bin Gao, and Tie-Yan Liu. 2014. Knowledge-powered Deep Learning for Word Embedding. In Proceedings of the 2014th European
+
+Conference on Machine Learning and Knowledge Discovery in Databases - Volume Part I (Nancy, France) (ECMLPKDD’14). Springer-Verlag, Berlin,
+
+Heidelberg, 132–148. https://doi.org/10.1007/978-3-662-44848-9_9
+
+[10] Yonatan Bisk, Rowan Zellers, Ronan Le Bras, Jianfeng Gao, and Yejin Choi. 2019. PIQA: Reasoning about Physical Commonsense in Natural
+
+Language. CoRR abs/1911.11641 (2019). arXiv:1911.11641 http://arxiv.org/abs/1911.11641
+
+[11] David M. Blei, Andrew Y. Ng, and Michael I. Jordan. 2003. Latent Dirichlet Allocation. J. Mach. Learn. Res. 3 (March 2003), 993–1022.
+
+[12] Piotr Bojanowski, Edouard Grave, Armand Joulin, and Tomas Mikolov. 2016. Enriching Word Vectors with Subword Information. Transactions of
+
+the Association for Computational Linguistics 5 (2016), 135–146.
+
+
+26
+
+Erhan Sezerer and Selma Tekir
+
+[13] Kurt Bollacker, Colin Evans, Praveen Paritosh, Tim Sturge, and Jamie Taylor. 2008. Freebase: A Collaboratively Created Graph Database for
+
+Structuring Human Knowledge. In Proceedings of the 2008 ACM SIGMOD International Conference on Management of Data (Vancouver, Canada)
+
+(SIGMOD ’08). ACM, New York, NY, USA, 1247–1250. https://doi.org/10.1145/1376616.1376746
+
+[14] Lars Borin, Markus Forsberg, and Lennart Lönngren. 2013. SALDO: a touch of yin to WordNet’s yang. Language Resources and Evaluation 47, 4
+
+(2013), 1191–1211. https://doi.org/10.1007/s10579-013-9233-4
+
+[15] Jan A. Botha and Phil Blunsom. 2014. Compositional Morphology for Word Representations and Language Modelling. In Proceedings of the 31st
+
+International Conference on International Conference on Machine Learning - Volume 32 (Beijing, China) (ICML’14). JMLR.org, II–1899–II–1907.
+
+[16] Sabine Brants, Stefanie Dipper, Peter Eisenberg, Silvia Hansen-Schirra, Esther König, Wolfgang Lezius, Christian Rohrer, George Smith, and
+
+Hans Uszkoreit. 2004. TIGER: Linguistic Interpretation of a German Corpus. Research on Language and Computation 2, 4 (01 Dec 2004), 597–620.
+
+https://doi.org/10.1007/s11168-004-7431-3
+
+[17] Tom B. Brown, Benjamin Mann, Nick Ryder, Melanie Subbiah, Jared Kaplan, Prafulla Dhariwal, Arvind Neelakantan, Pranav Shyam, Girish Sastry,
+
+Amanda Askell, Sandhini Agarwal, Ariel Herbert-Voss, Gretchen Krueger, Tom Henighan, Rewon Child, Aditya Ramesh, Daniel M. Ziegler, Jeffrey
+
+Wu, Clemens Winter, Christopher Hesse, Mark Chen, Eric Sigler, Mateusz Litwin, Scott Gray, Benjamin Chess, Jack Clark, Christopher Berner,
+
+Sam McCandlish, Alec Radford, Ilya Sutskever, and Dario Amodei. 2020. Language Models are Few-Shot Learners. CoRR abs/2005.14165 (2020).
+
+arXiv:2005.14165 https://arxiv.org/abs/2005.14165
+
+[18] Elia Bruni, Nam Khanh Tran, and Marco Baroni. 2014. Multimodal Distributional Semantics. J. Artif. Int. Res. 49, 1 (Jan. 2014), 1–47.
+
+[19] Jose Camacho-Collados and Mohammad Taher Pilehvar. 2018. From Word to Sense Embeddings: A Survey on Vector Representations of Meaning.
+
+J. Artif. Int. Res. 63, 1 (Sept. 2018), 743–788. https://doi.org/10.1613/jair.1.11259
+
+[20] Kris Cao and Marek Rei. 2016. A Joint Model for Word Embedding and Word Morphology. In Proceedings of the 1st Workshop on Representation
+
+Learning for NLP. Association for Computational Linguistics, Berlin, Germany, 18–26. https://doi.org/10.18653/v1/W16-1603
+
+[21] Daniel Cer, Mona Diab, Eneko Agirre, Iñigo Lopez-Gazpio, and Lucia Specia. 2017. SemEval-2017 Task 1: Semantic Textual Similarity Multilingual
+
+and Crosslingual Focused Evaluation. In Proceedings of the 11th International Workshop on Semantic Evaluation (SemEval-2017). Association for
+
+Computational Linguistics, Vancouver, Canada, 1–14. https://doi.org/10.18653/v1/S17-2001
+
+[22] Stanley F. Chen and Joshua Goodman. 1996. An Empirical Study of Smoothing Techniques for Language Modeling. In Proceedings of the 34th
+
+Annual Meeting on Association for Computational Linguistics (ACL ’96). Association for Computational Linguistics, 310–318.
+
+[23] Tao Chen, Ruifeng Xu, Yulan He, and Xuan Wang. 2015. Improving Distributed Representation of Word Sense via WordNet Gloss Composition and
+
+Context Clustering. In ACL.
+
+[24] Xinxiong Chen, Zhiyuan Liu, and Maosong Sun. 2014. A Unified Model for Word Sense Representation and Disambiguation. In Proceedings of the
+
+2014 Conference on Empirical Methods in Natural Language Processing (EMNLP). Association for Computational Linguistics, Doha, Qatar, 1025–1035.
+
+https://doi.org/10.3115/v1/D14-1110
+
+[25] Zihan chen, Hongbo Zhang, Xiaoji Zhang, and Leqi Zhao. 2018. Quora Question Pairs. https://www.quora.com/q/quoradata/First-Quora-Dataset-
+
+Release-Question-Pairs
+
+[26] Jianpeng Cheng and Dimitri Kartsaklis. 2015. Syntax-Aware Multi-Sense Word Embeddings for Deep Compositional Models of Meaning. In
+
+Proceedings of the 2015 Conference on Empirical Methods in Natural Language Processing. Association for Computational Linguistics, Lisbon, Portugal,
+
+1531–1542. https://doi.org/10.18653/v1/D15-1177
+
+[27] Ronan Collobert and Jason Weston. 2008. A Unified Architecture for Natural Language Processing: Deep Neural Networks with Multitask
+
+Learning. In Proceedings of the 25th International Conference on Machine Learning (Helsinki, Finland) (ICML ’08). New York, NY, USA, 160–167.
+
+https://doi.org/10.1145/1390156.1390177
+
+[28] Ronan Collobert, Jason Weston, Léon Bottou, Michael Karlen, Koray Kavukcuoglu, and Pavel Kuksa. 2011. Natural Language Processing (Almost)
+
+from Scratch. J. Mach. Learn. Res. 12 (Nov. 2011), 2493–2537.
+
+[29] Ryan Cotterell and Hinrich Schütze. 2015. Morphological Word-Embeddings. In Proceedings of the 2015 Conference of the North American Chapter
+
+of the Association for Computational Linguistics: Human Language Technologies. Association for Computational Linguistics, Denver, Colorado,
+
+1287–1292. https://doi.org/10.3115/v1/N15-1140
+
+[30] Ryan Cotterell, Hinrich Schütze, and Jason Eisner. 2016. Morphological Smoothing and Extrapolation of Word Embeddings. In Proceedings of the
+
+54th Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) (Berlin, Germany). Association for Computational
+
+Linguistics, 1651–1660. https://doi.org/10.18653/v1/P16-1156
+
+[31] Mathias Creutz and Krista Lagus. 2007. Unsupervised Models for Morpheme Segmentation and Morphology Learning. ACM Trans. Speech Lang.
+
+Process. 4, 1, Article 3 (Feb. 2007), 34 pages. https://doi.org/10.1145/1187415.1187418
+
+[32] Qing Cui, Bin Gao, Jiang Bian, Siyu Qiu, Hanjun Dai, and Tie-Yan Liu. 2015. KNET: A General Framework for Learning Word Embedding Using
+
+Morphological Knowledge. ACM Trans. Inf. Syst. 34, 1, Article 4 (Aug. 2015), 25 pages. https://doi.org/10.1145/2797137
+
+[33] Andrew M. Dai and Quoc V. Le. 2015. Semi-Supervised Sequence Learning. In Proceedings of the 28th International Conference on Neural Information
+
+Processing Systems - Volume 2 (Montreal, Canada) (NIPS’15). MIT Press, Cambridge, MA, USA, 3079–3087.
+
+[34] Zihang Dai, Zhilin Yang, Yiming Yang, Jaime Carbonell, Quoc Le, and Ruslan Salakhutdinov. 2019. Transformer-XL: Attentive Language Models
+
+beyond a Fixed-Length Context. In Proceedings of the 57th Annual Meeting of the Association for Computational Linguistics. Association for
+
+Computational Linguistics, Florence, Italy, 2978–2988. https://doi.org/10.18653/v1/P19-1285
+
+
+A Survey On Neural Word Embeddings
+
+27
+
+[35] Scott Deerwester, Susan T. Dumais, George W. Furnas, Thomas K. Landauer, and Richard Harshman. 1990. Indexing by latent semantic analysis.
+
+JOURNAL OF THE AMERICAN SOCIETY FOR INFORMATION SCIENCE 41, 6 (1990), 391–407.
+
+[36] Jacob Devlin, Ming-Wei Chang, Kenton Lee, and Kristina Toutanova. 2019. BERT: Pre-training of Deep Bidirectional Transformers for Language
+
+Understanding. In Proceedings of the 2019 Conference of the North American Chapter of the Association for Computational Linguistics: Human
+
+Language Technologies, NAACL-HLT 2019, Minneapolis, MN, USA, June 2-7, 2019, Volume 1 (Long and Short Papers). 4171–4186.
+
+[37] Bill Dolan, Chris Quirk, and Chris Brockett. 2004. Unsupervised Construction of Large Paraphrase Corpora: Exploiting Massively Parallel News
+
+Sources. In COLING 2004: Proceedings of the 20th International Conference on Computational Linguistics. COLING, Geneva, Switzerland, 350–356.
+
+[38] Cícero Nogueira Dos Santos and Bianca Zadrozny. 2014. Learning Character-level Representations for Part-of-speech Tagging. In Proceedings of the
+
+31st International Conference on International Conference on Machine Learning - Volume 32 (Beijing, China) (ICML’14). JMLR.org, II–1818–II–1826.
+
+[39] Jeffrey L. Elman. 1990. Finding structure in time. Cognitive Science 14, 2 (1990), 179–211.
+
+[40] Manaal Faruqui, Jesse Dodge, Sujay Kumar Jauhar, Chris Dyer, Eduard Hovy, and Noah A. Smith. 2015. Retrofitting Word Vectors to Semantic
+
+Lexicons. In Proceedings of the 2015 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language
+
+Technologies. Association for Computational Linguistics, Denver, Colorado, 1606–1615. https://doi.org/10.3115/v1/N15-1184
+
+[41] Lev Finkelstein, Evgeniy Gabrilovich, Yossi Matias, Ehud Rivlin, Zach Solan, Gadi Wolfman, and Eytan Ruppin. 2001. Placing Search in Context:
+
+The Concept Revisited. In Proceedings of the 10th International Conference on World Wide Web (Hong Kong, Hong Kong) (WWW ’01). ACM, New
+
+York, NY, USA, 406–414.
+
+[42] H Gadalla, H Kilany, H Arram, A Yacoub, A El-Habashi, A Shalaby, K Karins, E Rowson, R MacIntyre, P Kingsbury, et al. 1997. CALLHOME
+
+Egyptian Arabic Transcripts. Linguistic Data Consortium, Philadelphia (1997).
+
+[43] Yoav Goldberg and Joakim Nivre. 2012. A Dynamic Oracle for Arc-Eager Dependency Parsing. In COLING.
+
+[44] Alex Graves and Jürgen Schmidhuber. 2005. Framewise phoneme classification with bidirectional LSTM and other neural network architectures.
+
+Neural networks : the official journal of the International Neural Network Society 18 5-6 (2005), 602–10.
+
+[45] Thomas L. Griffiths, Joshua B. Tenenbaum, and Mark Steyvers. 2007. Topics in semantic representation. Psychological Review 114 (2007), 2007.
+
+[46] Jiang Guo, Wanxiang Che, Haifeng Wang, and Ting Liu. 2014. Learning Sense-specific Word Embeddings By Exploiting Bilingual Resources. In
+
+Proceedings of COLING 2014, the 25th International Conference on Computational Linguistics: Technical Papers. Dublin City University and Association
+
+for Computational Linguistics, Dublin, Ireland, 497–507.
+
+[47] Michael U. Gutmann and Aapo Hyvärinen. 2012. Noise-contrastive Estimation of Unnormalized Statistical Models, with Applications to Natural
+
+Image Statistics. J. Mach. Learn. Res. 13, 1 (Feb. 2012), 307–361.
+
+[48] R H Baayen, R Piepenbrock, and Hedderik Rijn. 1993. The CELEX lexical data base on CD-ROM. (01 1993).
+
+[49] Dilek Z Hakkani-Tür, Kemal Oflazer, and Gökhan Tür. 2002. Statistical morphological disambiguation for agglutinative languages. Computers and
+
+the Humanities 36, 4 (2002), 381–410.
+
+[50] Zellig S. Harris. 1954. Distributional Structure. Word 10, 2-3 (1954), 146–162. https://doi.org/10.1080/00437956.1954.11659520
+
+[51] Felix Hill, Roi Reichart, and Anna Korhonen. 2015. SimLex-999: Evaluating Semantic Models With (Genuine) Similarity Estimation. Computational
+
+Linguistics 41, 4 (Dec. 2015), 665–695. https://doi.org/10.1162/COLI_a_00237
+
+[52] G. E. Hinton, J. L. McClelland, and D. E. Rumelhart. 1986. Parallel Distributed Processing: Explorations in the Microstructure of Cognition, Vol. 1.
+
+MIT Press, Cambridge, MA, USA, Chapter Distributed Representations, 77–109.
+
+[53] Sepp Hochreiter and Jürgen Schmidhuber. 1997. Long Short-Term Memory. Neural Comput. 9, 8 (Nov. 1997), 1735–1780. https://doi.org/10.1162/
+
+neco.1997.9.8.1735
+
+[54] Jeremy Howard and Sebastian Ruder. 2018. Universal Language Model Fine-tuning for Text Classification. In Proceedings of the 56th Annual Meeting
+
+of the Association for Computational Linguistics (Volume 1: Long Papers). Association for Computational Linguistics, Melbourne, Australia, 328–339.
+
+https://doi.org/10.18653/v1/P18-1031
+
+[55] Eric H. Huang, Richard Socher, Christopher D. Manning, and Andrew Y. Ng. 2012. Improving Word Representations via Global Context and
+
+Multiple Word Prototypes. In Proceedings of the 50th Annual Meeting of the Association for Computational Linguistics: Long Papers - Volume 1 (Jeju
+
+Island, Korea) (ACL ’12). Association for Computational Linguistics, Stroudsburg, PA, USA, 873–882.
+
+[56] Ignacio Iacobacci and Roberto Navigli. 2019. LSTMEmbed: Learning Word and Sense Representations from a Large Semantically Annotated Corpus
+
+with Long Short-Term Memories. In Proceedings of the 57th Conference of the Association for Computational Linguistics, ACL 2019, Florence, Italy,
+
+July 28- August 2, 2019, Volume 1: Long Papers. 1685–1695.
+
+[57] Ignacio Iacobacci, Mohammad Taher Pilehvar, and Roberto Navigli. 2015. SensEmbed: Learning Sense Embeddings for Word and Relational Similarity.
+
+In Proceedings of the 53rd Annual Meeting of the Association for Computational Linguistics and the 7th International Joint Conference on Natural
+
+Language Processing (Volume 1: Long Papers) (Beijing, China). Association for Computational Linguistics, 95–105. https://doi.org/10.3115/v1/P15-1010
+
+[58] Sujay Kumar Jauhar, Chris Dyer, and Eduard Hovy. 2015. Ontologically Grounded Multi-sense Representation Learning for Semantic Vector Space
+
+Models. In Proceedings of the 2015 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language
+
+Technologies. Association for Computational Linguistics, Denver, Colorado, 683–693. https://doi.org/10.3115/v1/N15-1070
+
+[59] Mandar Joshi, Eunsol Choi, Daniel S. Weld, and Luke Zettlemoyer. 2017. TriviaQA: A Large Scale Distantly Supervised Challenge Dataset
+
+for Reading Comprehension. In Proceedings of the 55th Annual Meeting of the Association for Computational Linguistics, ACL 2017, Vancouver,
+
+Canada, July 30 - August 4, Volume 1: Long Papers, Regina Barzilay and Min-Yen Kan (Eds.). Association for Computational Linguistics, 1601–1611.
+
+https://doi.org/10.18653/v1/P17-1147
+
+
+28
+
+Erhan Sezerer and Selma Tekir
+
+[60] Faiza Khan Khattak, Serena Jeblee, Chloé Pou-Prom, Mohamed Abdalla, Christopher Meaney, and Frank Rudzicz. 2019. A survey of word
+
+embeddings for clinical text. Journal of Biomedical Informatics: X 4 (2019), 100057. https://doi.org/10.1016/j.yjbinx.2019.100057
+
+[61] Yoon Kim, Yacine Jernite, David A. Sontag, and Alexander M. Rush. 2016. Character-Aware Neural Language Models. In Proceedings of the Thirtieth
+
+AAAI Conference on Artificial Intelligence, February 12-17, 2016, Phoenix, Arizona, USA, Dale Schuurmans and Michael P. Wellman (Eds.). AAAI
+
+Press, 2741–2749. http://www.aaai.org/ocs/index.php/AAAI/AAAI16/paper/view/12489
+
+[62] R. Kneser and H. Ney. 1995. Improved backing-off for M-gram language modeling. In 1995 International Conference on Acoustics, Speech, and Signal
+
+Processing, Vol. 1. 181–184 vol.1.
+
+[63] Sawan Kumar, Sharmistha Jat, Karan Saxena, and Partha Talukdar. 2019. Zero-shot Word Sense Disambiguation using Sense Definition Embeddings.
+
+In Proceedings of the 57th Conference of the Association for Computational Linguistics, ACL 2019, Florence, Italy, July 28- August 2, 2019, Volume 1:
+
+Long Papers. 5670–5681.
+
+[64] Andrey Kutuzov, Lilja Øvrelid, T. Szymanski, and Erik Velldal. 2018. Diachronic word embeddings and semantic shifts: a survey. ArXiv abs/1806.03537
+
+(2018).
+
+[65] Guokun Lai, Qizhe Xie, Hanxiao Liu, Yiming Yang, and Eduard Hovy. 2017. RACE: Large-scale ReAding Comprehension Dataset From Examinations.
+
+In Proceedings of the 2017 Conference on Empirical Methods in Natural Language Processing. Association for Computational Linguistics, Copenhagen,
+
+Denmark, 785–794. https://doi.org/10.18653/v1/D17-1082
+
+[66] Zhenzhong Lan, Mingda Chen, Sebastian Goodman, Kevin Gimpel, Piyush Sharma, and Radu Soricut. 2020. ALBERT: A Lite BERT for Self-supervised
+
+Learning of Language Representations. In International Conference on Learning Representations.
+
+[67] Rémi Lebret and Ronan Collobert. 2014. Word Embeddings through Hellinger PCA. In Proceedings of the 14th Conference of the European Chapter of the
+
+Association for Computational Linguistics. Association for Computational Linguistics, Gothenburg, Sweden, 482–490. https://doi.org/10.3115/v1/E14-
+
+1051
+
+[68] Hector Levesque, Ernest Davis, and Leora Morgenstern. 2012. The winograd schema challenge. In Thirteenth International Conference on the
+
+Principles of Knowledge Representation and Reasoning.
+
+[69] Omer Levy and Yoav Goldberg. 2014. Dependency-Based Word Embeddings. In Proceedings of the 52nd Annual Meeting of the Association
+
+for Computational Linguistics (Volume 2: Short Papers) (Baltimore, Maryland). Association for Computational Linguistics, 302–308.
+
+https:
+
+//doi.org/10.3115/v1/P14-2050
+
+[70] Omer Levy, Yoav Goldberg, and Ido Dagan. 2015. Improving Distributional Similarity with Lessons Learned from Word Embeddings. Transactions
+
+of the Association for Computational Linguistics 3 (2015), 211–225. https://doi.org/10.1162/tacl_a_00134
+
+[71] Jiwei Li and Dan Jurafsky. 2015. Do Multi-Sense Embeddings Improve Natural Language Understanding?. In Proceedings of the 2015 Conference on
+
+Empirical Methods in Natural Language Processing. Association for Computational Linguistics, Lisbon, Portugal, 1722–1732. https://doi.org/10.
+
+18653/v1/D15-1200
+
+[72] Franklin Mark Liang. 1983. Word Hy-phen-a-tion by Com-put-er. Technical Report.
+
+[73] Franklin Mark Liang. 1983. Word Hy-phen-a-tion by Com-put-er (Hyphenation, Computer). Ph.D. Dissertation. Stanford University, Stanford, CA,
+
+USA. AAI8329742.
+
+[74] Wang Ling, Chris Dyer, Alan W Black, Isabel Trancoso, Ramón Fermandez, Silvio Amir, Luís Marujo, and Tiago Luís. 2015. Finding Function in
+
+Form: Compositional Character Models for Open Vocabulary Word Representation. In Proceedings of the 2015 Conference on Empirical Methods in
+
+Natural Language Processing. Association for Computational Linguistics, Lisbon, Portugal, 1520–1530. https://doi.org/10.18653/v1/D15-1176
+
+[75] Wang Ling, Yulia Tsvetkov, Silvio Amir, Ramón Fermandez, Chris Dyer, Alan W Black, Isabel Trancoso, and Chu-Cheng Lin. 2015. Not All Contexts
+
+Are Created Equal: Better Word Representations with Variable Attention. In Proceedings of the 2015 Conference on Empirical Methods in Natural
+
+Language Processing. Association for Computational Linguistics, Lisbon, Portugal, 1367–1372. https://doi.org/10.18653/v1/D15-1161
+
+[76] Ulf Liszkowski, Malinda Carpenter, Tricia Striano, and Michael Tomasello. 2006. 12- and 18-Month-Olds Point to Provide Information for Others.
+
+Journal of Cognition and Development 7, 2 (2006), 173–187. https://doi.org/10.1207/s15327647jcd0702_2
+
+[77] Ulf Liszkowski, Malinda Carpenter, and Michael Tomasello. 2008. Twelve-month-olds communicate helpfully and appropriately for knowledgeable
+
+and ignorant partners. Cognition 108, 3 (2008), 732–739. https://doi.org/10.1016/j.cognition.2008.06.013
+
+[78] Quan Liu, Hui Jiang, Si Wei, Zhen-Hua Ling, and Yu Hu. 2015. Learning Semantic Word Embeddings based on Ordinal Knowledge Constraints. In
+
+Proceedings of the 53rd Annual Meeting of the Association for Computational Linguistics and the 7th International Joint Conference on Natural Language
+
+Processing (Volume 1: Long Papers). Association for Computational Linguistics, Beijing, China, 1501–1511. https://doi.org/10.3115/v1/P15-1145
+
+[79] Qi Liu, Matt J. Kusner, and P. Blunsom. 2020. A Survey on Contextual Embeddings. ArXiv abs/2003.07278 (2020).
+
+[80] Yang Liu, Zhiyuan Liu, Tat-Seng Chua, and Maosong Sun. 2015. Topical Word Embeddings. In Proceedings of the Twenty-Ninth AAAI Conference on
+
+Artificial Intelligence (Austin, Texas) (AAAI’15). AAAI Press, 2418–2424.
+
+[81] Yinhan Liu, Myle Ott, Naman Goyal, Jingfei Du, Mandar Joshi, Danqi Chen, Omer Levy, Mike Lewis, Luke Zettlemoyer, and Veselin Stoyanov. 2019.
+
+RoBERTa: A Robustly Optimized BERT Pretraining Approach. ArXiv abs/1907.11692 (2019).
+
+[82] Jiasen Lu, Dhruv Batra, Devi Parikh, and Stefan Lee. 2019. ViLBERT: Pretraining Task-Agnostic Visiolinguistic Representations for Vision-and-
+
+Language Tasks. In Advances in Neural Information Processing Systems, H. Wallach, H. Larochelle, A. Beygelzimer, F. d'Alché-Buc, E. Fox, and
+
+R. Garnett (Eds.), Vol. 32. Curran Associates, Inc. https://proceedings.neurips.cc/paper/2019/file/c74d97b01eae257e44aa9d5bade97baf-Paper.pdf
+
+[83] Kevin Lund and Curt Burgess. 1996. Producing high-dimensional semantic spaces from lexical co-occurrence. Behavior research methods, instruments,
+
+&amp; computers 28, 2 (1996), 203–208.
+
+
+A Survey On Neural Word Embeddings
+
+29
+
+[84] Thang Luong, Richard Socher, and Christopher Manning. 2013. Better Word Representations with Recursive Neural Networks for Morphology. In
+
+Proceedings of the Seventeenth Conference on Computational Natural Language Learning. Association for Computational Linguistics, Sofia, Bulgaria,
+
+104–113.
+
+[85] Anh Tuan Luu, Yi Tay, Siu Cheung Hui, and See Kiong Ng. 2016. Learning Term Embeddings for Taxonomic Relation Identification Using
+
+Dynamic Weighting Neural Network. In Proceedings of the 2016 Conference on Empirical Methods in Natural Language Processing. Association for
+
+Computational Linguistics, Austin, Texas, 403–413. https://doi.org/10.18653/v1/D16-1039
+
+[86] Bryan McCann, James Bradbury, Caiming Xiong, and Richard Socher. 2017. Learned in Translation: Contextualized Word Vectors.. In NIPS, Isabelle
+
+Guyon, Ulrike von Luxburg, Samy Bengio, Hanna M. Wallach, Rob Fergus, S. V. N. Vishwanathan, and Roman Garnett (Eds.). 6297–6308.
+
+[87] Oren Melamud, Jacob Goldberger, and Ido Dagan. 2016. context2vec: Learning Generic Context Embedding with Bidirectional LSTM. In Proceedings
+
+of the 20th SIGNLL Conference on Computational Natural Language Learning, CoNLL 2016, Berlin, Germany, August 11-12, 2016. 51–61.
+
+[88] Tomas Mikolov, Kai Chen, Greg Corrado, and Jeffrey Dean. 2013. Efficient Estimation of Word Representations in Vector Space. CoRR abs/1301.3781
+
+(2013). arXiv:1301.3781
+
+[89] Tomas Mikolov, Martin Karafiát, Lukás Burget, Jan Cernocký, and Sanjeev Khudanpur. 2010. Recurrent neural network based language model. In
+
+INTERSPEECH 2010, 11th Annual Conference of the International Speech Communication Association, Makuhari, Chiba, Japan, September 26-30, 2010.
+
+1045–1048.
+
+[90] Tomas Mikolov, Ilya Sutskever, Kai Chen, Greg Corrado, and Jeffrey Dean. 2013. Distributed Representations of Words and Phrases and Their
+
+Compositionality. In Proceedings of the 26th International Conference on Neural Information Processing Systems - Volume 2 (Lake Tahoe, Nevada)
+
+(NIPS’13). Curran Associates Inc., USA, 3111–3119.
+
+[91] George A. Miller. 1995. WordNet: A Lexical Database for English. Commun. ACM 38, 11 (Nov. 1995), 39–41. https://doi.org/10.1145/219717.219748
+
+[92] George A. Miller and Walter G. Charles. 1991. Contextual correlates of semantic similarity. Language and Cognitive Processes 6, 1 (1991), 1–28.
+
+https://doi.org/10.1080/01690969108406936
+
+[93] Andriy Mnih and Geoffrey Hinton. 2007. Three New Graphical Models for Statistical Language Modelling. In Proceedings of the 24th International
+
+Conference on Machine Learning (Corvalis, Oregon, USA) (ICML ’07). 641–648.
+
+[94] Andriy Mnih and Geoffrey Hinton. 2008. A Scalable Hierarchical Distributed Language Model. In Proceedings of the 21st International Conference on
+
+Neural Information Processing Systems (Vancouver, British Columbia, Canada) (NIPS’08). Curran Associates Inc., USA, 1081–1088.
+
+[95] Andriy Mnih and Koray Kavukcuoglu. 2013. Learning Word Embeddings Efficiently with Noise-contrastive Estimation. In Proceedings of the
+
+26th International Conference on Neural Information Processing Systems - Volume 2 (Lake Tahoe, Nevada) (NIPS’13). Curran Associates Inc., USA,
+
+2265–2273.
+
+[96] Andriy Mnih and Yee Whye Teh. 2012. A Fast and Simple Algorithm for Training Neural Probabilistic Language Models. In Proceedings of the 29th
+
+International Coference on International Conference on Machine Learning (Edinburgh, Scotland) (ICML’12). Omnipress, USA, 419–426.
+
+[97] Frederic Morin and Yoshua Bengio. 2005. Hierarchical Probabilistic Neural Network Language Model. In Proceedings of the Tenth International
+
+Workshop on Artificial Intelligence and Statistics, Robert G. Cowell and Zoubin Ghahramani (Eds.). Society for Artificial Intelligence and Statistics,
+
+246–252.
+
+[98] Nikola Mrkšić, Diarmuid Ó Séaghdha, Blaise Thomson, Milica Gašić, Lina M. Rojas-Barahona, Pei-Hao Su, David Vandyke, Tsung-Hsien Wen, and
+
+Steve Young. 2016. Counter-fitting Word Vectors to Linguistic Constraints. In Proceedings of the 2016 Conference of the North American Chapter of
+
+the Association for Computational Linguistics: Human Language Technologies. Association for Computational Linguistics, San Diego, California,
+
+142–148. https://doi.org/10.18653/v1/N16-1018
+
+[99] Roberto Navigli. 2009. Word Sense Disambiguation: A Survey. ACM Comput. Surv. 41, 2, Article 10 (Feb. 2009), 69 pages. https://doi.org/10.1145/
+
+1459352.1459355
+
+[100] Roberto Navigli and Simone Paolo Ponzetto. 2012. BabelNet: The Automatic Construction, Evaluation and Application of a Wide-coverage
+
+Multilingual Semantic Network. Artif. Intell. 193 (Dec. 2012), 217–250. https://doi.org/10.1016/j.artint.2012.07.001
+
+[101] Arvind Neelakantan, Jeevan Shankar, Alexandre Passos, and Andrew McCallum. 2014. Efficient Non-parametric Estimation of Multiple Embeddings
+
+per Word in Vector Space. In Proceedings of the 2014 Conference on Empirical Methods in Natural Language Processing (EMNLP). Association for
+
+Computational Linguistics, Doha, Qatar, 1059–1069. https://doi.org/10.3115/v1/D14-1113
+
+[102] Dai Quoc Nguyen, Dat Quoc Nguyen, Ashutosh Modi, Stefan Thater, and Manfred Pinkal. 2017. A Mixture Model for Learning Multi-Sense
+
+Word Embeddings. In Proceedings of the 6th Joint Conference on Lexical and Computational Semantics (*SEM 2017). Association for Computational
+
+Linguistics, Vancouver, Canada, 121–127. https://doi.org/10.18653/v1/S17-1015
+
+[103] Kim Anh Nguyen, Maximilian Köper, Sabine Schulte im Walde, and Ngoc Thang Vu. 2017. Hierarchical Embeddings for Hypernymy Detection
+
+and Directionality. In Proceedings of the 2017 Conference on Empirical Methods in Natural Language Processing. Association for Computational
+
+Linguistics, Copenhagen, Denmark, 233–243. https://doi.org/10.18653/v1/D17-1022
+
+[104] Kim Anh Nguyen, Sabine Schulte im Walde, and Ngoc Thang Vu. 2016. Integrating Distributional Lexical Contrast into Word Embeddings for
+
+Antonym-Synonym Distinction. In Proceedings of the 54th Annual Meeting of the Association for Computational Linguistics (Volume 2: Short Papers).
+
+Association for Computational Linguistics, Berlin, Germany, 454–459. https://doi.org/10.18653/v1/P16-2074
+
+[105] Luis Nieto Piña and Richard Johansson. 2015. A Simple and Efficient Method to Generate Word Sense Representations. In Proceedings of the
+
+International Conference Recent Advances in Natural Language Processing. INCOMA Ltd. Shoumen, BULGARIA, Hissar, Bulgaria, 465–472.
+
+
+30
+
+Erhan Sezerer and Selma Tekir
+
+[106] Denis Paperno, Germán Kruszewski, Angeliki Lazaridou, Quan Ngoc Pham, Raffaella Bernardi, Sandro Pezzelle, Marco Baroni, Gemma Boleda, and
+
+Raquel Fernández. 2016. The LAMBADA dataset: Word prediction requiring a broad discourse context. In Proceedings of the 54th Annual Meeting of
+
+the Association for Computational Linguistics, ACL 2016, August 7-12, 2016, Berlin, Germany, Volume 1: Long Papers. The Association for Computer
+
+Linguistics. https://doi.org/10.18653/v1/p16-1144
+
+[107] Ellie Pavlick, Pushpendre Rastogi, Juri Ganitkevitch, Benjamin Van Durme, and Chris Callison-Burch. 2015. PPDB 2.0: Better paraphrase ranking,
+
+fine-grained entailment relations, word embeddings, and style classification. In Proceedings of the 53rd Annual Meeting of the Association for
+
+Computational Linguistics and the 7th International Joint Conference on Natural Language Processing (Volume 2: Short Papers). Association for
+
+Computational Linguistics, Beijing, China, 425–430. https://doi.org/10.3115/v1/P15-2070
+
+[108] Maria Pelevina, Nikolay Arefiev, Chris Biemann, and Alexander Panchenko. 2016. Making Sense of Word Embeddings. In Proceedings of the 1st
+
+Workshop on Representation Learning for NLP (Berlin, Germany). Association for Computational Linguistics, 174–183. https://doi.org/10.18653/v1/
+
+W16-1620
+
+[109] Jeffrey Pennington, Richard Socher, and Christopher D. Manning. 2014. Glove: Global Vectors for Word Representation. In EMNLP. ACL, 1532–1543.
+
+[110] Matthew E. Peters, Mark Neumann, Mohit Iyyer, Matt Gardner, Christopher Clark, Kenton Lee, and Luke Zettlemoyer. 2018. Deep Contextualized
+
+Word Representations. In Proceedings of the 2018 Conference of the North American Chapter of the Association for Computational Linguistics: Human
+
+Language Technologies, NAACL-HLT 2018, New Orleans, Louisiana, USA, June 1-6, 2018, Volume 1 (Long Papers). 2227–2237.
+
+[111] Siyu Qiu, Qing Cui, Jiang Bian, Bin Gao, and Tie-Yan Liu. 2014. Co-learning of Word Representations and Morpheme Representations. In Proceedings
+
+of COLING 2014, the 25th International Conference on Computational Linguistics: Technical Papers. Dublin City University and Association for
+
+Computational Linguistics, Dublin, Ireland, 141–150.
+
+[112] Pranav Rajpurkar, Robin Jia, and Percy Liang. 2018. Know What You Don’t Know: Unanswerable Questions for SQuAD. In Proceedings of the 56th
+
+Annual Meeting of the Association for Computational Linguistics (Volume 2: Short Papers). Association for Computational Linguistics, Melbourne,
+
+Australia, 784–789. https://doi.org/10.18653/v1/P18-2124
+
+[113] Pranav Rajpurkar, Robin Jia, and Percy Liang. 2018. Know What You Don’t Know: Unanswerable Questions for SQuAD. In Proceedings of the 56th
+
+Annual Meeting of the Association for Computational Linguistics (Volume 2: Short Papers). Association for Computational Linguistics, Melbourne,
+
+Australia, 784–789. https://doi.org/10.18653/v1/P18-2124
+
+[114] Pranav Rajpurkar, Jian Zhang, Konstantin Lopyrev, and Percy Liang. 2016. SQuAD: 100,000+ Questions for Machine Comprehension of Text. In
+
+Proceedings of the 2016 Conference on Empirical Methods in Natural Language Processing. Association for Computational Linguistics, Austin, Texas,
+
+2383–2392. https://doi.org/10.18653/v1/D16-1264
+
+[115] Joseph Reisinger and Raymond J. Mooney. 2010. Multi-prototype Vector-space Models of Word Meaning. In Human Language Technologies: The 2010
+
+Annual Conference of the North American Chapter of the Association for Computational Linguistics (Los Angeles, California) (HLT ’10). Association
+
+for Computational Linguistics, Stroudsburg, PA, USA, 109–117.
+
+[116] Anna Rogers, O. Kovaleva, and A. Rumshisky. 2020. A Primer in BERTology: What we know about how BERT works. ArXiv abs/2002.12327 (2020).
+
+[117] Sascha Rothe and Hinrich Schütze. 2015. AutoExtend: Extending Word Embeddings to Embeddings for Synsets and Lexemes. In Proceedings of the
+
+53rd Annual Meeting of the Association for Computational Linguistics and the 7th International Joint Conference on Natural Language Processing
+
+(Volume 1: Long Papers) (Beijing, China). Association for Computational Linguistics, 1793–1803. https://doi.org/10.3115/v1/P15-1173
+
+[118] Herbert Rubenstein and John B. Goodenough. 1965. Contextual Correlates of Synonymy. Commun. ACM 8, 10 (Oct. 1965), 627–633.
+
+https:
+
+//doi.org/10.1145/365628.365657
+
+[119] Sebastian Ruder, Ivan Vulić, and Anders Søgaard. 2019. A Survey of Cross-lingual Word Embedding Models. J. Artif. Int. Res. 65, 1 (May 2019),
+
+569–630. https://doi.org/10.1613/jair.1.11640
+
+[120] G. Salton, A. Wong, and C. S. Yang. 1975. A Vector Space Model for Automatic Indexing. Commun. ACM 18, 11 (Nov. 1975), 613–620.
+
+https:
+
+//doi.org/10.1145/361219.361220
+
+[121] Hinrich Schütze. 1998. Automatic Word Sense Discrimination. Computational Linguistics 24, 1 (1998), 97–123.
+
+[122] Erhan Sezerer and Selma Tekir. 2021. Incorporating Concreteness in Multi-Modal Language Models with Curriculum Learning. Applied Sciences 11,
+
+17 (2021). https://doi.org/10.3390/app11178241
+
+[123] Richard Socher, Alex Perelygin, Jean Wu, Jason Chuang, Christopher D. Manning, Andrew Ng, and Christopher Potts. 2013. Recursive Deep
+
+Models for Semantic Compositionality Over a Sentiment Treebank. In Proceedings of the 2013 Conference on Empirical Methods in Natural Language
+
+Processing. Association for Computational Linguistics, Seattle, Washington, USA, 1631–1642.
+
+[124] Radu Soricut and Franz Josef Och. 2015. Unsupervised Morphology Induction Using Word Embeddings. In HLT-NAACL.
+
+[125] Yu Sun, Shuohuan Wang, Yukun Li, Shikun Feng, Xuyi Chen, Han Zhang, Xin Tian, Danxiang Zhu, Hao Tian, and Hua Wu. 2019. ERNIE: Enhanced
+
+Representation through Knowledge Integration. ArXiv abs/1904.09223 (2019).
+
+[126] Yu Sun, Shuohuan Wang, Yukun Li, Shikun Feng, Hao Tian, Hua Wu, and Haifeng Wang. 2020. ERNIE 2.0: A Continual Pre-training Framework
+
+for Language Understanding. ArXiv abs/1907.12412 (2020).
+
+[127] Fei Tian, Hanjun Dai, Jiang Bian, Bin Gao, Rui Zhang, Enhong Chen, and Tie-Yan Liu. 2014. A Probabilistic Model for Learning Multi-Prototype
+
+Word Embeddings. In Proceedings of COLING 2014, the 25th International Conference on Computational Linguistics: Technical Papers. Dublin City
+
+University and Association for Computational Linguistics, Dublin, Ireland, 151–160.
+
+[128] Julien Tissier, Christophe Gravier, and Amaury Habrard. 2017. Dict2vec : Learning Word Embeddings using Lexical Dictionaries. In Proceedings
+
+of the 2017 Conference on Empirical Methods in Natural Language Processing. Association for Computational Linguistics, Copenhagen, Denmark,
+
+
+A Survey On Neural Word Embeddings
+
+31
+
+254–263. https://doi.org/10.18653/v1/D17-1024
+
+[129] Kristina Toutanova, Dan Klein, Christopher D. Manning, and Yoram Singer. 2003. Feature-Rich Part-of-Speech Tagging with a Cyclic Dependency
+
+Network. In Proceedings of the 2003 Conference of the North American Chapter of the Association for Computational Linguistics on Human Language
+
+Technology - Volume 1 (Edmonton, Canada) (NAACL ’03). Association for Computational Linguistics, USA, 173–180. https://doi.org/10.3115/
+
+1073445.1073478
+
+[130] Joseph Turian, Lev Ratinov, and Yoshua Bengio. 2010. Word Representations: A Simple and General Method for Semi-supervised Learning. In
+
+Proceedings of the 48th Annual Meeting of the Association for Computational Linguistics (Uppsala, Sweden) (ACL ’10). Association for Computational
+
+Linguistics, Stroudsburg, PA, USA, 384–394.
+
+[131] Peter D. Turney and Patrick Pantel. 2010. From Frequency to Meaning: Vector Space Models of Semantics. J. Artif. Int. Res. 37, 1 (Jan. 2010),
+
+141–188.
+
+[132] Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N Gomez, Ł ukasz Kaiser, and Illia Polosukhin. 2017. Attention is
+
+All you Need. In Advances in Neural Information Processing Systems 30, I. Guyon, U. V. Luxburg, S. Bengio, H. Wallach, R. Fergus, S. Vishwanathan,
+
+and R. Garnett (Eds.). Curran Associates, Inc., 5998–6008.
+
+[133] Gabriella Vigliocco, Lotte Meteyard, Mark Andrews, and Stavroula Kousta. 2009. Toward a theory of semantic representation. Language and
+
+Cognition 1, 2 (2009), 219–247.
+
+[134] Ivan Vulić, Nikola Mrkšić, Roi Reichart, Diarmuid Ó Séaghdha, Steve Young, and Anna Korhonen. 2017. Morph-fitting: Fine-Tuning Word Vector
+
+Spaces with Simple Language-Specific Rules. In Proceedings of the 55th Annual Meeting of the Association for Computational Linguistics (Volume 1:
+
+Long Papers). Association for Computational Linguistics, Vancouver, Canada, 56–68. https://doi.org/10.18653/v1/P17-1006
+
+[135] Alex Wang, Amanpreet Singh, Julian Michael, Felix Hill, Omer Levy, and Samuel Bowman. 2018. GLUE: A Multi-Task Benchmark and Analysis
+
+Platform for Natural Language Understanding. In Proceedings of the 2018 EMNLP Workshop BlackboxNLP: Analyzing and Interpreting Neural
+
+Networks for NLP. Association for Computational Linguistics, Brussels, Belgium, 353–355. https://doi.org/10.18653/v1/W18-5446
+
+[136] Chengyu Wang, Xiaofeng He, and Aoying Zhou. 2019. SphereRE: Distinguishing Lexical Relations with Hyperspherical Relation Embeddings. In
+
+Proceedings of the 57th Conference of the Association for Computational Linguistics, ACL 2019, Florence, Italy, July 28- August 2, 2019, Volume 1: Long
+
+Papers. 1727–1737.
+
+[137] Yanshan Wang, Sijia Liu, Naveed Afzal, Majid Rastegar-Mojarad, Liwei Wang, Feichen Shen, Paul Kingsbury, and Hongfang Liu. 2018. A
+
+comparison of word embeddings for the biomedical natural language processing. Journal of Biomedical Informatics 87 (2018), 12 – 20.
+
+https:
+
+//doi.org/10.1016/j.jbi.2018.09.008
+
+[138] Alex Warstadt, Amanpreet Singh, and Samuel R. Bowman. 2019. Neural Network Acceptability Judgments. Transactions of the Association for
+
+Computational Linguistics 7 (2019), 625–641.
+
+[139] John Wieting, Mohit Bansal, Kevin Gimpel, and Karen Livescu. 2015. From Paraphrase Database to Compositional Paraphrase Model and Back.
+
+Transactions of the Association for Computational Linguistics 3 (2015), 345–358. https://doi.org/10.1162/tacl_a_00143
+
+[140] Adina Williams, Nikita Nangia, and Samuel Bowman. 2018. A Broad-Coverage Challenge Corpus for Sentence Understanding through Inference.
+
+In Proceedings of the 2018 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies,
+
+Volume 1 (Long Papers) (New Orleans, Louisiana). Association for Computational Linguistics, 1112–1122.
+
+[141] Ludwig Wittgenstein. 1953. Philosophical Investigations. Basil Blackwell.
+
+[142] Wentao Wu, Hongsong Li, Haixun Wang, and Kenny Q. Zhu. 2012. Probase: A Probabilistic Taxonomy for Text Understanding. In Proceedings
+
+of the 2012 ACM SIGMOD International Conference on Management of Data (Scottsdale, Arizona, USA) (SIGMOD ’12). ACM, New York, NY, USA,
+
+481–492. https://doi.org/10.1145/2213836.2213891
+
+[143] Wei Xu and Alex Rudnicky. 2000. Can artificial neural networks learn language models?. In Sixth International Conference on Spoken Language
+
+Processing.
+
+[144] Yang Xu, Jiawei Liu, Wei Yang, and Liusheng Huang. 2018. Incorporating Latent Meanings of Morphological Compositions to Enhance Word
+
+Embeddings. In Proceedings of the 56th Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers). Association for
+
+Computational Linguistics, Melbourne, Australia, 1232–1242. https://doi.org/10.18653/v1/P18-1114
+
+[145] Zhilin Yang, Zihang Dai, Yiming Yang, Jaime Carbonell, Russ R Salakhutdinov, and Quoc V Le. 2019. XLNet: Generalized Autoregressive Pretraining
+
+for Language Understanding. In Advances in Neural Information Processing Systems 32, H. Wallach, H. Larochelle, A. Beygelzimer, F. d'Alché-Buc,
+
+E. Fox, and R. Garnett (Eds.). Curran Associates, Inc., 5753–5763.
+
+[146] Zichao Yang, Xiaodong He, Jianfeng Gao, Li Deng, and Alex Smola. 2016. Stacked Attention Networks for Image Question Answering. In 2016 IEEE
+
+Conference on Computer Vision and Pattern Recognition (CVPR). 21–29. https://doi.org/10.1109/CVPR.2016.10
+
+[147] Wenpeng Yin and Hinrich Schütze. 2016. Learning Word Meta-Embeddings. In Proceedings of the 54th Annual Meeting of the Association for
+
+Computational Linguistics (Volume 1: Long Papers). Association for Computational Linguistics, Berlin, Germany, 1351–1360. https://doi.org/10.
+
+18653/v1/P16-1128
+
+[148] Zheng Yu, Haixun Wang, Xuemin Lin, and Min Wang. 2015. Learning Term Embeddings for Hypernymy Identification. In Proceedings of the 24th
+
+International Conference on Artificial Intelligence (Buenos Aires, Argentina) (IJCAI’15). AAAI Press, 1390–1397.
+
+[149] Zhe Zhao, Tao Liu, Shen Li, Bofang Li, and Xiaoyong Du. 2017. Ngram2vec: Learning Improved Word Representations from Ngram Co-occurrence
+
+Statistics. In Proceedings of the 2017 Conference on Empirical Methods in Natural Language Processing. Association for Computational Linguistics,
+
+Copenhagen, Denmark, 244–253. https://doi.org/10.18653/v1/D17-1023
+
+
+32
+
+Erhan Sezerer and Selma Tekir
+
+A
+
+READING GUIDE FOR BEGINNERS
+
+In Figure 2, the milestone papers of each subtopic are listed. It is not an exhaustive list created to serve as a starting
+
+point for researchers who are not familiar with the subject. For the details of each subfield, readers should refer to
+
+the corresponding chapters in the survey. Dashed sets represent non-neural models, which are not the subject of this
+
+survey.
+
+Wittgenstein, 1953
+
+Harris, 1954
+
+Distributional Hypothesis
+
+Hinton et al., 1986
+
+Elman, 1990
+
+Distributional Representations
+
+Bengio et al. 2003
+
+Count-Based Models
+
+Chen and Goodman, 1996
+
+Kneser and Ney, 1995
+
+Probabilistic Models
+
+Grifﬁths et al., 2007
+
+Andrews et al., 2007
+
+Vigliocco et al., 2009
+
+Luong et al., 2013
+
+Schütze, 1998
+
+Collobert &amp; Weston, 2008 (C&amp;W)
+
+Mikolov et al., 2013a, 2013b (word2vec)
+
+Pennignton et al., 2014 (GloVe)
+
+Nguyen et al., 2016
+
+Yu et al., 2015
+
+Reisinger &amp; Mooney, 2010
+
+Huang et al., 2012
+
+Early word
+
+Embeddings
+
+Sense
+
+Embeddings
+
+Morpheme
+
+Embeddings
+
+Semantic Relation
+
+Embeddings
+
+Melamud et al., 2016 (context2vec)
+
+Howard and Ruder, 2018 (Ulmﬁt)
+
+Peters et al., 2018 (Elmo)
+
+Devlin et al., 2019 (BERT)
+
+Contextual Representations
+
+Fig. 2. Evolution of neural word embeddings.
+
+
+A Survey On Neural Word Embeddings
+
+33
+
+B
+
+DETAILS ON DATASETS AND RESULTS
+
+B.1
+
+Datasets
+
+• WS-353: http://gabrilovich.com/resources/data/wordsim353/wordsim353.zip
+
+• SCWS: http://www-nlp.stanford.edu/~ehhuang/SCWS.zip
+
+• RG-65: There are no formal links to this dataset
+
+• MC-30: There are no formal links to this dataset
+
+• MEN: https://staff.fnwi.uva.nl/e.bruni/MEN
+
+• YP-130: https://www.researchgate.net/publication/257946337_Verb_similarity_on_the_taxonomy_of_WordNet_-
+
+_dataset/link/02e7e5266fe99269cc000000/download
+
+• RW: http://www-nlp.stanford.edu/~lmthang/morphoNLM/rw.zip
+
+• Simlex-999: https://fh295.github.io/simlex.html
+
+• Google Analogy Task: http://download.tensorflow.org/data/questions-words.txt
+
+• ESL-50: https://www.apperceptual.com/home (personal communication)
+
+• TOEFL-80: http://lsa.colorado.edu/mail_sub.html (personal communication)
+
+• RD-300: https://arxiv.org/ftp/arxiv/papers/1204/1204.0140.pdf (Appendix K; also contains TOEFL-80 and ESL-50)
+
+• Glue Benchmark (CoLA, SST-2, MRPC, STS-B, QQP, MNLI, QNLI, RTE, WNLI):
+
+https://gluebenchmark.com/tasks
+
+• Stanford Question Answering Dataset (SQuAD 1.1 [114] and SQuAD 2.0 [113]):
+
+https://rajpurkar.github.io/SQuAD-explorer/
+
+• RACE dataset: http://www.cs.cmu.edu/~glai1/data/race/
+
+B.2
+
+Results
+
+You can find the sources of experimental results here. Each number corresponds to the numbered superscripts used in
+
+the tables:
+
+1: reported in [20]
+
+2: reported in [23]
+
+3: reported in [55]
+
+4: reported in [88]
+
+5: reported in [30]
+
+6: reported in [117]
+
+7: reported in [57]
+
+8: reported in [80]
+
+9: reported in [101]
+
+10: reported in [102]
+
+11: reported in [78]
+
+12: reported in [66]
+
+13: reported in [95]
+
+14: reported in [56]
+
+15: reported in [98]
+

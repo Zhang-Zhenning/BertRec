@@ -1,0 +1,657 @@
+
+
+
+
+
+Published on August 13, 2019
+
+In Mystery Vault
+
+By Amal Nair
+
+ 
+
+How To Code Your First LSTM Network
+
+In Keras 
+
+
+
+
+
+
+
+
+Normal Neural Networks are feedforward neural networks wherein the input data travels only in one direction
+
+i.e forward from the input nodes through the hidden layers and finally to the output layer. Recurrent Neural
+
+Networks, on the other hand, are a bit complicated. The data travels in cycles through different layers.
+
+To put it a bit more technically, the data moves inside a Recurrent Neural Network along with directed cycles
+
+of paths between the nodes. This gives RNN a special ability compared to the regular Neural Networks. An
+
+ability that is vital when dealing with sequential data, the ability to learn dynamically and store what has been
+
+learned to predict.
+
+In this article, we will implement a simple Recurrent Neural Network with Keras and MNIST dataset.
+
+Pre-requisites:
+
+An understanding of Recurrent Neural Networks
+
+Why RNN
+
+Neural Networks also learn and remember what they have learnt, that’s how it predicts classes or values for new
+
+datasets, but what makes RNN’s different is that unlike normal Neural Networks, RNNs rely on the
+
+information from previous output to predict for the upcoming data/input. This feature becomes extremely
+
+useful when dealing with sequential data.
+
+The simplest application of RNN is in Natural Language Processing. In all natural languages, the order of the
+
+words is important to convey the meaning in the right context. When it comes to predicting the next word of a
+
+sentence, the network must be familiar with what had come before the word it must predict. RNN can deal
+
+with any sequential data, including time series, video or audio sequences etc.
+
+RNNs have a separate state or layer to store the output for a given input which is again used as input and hence
+
+the name recurrent.
+
+
+
+
+A Simple Introduction To LSTM Network
+
+So we know that RNNs are capable of remembering the characteristics of previous inputs and outputs. But for
+
+how long can it remember. For certain cases, the immediate previous output may not just be enough to predict
+
+what’s coming and the network may have to rely on information from a further previous output. 
+
+For example, consider the phrase “the green grass
+
+grass” and a sentence “I live in France and I can speak French
+
+French”. To
+
+predict the bold word in the first phrase, RNN can rely on its immediate previous output of green, on the other
+
+hand, to predict “french”, the Network has to overlook an output that is further away. This is called long-term
+
+dependency. Unfortunately as that gap between the words grows, RNNs become unable to learn to connect the
+
+information.
+
+Long Short Term Memory or LSTM networks are a special kind of RNNs that deals with the long term
+
+dependency problem effectively. LSTM networks have a repeating module that has 4 different neural network
+
+layers interacting to deal with the long term dependency problem. You can read in detail about LSTM
+
+Networks here.
+
+Let’s hand-code an LSTM network
+
+Implementing LSTM with Keras
+
+We will use the LSTM network to classify the MNIST data of handwritten digits.
+
+Importing Necessary Modules
+
+import keras
+
+from keras.datasets import mnist
+
+from keras.models import Sequential
+
+from keras.layers import CuDNNLSTM, Dense, Dropout, LSTM
+
+
+from keras.optimizers import Adam
+
+Importing And Preprocessing MNIST Data
+
+#Importing the data
+
+(X_train, y_train),(X_test, y_test) = mnist.load_data()  # unpacks images to x_train/x_test and
+
+labels to y_train/y_test
+
+#Normalizing the data
+
+X_train = X_train.astype('float32') / 255.0
+
+X_test = X_test.astype('float32') / 255.0
+
+Creating An LSTM Network
+
+#Initializing the classifier Network
+
+classifier = Sequential()
+
+#Adding the input LSTM network layer
+
+classifier.add(CuDNNLSTM(128, input_shape=(X_train.shape[1:]), return_sequences=True))
+
+classifier.add(Dropout(0.2))
+
+Note:
+
+The return_sequences parameter, when set to true, will return a sequence of output to the next layer. We set it
+
+to true since the next layer is also a Recurrent Network Layer
+
+#Adding a second LSTM network layer
+
+classifier.add(CuDNNLSTM(128))
+
+#Adding a dense hidden layer
+
+classifier.add(Dense(64, activation='relu'))
+
+classifier.add(Dropout(0.2))
+
+#Adding the output layer
+
+classifier.add(Dense(10, activation='softmax'))
+
+Note:
+
+The CuDNNLSTM layer makes use of the CUDA framework to access the GPU resources. If you do not have
+
+a GPU you can use the LSTM layer instead, with an activation function.
+
+
+Example:
+
+classifier.add(LSTM(128, input_shape=(X_train.shape[1:]), return_sequences=True))
+
+Compiling The LSTM Network And Fitting The Data
+
+#Compiling the network
+
+classifier.compile( loss='sparse_categorical_crossentropy', 
+
+              optimizer=Adam(lr=0.001, decay=1e-6),
+
+              metrics=['accuracy'] )
+
+#Fitting the data to the model
+
+classifier.fit(X_train,
+
+         y_train,
+
+          epochs=3,
+
+          validation_data=(X_test, y_test))
+
+Output:
+
+
+
+Checking The Accuracy On Test Set
+
+test_loss, test_acc = classifier.evaluate(X_test, y_test)
+
+print('Test Loss: {}'.format(test_loss))
+
+print('Test Accuracy: {}'.format(test_acc))
+
+Output:
+
+
+
+
+Happy Coding !!
+
+ 
+
+
+
+Download our Mobile App
+
+Download our Mobile App
+
+
+
+
+
+
+
+A Computer Science Engineer turned Data Scientist who is passionate about AI and all related technologies. Contact:
+
+amal.nair@analyticsindiamag.com
+
+
+
+
+Subscribe to our newsletter
+
+Subscribe to our newsletter
+
+Join our editors every weekday evening as they steer you through the most significant news of the day,
+
+introduce you to fresh perspectives, and provide unexpected moments of joy
+
+
+
+Enter your email
+
+SIGN UP
+
+Your newsletter subscriptions are subject to AIM Privacy Policy and Terms and Conditions.
+
+Our Upcoming Events
+
+Our Upcoming Events
+
+
+Deep Learning DevCon 2023
+
+Deep Learning DevCon 2023
+
+May 27, 2023 | Online
+
+  Register
+
+Register
+
+Rakuten Product Conference 2023
+
+Rakuten Product Conference 2023
+
+31st May - 1st Jun '23 | Online
+
+  Register
+
+Register
+
+MachineCon 2023 India
+
+MachineCon 2023 India
+
+Jun 23, 2023 | Bangalore
+
+  Register
+
+Register
+
+MachineCon 2023 USA
+
+MachineCon 2023 USA
+
+Jul 21, 2023 | New York
+
+  More Details
+
+More Details
+
+Cypher 2023
+
+Cypher 2023
+
+Oct 11-13, 2023 | Bangalore
+
+  Register
+
+Register
+
+3 Ways to Join our Community
+
+3 Ways to Join our Community
+
+Telegram group
+
+Telegram group
+
+Discover special offers, top stories, upcoming events, and more.
+
+JOIN TELEGRAM
+
+
+Discord Server
+
+Discord Server
+
+Stay Connected with a larger ecosystem of data science and ML Professionals
+
+JOIN DISCORD COMMUNITY
+
+Subscribe to our Daily newsletter
+
+Subscribe to our Daily newsletter
+
+Get our daily awesome stories &amp; videos in your inbox
+
+SUBSCRIBE
+
+
+
+MOST POPULAR
+
+MOST POPULAR
+
+How Enterprises Can Save Their Data from Gen AI Black Hole
+
+Changing data norms should be the first step for enterprises entering AI
+
+Unmasking Big Tech’s Hidden Agenda on AI Safety  
+
+“Ethics is a human-generated thing; it gets complicated and it cannot be automated,” says Wolfram
+
+Research chief Stephen Wolfram, in an exclusive and upcoming interview with AIM
+
+How Palantir Turned a New Leaf to Profitability
+
+
+
+
+
+
+
+
+
+
+Palantir Technologies, the Silicon Valley analytics firm best known for its surveillance software is
+
+turning a new page in its journey.
+
+5 Cutting-Edge Language Models Transforming Healthcare
+
+The use of chatbots in healthcare is expected to grow due to ongoing investments in artificial
+
+intelligence and the benefits they provide
+
+Decoding the Stephen Wolfram Enigma
+
+“It surprised us all, including the people who are working on these things (LLMs). There’s been
+
+progressive improvement, but nobody really expected this level of human utility.”
+
+Why Enterprises Are Super Hungry for Sustainable Cloud
+
+Computing
+
+Cloud providers prioritise sustainability in data center operations, while the IT industry needs to
+
+address carbon emissions and energy consumption.
+
+Oracle Thinks its Ahead of Microsoft, SAP, and IBM in AI
+
+SCM
+
+Oracle claimed that the company started integrating AI within its SCM system before Microsoft, IBM,
+
+and SAP.
+
+Are You Competing with Your Customers?
+
+Be it in semiconductors or the cloud, it is hard to visualise a linear end-to-end tech value chain
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Data Science Hiring Process at Pepperfry
+
+Pepperfry looks for candidates in data science roles who are well-versed in NumPy, SciPy, Pandas,
+
+Scikit-Learn, Keras, Tensorflow, and PyTorch
+
+Why LinkedIn’s Feed Algorithm Needs a Revamp
+
+Every time a connection likes, comments, or shares content, it ends up on the user’s feed which at times
+
+is spam. But, the LinkedIn algorithm considers this as ‘original’ content. 
+
+
+
+Our Mission Is To Bring About Better-Informed And More Conscious Decisions About
+
+Technology Through Authoritative, In�uential, And Trustworthy Journalism.
+
+SHAPE THE FUTURE OF TECH
+
+SHAPE THE FUTURE OF TECH
+
+CONTACT US
+
+�
+
+
+
+AIM discovers new ideas and breakthroughs that create new relationships, new industries, and new ways of
+
+thinking. AIM is the crucial source of knowledge and concepts that make sense of a reality that is always
+
+
+changing. 
+
+Our discussions shed light on how technology is transforming many facets of our life, from business to
+
+society to culture.
+
+ 
+
+ 
+
+ 
+
+ 
+
+WHO WE ARE
+
+ABOUT US
+
+ABOUT US
+
+NEWSLETTERS
+
+NEWSLETTERS
+
+PODCAST
+
+PODCAST
+
+VIDEOS
+
+VIDEOS
+
+EVENTS
+
+EVENTS
+
+CAREERS
+
+CAREERS
+
+EDITORIAL CALENDAR
+
+EDITORIAL CALENDAR
+
+CONTACT US
+
+CONTACT US
+
+OUR BRANDS
+
+MACHINEHACK
+
+MACHINEHACK
+
+BEST FIRM CERTIFICATION
+
+BEST FIRM CERTIFICATION
+
+AIM RECRUITS
+
+AIM RECRUITS
+
+AIM RESEARCH
+
+AIM RESEARCH
+
+AIM LEADERS COUNCIL
+
+AIM LEADERS COUNCIL
+
+ASSOCIATION OF DATA SCIENTISTS
+
+ASSOCIATION OF DATA SCIENTISTS
+
+PENETRATION AND MATURITY (PEMA) QUADRANT
+
+PENETRATION AND MATURITY (PEMA) QUADRANT
+
+OUR SERVICES
+
+ADVERTISE WITH US
+
+ADVERTISE WITH US
+
+BESPOKE EVENTS
+
+BESPOKE EVENTS
+
+EMPLOYER BRANDING
+
+EMPLOYER BRANDING
+
+HACKATHONS
+
+HACKATHONS
+
+RECRUITMENT SERVICES
+
+RECRUITMENT SERVICES
+
+SYNDICATED RESEARCH
+
+SYNDICATED RESEARCH
+
+ADVISORY
+
+ADVISORY
+
+SKILL ASSESSMENT
+
+SKILL ASSESSMENT
+
+OUR CONFERENCES
+
+CYPHER
+
+CYPHER
+
+MACHINECON INDIA
+
+MACHINECON INDIA
+
+MACHINECON USA
+
+MACHINECON USA
+
+MACHINE LEARNING DEVELOPERS SUMMIT
+
+MACHINE LEARNING DEVELOPERS SUMMIT
+
+THE RISING | WOMEN IN TECH CONFERENCE
+
+THE RISING | WOMEN IN TECH CONFERENCE
+
+DATA ENGINEERING SUMMIT
+
+DATA ENGINEERING SUMMIT
+
+AWARDS
+
+
+AWARDS
+
+AI100 AWARDS
+
+AI100 AWARDS
+
+DATA SCIENCE EXCELLENCE AWARDS
+
+DATA SCIENCE EXCELLENCE AWARDS
+
+40 UNDER 40 DATA SCIENTISTS
+
+40 UNDER 40 DATA SCIENTISTS
+
+WOMEN IN TECH LEADERSHIP
+
+WOMEN IN TECH LEADERSHIP
+
+BEST FIRM FOR WOMEN IN TECH
+
+BEST FIRM FOR WOMEN IN TECH
+
+DATA ENGINEERING AWARDS
+
+DATA ENGINEERING AWARDS
+
+FOR DEVELOPERS
+
+HACKATHONS
+
+HACKATHONS
+
+PRACTICE SKILLS
+
+PRACTICE SKILLS
+
+COURSES
+
+COURSES
+
+DISCUSSION BOARD
+
+DISCUSSION BOARD
+
+JOB BOARD
+
+JOB BOARD
+
+TECHNICAL BLOGS
+
+TECHNICAL BLOGS
+
+AIM CAMPUS AMBASSADOR
+
+AIM CAMPUS AMBASSADOR
+
+© ANALYTICS INDIA MAGAZINE PVT LTD &amp; AIM MEDIA HOUSE LLC 2023
+
+Terms of use
+
+Terms of use
+
+Privacy Policy
+
+Privacy Policy
+
+Copyright
+
+Copyright
+

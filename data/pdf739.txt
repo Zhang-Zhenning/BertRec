@@ -1,0 +1,1140 @@
+
+ castorini / docTTTTTquery Public
+
+docTTTTTquery document expansion model
+
+ doc2query.ai/
+
+ Apache-2.0 license
+
+ 272 stars  28 forks
+
+View code
+
+README.md
+
+Document Expansion by Query Prediction
+
+The repo describes experiments with docTTTTTquery (sometimes written as docT5query or doc2query-T5), the latest version of the
+
+doc2query family of document expansion models. The basic idea is to train a model, that when given an input document, generates
+
+questions that the document might answer (or more broadly, queries for which the document might be relevant). These predicted
+
+questions (or queries) are then appended to the original documents, which are then indexed as before. The docTTTTTquery model gets
+
+its name from the use of T5 as the expansion model.
+
+The primary advantage of this approach is that expensive neural inference is pushed to indexing time, which means that "bag of words"
+
+queries against an inverted index built on the augmented document collection are only slightly slower (due to longer documents) — but
+
+the retrieval results are much better. Of course, these documents can be further reranked by another neural model in a multi-stage
+
+ranking architecture.
+
+This technique was introduced in November 2019 on MS MARCO passage ranking task. Results on the leaderboard show that
+
+docTTTTTquery is much more effective than doc2query and (almost) as effective as the best non-BERT ranking model, while increasing
+
+query latency (time to retrieve 1000 docs per query) only slightly compared to vanilla BM25:
+
+ Star
+
+
+
+Notifications
+
+ 
+
+Code
+
+ 
+
+Issues 6
+
+ 
+
+Pull requests 1
+
+ 
+
+Actions
+
+ 
+
+Security
+
+ 
+
+Insights
+
+ master 
+
+
+
+ 
+
+Sign up
+
+
+MS MARCO Passage Ranking Leaderboard (Nov 30th 2019)
+
+Eval MRR@10
+
+Latency
+
+BM25 + BERT from (Nogueira et al., 2019)
+
+36.8
+
+3500 ms
+
+FastText + Conv-KNRM (Single) (Hofstätter et al. SIGIR 2019) (best non-BERT)
+
+27.7
+
+-
+
+docTTTTTquery (this code)
+
+27.2
+
+64 ms
+
+DeepCT (Dai and Callan, 2019)
+
+23.9
+
+55 ms
+
+doc2query (Nogueira et al., 2019)
+
+21.8
+
+61 ms
+
+BM25
+
+18.6
+
+55 ms
+
+For more details, check out our paper:
+
+Rodrigo Nogueira and Jimmy Lin. From doc2query to docTTTTTquery.
+
+Why's the paper so short? Check out our proposal for micropublications!
+
+Quick Links
+
+Data and Trained Models: MS MARCO Passage Ranking Dataset
+
+Reproducing MS MARCO Passage Ranking Results with Anserini
+
+Predicting Queries from Passages: T5 Inference with PyTorch
+
+Predicting Queries from Passages: T5 Inference with TensorFlow
+
+Learning a New Prediction Model: T5 Training with TensorFlow
+
+Reproducing MS MARCO Document Ranking Results with Anserini
+
+Predicting Queries from Documents: T5 Inference with TensorFlow
+
+Data and Trained Models: MS MARCO Passage Ranking Dataset
+
+The basic docTTTTTquery model is trained on the MS MARCO passage ranking dataset. We make the following data and models
+
+available for download:
+
+doc_query_pairs.train.tsv : Approximately 500,000 passage-query pairs used to train the model.
+
+queries.dev.small.tsv : 6,980 queries from the MS MARCO dev set. In this tsv file, the first column is the query id and the second
+
+is the query text.
+
+qrels.dev.small.tsv : 7,437 pairs of query relevant passage ids from the MS MARCO dev set. In this tsv file, the first column is
+
+the query id and the third column is the passage id. The other two columns (second and fourth) are not used.
+
+collection.tar.gz : All passages (8,841,823) in the MS MARCO passage corpus. In this tsv file, the first column is the passage id
+
+and the second is the passage text.
+
+predicted_queries_topk_sampling.zip : 80 predicted queries for each MS MARCO passage, using T5-base and top-k sampling.
+
+run.dev.small.tsv : Approximately 6,980,000 pairs of dev set queries and retrieved passages using the passages expanded with
+
+docTTTTTquery + BM25. In this tsv file, the first column is the query id, the second column is the passage id, and the third column is
+
+the rank of the passage. There are 1000 passages per query in this file.
+
+t5-base.zip : trained T5 model used for generating the expansions.
+
+t5-large.zip : larger trained T5 model; we didn't find the output to be any better.
+
+Download and verify the above files from the below table:
+
+
+File
+
+Size
+
+MD5
+
+Download
+
+doc_query_pairs.train.tsv
+
+197 MB
+
+aa673014f93d43837ca4525b9a33422c
+
+[Dropbox] [GitLab]
+
+queries.dev.small.tsv
+
+283 KB
+
+4621c583f1089d223db228a4f95a05d1
+
+[Dropbox] [GitLab]
+
+qrels.dev.small.tsv
+
+140 KB
+
+38a80559a561707ac2ec0f150ecd1e8a
+
+[Dropbox] [GitLab]
+
+collection.tar.gz
+
+987 MB
+
+87dd01826da3e2ad45447ba5af577628
+
+[Dropbox] [GitLab]
+
+predicted_queries_topk_sampling.zip
+
+7.9 GB
+
+8bb33ac317e76385d5047322db9b9c34
+
+[Dropbox] [GitLab]
+
+run.dev.small.tsv
+
+127 MB
+
+c7a2006ec92f1f25955a314acd9b81b0
+
+[Dropbox] [GitLab]
+
+t5-base.zip
+
+357 MB
+
+881d3ca87c307b3eac05fae855c79014
+
+[Dropbox] [GitLab]
+
+t5-large.zip
+
+1.2 GB
+
+21c7e625210b0ae872679bc36ed92d44
+
+[Dropbox] [GitLab]
+
+Reproducing MS MARCO Passage Ranking Results with Anserini
+
+We provide instructions on how to reproduce our docTTTTTquery results for the MS MARCO passage ranking task with the Anserini IR
+
+toolkit, using the predicted queries provided above.
+
+First, install Anserini (see homepage for more details):
+
+For the purposes of this of this guide, we'll assume that anserini  is cloned as a sub-directory of this repo, i.e.,
+
+docTTTTTquery/anserini/ .
+
+Next, download queries.dev.small.tsv , qrels.dev.small.tsv , collection.tar.gz , and predicted_queries_topk_sampling.zip
+
+using one of the options above. The first three files can go into base directory of the repo docTTTTTquery/ , but put the zip file in a
+
+separate sub-directory docTTTTTquery/passage-predictions . The zip file contains a lot of individual files, so this will keep your
+
+directory structure manageable.
+
+Before appending the predicted queries to the passages, we need to concatenate them. The commands below create a file that contains
+
+40 concatenated predictions per line and 8,841,823 lines, one for each passage in the corpus. We concatenate only the first 40
+
+predictions as there is only a tiny gain in MRR@10 when using all 80 predictions (nevertheless, we provide 80 predictions in case
+
+researchers want to use this data for other purposes).
+
+As a sanity check:
+
+sudo apt-get install maven
+
+git clone --recurse-submodules https://github.com/castorini/anserini.git
+
+cd anserini
+
+mvn clean package appassembler:assemble
+
+cd tools/eval &amp;&amp; tar xvfz trec_eval.9.0.4.tar.gz &amp;&amp; cd trec_eval.9.0.4 &amp;&amp; make &amp;&amp; cd ../../..
+
+cd tools/eval/ndeval &amp;&amp; make &amp;&amp; cd ../../..
+
+cd passage-predictions
+
+unzip predicted_queries_topk_sampling.zip
+
+for i in $(seq -f "%03g" 0 17); do
+
+    echo "Processing chunk $i"
+
+    paste -d" " predicted_queries_topk_sample0[0-3]?.txt${i}-1004000 \
+
+    &gt; predicted_queries_topk.txt${i}-1004000
+
+done
+
+cat predicted_queries_topk.txt???-1004000 &gt; predicted_queries_topk.txt-1004000
+
+
+Go back to your repo base directory docTTTTTquery/ . We can now append the predicted queries to the original MS MARCO passage
+
+collection:
+
+Now, create an index using Anserini on the expanded passages (we're assuming Anserini is cloned as a sub-directory):
+
+Once the expanded passages are indexed, we can retrieve 1000 passages per query for the MS MARCO dev set:
+
+Finally, we evaluate the results using the MS MARCO eval script:
+
+The results should be:
+
+Voilà!
+
+Predicting Queries from Passages: T5 Inference with PyTorch
+
+We will use the excellent � Transformers library by Hugging Face to sample queries from our T5 model.
+
+First, install the library:
+
+Then load the model checkpoint:
+
+$ wc predicted_queries_topk.txt-1004000
+
+ 8841823 2253863941 12517353325 predicted_queries_topk.txt-1004000
+
+tar xvf collection.tar.gz
+
+python convert_msmarco_passage_to_anserini.py \
+
+  --collection_path=collection.tsv \
+
+  --predictions=passage-predictions/predicted_queries_topk.txt-1004000 \
+
+  --output_folder=msmarco-passage-expanded
+
+sh anserini/target/appassembler/bin/IndexCollection \
+
+  -collection JsonCollection -generator DefaultLuceneDocumentGenerator \
+
+  -threads 9 -input msmarco-passage-expanded -index lucene-index-msmarco-passage-expanded
+
+sh anserini/target/appassembler/bin/SearchMsmarco \
+
+  -index lucene-index-msmarco-passage-expanded -queries queries.dev.small.tsv \
+
+  -output run.msmarco-passage-expanded.dev.small.txt -hits 1000 -threads 8
+
+python anserini/tools/eval/msmarco_eval.py qrels.dev.small.tsv run.msmarco-passage-expanded.dev.small.txt
+
+#####################
+
+MRR @10: 0.27680089370991834
+
+QueriesRanked: 6980
+
+#####################
+
+pip install transformers
+
+
+Sample 3 questions from a example document:
+
+The output should be similar to this:
+
+For more information on how to use T5 with HuggingFace's transformers library, check their documentation.
+
+Predicting Queries from Passages: T5 Inference with TensorFlow
+
+Next, we provide instructions on how to use our trained T5 models to predict queries for each of the 8.8M documents in the MS MARCO
+
+corpus. To speed up inference, we will use TPUs (and consequently Google Cloud machines), so this installation must be performed on a
+
+Google Cloud instance.
+
+To begin, install T5 (check the original T5 repository for the latest installation instructions):
+
+We first need to prepare an input file that contains one passage text per line. We achieve this by extracting the second column of
+
+collection.tsv :
+
+We also need to split the file into smaller files (each with 1M lines) to avoid TensorFlow complaining that proto arrays can only be 2GB
+
+at the most:
+
+We now upload the input docs to Google Cloud Storage:
+
+import torch
+
+from transformers import T5Tokenizer, T5ForConditionalGeneration
+
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+tokenizer = T5Tokenizer.from_pretrained('castorini/doc2query-t5-base-msmarco')
+
+model = T5ForConditionalGeneration.from_pretrained('castorini/doc2query-t5-base-msmarco')
+
+model.to(device)
+
+
+
+
+
+doc_text = 'The presence of communication amid scientific minds was equally important to the success of the Manhattan Pr
+
+input_ids = tokenizer.encode(doc_text, return_tensors='pt').to(device)
+
+outputs = model.generate(
+
+    input_ids=input_ids,
+
+    max_length=64,
+
+    do_sample=True,
+
+    top_k=10,
+
+    num_return_sequences=3)
+
+for i in range(3):
+
+    print(f'sample {i + 1}: {tokenizer.decode(outputs[i], skip_special_tokens=True)}')
+
+sample 1: why was the manhattan project successful
+
+sample 2: the manhattan project what it means
+
+sample 3: what was the most important aspect of the manhattan project
+
+pip install t5[gcp]
+
+cut -f1 collection.tsv &gt; input_docs.txt
+
+split --suffix-length 2 --numeric-suffixes --lines 1000000 input_docs.txt input_docs.txt
+
+
+We also need to upload our trained t5-base model to GCS:
+
+We are now ready to predict queries from passages. Remember to replace your_tpu , your_tpu_zone , your_project_id  and
+
+your_bucket  with your values. Note that the command below will only sample one query per passage. If you want multiple samples,
+
+you will need to repeat this process multiple times (remember to replace output_filename  with a new filename for each sample).
+
+It should take approximately 8 hours to sample one query for each of the 8.8M passages, costing ~$20 USD (8 hours at $2.40
+
+USD/hour) on a preemptible TPU.
+
+Learning a New Prediction Model: T5 Training with TensorFlow
+
+Finally, we show how to learn a new prediction model. The following command will train a T5-base model for 4k iterations to predict
+
+queries from passages. We assume you put the tsv training file in gs://your_bucket/data/doc_query_pairs.train.tsv  (download
+
+from above). Also, change your_tpu_name , your_tpu_zone , your_project_id , and your_bucket  accordingly.
+
+Reproducing MS MARCO Document Ranking Results with Anserini
+
+gsutil cp input_docs.txt?? gs://your_bucket/data/
+
+wget https://git.uwaterloo.ca/jimmylin/doc2query-data/raw/master/T5-passage/t5-base.zip
+
+unzip t5-base.zip
+
+gsutil cp model.ckpt-1004000* gs://your_bucket/models/
+
+for ITER in {00..08}; do
+
+    t5_mesh_transformer \
+
+      --tpu="your_tpu" \
+
+      --gcp_project="your_project_id" \
+
+      --tpu_zone="your_tpu_zone" \
+
+      --model_dir="gs://your_bucket/models/" \
+
+      --gin_file="gs://t5-data/pretrained_models/base/operative_config.gin" \
+
+      --gin_file="infer.gin" \
+
+      --gin_file="sample_decode.gin" \
+
+      --gin_param="infer_checkpoint_step = 1004000" \
+
+      --gin_param="utils.run.sequence_length = {'inputs': 512, 'targets': 64}" \
+
+      --gin_param="Bitransformer.decode.max_decode_length = 64" \
+
+      --gin_param="input_filename = 'gs://your_bucket/data/input_docs.txt$ITER'" \
+
+      --gin_param="output_filename = 'gs://your_bucket/data/predicted_queries_topk_sample.txt$ITER'" \
+
+      --gin_param="tokens_per_batch = 131072" \
+
+      --gin_param="Bitransformer.decode.temperature = 1.0" \
+
+      --gin_param="Unitransformer.sample_autoregressive.sampling_keep_top_k = 10"
+
+done
+
+t5_mesh_transformer  \
+
+  --tpu="your_tpu_name" \
+
+  --gcp_project="your_project_id" \
+
+  --tpu_zone="your_tpu_zone" \
+
+  --model_dir="gs://your_bucket/models/" \
+
+  --gin_param="init_checkpoint = 'gs://t5-data/pretrained_models/base/model.ckpt-999900'" \
+
+  --gin_file="dataset.gin" \
+
+  --gin_file="models/bi_v1.gin" \
+
+  --gin_file="gs://t5-data/pretrained_models/base/operative_config.gin" \
+
+  --gin_param="utils.run.train_dataset_fn = @t5.models.mesh_transformer.tsv_dataset_fn" \
+
+  --gin_param="tsv_dataset_fn.filename = 'gs://your_bucket/data/doc_query_pairs.train.tsv'" \
+
+  --gin_file="learning_rate_schedules/constant_0_001.gin" \
+
+  --gin_param="run.train_steps = 1004000" \
+
+  --gin_param="tokens_per_batch = 131072" \
+
+  --gin_param="utils.tpu_mesh_shape.tpu_topology ='v3-8'
+
+
+Here we detail how to reproduce docTTTTTquery runs for the MS MARCO document ranking task. The MS MARCO document ranking
+
+task is similar to the MS MARCO passage ranking task, but the corpus contains longer documents, which need to be split into shorter
+
+passages before being fed to docTTTTTquery.
+
+Like the instructions for MS MARCO passage ranking task, we explain the process in reverse order (i.e., indexing, expansion, query
+
+prediction), since we believe there are more users interested in experimenting with the expanded index than expanding the document
+
+themselves.
+
+Here are the relevant files to download:
+
+File
+
+Size
+
+MD5
+
+Download
+
+msmarco-docs.tsv.gz
+
+7.9 GB
+
+103b19e21ad324d8a5f1ab562425c0b4
+
+[Dropbox] [GitLab]
+
+predicted_queries_doc.tar.gz
+
+2.2 GB
+
+4967214dfffbd33722837533c838143d
+
+[Dropbox] [GitLab]
+
+msmarco_doc_passage_ids.txt
+
+170 MB
+
+82c00bebab0d98c1dc07d78fac3d8b8d
+
+[Dropbox] [GitLab]
+
+Per-Document Expansion
+
+The most straightforward way to use docTTTTTquery is to append the expanded queries to each document. First, download the original
+
+corpus ( msmarco-docs.tsv.gz ), the predicted queries ( predicted_queries_doc.tar.gz ), and a file mapping passages to their
+
+document ids ( msmarco_doc_passage_ids.txt ), using one of the options above. Put predicted_queries_doc.tar.gz  in a sub-
+
+directory doc-predictions/ .
+
+Merge the predicted queries into a single file; there are 10 predicted queries per document. This can be accomplished as follows:
+
+Sanity check:
+
+We now append the queries to the original documents (this step takes approximately 10 minutes, the counter needs to get to
+
+20545677):
+
+cd doc-predictions/
+
+tar xvfz predicted_queries_doc.tar.gz
+
+for i in $(seq -f "%03g" 0 9); do
+
+    cat predicted_queries_doc_sample${i}.txt???-1004000 &gt; predicted_queries_doc_sample${i}_all.txt
+
+done
+
+paste -d" " \
+
+  predicted_queries_doc_sample000_all.txt \
+
+  predicted_queries_doc_sample001_all.txt \
+
+  predicted_queries_doc_sample002_all.txt \
+
+  predicted_queries_doc_sample003_all.txt \
+
+  predicted_queries_doc_sample004_all.txt \
+
+  predicted_queries_doc_sample005_all.txt \
+
+  predicted_queries_doc_sample006_all.txt \
+
+  predicted_queries_doc_sample007_all.txt \
+
+  predicted_queries_doc_sample008_all.txt \
+
+  predicted_queries_doc_sample009_all.txt \
+
+   &gt; predicted_queries_doc_sample_all.txt
+
+$ md5sum predicted_queries_doc_sample_all.txt 
+
+b01b2fbbb8d382684a80fbf51efbca93  predicted_queries_doc_sample_all.txt
+
+$ wc predicted_queries_doc_sample_all.txt 
+
+  20545677 1379262573 7672087649 predicted_queries_doc_sample_all.txt
+
+
+Once we have the expanded documents (about 29 GB in size), the next step is to build an index with Anserini. As above, we'll assume
+
+that Anserini is cloned as a sub-directory of this repo, i.e., docTTTTTquery/anserini/ . This step takes approximately 40 minutes:
+
+We can then retrieve the documents using the dev queries (this step takes approximately 10 minutes):
+
+And evaluate using trec_eval  tool:
+
+The output should be:
+
+In comparison, indexing with the original documents gives:
+
+Per-Passage Expansion
+
+Although per-document expansion is the most straightforward way to use docTTTTTquery, we have found that per passage expansion
+
+works even better. In this approach, we split the documents into passages and append the expanded queries to each passage. We then
+
+index the passages of this expanded corpus.
+
+We will reuse the file predicted_queries_doc_sample_all.txt  that contains all the predicted queries from last section. To start,
+
+append the queries to the passages:
+
+This step takes several hours (the counter needs to get to 20545677). Upon completion, index the passages with Anserini:
+
+python convert_msmarco_doc_to_anserini.py \
+
+  --original_docs_path=msmarco-docs.tsv.gz \
+
+  --doc_ids_path=msmarco_doc_passage_ids.txt \
+
+  --predictions_path=doc-predictions/predicted_queries_doc_sample_all.txt \
+
+  --output_docs_path=msmarco-doc-expanded/docs.json
+
+sh anserini/target/appassembler/bin/IndexCollection -collection JsonCollection \
+
+  -generator DefaultLuceneDocumentGenerator -threads 1 \
+
+  -input msmarco-doc-expanded -index lucene-index-msmarco-doc-expanded
+
+sh anserini/target/appassembler/bin/SearchCollection \
+
+  -index lucene-index-msmarco-doc-expanded \
+
+  -topicreader TsvString -topics anserini/src/main/resources/topics-and-qrels/topics.msmarco-doc.dev.txt \
+
+  -output run.msmarco-doc-expanded.dev.small.txt -bm25
+
+anserini/tools/eval/trec_eval.9.0.4/trec_eval -m map -m recall.1000 \
+
+  anserini/src/main/resources/topics-and-qrels/qrels.msmarco-doc.dev.txt run.msmarco-doc-expanded.dev.small.txt
+
+map                    all 0.2886
+
+recall_1000            all 0.9259
+
+map                     all     0.2310
+
+recall_1000             all     0.8856
+
+python convert_msmarco_passages_doc_to_anserini.py \
+
+  --original_docs_path=msmarco-docs.tsv.gz \
+
+  --doc_ids_path=msmarco_doc_passage_ids.txt \
+
+  --predictions_path=doc-predictions/predicted_queries_doc_sample_all.txt \
+
+  --output_docs_path=msmarco-doc-expanded-passage/docs.json
+
+
+Then, we can retrieve the top 1k passages with dev queries:
+
+In a bit more detail, we retrieve the top 10k passages per query, but then use Anserini's -selectMaxPassage  option to select only the
+
+best (highest-scoring) passage from each document, finally returning top 1k docid per query.
+
+Evaluation:
+
+The output should be:
+
+In comparison with per-passage expansion, we will use per passage without expansion as the baseline. In this method, we will not
+
+append the predicted queries to the passages.
+
+We will first split the original documents into passages:
+
+It will also take several hours, and the generated file will be 27G. Same as what we did for per-passage expansion, we will use Anserini to
+
+index the file, retrieve the top1k passages from them for the dev queries and evaluate them.
+
+The result is:
+
+sh anserini/target/appassembler/bin/IndexCollection -collection JsonCollection \
+
+  -generator DefaultLuceneDocumentGenerator -threads 1 \
+
+  -input msmarco-doc-expanded-passage -index lucene-index-msmarco-doc-expanded-passage
+
+sh anserini/target/appassembler/bin/SearchCollection \
+
+  -index lucene-index-msmarco-doc-expanded-passage \
+
+  -topicreader TsvString -topics anserini/src/main/resources/topics-and-qrels/topics.msmarco-doc.dev.txt \
+
+  -output run.msmarco-doc-expanded-passage.dev.small.txt \
+
+  -bm25 -hits 10000 -selectMaxPassage -selectMaxPassage.delimiter "#" -selectMaxPassage.hits 1000
+
+anserini/tools/eval/trec_eval.9.0.4/trec_eval -m map -m recall.1000 \
+
+  anserini/src/main/resources/topics-and-qrels/qrels.msmarco-doc.dev.txt \
+
+  run.msmarco-doc-expanded-passage.dev.small.txt
+
+map                    all 0.3182
+
+recall_1000            all 0.9490
+
+python convert_msmarco_passages_doc_to_anserini.py \
+
+  --original_docs_path=msmarco-docs.tsv.gz \
+
+  --doc_ids_path=msmarco_doc_passage_ids.txt \
+
+  --output_docs_path=msmarco-doc-passage/docs.json \
+
+sh anserini/target/appassembler/bin/IndexCollection -collection JsonCollection \
+
+  -generator DefaultLuceneDocumentGenerator -threads 1 \
+
+  -input msmarco-doc-passage -index lucene-index-msmarco-doc-passage
+
+sh anserini/target/appassembler/bin/SearchCollection \
+
+  -index lucene-index-msmarco-doc-passage \
+
+  -topicreader TsvString -topics anserini/src/main/resources/topics-and-qrels/topics.msmarco-doc.dev.txt \
+
+  -output run.msmarco-doc-passage.dev.small.txt \
+
+  -bm25 -hits 10000 -selectMaxPassage -selectMaxPassage.delimiter "#" -selectMaxPassage.hits 1000
+
+anserini/tools/eval/trec_eval.9.0.4/trec_eval -m map -m recall.1000 \
+
+  anserini/src/main/resources/topics-and-qrels/qrels.msmarco-doc.dev.txt \
+
+  run.msmarco-doc-passage.dev.small.txt
+
+
+Predicting Queries from Documents: T5 Inference with TensorFlow
+
+If you want to predict the queries yourself, please follow the instructions below.
+
+We begin by downloading the corpus, which contains 3.2M documents.
+
+We split the corpus into files of 100k documents, which later can be processed in parallel.
+
+We now segment each document using a sliding window of 10 sentences and stride of 5 sentences:
+
+Note that we use spacy 2.1.6 to do so. Other versions generate different segments, which change retrieval results.
+
+We are now ready to run inference. Since this is a costly step, we recommend using Google Cloud with TPUs to run it faster.
+
+We will use the docTTTTTquery model trained on the MS MARCO passage ranking dataset, so you need to upload it to your Google
+
+Storage bucket.
+
+Run the command below to sample one question per passage (note that you will need to start a TPU).
+
+map                    all 0.2688
+
+recall_1000            all 0.9180
+
+wget http://msmarco.blob.core.windows.net/msmarcoranking/msmarco-docs.tsv.gz
+
+gunzip msmarco-docs.tsv.gz
+
+split --suffix-length 2 --numeric-suffixes --lines 100000 msmarco-docs.tsv msmarco-docs.tsv
+
+for ITER in {00..32}; do
+
+    python convert_msmarco_doc_to_t5_format.py \
+
+        --corpus_path=msmarco-docs.tsv$ITER \
+
+        --output_passage_texts_path=${OUTPUT_DIR}/passage_texts.txt$ITER \
+
+        --output_passage_doc_ids_path=${OUTPUT_DIR}/msmarco_doc_passage_ids.txt$ITER
+
+done
+
+wget https://git.uwaterloo.ca/jimmylin/doc2query-data/raw/master/T5-passage/t5-base.zip
+
+unzip t5-base.zip
+
+gsutil cp model.ckpt-1004000* gs://your_bucket/models/
+
+
+MS MARCO V2 Passage Expansion
+
+Here we provide instructions on how to reproduce our docTTTTTquery results for the MS MARCO V2 passage ranking task with the
+
+Anserini IR toolkit, using predicted queries. We opensource the predicted queries using the � Datasets library. Note that this is a very
+
+large dataset, so we ran the docTTTTTquery inference step across multiple TPUs. In fact, there is a signficant blow-up in the dataset size
+
+compared to MS MARCO v1, because of which we choose to only generate 20 queries per passage. Also, we use a different
+
+docTTTTTquery model trained on the MS MARCO v2 passage ranking dataset.
+
+We use the metadata-augmented passage corpus which was shown to have better effectiveness.
+
+First, we download the expanded queries dataset and expand this corpus using NUM_QUERIES  queries per passage:
+
+The dataset is downloaded and processed in the cache directory after which the corpus is expanded too. So make sure you have enough
+
+storage space (around 300 GB for this entire task). If the dataset is not already cached, this script would take about 18 hours. If it is, you
+
+can expect it to finish in about 10 hours.
+
+Upon completion, index the expanded passages with Anserini:
+
+Note that this index does not store any "extras" (positions, document vectors, raw documents, etc.) because we don't need any of these
+
+for BM25 retrieval.
+
+Finally, we can perform runs on the dev queries (both sets):
+
+for ITER in {00..32}; do
+
+    t5_mesh_transformer \
+
+      --tpu="your_tpu" \
+
+      --gcp_project="your_project_id" \
+
+      --tpu_zone="your_tpu_zone" \
+
+      --model_dir="gs://your_bucket/models/" \
+
+      --gin_file="gs://t5-data/pretrained_models/base/operative_config.gin" \
+
+      --gin_file="infer.gin" \
+
+      --gin_file="sample_decode.gin" \
+
+      --gin_param="infer_checkpoint_step = 1004000" \
+
+      --gin_param="utils.run.sequence_length = {'inputs': 512, 'targets': 64}" \
+
+      --gin_param="Bitransformer.decode.max_decode_length = 64" \
+
+      --gin_param="input_filename = './passage_texts.txt$ITER'" \
+
+      --gin_param="output_filename = './predicted_queries_topk_sample.txt$ITER'" \
+
+      --gin_param="tokens_per_batch = 131072" \
+
+      --gin_param="Bitransformer.decode.temperature = 1.0" \
+
+      --gin_param="Unitransformer.sample_autoregressive.sampling_keep_top_k = 10" \
+
+      --gin_param="utils.tpu_mesh_shape.tpu_topology ='v3-8'
+
+done
+
+export NUM_QUERIES=20
+
+python3 msmarco-v2/augment_corpus.py --hgf_d2q_dataset castorini/msmarco_v2_passage_doc2query-t5_expansions \
+
+        --original_psg_path collections/msmarco_v2_passage_augmented \
+
+        --output_psg_path collections/msmarco_v2_passage_augmented_d2q-t5_${NUM_QUERIES} \
+
+        --num_workers 70 \
+
+        --num_queries ${NUM_QUERIES} \
+
+        --task passage \
+
+        --cache_dir /path/to/cache/dir
+
+sh target/appassembler/bin/IndexCollection -collection MsMarcoV2PassageCollection \
+
+ -generator DefaultLuceneDocumentGenerator -threads 70 \
+
+ -input collections/msmarco_v2_passage_augmented_d2q-t5_${NUM_QUERIES} \
+
+ -index indexes/msmarco-v2-passage-augmented-d2q-t5-${NUM_QUERIES} \
+
+ -optimize
+
+
+Evaluation:
+
+MS MARCO V2 (Segmented) Document Expansion
+
+This guide provide sinstructions on how to reproduce our docTTTTTquery results for the MS MARCO V2 document ranking task with the
+
+Anserini IR toolkit, using predicted queries. We opensource the predicted queries using the � Datasets library. Note that this is a very
+
+large dataset, so we ran the docTTTTTquery inference step across multiple TPUs. Also, we use a different docTTTTTquery model trained
+
+on the MS MARCO v2 passage ranking dataset.
+
+We use the segmented document corpus which was shown to have better effectiveness.
+
+First, we download the expanded queries dataset and expand this corpus using NUM_QUERIES  queries per passage:
+
+The dataset is downloaded and processed in the cache directory after which the corpus is expanded too. So make sure you have enough
+
+storage space (around 300 GB for this entire task). If the dataset is not already cached, this script would take about 18 hours. If it is, you
+
+can expect it to finish in about 10 hours.
+
+Upon completion, index the expanded document segments with Anserini:
+
+target/appassembler/bin/SearchCollection -index indexes/msmarco-v2-passage-augmented-d2q-t5-${NUM_QUERIES} \
+
+ -topicreader TsvInt -topics src/main/resources/topics-and-qrels/topics.msmarco-v2-passage.dev.txt \
+
+ -output runs/run.msmarco-v2-passage-augmented-d2q-t5-${NUM_QUERIES}.dev.txt -bm25 -hits 1000
+
+target/appassembler/bin/SearchCollection -index indexes/msmarco-v2-passage-augmented-d2q-t5-${NUM_QUERIES} \
+
+ -topicreader TsvInt -topics src/main/resources/topics-and-qrels/topics.msmarco-v2-passage.dev2.txt \
+
+ -output runs/run.msmarco-v2-passage-augmented-d2q-t5-${NUM_QUERIES}.dev2.txt -bm25 -hits 1000
+
+
+
+
+
+$ tools/eval/trec_eval.9.0.4/trec_eval -c -M 100 -m map -m recip_rank src/main/resources/topics-and-qrels/qrels.msmarco-
+
+map                     all     0.1160
+
+recip_rank              all     0.1172
+
+$ tools/eval/trec_eval.9.0.4/trec_eval -c -m recall.100,1000 src/main/resources/topics-and-qrels/qrels.msmarco-v2-passag
+
+recall_100              all     0.5039
+
+recall_1000             all     0.7647
+
+$ tools/eval/trec_eval.9.0.4/trec_eval -c -M 100 -m map -m recip_rank src/main/resources/topics-and-qrels/qrels.msmarco-
+
+map                     all     0.1158
+
+recip_rank              all     0.1170
+
+$ tools/eval/trec_eval.9.0.4/trec_eval -c -m recall.100,1000 src/main/resources/topics-and-qrels/qrels.msmarco-v2-passag
+
+recall_100              all     0.5158
+
+recall_1000             all     0.7659
+
+
+
+
+
+export NUM_QUERIES=10
+
+python3 msmarco-v2/augment_corpus.py --hgf_d2q_dataset castorini/msmarco_v2_doc_segmented_doc2query-t5_expansions \
+
+        --original_psg_path collections/msmarco_v2_doc_segmented \
+
+        --output_psg_path collections/msmarco_v2_doc_segmented_d2q-t5_${NUM_QUERIES} \
+
+        --num_workers 60 \
+
+        --num_queries ${NUM_QUERIES} \
+
+        --task segment \
+
+        --cache_dir /path/to/cache/dir
+
+
+Note that this index does not store any "extras" (positions, document vectors, raw documents, etc.) because we don't need any of these
+
+for BM25 retrieval.
+
+Finally, we can perform runs on the dev queries (both sets):
+
+Evaluation:
+
+Contributors 6
+
+
+
+
+
+
+
+
+
+
+
+
+
+Languages
+
+ Python 100.0%
+
+sh target/appassembler/bin/IndexCollection -collection MsMarcoV2DocCollection \
+
+ -generator DefaultLuceneDocumentGenerator -threads 60 \
+
+ -input collections/msmarco_v2_doc_segmented_d2q-t5_${NUM_QUERIES} \
+
+ -index indexes/msmarco-v2-doc-segmented-d2q-t5-${NUM_QUERIES} \
+
+ -optimize
+
+
+
+
+
+target/appassembler/bin/SearchCollection -index /store/scratch/rpradeep/msmarco-v2/indexes/msmarco-v2-doc-segmented-d2q-
+
+  -topicreader TsvInt -topics src/main/resources/topics-and-qrels/topics.msmarco-v2-doc.dev.txt \
+
+  -output runs/run.msmarco-v2-doc-segmented-d2q-t5-${NUM_QUERIES}.dev.txt \
+
+  -bm25 -hits 10000 -selectMaxPassage -selectMaxPassage.delimiter "#" -selectMaxPassage.hits 1000
+
+target/appassembler/bin/SearchCollection -index /store/scratch/rpradeep/msmarco-v2/indexes/msmarco-v2-doc-segmented-d2q-
+
+  -topicreader TsvInt -topics src/main/resources/topics-and-qrels/topics.msmarco-v2-doc.dev2.txt \
+
+  -output runs/run.msmarco-v2-doc-segmented-d2q-t5-${NUM_QUERIES}.dev2.txt \
+
+  -bm25 -hits 10000 -selectMaxPassage -selectMaxPassage.delimiter "#" -selectMaxPassage.hits 1000
+
+
+
+
+
+$ tools/eval/trec_eval.9.0.4/trec_eval -c -M 100 -m map -m recip_rank src/main/resources/topics-and-qrels/qrels.msmarco-
+
+map                     all     0.2203
+
+recip_rank              all     0.2226
+
+$ tools/eval/trec_eval.9.0.4/trec_eval -c -m recall.100,1000 src/main/resources/topics-and-qrels/qrels.msmarco-v2-doc.de
+
+recall_100              all     0.7297
+
+recall_1000             all     0.8982
+
+$ tools/eval/trec_eval.9.0.4/trec_eval -c -M 100 -m map -m recip_rank src/main/resources/topics-and-qrels/qrels.msmarco-
+
+map                     all     0.2205
+
+recip_rank              all     0.2234
+
+$ tools/eval/trec_eval.9.0.4/trec_eval -c -m recall.100,1000 src/main/resources/topics-and-qrels/qrels.msmarco-v2-doc.de
+
+recall_100              all     0.7316
+
+recall_1000             all     0.8952
+
+ © 2023 GitHub, Inc.
+
+Terms
+
+Privacy
+
+Security
+
+
+Status
+
+Docs
+
+Contact GitHub
+
+Pricing
+
+API
+
+Training
+
+Blog
+
+About
+

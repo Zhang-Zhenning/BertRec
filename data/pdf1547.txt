@@ -1,0 +1,206 @@
+
+next up 
+
+
+
+ contents  index  
+
+Next: The text classification problem Up: irbook Previous: References and further reading Contents Index 
+
+Text classification and Naive Bayes
+
+Thus far, this book has mainly discussed the process of ad hoc retrieval , where users have transient information needs that they try to address by
+
+posing one or more queries to a search engine. However, many users have ongoing information needs. For example, you might need to track
+
+developments in multicore computer chips. One way of doing this is to issue the query multicore and computer and chip against an index of recent
+
+newswire articles each morning. In this and the following two chapters we examine the question: How can this repetitive task be automated? To
+
+this end, many systems support standing queries . A standing query is like any other query except that it is periodically executed on a collection to
+
+which new documents are incrementally added over time.
+
+If your standing query is just multicore and computer and chip, you will tend to miss many relevant new articles which use other terms such as
+
+multicore processors. To achieve good recall, standing queries thus have to be refined over time and can gradually become quite complex. In this
+
+example, using a Boolean search engine with stemming, you might end up with a query like (multicore or multi-core) and (chip or processor or
+
+microprocessor).
+
+To capture the generality and scope of the problem space to which standing queries belong, we now introduce the general notion of a
+
+classification problem. Given a set of classes, we seek to determine which class(es) a given object belongs to. In the example, the standing query
+
+serves to divide new newswire articles into the two classes: documents about multicore computer chips and documents not about multicore
+
+computer chips. We refer to this as two-class classification. Classification using standing queries is also called routing or filtering and will be
+
+discussed further in Section 15.3.1 (page 
+
+
+
+).
+
+A class need not be as narrowly focused as the standing query multicore computer chips. Often, a class is a more general subject area like China
+
+or coffee. Such more general classes are usually referred to as topics , and the classification task is then called text classification , text
+
+categorization , topic classification , or topic spotting . An example for China appears in Figure 13.1 . Standing queries and topics differ in
+
+their degree of specificity, but the methods for solving routing, filtering, and text classification are essentially the same. We therefore include routing
+
+and filtering under the rubric of text classification in this and the following chapters.
+
+The notion of classification is very general and has many applications within and beyond information retrieval (IR). For instance, in computer vision,
+
+a classifier may be used to divide images into classes such as landscape, portrait, and neither. We focus here on examples from information
+
+retrieval such as:
+
+Several of the preprocessing steps necessary for indexing as discussed in Chapter 2 : detecting a document's encoding (ASCII, Unicode
+
+UTF-8 etc; page 2.1.1 ); word segmentation (Is the white space between two letters a word boundary or not? page 24 ) ; truecasing (page
+
+2.2.3 ); and identifying the language of a document (page 2.5 ).
+
+The automatic detection of spam pages (which then are not included in the search engine index).
+
+The automatic detection of sexually explicit content (which is included in search results only if the user turns an option such as SafeSearch
+
+off).
+
+ Sentiment detection or the automatic classification of a movie or product review as positive or negative. An example application is a user
+
+searching for negative reviews before buying a camera to make sure it has no undesirable features or quality problems.
+
+Personal email sorting . A user may have folders like talk announcements, electronic bills, email from family and friends, and so on, and
+
+may want a classifier to classify each incoming email and automatically move it to the appropriate folder. It is easier to find messages in
+
+sorted folders than in a very large inbox. The most common case of this application is a spam folder that holds all suspected spam
+
+messages.
+
+Topic-specific or vertical search. Vertical search engines restrict searches to a particular topic. For example, the query computer science
+
+on a vertical search engine for the topic China will return a list of Chinese computer science departments with higher precision and recall
+
+than the query computer science China on a general purpose search engine. This is because the vertical search engine does not include web
+
+pages in its index that contain the term china in a different sense (e.g., referring to a hard white ceramic), but does include relevant pages
+
+even if they do not explicitly mention the term China.
+
+Finally, the ranking function in ad hoc information retrieval can also be based on a document classifier as we will explain in Section 15.4
+
+(page 
+
+
+
+).
+
+This list shows the general importance of classification in IR. Most retrieval systems today contain multiple components that use some form of
+
+classifier. The classification task we will use as an example in this book is text classification.
+
+A computer is not essential for classification. Many classification tasks have traditionally been solved manually. Books in a library are assigned
+
+Library of Congress categories by a librarian. But manual classification is expensive to scale. The multicore computer chips example illustrates one
+
+alternative approach: classification by the use of standing queries - which can be thought of as rules - most commonly written by hand. As in our
+
+
+example (multicore or multi-core) and (chip or processor or microprocessor), rules are sometimes equivalent to Boolean expressions.
+
+A rule captures a certain combination of keywords that indicates a class. Hand-coded rules have good scaling properties, but creating and
+
+maintaining them over time is labor intensive. A technically skilled person (e.g., a domain expert who is good at writing regular expressions) can
+
+create rule sets that will rival or exceed the accuracy of the automatically generated classifiers we will discuss shortly; however, it can be hard to
+
+find someone with this specialized skill.
+
+Apart from manual classification and hand-crafted rules, there is a third approach to text classification, namely, machine learning-based text
+
+classification. It is the approach that we focus on in the next several chapters. In machine learning, the set of rules or, more generally, the decision
+
+criterion of the text classifier, is learned automatically from training data. This approach is also called statistical text classification if the learning
+
+method is statistical. In statistical text classification, we require a number of good example documents (or training documents) for each class. The
+
+need for manual classification is not eliminated because the training documents come from a person who has labeled them - where labeling refers
+
+to the process of annotating each document with its class. But labeling is arguably an easier task than writing rules. Almost anybody can look at a
+
+document and decide whether or not it is related to China. Sometimes such labeling is already implicitly part of an existing workflow. For instance,
+
+you may go through the news articles returned by a standing query each morning and give relevance feedback (cf. Chapter 9 ) by moving the
+
+relevant articles to a special folder like multicore-processors.
+
+We begin this chapter with a general introduction to the text classification problem including a formal definition (Section 13.1 ); we then cover
+
+Naive Bayes, a particularly simple and effective classification method (Sections 13.2-13.4). All of the classification algorithms we study represent
+
+documents in high-dimensional spaces. To improve the efficiency of these algorithms, it is generally desirable to reduce the dimensionality of these
+
+spaces; to this end, a technique known as feature selection is commonly applied in text classification as discussed in Section 13.5 . Section 13.6
+
+covers evaluation of text classification. In the following chapters, Chapters 14 15 , we look at two other families of classification methods, vector
+
+space classifiers and support vector machines.
+
+Subsections
+
+The text classification problem
+
+Naive Bayes text classification
+
+Relation to multinomial unigram language model
+
+The Bernoulli model
+
+Properties of Naive Bayes
+
+A variant of the multinomial model
+
+Feature selection
+
+Mutual information
+
+
+
+ Feature selectionChi2 Feature selection
+
+Assessing 
+
+
+
+ as a feature selection methodAssessing chi-square as a feature selection method
+
+Frequency-based feature selection
+
+Feature selection for multiple classifiers
+
+Comparison of feature selection methods
+
+Evaluation of text classification
+
+References and further reading
+
+next up 
+
+
+
+ contents  index  
+
+Next: The text classification problem Up: irbook Previous: References and further reading Contents Index
+
+© 2008 Cambridge University Press
+
+This is an automatically generated page. In case of formatting errors you may want to look at the PDF edition of the book.
+
+2009-04-07
+

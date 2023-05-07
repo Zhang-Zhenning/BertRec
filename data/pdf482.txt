@@ -1,0 +1,1265 @@
+
+Introduction to Hidden Markov Models
+
+Alperen Degirmenci
+
+This document contains derivations and algorithms for im-
+
+plementing Hidden Markov Models. The content presented
+
+here is a collection of my notes and personal insights from
+
+two seminal papers on HMMs by Rabiner in 1989 [2] and
+
+Ghahramani in 2001 [1], and also from Kevin Murphy’s book
+
+[3]. This is an excerpt from my project report for the MIT
+
+6.867 Machine Learning class taught in Fall 2014.
+
+I. HIDDEN MARKOV MODELS (HMMS)
+
+HMMs have been widely used in many applications, such
+
+as speech recognition, activity recognition from video, gene
+
+ﬁnding, gesture tracking. In this section, we will explain what
+
+HMMs are, how they are used for machine learning, their
+
+advantages and disadvantages, and how we implemented our
+
+own HMM algorithm.
+
+A. Deﬁnition
+
+A hidden Markov model is a tool for representing prob-
+
+ability distributions over sequences of observations [1]. In
+
+this model, an observation Xt at time t is produced by a
+
+stochastic process, but the state Zt of this process cannot be
+
+directly observed, i.e. it is hidden [2]. This hidden process
+
+is assumed to satisfy the Markov property, where state Zt at
+
+time t depends only on the previous state, Zt−1 at time t−1.
+
+This is, in fact, called the ﬁrst-order Markov model. The nth-
+
+order Markov model depends on the n previous states. Fig. 1
+
+shows a Bayesian network representing the ﬁrst-order HMM,
+
+where the hidden states are shaded in gray.
+
+We should note that even though we talk about “time”
+
+to indicate that observations occur at discrete “time steps”,
+
+“time” could also refer to locations within a sequence [3].
+
+The joint distribution of a sequence of states and observa-
+
+tions for the ﬁrst-order HMM can be written as,
+
+P(Z1:N, X1:N) = P(Z1)P(X1|Z1)
+
+N
+
+�
+
+t=2
+
+P(Zt|Zt−1)P(Xt|Zt)
+
+(1)
+
+where the notation Z1:N
+
+is used as a shorthand for
+
+Z1, . . . , ZN. Notice that Eq. 1 can be also written as,
+
+P(X1:N, Z1:N) = P(Z1)
+
+N
+
+�
+
+t=2
+
+P(Zt|Zt−1)
+
+N
+
+�
+
+t=1
+
+P(Xt|Zt)
+
+(2)
+
+which is same as the expression given in the lecture notes.
+
+There are ﬁve elements that characterize a hidden Markov
+
+model:
+
+The
+
+author
+
+is
+
+with
+
+the
+
+School
+
+of
+
+Engineering
+
+and
+
+Applied
+
+Sciences
+
+at
+
+Harvard
+
+University,
+
+Cambridge,
+
+MA
+
+02138
+
+USA.
+
+(adegirmenci@seas.harvard.edu). This document is an excerpt
+
+from a project report for the MIT 6.867 Machine Learning class taught in
+
+Fall 2014.
+
+Z1
+
+X1
+
+Z2
+
+X2
+
+Zt
+
+Xt
+
+ZN
+
+XN
+
+Fig. 1.
+
+A Bayesian network representing a ﬁrst-order HMM. The hidden
+
+states are shaded in gray.
+
+1) Number of states in the model, K: This is the number
+
+of states that the underlying hidden Markov process has.
+
+The states often have some relation to the phenomena being
+
+modeled. For example, if a HMM is being used for gesture
+
+recognition, each state may be a different gesture, or a part
+
+of the gesture. States are represented as integers 1, . . . , K.
+
+We will encode the state Zt at time t as a K × 1 vector of
+
+binary numbers, where the only non-zero element is the k-th
+
+element (i.e. Ztk = 1), corresponding to state k ∈ K at time
+
+t. While this may seem contrived, it will later on help us in
+
+our computations. (Note that [2] uses N instead of K).
+
+2) Number of distinct observations, Ω: Observations are
+
+represented as integers 1, . . . , Ω. We will encode the observa-
+
+tion Xt at time t as a Ω×1 vector of binary numbers, where
+
+the only non-zero element is the l-th element (i.e. Xtl = 1),
+
+corresponding to state l ∈ Ω at time t. While this may seem
+
+contrived, it will later on help us in our computations. (Note
+
+that [2] uses M instead of Ω, and [1] uses D. We decided
+
+to use Ω since this agrees with the lecture notes).
+
+3) State transition model, A: Also called the state transi-
+
+tion probability distribution [2] or the transition matrix [3],
+
+this is a K × K matrix whose elements Aij describe the
+
+probability of transitioning from state Zt−1,i to Zt,j in one
+
+time step where i, j ∈ {1, . . . , K}. This can be written as,
+
+Aij = P(Zt,j = 1|Zt−1,i = 1).
+
+(3)
+
+Each row of A sums to 1, �
+
+j Aij = 1, and therefore it is
+
+called a stochastic matrix. If any state can reach any other
+
+state in a single step (fully-connected), then Aij &gt; 0 for
+
+1
+
+2
+
+1-α
+
+α
+
+β
+
+1-β
+
+1
+
+A11
+
+2
+
+3
+
+A22
+
+A33
+
+A12
+
+A21
+
+A23
+
+A32
+
+(a)
+
+(b)
+
+Fig. 2.
+
+A state transition diagram for (a) a 2-state, and (b) a 3-state ergodic
+
+Markov chain. For a chain to be ergodic, any state should be reachable from
+
+any other state in a ﬁnite amount of time.
+
+1
+
+c⃝ 2014 Alperen Degirmenci
+
+
+all i, j; otherwise A will have some zero-valued elements.
+
+Fig. 2 shows two state transition diagrams for a 2-state and
+
+3-state ﬁrst-order Markov chain. For these diagrams, the state
+
+transition models are,
+
+A(a) =
+
+�1 − α
+
+α
+
+β
+
+1 − β
+
+�
+
+, A(b) =
+
+
+
+
+
+A11
+
+A12
+
+0
+
+A21
+
+A22
+
+A23
+
+0
+
+A32
+
+A33
+
+
+
+ . (4)
+
+The conditional probability can be written as
+
+P(Zt|Zt−1) =
+
+K
+
+�
+
+i=1
+
+K
+
+�
+
+j=1
+
+AZt−1,iZt,j
+
+ij
+
+.
+
+(5)
+
+Taking the logarithm, we can write this as
+
+logP(Zt|Zt−1)
+
+=
+
+K
+
+�
+
+i=1
+
+K
+
+�
+
+j=1
+
+Zt−1,iZt,j log Aij
+
+(6)
+
+=
+
+Z⊤
+
+t log (A)Zt−1.
+
+(7)
+
+4) Observation model, B: Also called the emission prob-
+
+abilities, B is a Ω × K matrix whose elements Bkj describe
+
+the probability of making observation Xt,k given state Zt,j.
+
+This can be written as,
+
+Bkj = P(Xt = k|Zt = j).
+
+(8)
+
+The conditional probability can be written as
+
+P(Xt|Zt) =
+
+K
+
+�
+
+j=1
+
+Ω
+
+�
+
+k=1
+
+BZt,jXt,k
+
+kj
+
+.
+
+(9)
+
+Taking the logarithm, we can write this as
+
+logP(Xt|Zt)
+
+=
+
+K
+
+�
+
+j=1
+
+Ω
+
+�
+
+k=1
+
+Zt,jXt,k log Bkj
+
+(10)
+
+=
+
+X⊤
+
+t log (B)Zt.
+
+(11)
+
+5) Initial state distribution, π: This is a K × 1 vector
+
+of probabilities πi = P(Z1i=1). The conditional probability
+
+can be written as,
+
+P(Z1|π) =
+
+K
+
+�
+
+i=1
+
+πZ1i
+
+i
+
+.
+
+(12)
+
+Given these ﬁve parameters presented above, an HMM
+
+can be completely speciﬁed. In literature, this often gets
+
+abbreviated as
+
+λ = (A, B, π).
+
+(13)
+
+B. Three Problems of Interest
+
+In [2] Rabiner states that for the HMM to be useful in
+
+real-world applications, the following three problems must
+
+be solved:
+
+• Problem 1: Given observations X1, . . . , XN and a
+
+model λ = (A, B, π), how do we efﬁciently compute
+
+P(X1:N|λ), the probability of the observations given
+
+the model? This is a part of the exact inference problem
+
+presented in the lecture notes, and can be solved using
+
+forward ﬁltering.
+
+Zt
+
+ΦZt-1,Zt
+
+ΦZt,Zt+1
+
+ΦXt,Zt
+
+Zt+1
+
+Xt
+
+μΦ →Zt
+
+Zt-1 ,Zt
+
+μZt→ΦZt ,Zt+1
+
+μΦ →Zt+1
+
+Zt ,Zt+1
+
+μΦ →Zt
+
+Xt ,Zt
+
+μXt→ΦXt ,Zt
+
+μΦ →Zt
+
+Zt ,Zt+1
+
+μZt→ΦZt-1 ,Zt
+
+μZt+1→ΦZt-1 ,Zt
+
+μZt→ΦXt ,Zt
+
+μΦ →Xt
+
+Xt ,Zt
+
+Fig. 3.
+
+Factor graph for a slice of the HMM at time t.
+
+• Problem 2: Given observations X1, . . . , XN and the
+
+model λ, how do we ﬁnd the “correct” hidden state
+
+sequence Z1, . . . , ZN that best “explains” the observa-
+
+tions? This corresponds to ﬁnding the most probable
+
+sequence of hidden states from the lecture notes, and
+
+can be solved using the Viterbi algorithm. A related
+
+problem is calculating the probability of being in state
+
+Ztk given the observations, P(Zt = k|X1:N), which
+
+can be calculated using the forward-backward algo-
+
+rithm.
+
+• Problem 3: How do we adjust the model parameters λ =
+
+(A, B, π) to maximize P(X1:N|λ)? This corresponds
+
+to the learning problem presented in the lecture notes,
+
+and can be solved using the Expectation-Maximization
+
+(EM) algorithm (in the case of HMMs, this is called the
+
+Baum-Welch algorithm).
+
+C. The Forward-Backward Algorithm
+
+The forward-backward algorithm is a dynamic program-
+
+ming algorithm that makes use of message passing (be-
+
+lief propagation). It allows us to compute the ﬁltered and
+
+smoothed marginals, which can be then used to perform
+
+inference, MAP estimation, sequence classiﬁcation, anomaly
+
+detection, and model-based clustering. We will follow the
+
+derivation presented in Murphy [3].
+
+1) The Forward Algorithm: In this part, we compute
+
+the ﬁltered marginals, P(Zt|X1:T ) using the predict-update
+
+cycle. The prediction step calculates the one-step-ahead
+
+predictive density,
+
+P(Zt =j|X1:t−1) = · · ·
+
+K
+
+�
+
+i=1
+
+= P(Zt = j|Zt−1 = i)P(Zt−1 = i|X1:t−1)
+
+(14)
+
+which acts as the new prior for time t. In the update state,
+
+the observed data from time t is absorbed using Bayes rule:
+
+αt(j) ≜ P(Zt = j|X1:t)
+
+= P(Zt = j|Xt, X1:t−1)
+
+=
+
+P(Xt|Zt = j, 
+
+
+
+X1:t−1 )P(Zt = j|X1:t−1)
+
+�
+
+j P(Xt|Zt = j, 
+
+
+
+X1:t−1 )P(Zt = j|X1:t−1)
+
+= 1
+
+Ct
+
+P(Xt|Zt = j)P(Zt = j|X1:t−1)
+
+(15)
+
+2
+
+c⃝ 2014 Alperen Degirmenci
+
+
+Algorithm 1 Forward algorithm
+
+1: Input: A, ψ1:N, π
+
+2: [α1, C1] = normalize(ψ1 ⊙ π) ;
+
+3: for t = 2 : N do
+
+4:
+
+[αt, Ct] = normalize(ψt ⊙ (A⊤αt−1)) ;
+
+5: Return α1:N and log P(X1:N) = �
+
+t log Ct
+
+6: Sub: [α, C] = normalize(u): C = �
+
+j uj; αj = uj/C;
+
+where the observations X1:t−1 cancel out because they are
+
+d-separated from Xt. Ct is the normalization constant (to
+
+avoid confusion, we used Ct as opposed to Zt from [3])
+
+given by,
+
+Ct ≜ P(Xt|X1:t−1) =
+
+K
+
+�
+
+j=1
+
+= P(Xt|Zt = j)P(Zt = j|X1:t−1).
+
+(16)
+
+The K × 1 vector αt = P(Zt|X1:T ) is called the (ﬁltered)
+
+belief state at time t.
+
+In matrix notation, we can write the recursive update as:
+
+αt ∝ ψt ⊙
+
+�
+
+A⊤αt−1
+
+�
+
+(17)
+
+where ψt = [ψt1, ψt2, . . . , ψtK] = {P(Xt|Zt = i)}1≤i≤K is
+
+the local evidence at time t which can be calculated using
+
+Eq. 9, A is the transition matrix, and ⊙ is the Hadamard
+
+product, representing elementwise vector multiplication. The
+
+pseudo-code in Algorithm 1 outlines the steps of the com-
+
+putation.
+
+The log probability of the evidence can be computed as
+
+log P(X1:N|λ) =
+
+N
+
+�
+
+t=1
+
+log P(Xt|X1:t−1) =
+
+N
+
+�
+
+t=1
+
+log Ct
+
+(18)
+
+This, in fact, is the solution for Problem 1 stated by Rabiner
+
+[2]. Working in the log domain allows us to avoid numerical
+
+underﬂow during computations.
+
+2) The Forward-Backward Algorithm: Now that we have
+
+the ﬁltered belief states α from the forward messages, we
+
+can compute the backward messages to get the smoothed
+
+marginals:
+
+P(Zt = j|X1:N) ∝ P(Zt = j.Xt+1:N|X1:t)
+
+(19)
+
+∝ P(Zt = j|X1:t)P(Xt+1:N|Zt = j, ��
+
+�
+
+X1:t ).
+
+which is the probability of being in state Ztj. Given that the
+
+hidden state at time t is j, deﬁne the conditional likelihood
+
+of future evidence as
+
+βt(j) ≜ P(Xt+1:N|Zt = j).
+
+(20)
+
+Also deﬁne the desired smoothed posterior marginal as
+
+γt(j) ≜ P(Zt = j|X1:N).
+
+(21)
+
+Then we can rewrite Eq. 19 as
+
+γt(j) ∝ αt(j)βt(j)
+
+(22)
+
+We can now compute the β’s recursively from right to left:
+
+Algorithm 2 Backward algorithm
+
+1: Input: A, ψ1:N, α
+
+2: βN = 1;
+
+3: for t = N − 1 : 1 do
+
+4:
+
+βt = normalize(A(ψt+1 ⊙ βt+1) ;
+
+5: γ = normalize(α ⊙ β, 1)
+
+6: Return γ1:N
+
+βt−1(i) = P(Xt:N|Zt−1 = i)
+
+=
+
+�
+
+j
+
+P(Zt = j, Xt, Xt+1:N|Zt−1 = i)
+
+=
+
+�
+
+j
+
+P(Xt+1:N|Zt = j, 
+
+Xt , 
+
+
+
+Zt−1 = j )
+
+· · · P(Zt = j, Xt|Zt−1 = i)
+
+=
+
+�
+
+j
+
+P(Xt+1:N|Zt = j)P(Xt|Zt = j, 
+
+Zt−1 = i)
+
+· · · P(Zt = j|Zt−1 = i)
+
+=
+
+�
+
+j
+
+βt(j)ψt(j)A(i, j)
+
+(23)
+
+This can be written as
+
+βt−1 = A (ψt ⊙ βt)
+
+(24)
+
+The base case for βN is
+
+βN(i) = P(XN+1:N|ZN = i) = P(∅|ZN = i) = 1
+
+(25)
+
+Finally, the smoothed posterior is then
+
+γi =
+
+αi ⊙ βi
+
+�
+
+j (αi(j) ⊙ βi(j))
+
+(26)
+
+where the denominator ensures that each column of γ sums
+
+to 1 to ensure it is a stochastic matrix. The pseudo-code in
+
+Algorithm 2 outlines the steps of the computation.
+
+D. The Viterbi Algorithm
+
+In order to compute the most probable sequence of hidden
+
+states (Problem 2), we will use the Viterbi algorithm. This
+
+algorithm computes the shortest path through the trellis
+
+diagram of the HMM. The trellis diagram shows how each
+
+state in the model at one time step connects to the states
+
+in the next time step. In this section, we again follow the
+
+derivation presented in Murphy [3].
+
+The Viterbi algorithm also has a forward and backward
+
+pass. In the forward pass, instead of the sum-product algo-
+
+rithm, we utilize the max-product algorithm. The backward
+
+pass recovers the most probable path through the trellis
+
+diagram using a traceback procedure, propagating the most
+
+likely state at time t back in time to recursively ﬁnd the most
+
+likely sequence between times 1 : t. This can be expressed
+
+as,
+
+δt(j) ≜
+
+max
+
+Z1,...,Zt−1 P(Z1:t−1, Zt = j|X1:t).
+
+(27)
+
+This probability can be expressed as a combination of the
+
+transition from the previous state i at time t−1 and the most
+
+3
+
+c⃝ 2014 Alperen Degirmenci
+
+
+Algorithm 3 Viterbi algorithm
+
+1: Input: X1:N, K, A, B, π
+
+2: Initialize: δ1 = π ⊙ BX1, a1 = 0;
+
+3: for t = 2 : N do
+
+4:
+
+for j = 1 : K do
+
+5:
+
+[at(j), δt(j)] = maxi(log δt−1(:) + log Aij +
+
+log BXt(j));
+
+6: Z∗
+
+N = arg max(δN);
+
+7: for t = N − 1 : 1 do
+
+8:
+
+Z∗
+
+t = at+1Z∗
+
+t+1;
+
+9: Return Z∗
+
+1:N
+
+probable path leading to i,
+
+δt(j) = max
+
+1≤i≤K δt−1(i)AijBXt(j).
+
+(28)
+
+Here BXt(j) is the emission probability of observation Xt
+
+given state j. We also need to keep track of the most likely
+
+previous state i,
+
+at(j) = arg max
+
+i
+
+δt−1(i)AijBXt(j).
+
+(29)
+
+The initial probability is
+
+δ1(j) = πjBX1(j).
+
+(30)
+
+The most probable ﬁnal state is
+
+Z∗
+
+N = arg max
+
+i
+
+δN(i).
+
+(31)
+
+The most probable sequence can be computing using trace-
+
+back,
+
+Z∗
+
+t = at+1Z∗
+
+t+1.
+
+(32)
+
+In order to avoid underﬂow, we can work in the log domain.
+
+This is one of the advantages of the Viterbi algorithm, since
+
+log max = max log; this is not possible with the forward-
+
+backward algorithm since log � ̸= � log. Therefore
+
+log δt(j) ≜ max
+
+i
+
+log δt−1(i) + log Aij + log BXt(j). (33)
+
+The pseudo-code in Algorithm 3 outlines the steps of the
+
+computation.
+
+E. The Baum-Welch Algorithm
+
+The Baum-Welch algorithm is in essence the Expectation-
+
+Maximization (EM) algorithm for HMMs. Given a sequence
+
+of observations X1:N, we would like to ﬁnd
+
+arg max
+
+λ
+
+P(X; λ) = arg max
+
+λ
+
+�
+
+Z
+
+P(X, Z; λ)
+
+(34)
+
+by doing maximum-likelihood estimation. Since summing
+
+over all possible Z is not possible in terms of computation
+
+time, we use EM to estimate the model parameters.
+
+The algorithm requires us to have the forward and
+
+backward probabilities α, β calculated using the forward-
+
+backward algorithm. In this section we follow the derivation
+
+presented in Murphy [3] and the lecture notes.
+
+Algorithm 4 Baum-Welch algorithm
+
+1: Input: X1:N, A, B, α, β
+
+2: for t = 1 : N do
+
+3:
+
+γ(:, t) = (α(:, t) ⊙ β(:, t))./sum(α(:, t) ⊙ β(:, t));
+
+4:
+
+ξ(:, :, t) = ((α(:, t) ⊙ A(t + 1)) ∗ (β(:, t + 1) ⊙
+
+B(Xt+1))T )./sum(α(:, t) ⊙ β(:, t));
+
+5: ˆπ = γ(:, 1)./sum(γ(:, 1));
+
+6: for j = 1 : K do
+
+7:
+
+ˆA(j, :) = sum(ξ(2 : N, j, :), 1)./sum(sum(ξ(2 :
+
+N, j, :), 1), 2);
+
+8:
+
+ˆ
+
+B(j, :) =
+
+�
+
+X(:, j)T γ
+
+�
+
+./sum(γ, 1);
+
+9: Return ˆπ, ˆA, ˆB
+
+1) E Step:
+
+γtk ≜ P(Ztk = 1|X, λold)
+
+=
+
+αk(t)βk(t)
+
+�N
+
+j=1 αj(t)βj(t)
+
+(35)
+
+ξtjk ≜ P(Zt−1,j = 1, Ztk = 1|X, λold)
+
+= αj(t)Ajkβk(t + 1)Bk(Xt+1)
+
+�N
+
+i=1 αi(t)βi(t)
+
+(36)
+
+2) M Step: The parameter estimation problem can be
+
+turned into a constrained optimization problem where
+
+P(X1:N|λ) is maximized, subject to the stochastic con-
+
+straints of the HMM parameters [2]. The techniques of
+
+Lagrange multipliers can be then used to ﬁnd the model
+
+parameters, yielding the following expressions:
+
+ˆπk = E[N 1
+
+k]
+
+N
+
+=
+
+γ1k
+
+�K
+
+j=1 γ1j
+
+(37)
+
+ˆAjk =
+
+E[Njk]
+
+�
+
+k′ E[Njk] =
+
+�N
+
+t=2 ξtjk
+
+�K
+
+l=1
+
+�N
+
+t=2 ξtjl
+
+(38)
+
+ˆBjl = E[Mjl]
+
+E[Nj] =
+
+�N
+
+t=1 γtlXtj
+
+�N
+
+t=1 γtl
+
+(39)
+
+λnew = ( ˆA, ˆB, ˆλ)
+
+(40)
+
+The pseudo-code in Algorithm 4 outlines the steps of the
+
+computation.
+
+F. Limitations
+
+A fully-connected transition diagram can lead to severe
+
+overﬁtting. [1] explains this by giving an example from
+
+computer vision, where objects are tracked in a sequence of
+
+images. In problems with large parameter spaces like this,
+
+the transition matrix ends up being very large. Unless there
+
+are lots of examples in the data set, or unless some a priori
+
+knowledge about the problem is used, then this leads to
+
+severe overﬁtting. A solution to this is to use other types
+
+of HMMs, such as factorial or hierarchical HMMs.
+
+REFERENCES
+
+[1] Z. Ghahramani, ”An Introduction to Hidden Markov Models and
+
+Bayesian Networks,” International Journal of Pattern Recognition and
+
+Artiﬁcial Intelligence, vol. 15, no. 1, pp. 9–42, 2001.
+
+4
+
+c⃝ 2014 Alperen Degirmenci
+
+
+[2] L. Rabiner, ”A Tutorial on Hidden Markov Models and Selected
+
+Applications in Speech Recognition,” Proceedings of the IEEE, vol.
+
+77, no. 2, pp. 257–286, 1989.
+
+[3] K.P. Murphy, Machine Learning: A Probabilistic Perspective, Cam-
+
+bridge, MA: MIT Press, 2012.
+
+5
+
+c⃝ 2014 Alperen Degirmenci
+

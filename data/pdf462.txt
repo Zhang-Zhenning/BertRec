@@ -1,0 +1,4421 @@
+
+A Developer Diary
+
+{about:"code learn and share"}
+
+
+
+
+
+February 21, 2019 By Abhisek Jana — 11 Comments
+
+Implement Viterbi Algorithm in Hidden
+
+Markov Model using Python and R
+
+
+
+The 3rd and final problem in Hidden Markov Model is the Decoding Problem
+
+Decoding Problem. In
+
+this article we will implement Viterbi Algorithm in Hidden Markov Model using
+
+Python and R. Viterbi Algorithm is dynamic programming and computationally
+
+very efficient. We will start with the formal definition of the Decoding Problem, then
+
+go through the solution and finally implement it. This is the 4th part of the
+
+Introduction to Hidden Markov Model tutorial series. This one might be the easier
+
+one to follow along.
+
+Quick Recap:
+
+We have learned about the three problems of HMM. We went through the
+
+Evaluation
+
+Evaluation and Learning
+
+Learning Problem in detail including implementation using Python
+
+and R in my previous article. In case you want a refresh your memories, please
+
+refer my previous articles.
+
+
+
+
+
+
+
+
+Derivation and implementation of Baum
+
+Welch Algorithm for Hidden Markov Model
+
+The most important and complex part of Hidden Markov Model is the
+
+Learning Problem. Even though it can be used as Unsupervised way, the
+
+more common approach is to use Supervised learning just for defining
+
+number of hidden states. In this Derivation and implementation of Baum
+
+Welch Algorithm for Hidden Markov Model article we will … Continue
+
+reading
+
+ 20 
+
+A Developer Diary
+
+
+
+Decoding Problem:
+
+Given a sequence of visible symbol VT and the model ( θ → {A,B} ) find the most
+
+probable sequence of hidden states ST.
+
+In general we could try to find all the different scenarios of hidden states for the
+
+given sequence of visible symbols and then identify the most probable one.
+
+However, just like we have seen earlier, it will be an exponentially complex problem
+
+O(NT.T) to solve.
+
+Viterbi Algorithm:
+
+We will be using a much more efficient algorithm named Viterbi Algorithm to solve
+
+the decoding problem. So far in HMM we went deep into deriving equations for all
+
+the algorithms in order to understand them clearly. However Viterbi Algorithm is
+
+best understood using an analytical example rather than equations. I will provide
+
+the mathematical definition of the algorithm first, then will work on a specific
+
+example.
+
+Probabilistic View:
+
+The decoding problem is similar to the Forward Algorithm . In Forward Algorithm we
+
+compute the likelihood of the observation sequence, given the hidden sequences
+
+by summing over all the probabilities, however in decoding problem we need to
+
+find the most probable hidden state in every iteration of t.
+
+The following equation represents the highest probability along a single path for
+
+first t observations which ends at state i.
+
+ωi(t) = max
+
+We can use the same approach as the Forward Algorithm to calculate \omega
+
+
+_i(+1)
+
+\omega _i(t+1)= \max_i \Big( \omega _i(t) a_{ij} b_{jk v(t+1)} \Big)
+
+Now to find the sequence of hidden states we need to identify the state that
+
+maximizes \omega _i(t) at each time step t.
+
+\arg \max_t \omega(t)
+
+Once we complete the above steps for all the observations, we will first find the
+
+last hidden
+
+last hidden state by maximum likelihood, then using backpointer  to backtrack the
+
+most likely hidden path
+
+most likely hidden path.
+
+Everything what I said above may not make a lot of sense now. Go through the
+
+example below and then come back to read this part. I hope it will definitely be
+
+more easy to understand once you have the intuition.
+
+Example:
+
+Our example will be same one used in during programming, where we have two
+
+hidden states A,B and three visible symbols 1,2,3. Assume we have a sequence
+
+of 6 visible symbols and the model \theta . We need to predict the sequence of the
+
+hidden states for the visible symbols.
+
+If we draw the trellis diagram
+
+trellis diagram, it will look like the fig 1. Note, here S_1 = A and S_2
+
+= B.
+
+As stated earlier, we need to find out for every time step t and each hidden state
+
+what will be the most probable next hidden state.
+
+Assume when t = 2, the probability of transitioning to S_2(2) from S_1(1) is higher
+
+than transitioning to S_1(2) , so we keep track of this. This is highlighted by the red
+
+arrow from S_1(1) to S_2(2) in the below diagram. The other path is in gray dashed
+
+gray dashed
+
+line
+
+line, which is not required now.
+
+Like wise, we repeat the same for each hidden state. In other words, assuming that
+
+at t=1 if S_2(1) was the hidden state and at t=2 the probability of transitioning to
+
+S_1(2) from S_2(1) is higher, hence its highlighted in red.
+
+
+
+We can repeat
+
+repeat the same process for all the remaining observations. The trellis
+
+diagram will look like following.
+
+
+
+
+The output of the above process is to have the sequences of the most probable
+
+sequences of the most probable
+
+states
+
+states (1) [below diagram] and the corresponding probabilities
+
+corresponding probabilities (2). So as we go
+
+through finding most probable state (1) for each time step, we will have an 2x5
+
+matrix ( in general M x (T-1)  ) as below:
+
+
+
+The first number 2 in above diagram indicates that current hidden step 1 (since
+
+it’s in 1st row
+
+1st row) transitioned from previous hidden step 2.
+
+Let’s take one more example, the 2 in the 2nd row 2nd col
+
+2nd row 2nd col indicates that the
+
+current step 2 ( since it’s in 2nd row
+
+2nd row) transitioned from previous hidden step 2. If
+
+you refer fig 1, you can see its true since at time 3, the hidden state S_2
+
+transisitoned from S_2 [ as per the red arrow line]
+
+Similar to the most probable state ( at each time step ), we will have another
+
+matrix of size 2 x 6 ( in general M x T ) for the corresponding probabilities (2). Next
+
+we find the last step by comparing the probabilities(2) of the T’th step in this
+
+matrix.
+
+Assume, in this example, the last step is 1 ( A ) , we add that to our empty path
+
+array. then we find the previous most probable hidden state by backtracking in the
+
+most probable states (1) matrix. Refer the below fig 3 for the derived most
+
+derived most
+
+probable path
+
+probable path.The path could have been different if the last hidden step was 2 ( B
+
+) .
+
+
+
+The final most probable path
+
+final most probable path in this case is given in the below diagram, which is
+
+similar as defined in fig 1.
+
+
+
+
+Code:
+
+Now lets look at the code. We will start with Python first.
+
+Python:
+
+The code has comments and its following same intuition from the example. One
+
+implementation trick is to use the log scale so that we dont get the underflow
+
+error.
+
+Here is the full Python Code:
+
+
+
+11
+
+22
+
+33
+
+44
+
+55
+
+66
+
+77
+
+88
+
+99
+
+10
+
+10
+
+11
+
+11
+
+12
+
+12
+
+13
+
+13
+
+14
+
+14
+
+15
+
+15
+
+16
+
+16
+
+17
+
+17
+
+18
+
+18
+
+19
+
+19
+
+20
+
+20
+
+21
+
+21
+
+22
+
+22
+
+23
+
+23
+
+24
+
+24
+
+25
+
+25
+
+26
+
+26
+
+27
+
+27
+
+28
+
+28
+
+29
+
+29
+
+30
+
+30
+
+31
+
+31
+
+32
+
+32
+
+33
+
+33
+
+34
+
+34
+
+35
+
+35
+
+36
+
+36
+
+37
+
+37
+
+38
+
+38
+
+39
+
+39
+
+40
+
+40
+
+41
+
+41
+
+42
+
+42
+
+43
+
+43
+
+44
+
+44
+
+45
+
+45
+
+46
+
+46
+
+def
+
+def viterbi
+
+viterbi((VV,,  aa,,  bb,,  initial_distribution
+
+initial_distribution))::
+
+ 
+
+    TT  ==  VV..shape
+
+shape[[00]]
+
+ 
+
+    MM  ==  aa..shape
+
+shape[[00]]
+
+ 
+
+ 
+
+    omega
+
+omega  ==  np
+
+np..zeros
+
+zeros((((TT,,  MM))))
+
+ 
+
+    omega
+
+omega[[00,,  ::]]  ==  np
+
+np..log
+
+log((initial_distribution
+
+initial_distribution  **  bb[[::,,  VV[[00]]]]))
+
+ 
+
+ 
+
+    prev
+
+prev  ==  np
+
+np..zeros
+
+zeros((((TT  --  11,,  MM))))
+
+ 
+
+ 
+
+ for
+
+for  tt  in
+
+in range
+
+range((11,,  TT))::
+
+ 
+
+ for
+
+for  jj  in
+
+in range
+
+range((MM))::
+
+ 
+
+ # Same as Forward Probability
+
+# Same as Forward Probability
+
+ 
+
+            probability
+
+probability  ==  omega
+
+omega[[tt  --  11]]  ++  np
+
+np..log
+
+log((aa[[::,,  jj]]))  ++  np
+
+np
+
+ 
+
+ 
+
+ # This is our most probable state given previous state at time t (1)
+
+# This is our most probable state given previous state at time t (1)
+
+ 
+
+            prev
+
+prev[[tt  --  11,,  jj]]  ==  np
+
+np..argmax
+
+argmax((probability
+
+probability))
+
+ 
+
+ 
+
+ # This is the probability of the most probable state (2)
+
+# This is the probability of the most probable state (2)
+
+ 
+
+            omega
+
+omega[[tt,,  jj]]  ==  np
+
+np..max
+
+max((probability
+
+probability))
+
+ 
+
+ 
+
+ # Path Array
+
+# Path Array
+
+ 
+
+    SS  ==  np
+
+np..zeros
+
+zeros((TT))
+
+ 
+
+ 
+
+ # Find the most probable last hidden state
+
+# Find the most probable last hidden state
+
+ 
+
+    last_state
+
+last_state  ==  np
+
+np..argmax
+
+argmax((omega
+
+omega[[TT  --  11,,  ::]]))
+
+ 
+
+ 
+
+    SS[[00]]  ==  last_state
+
+last_state
+
+ 
+
+ 
+
+ backtrack_index
+
+backtrack_index  ==  11
+
+ 
+
+ for
+
+for  ii  in
+
+in range
+
+range((TT  --  22,,  --11,,  --11))::
+
+ 
+
+        SS[[backtrack_index
+
+backtrack_index]]  ==  prev
+
+prev[[ii,,  int
+
+int((last_state
+
+last_state))]]
+
+ 
+
+        last_state
+
+last_state  ==  prev
+
+prev[[ii,,  int
+
+int((last_state
+
+last_state))]]
+
+ 
+
+        backtrack_index
+
+backtrack_index  +=
+
++=  11
+
+ 
+
+ 
+
+ # Flip the path array since we were backtracking
+
+# Flip the path array since we were backtracking
+
+ 
+
+    SS  ==  np
+
+np..flip
+
+flip((SS,,  axis
+
+axis==00))
+
+ 
+
+ 
+
+ # Convert numeric values to actual hidden states
+
+# Convert numeric values to actual hidden states
+
+ 
+
+    result
+
+result  ==  [[]]
+
+ 
+
+ for
+
+for  ss  in
+
+in  SS::
+
+ 
+
+ if
+
+if  ss  ==
+
+==  00::
+
+ 
+
+            result
+
+result..append
+
+append(("A"
+
+"A"))
+
+ 
+
+ else
+
+else::
+
+ 
+
+            result
+
+result..append
+
+append(("B"
+
+"B"))
+
+ 
+
+ 
+
+ return
+
+return  result
+
+result
+
+11
+
+22
+
+33
+
+44
+
+import
+
+import pandas 
+
+pandas as
+
+as pd
+
+pd
+
+import
+
+import numpy 
+
+numpy as
+
+as np
+
+np
+
+ 
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+44
+
+55
+
+66
+
+77
+
+88
+
+99
+
+10
+
+10
+
+11
+
+11
+
+12
+
+12
+
+13
+
+13
+
+14
+
+14
+
+15
+
+15
+
+16
+
+16
+
+17
+
+17
+
+18
+
+18
+
+19
+
+19
+
+20
+
+20
+
+21
+
+21
+
+22
+
+22
+
+23
+
+23
+
+24
+
+24
+
+25
+
+25
+
+26
+
+26
+
+27
+
+27
+
+28
+
+28
+
+29
+
+29
+
+30
+
+30
+
+31
+
+31
+
+32
+
+32
+
+33
+
+33
+
+34
+
+34
+
+35
+
+35
+
+36
+
+36
+
+37
+
+37
+
+38
+
+38
+
+39
+
+39
+
+40
+
+40
+
+41
+
+41
+
+42
+
+42
+
+43
+
+43
+
+44
+
+44
+
+45
+
+45
+
+46
+
+46
+
+47
+
+47
+
+48
+
+48
+
+49
+
+49
+
+50
+
+50
+
+51
+
+51
+
+52
+
+52
+
+53
+
+53
+
+54
+
+54
+
+55
+
+55
+
+56
+
+56
+
+57
+
+57
+
+58
+
+58
+
+59
+
+59
+
+60
+
+60
+
+61
+
+61
+
+62
+
+62
+
+63
+
+63
+
+64
+
+64
+
+65
+
+65
+
+66
+
+66
+
+67
+
+67
+
+68
+
+68
+
+69
+
+69
+
+70
+
+70
+
+71
+
+71
+
+72
+
+72
+
+73
+
+73
+
+74
+
+74
+
+75
+
+75
+
+76
+
+76
+
+77
+
+77
+
+78
+
+78
+
+79
+
+79
+
+80
+
+80
+
+81
+
+81
+
+82
+
+82
+
+83
+
+83
+
+84
+
+84
+
+85
+
+85
+
+86
+
+86
+
+ 
+
+def
+
+def forward
+
+forward((VV,,  aa,,  bb,,  initial_distribution
+
+initial_distribution))::
+
+ 
+
+    alpha
+
+alpha  ==  np
+
+np..zeros
+
+zeros((((VV..shape
+
+shape[[00]],,  aa..shape
+
+shape[[00]]))))
+
+ 
+
+    alpha
+
+alpha[[00,,  ::]]  ==  initial_distribution
+
+initial_distribution  **  bb[[::,,  VV[[00]]]]
+
+ 
+
+ 
+
+ for
+
+for  tt  in
+
+in range
+
+range((11,,  VV..shape
+
+shape[[00]]))::
+
+ 
+
+ for
+
+for  jj  in
+
+in range
+
+range((aa..shape
+
+shape[[00]]))::
+
+ 
+
+ # Matrix Computation Steps
+
+# Matrix Computation Steps
+
+ 
+
+ #                  ((1x2) . (1x2))      *     (1)
+
+#                  ((1x2) . (1x2))      *     (1)
+
+ 
+
+ #                        (1)            *     (1)
+
+#                        (1)            *     (1)
+
+ 
+
+            alpha
+
+alpha[[tt,,  jj]]  ==  alpha
+
+alpha[[tt  --  11]]..dot
+
+dot((aa[[::,,  jj]]))  **  bb[[jj,,  VV
+
+ 
+
+ 
+
+ return
+
+return alpha
+
+alpha
+
+ 
+
+ 
+
+def
+
+def backward
+
+backward((VV,,  aa,,  bb))::
+
+ 
+
+    beta
+
+beta  ==  np
+
+np..zeros
+
+zeros((((VV..shape
+
+shape[[00]],,  aa..shape
+
+shape[[00]]))))
+
+ 
+
+ 
+
+ # setting beta(T) = 1
+
+# setting beta(T) = 1
+
+ 
+
+    beta
+
+beta[[VV..shape
+
+shape[[00]]  --  11]]  ==  np
+
+np..ones
+
+ones((((aa..shape
+
+shape[[00]]))))
+
+ 
+
+ 
+
+ # Loop in backward way from T-1 to
+
+# Loop in backward way from T-1 to
+
+ 
+
+ # Due to python indexing the actual loop will be T-2 to 0
+
+# Due to python indexing the actual loop will be T-2 to 0
+
+ 
+
+ for
+
+for  tt  in
+
+in range
+
+range((VV..shape
+
+shape[[00]]  --  22,,  --11,,  --11))::
+
+ 
+
+ for
+
+for  jj  in
+
+in range
+
+range((aa..shape
+
+shape[[00]]))::
+
+ 
+
+            beta
+
+beta[[tt,,  jj]]  ==  ((beta
+
+beta[[tt  ++  11]]  **  bb[[::,,  VV[[tt  ++  11]]]]))..dot
+
+dot((
+
+ 
+
+ 
+
+ return
+
+return beta
+
+beta
+
+ 
+
+ 
+
+def
+
+def baum_welch
+
+baum_welch((VV,,  aa,,  bb,,  initial_distribution
+
+initial_distribution,,  n_iter
+
+n_iter==100
+
+100))::
+
+ 
+
+    MM  ==  aa..shape
+
+shape[[00]]
+
+ 
+
+    TT  ==  len
+
+len((VV))
+
+ 
+
+ 
+
+ for
+
+for  nn  in
+
+in range
+
+range((n_iter
+
+n_iter))::
+
+ 
+
+        alpha
+
+alpha  ==  forward
+
+forward((VV,,  aa,,  bb,,  initial_distribution
+
+initial_distribution))
+
+ 
+
+        beta
+
+beta  ==  backward
+
+backward((VV,,  aa,,  bb))
+
+ 
+
+ 
+
+        xi
+
+xi  ==  np
+
+np..zeros
+
+zeros((((MM,,  MM,,  TT  --  11))))
+
+ 
+
+ for
+
+for  tt  in
+
+in range
+
+range((TT  --  11))::
+
+ 
+
+            denominator
+
+denominator  ==  np
+
+np..dot
+
+dot((np
+
+np..dot
+
+dot((alpha
+
+alpha[[tt,,  ::]]..TT,,  aa))  **  
+
+ 
+
+ for
+
+for  ii  in
+
+in range
+
+range((MM))::
+
+ 
+
+                numerator
+
+numerator  ==  alpha
+
+alpha[[tt,,  ii]]  **  aa[[ii,,  ::]]  **  bb[[::,,  VV[[tt
+
+ 
+
+                xi
+
+xi[[ii,,  ::,,  tt]]  ==  numerator
+
+numerator  //  denominator
+
+denominator
+
+ 
+
+ 
+
+ gamma
+
+gamma  ==  np
+
+np..sum
+
+sum((xi
+
+xi,,  axis
+
+axis==11))
+
+ 
+
+        aa  ==  np
+
+np..sum
+
+sum((xi
+
+xi,,  22))  //  np
+
+np..sum
+
+sum((gamma
+
+gamma,,  axis
+
+axis==11))..reshape
+
+reshape((((--
+
+ 
+
+ 
+
+ # Add additional T'th element in gamma
+
+# Add additional T'th element in gamma
+
+ 
+
+        gamma
+
+gamma  ==  np
+
+np..hstack
+
+hstack((((gamma
+
+gamma,,  np
+
+np..sum
+
+sum((xi
+
+xi[[::,,  ::,,  TT  --  22]],,  axis
+
+axis
+
+ 
+
+ 
+
+        KK  ==  bb..shape
+
+shape[[11]]
+
+ 
+
+        denominator
+
+denominator  ==  np
+
+np..sum
+
+sum((gamma
+
+gamma,,  axis
+
+axis==11))
+
+ 
+
+ for
+
+for  ll  in
+
+in range
+
+range((KK))::
+
+ 
+
+            bb[[::,,  ll]]  ==  np
+
+np..sum
+
+sum((gamma
+
+gamma[[::,,  VV  ==
+
+==  ll]],,  axis
+
+axis==11))
+
+ 
+
+ 
+
+        bb  ==  np
+
+np..divide
+
+divide((bb,,  denominator
+
+denominator..reshape
+
+reshape((((--11,,  11))))))
+
+ 
+
+ 
+
+ return
+
+return  ((aa,,  bb))
+
+ 
+
+ 
+
+def
+
+def viterbi
+
+viterbi((VV,,  aa,,  bb,,  initial_distribution
+
+initial_distribution))::
+
+ 
+
+    TT  ==  VV..shape
+
+shape[[00]]
+
+ 
+
+    MM  ==  aa..shape
+
+shape[[00]]
+
+ 
+
+ 
+
+    omega
+
+omega  ==  np
+
+np..zeros
+
+zeros((((TT,,  MM))))
+
+ 
+
+    omega
+
+omega[[00,,  ::]]  ==  np
+
+np..log
+
+log((initial_distribution
+
+initial_distribution  **  bb[[::,,  VV[[00]]]]))
+
+ 
+
+ 
+
+    prev
+
+prev  ==  np
+
+np..zeros
+
+zeros((((TT  --  11,,  MM))))
+
+ 
+
+ 
+
+ for
+
+for  tt  in
+
+in range
+
+range((11,,  TT))::
+
+ 
+
+ for
+
+for  jj  in
+
+in range
+
+range((MM))::
+
+ 
+
+ # Same as Forward Probability
+
+# Same as Forward Probability
+
+ 
+
+            probability
+
+probability  ==  omega
+
+omega[[tt  --  11]]  ++  np
+
+np..log
+
+log((aa[[::,,  jj]]))  ++  np
+
+np
+
+ 
+
+ 
+
+ # This is our most probable state given previous state at time t (1)
+
+# This is our most probable state given previous state at time t (1)
+
+ 
+
+            prev
+
+prev[[tt  --  11,,  jj]]  ==  np
+
+np..argmax
+
+argmax((probability
+
+probability))
+
+ 
+
+ 
+
+ # This is the probability of the most probable state (2)
+
+# This is the probability of the most probable state (2)
+
+ 
+
+            omega
+
+omega[[tt,,  jj]]  ==  np
+
+np..max
+
+max((probability
+
+probability))
+
+ 
+
+ 
+
+ # Path Array
+
+# Path Array
+
+ 
+
+    SS  ==  np
+
+np..zeros
+
+zeros((TT))
+
+
+Output:
+
+Output:
+
+I am only having partial result here. Later we will compare this with the HMM
+
+library.
+
+R Script:
+
+The R code below does not have any comments. You can find them in the python
+
+code ( they are structurally the same )
+
+
+
+86
+
+86
+
+87
+
+87
+
+88
+
+88
+
+89
+
+89
+
+90
+
+90
+
+91
+
+91
+
+92
+
+92
+
+93
+
+93
+
+94
+
+94
+
+95
+
+95
+
+96
+
+96
+
+97
+
+97
+
+98
+
+98
+
+99
+
+99
+
+100
+
+100
+
+101
+
+101
+
+102
+
+102
+
+103
+
+103
+
+104
+
+104
+
+105
+
+105
+
+106
+
+106
+
+107
+
+107
+
+108
+
+108
+
+109
+
+109
+
+110
+
+110
+
+111
+
+111
+
+112
+
+112
+
+113
+
+113
+
+114
+
+114
+
+115
+
+115
+
+116
+
+116
+
+117
+
+117
+
+118
+
+118
+
+119
+
+119
+
+120
+
+120
+
+121
+
+121
+
+122
+
+122
+
+123
+
+123
+
+124
+
+124
+
+125
+
+125
+
+126
+
+126
+
+127
+
+127
+
+128
+
+128
+
+129
+
+129
+
+130
+
+130
+
+ 
+
+    SS  ==  np
+
+np..zeros
+
+zeros((TT))
+
+ 
+
+ 
+
+ # Find the most probable last hidden state
+
+# Find the most probable last hidden state
+
+ 
+
+    last_state
+
+last_state  ==  np
+
+np..argmax
+
+argmax((omega
+
+omega[[TT  --  11,,  ::]]))
+
+ 
+
+ 
+
+    SS[[00]]  ==  last_state
+
+last_state
+
+ 
+
+ 
+
+ backtrack_index
+
+backtrack_index  ==  11
+
+ 
+
+ for
+
+for  ii  in
+
+in range
+
+range((TT  --  22,,  --11,,  --11))::
+
+ 
+
+        SS[[backtrack_index
+
+backtrack_index]]  ==  prev
+
+prev[[ii,,  int
+
+int((last_state
+
+last_state))]]
+
+ 
+
+        last_state
+
+last_state  ==  prev
+
+prev[[ii,,  int
+
+int((last_state
+
+last_state))]]
+
+ 
+
+        backtrack_index
+
+backtrack_index  +=
+
++=  11
+
+ 
+
+ 
+
+ # Flip the path array since we were backtracking
+
+# Flip the path array since we were backtracking
+
+ 
+
+    SS  ==  np
+
+np..flip
+
+flip((SS,,  axis
+
+axis==00))
+
+ 
+
+ 
+
+ # Convert numeric values to actual hidden states
+
+# Convert numeric values to actual hidden states
+
+ 
+
+    result
+
+result  ==  [[]]
+
+ 
+
+ for
+
+for  ss  in
+
+in  SS::
+
+ 
+
+ if
+
+if  ss  ==
+
+==  00::
+
+ 
+
+            result
+
+result..append
+
+append(("A"
+
+"A"))
+
+ 
+
+ else
+
+else::
+
+ 
+
+            result
+
+result..append
+
+append(("B"
+
+"B"))
+
+ 
+
+ 
+
+ return
+
+return result
+
+result
+
+ 
+
+ 
+
+data
+
+data  ==  pd
+
+pd..read_csv
+
+read_csv(('data_python.csv'
+
+'data_python.csv'))
+
+ 
+
+VV  ==  data
+
+data[['Visible'
+
+'Visible']]..values
+
+values
+
+ 
+
+# Transition Probabilities
+
+# Transition Probabilities
+
+aa  ==  np
+
+np..ones
+
+ones((((22,,  22))))
+
+aa  ==  aa  //  np
+
+np..sum
+
+sum((aa,,  axis
+
+axis==11))
+
+ 
+
+# Emission Probabilities
+
+# Emission Probabilities
+
+bb  ==  np
+
+np..array
+
+array((((((11,,  33,,  55)),,  ((22,,  44,,  66))))))
+
+bb  ==  bb  //  np
+
+np..sum
+
+sum((bb,,  axis
+
+axis==11))..reshape
+
+reshape((((--11,,  11))))
+
+ 
+
+# Equal Probabilities for the initial distribution
+
+# Equal Probabilities for the initial distribution
+
+initial_distribution
+
+initial_distribution  ==  np
+
+np..array
+
+array((((0.5
+
+0.5,,  0.5
+
+0.5))))
+
+ 
+
+aa,,  bb  ==  baum_welch
+
+baum_welch((VV,,  aa,,  bb,,  initial_distribution
+
+initial_distribution,,  n_iter
+
+n_iter==100
+
+100))
+
+ 
+
+print
+
+print((viterbi
+
+viterbi((VV,,  aa,,  bb,,  initial_distribution
+
+initial_distribution))))
+
+11
+
+22
+
+33
+
+44
+
+55
+
+[['B'
+
+'B',,  'B'
+
+'B',,  'A'
+
+'A',,  'A'
+
+'A',,  
+
+......  
+
+'A'
+
+'A',,  'A'
+
+'A',,  
+
+'A'
+
+'A',,  'A'
+
+'A',,  'B'
+
+'B',,  'B'
+
+'B',,  'B'
+
+'B',,  'A'
+
+'A',,  
+
+'A'
+
+'A',,  'A'
+
+'A',,  'A'
+
+'A',,  'A'
+
+'A',,  'A'
+
+'A',,  'A'
+
+'A']]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Full R Code:
+
+11
+
+22
+
+33
+
+44
+
+55
+
+66
+
+77
+
+88
+
+99
+
+10
+
+10
+
+11
+
+11
+
+12
+
+12
+
+13
+
+13
+
+14
+
+14
+
+15
+
+15
+
+16
+
+16
+
+17
+
+17
+
+18
+
+18
+
+19
+
+19
+
+20
+
+20
+
+21
+
+21
+
+22
+
+22
+
+23
+
+23
+
+24
+
+24
+
+25
+
+25
+
+26
+
+26
+
+27
+
+27
+
+28
+
+28
+
+29
+
+29
+
+30
+
+30
+
+31
+
+31
+
+32
+
+32
+
+33
+
+33
+
+34
+
+34
+
+35
+
+35
+
+Viterbi
+
+Viterbi==function
+
+function((vv,,aa,,bb,,initial_distribution
+
+initial_distribution))  {{
+
+ 
+
+ 
+
+ 
+
+ TT  ==  length
+
+length((vv))
+
+ 
+
+  MM  ==  nrow
+
+nrow((aa))
+
+ 
+
+  prev
+
+prev  ==  matrix
+
+matrix((00,,  TT--11,,  MM))
+
+ 
+
+  omega
+
+omega  ==  matrix
+
+matrix((00,,  MM,,  TT))
+
+ 
+
+ 
+
+ 
+
+  omega
+
+omega[[,,  11]]  ==  log
+
+log((initial_distribution
+
+initial_distribution  **  bb[[,,  vv[[11]]]]))
+
+ 
+
+ for
+
+for((tt in
+
+in  22::TT)){{
+
+ 
+
+ for
+
+for((ss  in
+
+in  11::MM))  {{
+
+ 
+
+      probs
+
+probs  ==  omega
+
+omega[[,,  tt  --  11]]  ++  log
+
+log((aa[[,,  ss]]))  ++  log
+
+log((bb[[ss,,  vv[[tt]]]]))
+
+ 
+
+      prev
+
+prev[[tt  --  11,,  ss]]  ==  which
+
+which..max
+
+max((probs
+
+probs))
+
+ 
+
+      omega
+
+omega[[ss,,  tt]]  ==  max
+
+max((probs
+
+probs))
+
+ 
+
+    }}
+
+ 
+
+  }}
+
+ 
+
+ 
+
+ 
+
+  SS  ==  rep
+
+rep((00,,  TT))
+
+ 
+
+  last_state
+
+last_state==which
+
+which..max
+
+max((omega
+
+omega[[,,ncol
+
+ncol((omega
+
+omega))]]))
+
+ 
+
+  SS[[11]]==last_state
+
+last_state
+
+ 
+
+ 
+
+ 
+
+  jj==22
+
+ 
+
+ for
+
+for((ii  in
+
+in  ((TT--11))::11)){{
+
+ 
+
+    SS[[jj]]==prev
+
+prev[[ii,,last_state
+
+last_state]]  
+
+ 
+
+    last_state
+
+last_state==prev
+
+prev[[ii,,last_state
+
+last_state]]  
+
+ 
+
+    jj==jj++11
+
+ 
+
+  }}
+
+ 
+
+ 
+
+ 
+
+  SS[[which
+
+which((SS==
+
+==11))]]=='A'
+
+'A'
+
+ 
+
+  SS[[which
+
+which((SS==
+
+==22))]]=='B'
+
+'B'
+
+ 
+
+ 
+
+ 
+
+  SS==rev
+
+rev((SS))
+
+ 
+
+ 
+
+ 
+
+ return
+
+return((SS))
+
+ 
+
+ 
+
+}}
+
+11
+
+22
+
+33
+
+44
+
+55
+
+66
+
+77
+
+88
+
+99
+
+10
+
+10
+
+11
+
+11
+
+12
+
+12
+
+13
+
+13
+
+14
+
+14
+
+15
+
+15
+
+16
+
+16
+
+17
+
+17
+
+18
+
+18
+
+19
+
+19
+
+20
+
+20
+
+21
+
+21
+
+22
+
+22
+
+23
+
+23
+
+24
+
+24
+
+25
+
+25
+
+26
+
+26
+
+27
+
+27
+
+28
+
+28
+
+29
+
+29
+
+30
+
+30
+
+31
+
+31
+
+32
+
+32
+
+33
+
+33
+
+34
+
+34
+
+35
+
+35
+
+36
+
+36
+
+37
+
+37
+
+38
+
+38
+
+39
+
+39
+
+40
+
+40
+
+41
+
+41
+
+42
+
+42
+
+forward
+
+forward  ==  function
+
+function((vv,,  aa,,  bb,,  initial_distribution
+
+initial_distribution)){{
+
+ 
+
+ 
+
+ 
+
+ TT  ==  length
+
+length((vv))
+
+ 
+
+  MM  ==  nrow
+
+nrow((aa))
+
+ 
+
+  alpha
+
+alpha  ==  matrix
+
+matrix((00,,  TT,,  MM))
+
+ 
+
+ 
+
+ 
+
+  alpha
+
+alpha[[11,,  ]]  ==  initial_distribution
+
+initial_distribution**bb[[,,  vv[[11]]]]
+
+ 
+
+ 
+
+ 
+
+ for
+
+for((tt in
+
+in  22::TT)){{
+
+ 
+
+    tmp
+
+tmp  ==  alpha
+
+alpha[[tt--11,,  ]]  %%**%%  aa
+
+ 
+
+    alpha
+
+alpha[[tt,,  ]]  ==  tmp
+
+tmp  **  bb[[,,  vv[[tt]]]]
+
+ 
+
+  }}
+
+ 
+
+ return
+
+return((alpha
+
+alpha))
+
+}}
+
+ 
+
+backward
+
+backward  ==  function
+
+function((vv,,  aa,,  bb)){{
+
+ 
+
+ TT  ==  length
+
+length((vv))
+
+ 
+
+  MM  ==  nrow
+
+nrow((aa))
+
+ 
+
+  beta
+
+beta  ==  matrix
+
+matrix((11,,  TT,,  MM))
+
+ 
+
+ 
+
+ 
+
+ for
+
+for((tt in
+
+in  ((TT--11))::11)){{
+
+ 
+
+    tmp
+
+tmp  ==  as
+
+as..matrix
+
+matrix((beta
+
+beta[[tt++11,,  ]]  **  bb[[,,  vv[[tt++11]]]]))
+
+ 
+
+    beta
+
+beta[[tt,,  ]]  ==  tt((aa  %%**%%  tmp
+
+tmp))
+
+ 
+
+  }}
+
+ 
+
+ return
+
+return((beta
+
+beta))
+
+}}
+
+ 
+
+ 
+
+BaumWelch
+
+BaumWelch  ==  function
+
+function((vv,,  aa,,  bb,,  initial_distribution
+
+initial_distribution,,  nn..iter
+
+iter  ==
+
+ 
+
+ 
+
+ for
+
+for((ii  in
+
+in  11::nn..iter
+
+iter)){{
+
+ 
+
+ TT  ==  length
+
+length((vv))
+
+ 
+
+    MM  ==  nrow
+
+nrow((aa))
+
+ 
+
+    KK==ncol
+
+ncol((bb))
+
+ 
+
+    alpha
+
+alpha  ==  forward
+
+forward((vv,,  aa,,  bb,,  initial_distribution
+
+initial_distribution))
+
+ 
+
+    beta
+
+beta  ==  backward
+
+backward((vv,,  aa,,  bb))
+
+ 
+
+    xi
+
+xi  ==  array
+
+array((00,,  dim
+
+dim==cc((MM,,  MM,,  TT--11))))
+
+ 
+
+ 
+
+ 
+
+ for
+
+for((tt in
+
+in  11::TT--11)){{
+
+ 
+
+      denominator
+
+denominator  ==  ((((alpha
+
+alpha[[tt,,]]  %%**%%  aa))  **  bb[[,,vv[[tt++11]]]]))  %%**%%  matrix
+
+matrix
+
+ 
+
+ for
+
+for((ss  in
+
+in  11::MM)){{
+
+ 
+
+        numerator
+
+numerator  ==  alpha
+
+alpha[[tt,,ss]]  **  aa[[ss,,]]  **  bb[[,,vv[[tt++11]]]]  **  beta
+
+beta[[tt
+
+
+
+
+
+
+
+
+
+
+We can compare our output with the HMM library. Here is the result.
+
+
+
+42
+
+42
+
+43
+
+43
+
+44
+
+44
+
+45
+
+45
+
+46
+
+46
+
+47
+
+47
+
+48
+
+48
+
+49
+
+49
+
+50
+
+50
+
+51
+
+51
+
+52
+
+52
+
+53
+
+53
+
+54
+
+54
+
+55
+
+55
+
+56
+
+56
+
+57
+
+57
+
+58
+
+58
+
+59
+
+59
+
+60
+
+60
+
+61
+
+61
+
+62
+
+62
+
+63
+
+63
+
+64
+
+64
+
+65
+
+65
+
+66
+
+66
+
+67
+
+67
+
+68
+
+68
+
+69
+
+69
+
+70
+
+70
+
+71
+
+71
+
+72
+
+72
+
+73
+
+73
+
+74
+
+74
+
+75
+
+75
+
+76
+
+76
+
+77
+
+77
+
+78
+
+78
+
+79
+
+79
+
+80
+
+80
+
+81
+
+81
+
+82
+
+82
+
+83
+
+83
+
+84
+
+84
+
+85
+
+85
+
+86
+
+86
+
+87
+
+87
+
+88
+
+88
+
+89
+
+89
+
+90
+
+90
+
+91
+
+91
+
+92
+
+92
+
+93
+
+93
+
+94
+
+94
+
+95
+
+95
+
+96
+
+96
+
+97
+
+97
+
+98
+
+98
+
+99
+
+99
+
+100
+
+100
+
+101
+
+101
+
+102
+
+102
+
+103
+
+103
+
+104
+
+104
+
+105
+
+105
+
+106
+
+106
+
+107
+
+107
+
+108
+
+108
+
+109
+
+109
+
+ 
+
+        numerator
+
+numerator  ==  alpha
+
+alpha[[tt,,ss]]  **  aa[[ss,,]]  **  bb[[,,vv[[tt++11]]]]  **  beta
+
+beta[[tt
+
+ 
+
+        xi
+
+xi[[ss,,,,tt]]==numerator
+
+numerator//as
+
+as..vector
+
+vector((denominator
+
+denominator))
+
+ 
+
+      }}
+
+ 
+
+    }}
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+    xi
+
+xi..all
+
+all..tt  ==  rowSums
+
+rowSums((xi
+
+xi,,  dims
+
+dims  ==  22))
+
+ 
+
+    aa  ==  xi
+
+xi..all
+
+all..tt//rowSums
+
+rowSums((xi
+
+xi..all
+
+all..tt))
+
+ 
+
+ 
+
+ 
+
+    gamma
+
+gamma  ==  apply
+
+apply((xi
+
+xi,,  cc((11,,  33)),,  sum
+
+sum))  
+
+ 
+
+ 
+
+    gamma
+
+gamma  ==  cbind
+
+cbind((gamma
+
+gamma,,  colSums
+
+colSums((xi
+
+xi[[,,  ,,  TT--11]]))))
+
+ 
+
+ for
+
+for((ll  in
+
+in  11::KK)){{
+
+ 
+
+      bb[[,,  ll]]  ==  rowSums
+
+rowSums((gamma
+
+gamma[[,,  which
+
+which((vv==
+
+==ll))]]))
+
+ 
+
+    }}
+
+ 
+
+    bb  ==  bb//rowSums
+
+rowSums((bb))
+
+ 
+
+ 
+
+ 
+
+  }}
+
+ 
+
+ return
+
+return((list
+
+list((aa  ==  aa,,  bb  ==  bb,,  initial_distribution
+
+initial_distribution  ==  initial_distribution
+
+initial_distribution
+
+}}
+
+ 
+
+ 
+
+Viterbi
+
+Viterbi==function
+
+function((vv,,aa,,bb,,initial_distribution
+
+initial_distribution))  {{
+
+ 
+
+ 
+
+ 
+
+ TT  ==  length
+
+length((vv))
+
+ 
+
+  MM  ==  nrow
+
+nrow((aa))
+
+ 
+
+  prev
+
+prev  ==  matrix
+
+matrix((00,,  TT--11,,  MM))
+
+ 
+
+  omega
+
+omega  ==  matrix
+
+matrix((00,,  MM,,  TT))
+
+ 
+
+ 
+
+ 
+
+  omega
+
+omega[[,,  11]]  ==  log
+
+log((initial_distribution
+
+initial_distribution  **  bb[[,,  vv[[11]]]]))
+
+ 
+
+ for
+
+for((tt in
+
+in  22::TT)){{
+
+ 
+
+ for
+
+for((ss  in
+
+in  11::MM))  {{
+
+ 
+
+      probs
+
+probs  ==  omega
+
+omega[[,,  tt  --  11]]  ++  log
+
+log((aa[[,,  ss]]))  ++  log
+
+log((bb[[ss,,  vv[[tt]]]]))
+
+ 
+
+      prev
+
+prev[[tt  --  11,,  ss]]  ==  which
+
+which..max
+
+max((probs
+
+probs))
+
+ 
+
+      omega
+
+omega[[ss,,  tt]]  ==  max
+
+max((probs
+
+probs))
+
+ 
+
+    }}
+
+ 
+
+  }}
+
+ 
+
+ 
+
+ 
+
+  SS  ==  rep
+
+rep((00,,  TT))
+
+ 
+
+  last_state
+
+last_state==which
+
+which..max
+
+max((omega
+
+omega[[,,ncol
+
+ncol((omega
+
+omega))]]))
+
+ 
+
+  SS[[11]]==last_state
+
+last_state
+
+ 
+
+ 
+
+ 
+
+  jj==22
+
+ 
+
+ for
+
+for((ii  in
+
+in  ((TT--11))::11)){{
+
+ 
+
+    SS[[jj]]==prev
+
+prev[[ii,,last_state
+
+last_state]]  
+
+ 
+
+    last_state
+
+last_state==prev
+
+prev[[ii,,last_state
+
+last_state]]  
+
+ 
+
+    jj==jj++11
+
+ 
+
+  }}
+
+ 
+
+ 
+
+ 
+
+  SS[[which
+
+which((SS==
+
+==11))]]=='A'
+
+'A'
+
+ 
+
+  SS[[which
+
+which((SS==
+
+==22))]]=='B'
+
+'B'
+
+ 
+
+ 
+
+ 
+
+  SS==rev
+
+rev((SS))
+
+ 
+
+ 
+
+ 
+
+ return
+
+return((SS))
+
+ 
+
+ 
+
+}}
+
+ 
+
+data
+
+data  ==  read
+
+read..csv
+
+csv(("data_r.csv"
+
+"data_r.csv"))
+
+ 
+
+MM==22;;  KK==33
+
+AA  ==  matrix
+
+matrix((11,,  MM,,  MM))
+
+AA  ==  AA//rowSums
+
+rowSums((AA))
+
+BB  ==  matrix
+
+matrix((11::66,,  MM,,  KK))
+
+BB  ==  BB//rowSums
+
+rowSums((BB))
+
+initial_distribution
+
+initial_distribution  ==  cc((11//22,,  11//22))
+
+ 
+
+myout
+
+myout  ==  BaumWelch
+
+BaumWelch((data
+
+data$$Visible
+
+Visible,,  AA,,  BB,,  initial_distribution
+
+initial_distribution,,  
+
+myout
+
+myout..hidden
+
+hidden==Viterbi
+
+Viterbi((data
+
+data$$Visible
+
+Visible,,myout
+
+myout$$aa,,myout
+
+myout$$bb,,initial_distribution
+
+initial_distribution
+
+
+
+
+
+
+
+
+
+
+Output:
+
+Output:
+
+Conclusion:
+
+This “Implement Viterbi Algorithm in Hidden Markov Model using Python and R”
+
+article was the last part of the Introduction to the Hidden Markov Model tutorial
+
+series. I believe these articles will help anyone to understand HMM. Here we went
+
+through the algorithm for the sequence discrete visible symbols, the equations are
+
+little bit different for continuous visible symbols. Please post comment in case you
+
+need more clarification to any of the section.
+
+Do share this article if you find it useful. The full code can be found at:
+
+Code
+
+Also, here are the list of all the articles in this series:
+
+1. Introduction to Hidden Markov Model
+
+2. Forward and Backward Algorithm in Hidden Markov Model
+
+3. Derivation and implementation of Baum Welch Algorithm for Hidden Markov
+
+Model
+
+4. Implement Viterbi Algorithm in Hidden Markov Model using Python and R
+
+Related
+
+Related
+
+
+
+Introduction to Hidden Markov Model
+
+
+
+
+
+
+
+11
+
+22
+
+33
+
+44
+
+55
+
+66
+
+77
+
+88
+
+99
+
+library
+
+library((HMM
+
+HMM))
+
+hmm
+
+hmm  ==initHMM
+
+initHMM((cc(("A"
+
+"A",,  "B"
+
+"B")),,  cc((11,,  22,,  33)),,  
+
+ 
+
+              startProbs
+
+startProbs  ==  initial_distribution
+
+initial_distribution,,
+
+ 
+
+              transProbs
+
+transProbs  ==  AA,,  emissionProbs
+
+emissionProbs  ==  BB))
+
+ 
+
+true
+
+true..out
+
+out  ==  baumWelch
+
+baumWelch((hmm
+
+hmm,,  data
+
+data$$Visible
+
+Visible,,  maxIterations
+
+maxIterations==100
+
+100,,  pseudoCount
+
+pseudoCount
+
+ 
+
+true
+
+true..viterbi
+
+viterbi  ==  viterbi
+
+viterbi((true
+
+true..out
+
+out$$hmm
+
+hmm,,  data
+
+data$$Visible
+
+Visible))
+
+sum
+
+sum((true
+
+true..viterbi
+
+viterbi  !!==  myout
+
+myout..hidden
+
+hidden))
+
+11
+
+22
+
+33
+
+&gt;&gt;  sum
+
+sum((true
+
+true..viterbi
+
+viterbi  !!==  myout
+
+myout..hidden
+
+hidden))
+
+[[11]]  00
+
+&gt;&gt;  
+
+
+
+
+
+
+
+
+
+
+
+
+Filed Under: Machine Learning
+
+Tagged With: Decoding Problem, Dynamic Programming, Hidden Markov Model,
+
+Implementation, Machine Learning, Python, R, step by step, Viterbi
+
+Comments
+
+Comments
+
+Ahmad says
+
+June 23, 2020 at 11:39 am
+
+Hi,
+
+This is the best tutorial out there as i find the example really easy,
+
+easiest tbh.
+
+But is there anyway for me to show the Probabilities of Sequence ? like
+
+Log Probabilities of V
+
+Thank you
+
+Forward and Backward Algorithm in Hidden Markov Model
+
+
+
+Derivation and implementation of Baum Welch Algorithm for Hidden Markov
+
+Model
+
+
+
+
+
+Subscribe to stay in loop
+
+Subscribe to stay in loop
+
+ indicates required
+
+ 
+
+Subscribe
+
+*
+
+
+
+Email Address *
+
+
+
+
+
+
+
+
+
+
+Reply
+
+Nur Ghani says
+
+June 26, 2020 at 10:41 pm
+
+Morning, excuse me. I want to ask about the data used. where can i get
+
+the data_python.csv?
+
+Reply
+
+Abhisek Jana says
+
+June 28, 2020 at 11:48 pm
+
+Hi,
+
+Please click on the ‘Code’ Button to access the files in the github
+
+repository.
+
+Here is the same link:
+
+https://github.com/adeveloperdiary/HiddenMarkovModel/tree/master/part4
+
+Thanks,
+
+Abhisek Jana
+
+Reply
+
+Nahuel says
+
+August 17, 2020 at 8:14 pm
+
+Hello Abhisek Jana, thank you for this good explanation. I have one
+
+doubt, i use the Baum-Welch algorithm as you describe but i don’t get
+
+the same values for the A and B matrix, as a matter of fact the value
+
+a_11 is practically 0 with 100 iterations, so when is evaluated in the
+
+viterbi algorithm using log produce an error: “RuntimeWarning: divide by
+
+zero encountered in log”
+
+It’s really important to use np.log? if you can explain why is that log
+
+helps to avoid underflow error and your thoughts about why i don’t get
+
+the same values for A and B, it would be much appreciated
+
+Reply
+
+Lam says
+
+October 12, 2020 at 4:14 am
+
+why log? here is the problem if u multiply 0.5*0.5*….. n times
+
+it becomes zero if u assign log no this kinds of problem
+
+original a*b then becomes log(a)+log(b)
+
+Reply
+
+
+
+
+
+
+
+
+
+
+
+
+New_at_coding says
+
+November 16, 2020 at 11:37 pm
+
+Thank you for the awesome tutorial. I noticed that the comparison of the
+
+output with the HMM library at the end was done using R only. Can you
+
+share the python code please? Thanks again.
+
+Reply
+
+KTZ says
+
+May 14, 2021 at 7:42 am
+
+Hi
+
+Is there a way to train the HMM using the above algorithms and then
+
+use the obtained parameters to predict the hidden states for the future.
+
+Most of the HMM libraries don’t have a predict() or forecast() function.
+
+Any workarounds to implement something like train/test split and
+
+predict() as done in traditional machine learning models?
+
+Reply
+
+nazia saleem says
+
+July 13, 2021 at 6:13 am
+
+how we make comparision between markov model and hidden markov
+
+model.a case study of pakistan stock exchange data. can any one guide
+
+me plzzzzzzzzzz
+
+Reply
+
+m says
+
+January 13, 2022 at 4:38 pm
+
+Hello.
+
+How can we determine accuracy of algorithm?
+
+Reply
+
+Tari says
+
+January 22, 2022 at 5:25 am
+
+Hello,
+
+Thank you very much. This is the best example I got.
+
+
+
+
+Now, I am learning about HMM with multi observations.
+
+Do you have an example and the code?
+
+I would be very grateful if you could help.
+
+Best regards.
+
+Reply
+
+Erlon Andrade says
+
+January 27, 2022 at 1:53 am
+
+Hi Abhisek Jana, how are you?
+
+Thanks for the series of very clear and practical tutorials.
+
+I would like to ask a question, would the ‘later’ function of the HMM
+
+package be the proper function to infer predictions for the later states?
+
+If not, is there any way to make predictions?
+
+I didn’t find any package with predict for the HMM models.
+
+Thank so much.
+
+Reply
+
+Leave a Reply
+
+Leave a Reply
+
+Your email address will not be published. Required fields are marked *
+
+Comment
+
+Name *
+
+Email *
+
+
+Website
+
+Save my name, email, and website in this browser for the next time I comment.
+
+Post Comment
+
+This site uses Akismet to reduce spam. Learn how your comment data is processed.
+
+Recent Top Posts
+
+
+Forward and Backward Algorithm in Hidden Markov Model
+
+How to implement Sobel edge detection using Python from scratch
+
+Applying Gaussian Smoothing to an Image using Python from scratch
+
+Implement Viterbi Algorithm in Hidden Markov Model using Python and
+
+R
+
+
+
+
+
+
+
+
+
+
+How to visualize Gradient Descent using Contour plot in Python
+
+Support Vector Machines for Beginners – Duality Problem
+
+Understanding and implementing Neural Network with SoftMax in
+
+Python from scratch
+
+Support Vector Machines for Beginners – Linear SVM
+
+
+
+
+
+
+
+
+
+
+Machine Translation using Attention with PyTorch
+
+How to prepare Imagenet dataset for Image Classification
+
+Search in this website
+
+Search this website
+
+Top Posts
+
+How to Create Spring Boot Application Step by Step
+
+215.5k views | 9 comments
+
+How to easily encrypt and decrypt text in Java
+
+96.3k views | 8 comments
+
+
+
+
+
+
+How to implement Sobel edge detection using Python from scratch
+
+90.9k views | 4 comments
+
+How to deploy Spring Boot application in IBM Liberty and WAS 8.5
+
+83k views | 8 comments
+
+How to integrate React and D3 – The right way
+
+77.6k views | 30 comments
+
+How to create RESTFul Webservices using Spring Boot
+
+71.4k views | 24 comments
+
+Applying Gaussian Smoothing to an Image using Python from scratch
+
+65.1k views | 6 comments
+
+How to convert XML to JSON in Java
+
+56.1k views | 5 comments
+
+Implement Viterbi Algorithm in Hidden Markov Model using Python and R
+
+54.6k views | 11 comments
+
+Forward and Backward Algorithm in Hidden Markov Model
+
+54.5k views | 10 comments
+
+Tags
+
+Angular 1.x Angular 2.x Angular JS BPM Cache Computer Vision D3.js
+
+DataBase Data Science Deep Learning Java JavaScript
+
+
+jBPM Machine Learning Microservice NLP React JS REST SAAJ Server
+
+Spring Boot Tips Tools Visualization WebService XML Yeoman
+
+Recent Top Posts
+
+Forward and Backward Algorithm in Hidden Markov Model
+
+How to implement Sobel edge detection using Python from scratch
+
+Applying Gaussian Smoothing to an Image using Python from scratch
+
+Implement Viterbi Algorithm in Hidden Markov Model using Python and R
+
+Derivation and implementation of Baum Welch Algorithm for Hidden Markov Model
+
+Support Vector Machines for Beginners - Duality Problem
+
+Understanding and implementing Neural Network with SoftMax in Python from scratch
+
+How to visualize Gradient Descent using Contour plot in Python
+
+An Introduction to Spring Boot
+
+Support Vector Machines for Beginners - Linear SVM
+
+
+Recent Posts
+
+Machine Translation using Attention with PyTorch
+
+Machine Translation using Recurrent Neural Network and PyTorch
+
+Support Vector Machines for Beginners – Training Algorithms
+
+Support Vector Machines for Beginners – Kernel SVM
+
+Support Vector Machines for Beginners – Duality Problem
+
+
+
+Copyright © 2023 A Developer Diary�
+
+�
+
+Processing math: 18%
+

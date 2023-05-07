@@ -1,0 +1,822 @@
+
+
+
+
+
+
+
+Perplexity Review
+
+The notes on Perplexity, describe how we can get a measure of how well a given n-gram model predicts strings in a test set of data. Roughly
+
+speaking:
+
+The better the model gets, the higher a probability it will assign to each \(P(w_i|w_{i-1})\) .
+
+The higher the probabilities, the lower the perplexities.
+
+The lower the perplexities, the better the model
+
+As a quick demonstration, I’ve written some code here in collapsible sections to build a bigram model of Frankenstein, and to get the conditional
+
+probabilities for every bigram in an input sentence.
+
+python
+
+python
+
+getbook()  function
+
+python
+
+Downloading Project Gutenberg ID 84
+
+python
+
+From a file string to ngrams
+
+python
+
+Getting bigrams and unigrams from frankenstein
+
+python
+
+Getting counts of bigrams and unigrams
+
+python
+
+A function to get the conditional probability of a bigram
+
+python
+
+A function to get the conditional probability of every ngram in a sentence
+
+python
+
+Given a sentence, get the conditional probability expression, for printing.
+
+Having built the bigram model with the code above, we can take this sample sentence:
+
+I saw the old man.
+
+We can calculate the conditional probability of every word in the sentence given the word before, as well as the surprisal for each word.
+
+python
+
+conditional
+
+probability
+
+surprisal
+
+How we work around the problems of data sparsity
+
+Josef Fruehwald
+
+October 11, 2022
+
+
+
+
+
+
+
+import nltk
+
+from collections import Counter
+
+import gutenbergpy.textget
+
+from tabulate import tabulate
+
+import numpy as np
+
+getbook(book = 84, outfile = "gen/frankenstein.txt")
+
+1
+
+sentence = "I saw the old man."
+
+cond_probs = get_sentence_probs(sentence, bigram_count, unigram_count, n = 2)
+
+cond_surp = [-np.log2(x) for x in cond_probs]
+
+cond_strings = get_conditional_strings(sentence, n = 2)
+
+ngram - Smoothing
+
+
+
+
+
+
+
+
+P(I | &lt;s&gt;)
+
+0.1876
+
+2.4139
+
+P(saw | I)
+
+0.0162
+
+5.9476
+
+P(the | saw)
+
+0.2340
+
+2.0952
+
+P(old | the)
+
+0.0064
+
+7.2865
+
+P(man | old)
+
+0.6800
+
+0.5564
+
+P(. | man)
+
+0.1364
+
+2.8745
+
+P(&lt;/s&gt; | .)
+
+0.9993
+
+0.0011
+
+conditional
+
+probability
+
+surprisal
+
+Summing up the surprisal column, we get the total surprisal of the sentence (about 21 bits). We can then get the number of bits per word (about 3)
+
+which gives us our ngram perplexity for the sentence (about 8).
+
+total surprisal
+
+surprisal/word
+
+perplexity
+
+21.1752
+
+3.0250
+
+8.1400
+
+A familiar problem approaches
+
+But, not everything is so neat and tidy. Let’s try this again for the sentence
+
+I saw the same man.
+
+python
+
+conditional
+
+probability
+
+surprisal
+
+P(I | &lt;s&gt;)
+
+0.1876
+
+2.4139
+
+P(saw | I)
+
+0.0162
+
+5.9476
+
+P(the | saw)
+
+0.2340
+
+2.0952
+
+P(same | the)
+
+0.0154
+
+6.0235
+
+P(man | same)
+
+0.0000
+
+∞
+
+∞
+
+P(. | man)
+
+0.1364
+
+2.8745
+
+P(&lt;/s&gt; | .)
+
+0.9993
+
+0.0011
+
+total surprisal
+
+surprisal/word
+
+perplexity
+
+∞
+
+∞
+
+∞
+
+∞
+
+∞
+
+∞!
+
+It looks like the bigram ("same", "man") just didn’t appear in the novel. This is zero percolates up through all of our calculations.
+
+\[ C(\text{same man}) = 0 \]
+
+\[ P(\text{same man}) = \frac{C(\text{same man)}}{N} = \frac{0}{N} = 0 \]
+
+\[ P(\text{man}~|~\text{same}) = \frac{P(\text{same man)}}{P(\text{same)}} = \frac{0}{P(\text{same})} = 0 \]
+
+sentence = "I saw the same man."
+
+cond_probs = get_sentence_probs(sentence, bigram_count, unigram_count, n = 2)
+
+cond_surp = [-np.log2(x) for x in cond_probs]
+
+cond_strings = get_conditional_strings(sentence, n = 2)
+
+
+
+
+\[ s(\text{man}~|~\text{same}) = -\log_2(P(\text{man}~|~\text{same})) = -\log_2(0) = \infty \]
+
+\[ pp(\text{I saw the same man.)} = \frac{\sum_{i=1}^Ns(w_i|w_{i-1})}{N} = \frac{\dots+\infty+\dots}{N} = \infty \]
+
+In other words, our bigram model’s “mind” is completely blown by a sentence with the sequence same man in it.
+
+This is, of course data sparsity rearing its head again. On the one hand, we are building an n-gram model out of a fairly small corpus. But on the
+
+other, the data sparsity problem will never go away, and we are always going to be left with the following two issues:
+
+Out Of Vocabulary items
+
+Missing ngrams of words that were in the vocabulary.
+
+OOV - Out of Vocabulary
+
+“Out Of Vocabulary”, commonly referred to OOV, problems, are going to come up if you ever do any computational work with language of any
+
+variety.
+
+OOV Example
+
+A lot of phoneticians today use “forced alignment”, which tries to time align words and phones to audio. Step one of the process is taking a transcription,
+
+tokenizing it, then looking up each token in a pre-specified pronunciation dictionary. A commonly used pronunciation dictionary is the CMU pronunciation
+
+dictionary. Here’s what a few entries of it around Frankenstein look like
+
+...
+
+FRANKENFOOD  F R AE1 NG K AH0 N F UW2 D
+
+FRANKENHEIMER  F R AE1 NG K AH0 N HH AY2 M ER0
+
+FRANKENSTEIN  F R AE1 NG K AH0 N S T AY2 N
+
+FRANKENSTEIN(1)  F R AE1 NG K AH0 N S T IY2 N
+
+FRANKENSTEIN'S  F R AE1 NG K AH0 N S T AY2 N Z
+
+FRANKENSTEIN'S(1)  F R AE1 NG K AH0 N S T IY2 N Z
+
+FRANKFORT  F R AE1 NG K F ER0 T
+
+FRANKFORT'S  F R AE1 NG K F ER0 T S
+
+FRANKFURT  F R AE1 NG K F ER0 T
+
+...
+
+Let’s say I tokenized this sentence and looked up each word
+
+I ate the po’boy.
+
+We’d wind up with this:
+
+I  AY1
+
+ATE  EY1 T
+
+THE  DH AH0
+
+&lt;UNK&gt;  &lt;UNK&gt;
+
+We’re getting &lt;UNK&gt; for “po’boy” because it’s not in the CMU dictionary. It’s an Out Of Vocabulary, or OOV word.
+
+Our example of perplexity blowing up was due to a specific bigram, ('same', 'man') not appearing in the corpus, even though each individual word does
+
+appear. The same thing will happen if any individual word in a sentence is oov.
+
+python
+
+conditional
+
+probability
+
+surprisal
+
+P(I | &lt;s&gt;)
+
+0.1876
+
+2.4139
+
+P(ate | I)
+
+0.0007
+
+10.4712
+
+P(a | ate)
+
+0.2500
+
+2.0000
+
+P(cool | a)
+
+0.0000
+
+∞
+
+∞
+
+Figure 1: Our our ngram model, upon seeing same man
+
+# literally blowing the mind of a victorian child eating a cool ranch dorito
+
+sentence = "I ate a cool ranch Dorito."
+
+cond_probs = get_sentence_probs(sentence, bigram_count, unigram_count, n = 2)
+
+cond_surp = [-np.log2(x) for x in cond_probs]
+
+cond_strings = get_conditional_strings(sentence, n = 2)
+
+
+
+
+
+
+
+
+P(ranch | cool)
+
+0.0000
+
+∞
+
+∞
+
+P(Dorito | ranch)
+
+0.0000
+
+∞
+
+∞
+
+P(. | Dorito)
+
+0.0000
+
+∞
+
+∞
+
+P(&lt;/s&gt; | .)
+
+0.9993
+
+0.0011
+
+conditional
+
+probability
+
+surprisal
+
+Solutions?
+
+One approach SLP suggests is to convert every vocabulary item that occurs below a certain frequency to &lt;UNK&gt;, then re-estimate all of the ngram
+
+values. Here, I’m
+
+python
+
+A function to get the conditional probability of every ngram in a sentence
+
+conditional
+
+probability
+
+surprisal
+
+P(I | &lt;s&gt;)
+
+0.1876
+
+2.4139
+
+P(ate | I)
+
+0.0007
+
+10.4712
+
+P(a | ate)
+
+0.2500
+
+2.0000
+
+P(&lt;UNK&gt; | a)
+
+0.1173
+
+3.0912
+
+P(. | &lt;UNK&gt;)
+
+0.0600
+
+4.0588
+
+P(&lt;/s&gt; | .)
+
+0.9993
+
+0.0011
+
+Converting low frequency words to &lt;UNK&gt; means that now when the ngram model meets a word it doesn’t know, like Dorito, there is still some
+
+probability it can assign.
+
+Real Zeros
+
+This &lt;UNK&gt;ification of the data doesn’t solve everything, though. Here’s the longer sentence:
+
+conditional
+
+probability
+
+surprisal
+
+P(I | &lt;s&gt;)
+
+0.1876
+
+2.4139
+
+# Getting a list of unigrams that occurred once
+
+to_unk = [x for x in unigram_count if unigram_count[x] == 1]
+
+# &lt;UNK&gt; conversion
+
+unigram_unk = [("&lt;UNK&gt;",) if x in to_unk else x for x in unigram]
+
+bigram_unk = [("&lt;UNK&gt;", "&lt;UNK&gt;") if ((x[0],) in to_unk and (x[1],) in to_unk) else
+
+              ("&lt;UNK&gt;", x[1]) if (x[0],) in to_unk else
+
+              (x[0], "&lt;UNK&gt;") if (x[1],) in to_unk else
+
+              x for x in bigram ]
+
+# &lt;UNK&gt; count              
+
+unigram_unk_count = Counter(unigram_unk)
+
+bigram_unk_count = Counter(bigram_unk)
+
+sentence = "I ate a Dorito."
+
+cond_probs = get_sentence_unk_probs(sentence, bigram_unk_count, unigram_unk_count, n = 2)
+
+cond_surp = [-np.log2(x) for x in cond_probs]
+
+cond_strings = get_conditional_unk_strings(sentence, unigram_count, n = 2)
+
+sentence = "I ate a cool ranch Dorito."
+
+cond_probs = get_sentence_unk_probs(sentence, bigram_unk_count, unigram_unk_count, n = 2)
+
+cond_surp = [-np.log2(x) for x in cond_probs]
+
+cond_strings = get_conditional_unk_strings(sentence, unigram_unk_count, n = 2)
+
+
+
+
+P(ate | I)
+
+0.0007
+
+10.4712
+
+P(a | ate)
+
+0.2500
+
+2.0000
+
+P(cool | a)
+
+0.0000
+
+∞
+
+∞
+
+P(&lt;UNK&gt; | cool)
+
+0.0000
+
+∞
+
+∞
+
+P(&lt;UNK&gt; | &lt;UNK&gt;)
+
+0.0391
+
+4.6782
+
+P(. | &lt;UNK&gt;)
+
+0.0600
+
+4.0588
+
+P(&lt;/s&gt; | .)
+
+0.9993
+
+0.0011
+
+conditional
+
+probability
+
+surprisal
+
+The problem here is that there is a known word, cool, that just happens never to occur in the bigrams (a, cool) or (cool, &lt;UNK&gt;). Maybe what we want
+
+is some way of assigning a small probability, of bigrams that could have happened, but didn’t.
+
+Add 1 smoothing (Laplace Smoothing)
+
+The first, simple idea, is to make a grid of all possible bigrams, and add 1 to all of their counts.
+
+python
+
+A function to get the add 1 smoothed conditional probability of a bigram
+
+python
+
+A function to get the conditional probability of every ngram in a sentence
+
+conditional
+
+probability
+
+surprisal
+
+P(I | &lt;s&gt;)
+
+0.0797
+
+3.6498
+
+P(ate | I)
+
+0.0004
+
+11.1921
+
+P(a | ate)
+
+0.0005
+
+11.0307
+
+P(cool | a)
+
+0.0002
+
+12.4299
+
+P(&lt;UNK&gt; | cool)
+
+0.0002
+
+12.0300
+
+P(&lt;UNK&gt; | &lt;UNK&gt;)
+
+0.0180
+
+5.7941
+
+P(. | &lt;UNK&gt;)
+
+0.0276
+
+5.1784
+
+P(&lt;/s&gt; | .)
+
+0.3912
+
+1.3539
+
+2 things to notice here:
+
+1. There are no more zeros!
+
+2. The probabilities are all different!
+
+The probabilities jumped around because by adding 1 to every bigram count, we’ve given many bigrams a larger portion of the probability pie than
+
+they had before, and in a probability space, everything has to sum to 1. So that means we’ve also taken away a portion of the probability space from
+
+many bigrams.
+
+conditional
+
+bigram count
+
+w1 count
+
+add 1 prob
+
+implied counts
+
+P(I | &lt;s&gt;)
+
+577
+
+3,075
+
+0.0797
+
+244.9828
+
+sentence = "I ate a cool ranch Dorito." 
+
+cond_probs = get_sentence_unk_probs_add1(sentence, bigram_unk_count, unigram_unk_count, n = 2)
+
+cond_surp = [-np.log2(x) for x in cond_probs]
+
+cond_strings = get_conditional_unk_strings(sentence, unigram_unk_count, n = 2)
+
+
+P(ate | I)
+
+2
+
+2,839
+
+0.0004
+
+1.2134
+
+P(a | ate)
+
+1
+
+4
+
+0.0005
+
+0.0019
+
+P(cool | a)
+
+0
+
+1,338
+
+0.0002
+
+0.2425
+
+P(&lt;UNK&gt; | cool)
+
+0
+
+2
+
+0.0002
+
+0.0005
+
+P(&lt;UNK&gt; | &lt;UNK&gt;)
+
+138
+
+3,533
+
+0.0180
+
+63.6700
+
+P(. | &lt;UNK&gt;)
+
+212
+
+3,533
+
+0.0276
+
+97.5663
+
+P(&lt;/s&gt; | .)
+
+2,686
+
+2,688
+
+0.3912
+
+1,051.6389
+
+conditional
+
+bigram count
+
+w1 count
+
+add 1 prob
+
+implied counts
+
+Absolute Discounting
+
+The add 1 method effectively shaved off a little bit of probability from bigrams we did see to give it to bigrams we didn’t see. For example, we had 2
+
+observations of (I, ate), but after redistributing probabilities, we’d effectively shaved off 0.79 observations. Things are even more extreme for other
+
+bigrams. Like (&lt;s&gt;, I) which got 323 observations shaved off, to redistribute to unseen bigrams.
+
+The idea behind Absolute Discounting is instead of shaving variable amounts of probability off of every ngram, we instead shave off a fixed amount.
+
+The Greek letter \(\delta\) is used to indicate this “shave off” amount.
+
+Our total number of observed bigrams, after &lt;UNK&gt;ifying, 36,744. If we shaved off 0.25 observations off of each bigram, that would give us \
+
+(36,744\times0.75=27,558\) observations to spread around to the bigrams we didn’t observe. If we just did that uniformly, the unobserved bigrams
+
+would just get a sliver of that probability mass. There are 4,179 unigrams in our data, meaning we would expect there to be \(4179^2=17,464,041\)
+
+possible bigrams, that means there are \(17,464,041-36,744 = 17,427,297\) bigrams trying to get a piece of those 8,936 observations we just
+
+shaved off, coming out to just 0.0016 observations each.
+
+Some more clever approaches try not to distribute the probability surplus evenly, though. For example Kneser-Ney smoothing tries to distribute it
+
+proportionally to how often the \(w_i\) word in a \((w_{i-1}w_i)\) bigram appears as the second word in a bigram.
+
+ ngrams - Perplexity
+
+Word Vectors  
+
+
+
+
+

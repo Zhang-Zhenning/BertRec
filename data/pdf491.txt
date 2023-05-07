@@ -1,0 +1,518 @@
+
+Hidden Markov Model inference with the Viterbi algorithm: a mini-example
+
+In this mini-example, we’ll cover the problem of inferring the most-likely state sequence
+
+given an HMM and an observation sequence. The problem of parameter estimation is not
+
+covered.
+
+Once again, the dynamic program for the HMM trellis on an observation sequence of
+
+length n is as follows:
+
+1. Initialize δ0(s) = 1 for s the start state, and δ0(s) = 0 for all other states (this is
+
+equivalent to having only the start state in the trellis at position zero)
+
+2. For each value i = 1, . . . , n, calculate:
+
+(a) δi(s) = maxsi−1 P(si|si−1)P(wi−1|si−1)δi−1(si−1)
+
+(b) ψi(s) = arg maxsi−1 P(si|si−1)P(wi−1|si−1)δi−1(si−1)
+
+3. Finally, ﬁll out the end state of the trellis (position n + 1) using the rules in (2) above.
+
+We’ll take as our transition probability distribution
+
+Next
+
+Current
+
+A
+
+B
+
+End
+
+Start
+
+0.7
+
+0.3
+
+0
+
+A
+
+0.2
+
+0.7
+
+0.1
+
+B
+
+0.7
+
+0.2
+
+0.1
+
+and as our emission probability distribution
+
+Word
+
+State
+
+∗S∗
+
+x
+
+y
+
+Start
+
+1
+
+0
+
+0
+
+A
+
+0
+
+0.4
+
+0.6
+
+B
+
+0
+
+0.3
+
+0.7
+
+Suppose we see the input sequence x y y.
+
+We start by constructing the trellis and
+
+initializing it with δ0(*START*) = 1 at the start. The green nodes indicate how much of
+
+the sequence can be considered generated after each iteration of trellis-ﬁlling:
+
+Linguistics/CSE 256 HMM Viberbi mini-example, page 1
+
+Roger Levy, Winter 2009
+
+
+Start
+
+A
+
+B
+
+A
+
+B
+
+A
+
+B
+
+End
+
+∗S∗
+
+x
+
+y
+
+y
+
+δ0 = 1
+
+Next, we calculate the δ values at position 1:
+
+δ1(A) = max
+
+s0 P(A|s0)P(∗S∗|s0)δ0(s0)
+
+(1)
+
+which is simple since there is only one possible value s0, the start state:
+
+δ1(A) = 1 × 1 × 0.7
+
+(2)
+
+= 0.7
+
+(3)
+
+Likewise, we obtain
+
+δ1(B) = 1 × 1 × 0.3
+
+(4)
+
+The backtraces are both trivial as well: ψ1(A) = ψ1(B) = ∗S∗0
+
+Start
+
+A
+
+B
+
+A
+
+B
+
+A
+
+B
+
+End
+
+∗S∗
+
+x
+
+y
+
+y
+
+δ0 = 1
+
+A
+
+B
+
+∗S∗
+
+δ1 = 0.3
+
+δ1 = 0.7
+
+We next calculate the δ values at position 2:
+
+δ2(A) = max
+
+s1 P(A|s1)P(∗S∗|s1)δ1(s1)
+
+(5)
+
+= max{0.2 × 0.4 × 0.7, 0.7 × 0.3 × 0.3}
+
+(6)
+
+= max{0.056, 0.063}
+
+(7)
+
+= 0.063
+
+(8)
+
+Linguistics/CSE 256 HMM Viberbi mini-example, page 2
+
+Roger Levy, Winter 2009
+
+
+This value was higher for s1 = B, hence ψ2(A) = B1. We also have
+
+δ2(B) = max{
+
+A
+
+�
+
+��
+
+�
+
+0.7 × 0.4 × 0.7,
+
+B
+
+�
+
+��
+
+�
+
+0.2 × 0.3 × 0.3}
+
+(9)
+
+giving us ψ2(B) = A1:
+
+Start
+
+A
+
+B
+
+A
+
+B
+
+A
+
+B
+
+End
+
+∗S∗
+
+x
+
+y
+
+y
+
+δ0 = 1
+
+A
+
+B
+
+∗S∗
+
+δ1 = 0.3
+
+δ1 = 0.7
+
+A
+
+B
+
+x
+
+δ2 = 0.196
+
+δ2 = 0.063
+
+We recurse one more time for position 3:
+
+δ3(A) = max{
+
+A
+
+�
+
+��
+
+�
+
+0.2 × 0.6 × 0.063,
+
+B
+
+�
+
+��
+
+�
+
+0.7 ∗ 0.7 ∗ 0.196}
+
+(10)
+
+δ3(B) = max{
+
+A
+
+�
+
+��
+
+�
+
+0.7 × 0.6 × 0.063,
+
+B
+
+�
+
+��
+
+�
+
+0.2 ∗ 0.7 ∗ 0.196}
+
+(11)
+
+Start
+
+A
+
+B
+
+A
+
+B
+
+A
+
+B
+
+End
+
+∗S∗
+
+x
+
+y
+
+y
+
+δ0 = 1
+
+A
+
+B
+
+∗S∗
+
+δ1 = 0.3
+
+δ1 = 0.7
+
+A
+
+B
+
+x
+
+δ2 = 0.196
+
+δ2 = 0.063
+
+A
+
+B
+
+y
+
+δ3 = 0.02646
+
+δ3 = 0.02744
+
+and ﬁnally the last time for the end state:
+
+δ4(End) = max{
+
+A
+
+�
+
+��
+
+�
+
+0.1 × 0.6 × 0.02744,
+
+B
+
+�
+
+��
+
+�
+
+0.1 ∗ 0.7 ∗ 0.02646}
+
+(12)
+
+giving us
+
+Linguistics/CSE 256 HMM Viberbi mini-example, page 3
+
+Roger Levy, Winter 2009
+
+
+Start
+
+A
+
+B
+
+A
+
+B
+
+A
+
+B
+
+End
+
+∗S∗
+
+x
+
+y
+
+y
+
+δ0 = 1
+
+A
+
+B
+
+∗S∗
+
+δ1 = 0.3
+
+δ1 = 0.7
+
+A
+
+B
+
+x
+
+δ2 = 0.196
+
+δ2 = 0.063
+
+A
+
+B
+
+y
+
+δ3 = 0.02646
+
+δ3 = 0.02744
+
+End
+
+y
+
+δ4 = 0.0018522
+
+We made it! From the end state we can read oﬀ the Viterbi sequence (following the
+
+backtraces through to the start state) and its probability:
+
+Viterbi sequence: ABB
+
+P(ABB, xyy) = 0.00185522
+
+Note that this is diﬀerent than the inference than would be made either with a “reverse
+
+emission model” where P(A|x) = 0.4, P(A|y) = 0.3, which would favor the sequence BBB,
+
+or with the transition model alone (which would favor the sequence ABA). The emission and
+
+transition models work together to determine the posterior inference.
+
+Linguistics/CSE 256 HMM Viberbi mini-example, page 4
+
+Roger Levy, Winter 2009
+

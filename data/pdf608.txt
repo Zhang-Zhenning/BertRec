@@ -1,0 +1,2447 @@
+
+Search
+
+ 
+
+
+
+HOME
+
+HOME
+
+
+
+HIERARCHICAL
+
+HIERARCHICAL
+
+CLUSTERING IN R: THE ESSENTIALS
+
+CLUSTERING IN R: THE ESSENTIALS
+
+
+
+AGGLOMERATIVE HIERARCHICAL
+
+AGGLOMERATIVE HIERARCHICAL
+
+CLUSTERING
+
+CLUSTERING
+
+HIERARCHICAL CL
+
+HIERARCHICAL CL
+
+USTERING IN R: TH
+
+USTERING IN R: TH
+
+E ESSENTIALS
+
+E ESSENTIALS
+
+ 30 mins  Hierarchical
+
+Clustering in R: The Essentials
+
+Agglomerative
+
+Agglomerative
+
+Hierarchical
+
+Hierarchical
+
+Clustering
+
+Clustering
+
+The agglomerative clustering
+
+is the most common type of
+
+hierarchical clustering used
+
+to group objects in clusters
+
+based on their similarity. It’s
+
+also known as AGNES
+
+(Agglomerative Nesting). The
+
+algorithm starts by treating
+
+each object as a singleton
+
+cluster. Next, pairs of
+
+clusters are successively
+
+merged until all clusters have
+
+been merged into one big
+
+cluster containing all objects.
+
+The result is a tree-based
+
+representation of the objects,
+
+named dendrogram.
+
+In this article, we start by
+
+describing the
+
+agglomerative clustering
+
+algorithms. Next, we
+
+provide R lab sections with
+
+|
+
+ Login
+
+Login Register
+
+Register 00
+
+MENU
+
+MENU
+
+
+
+
+
+
+many examples for
+
+computing and visualizing
+
+hierarchical clustering. We
+
+continue by explaining how
+
+to interpret dendrogram.
+
+Finally, we provide R codes
+
+for cutting dendrograms
+
+into groups.
+
+Contents:
+
+Algorithm
+
+Steps to agglomerative
+
+hierarchical clustering
+
+Data structure and
+
+preparation
+
+Similarity measures
+
+Linkage
+
+Dendrogram
+
+Verify the cluster tree
+
+Cut the dendrogram into
+
+different groups
+
+Cluster R package
+
+Application of
+
+hierarchical clustering to
+
+gene expression data
+
+analysis
+
+Summary
+
+Algorithm
+
+Algorithm
+
+Related Book
+
+Related Book
+
+Practical Guide to
+
+Cluster Analysis
+
+in R
+
+
+
+
+Agglomerative clustering
+
+works in a “bottom-up”
+
+manner. That is, each object
+
+is initially considered as a
+
+single-element cluster (leaf).
+
+At each step of the algorithm,
+
+the two clusters that are the
+
+most similar are combined
+
+into a new bigger cluster
+
+(nodes). This procedure is
+
+iterated until all points are
+
+member of just one single
+
+big cluster (root) (see figure
+
+below).
+
+The inverse of agglomerative
+
+clustering is divisive clustering,
+
+which is also known as DIANA
+
+(Divise Analysis) and it works
+
+in a “top-down” manner. It
+
+begins with the root, in which
+
+all objects are included in a
+
+single cluster. At each step of
+
+iteration, the most
+
+heterogeneous cluster is
+
+divided into two. The process
+
+is iterated until all objects
+
+are in their own cluster (see
+
+figure below).
+
+
+
+
+
+
+
+Steps to
+
+Steps to
+
+agglomerative
+
+agglomerative
+
+hierarchical
+
+hierarchical
+
+clustering
+
+clustering
+
+We’ll follow the steps below
+
+to perform agglomerative
+
+
+
+Note that,
+
+agglomerative
+
+clustering is good at
+
+identifying small
+
+clusters. Divisive
+
+clustering is good at
+
+identifying large
+
+clusters. In this
+
+article, we’ll focus
+
+mainly on
+
+agglomerative
+
+hierarchical
+
+clustering.
+
+
+
+
+to perform agglomerative
+
+hierarchical clustering using
+
+R software:
+
+1. Preparing the data
+
+2. Computing (dis)similarity
+
+information between
+
+every pair of objects in the
+
+data set.
+
+3. Using linkage function to
+
+group objects into
+
+hierarchical cluster tree,
+
+based on the distance
+
+information generated at
+
+step 1. Objects/clusters
+
+that are in close proximity
+
+are linked together using
+
+the linkage function.
+
+4. Determining where to cut
+
+the hierarchical tree into
+
+clusters. This creates a
+
+partition of the data.
+
+We’ll describe each of these
+
+steps in the next section.
+
+Data structure and
+
+Data structure and
+
+preparation
+
+preparation
+
+The data should be a
+
+numeric matrix with:
+
+rows representing
+
+observations (individuals);
+
+and columns representing
+
+variables.
+
+Here, we’ll use the R base
+
+USArrests data sets.
+
+
+
+Note that, it’s
+
+generally
+
+recommended to
+
+standardize variables
+
+in the data set before
+
+performing
+
+subsequent analysis.
+
+Standardization
+
+makes variables
+
+comparable, when
+
+they are measured in
+
+different scales. For
+
+
+
+
+# Load the data
+
+data("USArrests")
+
+# Standardize the 
+
+data
+
+df &lt;- scale(USArre
+
+sts)
+
+# Show the first 6
+
+rows
+
+head(df, nrow = 6)
+
+##            Murder
+
+Assault UrbanPop    
+
+Rape
+
+## Alabama    1.2426
+
+0.783   -0.521 -0.00
+
+342
+
+## Alaska     0.5079
+
+1.107   -1.212  2.48
+
+420
+
+## Arizona    0.0716
+
+1.479    0.999  1.04
+
+288
+
+## Arkansas   0.2323
+
+0.231   -1.074 -0.18
+
+492
+
+## California 0.2783
+
+1.263    1.759  2.06
+
+782
+
+## Colorado   0.0257
+
+0.399    0.861  1.86
+
+497
+
+Similarity measures
+
+Similarity measures
+
+In order to decide which
+
+objects/clusters should be
+
+combined or divided, we
+
+need methods for measuring
+
+the similarity between
+
+objects.
+
+There are many methods to
+
+calculate the (dis)similarity
+
+information, including
+
+Euclidean and manhattan
+
+distances. In R software, you
+
+can use the function dist() to
+
+
+
+different scales. For
+
+example one variable
+
+can measure the
+
+height in meter and
+
+another variable can
+
+measure the weight
+
+in kg. The R function
+
+scale() can be used for
+
+standardization, See ?
+
+scale documentation.
+
+
+can use the function dist() to
+
+compute the distance
+
+between every pair of object
+
+in a data set. The results of
+
+this computation is known as
+
+a distance or dissimilarity
+
+matrix.
+
+By default, the function dist()
+
+computes the Euclidean
+
+distance between objects;
+
+however, it’s possible to
+
+indicate other metrics using
+
+the argument method. See ?
+
+dist for more information.
+
+For example, consider the R
+
+base data set USArrests, you
+
+can compute the distance
+
+matrix as follow:
+
+# Compute the diss
+
+imilarity matrix
+
+# df = the standar
+
+dized data
+
+res.dist &lt;- dist(d
+
+f, method = "eucli
+
+dean")
+
+To see easily the distance
+
+information between objects,
+
+we reformat the results of
+
+the function dist() into a
+
+matrix using the as.matrix()
+
+function. In this matrix, value
+
+in the cell formed by the row
+
+i, the column j, represents
+
+the distance between object i
+
+and object j in the original
+
+data set. For instance,
+
+element 1,1 represents the
+
+distance between object 1
+
+and itself (which is zero).
+
+Element 1,2 represents the
+
+distance between object 1
+
+and object 2, and so on.
+
+The R code below displays
+
+
+
+Note that, the
+
+function dist()
+
+computes the
+
+distance between the
+
+rows of a data matrix
+
+using the specified
+
+distance measure
+
+method.
+
+
+
+
+The R code below displays
+
+the first 6 rows and columns
+
+of the distance matrix:
+
+as.matrix(res.dist
+
+)[1:6, 1:6]
+
+##            Alabam
+
+a Alaska Arizona Ark
+
+ansas California Col
+
+orado
+
+## Alabama       0.0
+
+0   2.70    2.29    
+
+1.29       3.26     
+
+2.65
+
+## Alaska        2.7
+
+0   0.00    2.70    
+
+2.83       3.01     
+
+2.33
+
+## Arizona       2.2
+
+9   2.70    0.00    
+
+2.72       1.31     
+
+1.37
+
+## Arkansas      1.2
+
+9   2.83    2.72    
+
+0.00       3.76     
+
+2.83
+
+## California    3.2
+
+6   3.01    1.31    
+
+3.76       0.00     
+
+1.29
+
+## Colorado      2.6
+
+5   2.33    1.37    
+
+2.83       1.29     
+
+0.00
+
+Linkage
+
+Linkage
+
+The linkage function takes
+
+the distance information,
+
+returned by the function
+
+dist(), and groups pairs of
+
+objects into clusters based
+
+on their similarity. Next,
+
+these newly formed clusters
+
+are linked to each other to
+
+create bigger clusters. This
+
+process is iterated until all
+
+the objects in the original
+
+data set are linked together
+
+in a hierarchical tree.
+
+For example, given a distance
+
+matrix “res.dist” generated by
+
+the function dist(), the R base
+
+function hclust() can be used
+
+to create the hierarchical
+
+tree.
+
+hclust() can be used as follow:
+
+res.hc &lt;- hclust(d
+
+
+res.hc &lt;- hclust(d
+
+= res.dist, method
+
+= "ward.D2")
+
+d: a dissimilarity structure
+
+as produced by the dist()
+
+function.
+
+method: The
+
+agglomeration (linkage)
+
+method to be used for
+
+computing distance between
+
+clusters. Allowed values is
+
+one of “ward.D”, “ward.D2”,
+
+“single”, “complete”,
+
+“average”, “mcquitty”,
+
+“median” or “centroid”.
+
+There are many cluster
+
+agglomeration methods (i.e,
+
+linkage methods). The most
+
+common linkage methods are
+
+described below.
+
+Maximum or complete
+
+linkage: The distance
+
+between two clusters is
+
+defined as the maximum
+
+value of all pairwise
+
+distances between the
+
+elements in cluster 1 and
+
+the elements in cluster 2. It
+
+tends to produce more
+
+compact clusters.
+
+Minimum or single
+
+linkage: The distance
+
+between two clusters is
+
+defined as the minimum
+
+value of all pairwise
+
+distances between the
+
+elements in cluster 1 and
+
+the elements in cluster 2. It
+
+tends to produce long,
+
+“loose” clusters.
+
+Mean or average linkage:
+
+The distance between two
+
+clusters is defined as the
+
+average distance between
+
+the elements in cluster 1
+
+and the elements in cluster
+
+2.
+
+
+2.
+
+Centroid linkage: The
+
+distance between two
+
+clusters is defined as the
+
+distance between the
+
+centroid for cluster 1 (a
+
+mean vector of length p
+
+variables) and the centroid
+
+for cluster 2.
+
+Ward’s minimum variance
+
+method: It minimizes the
+
+total within-cluster
+
+variance. At each step the
+
+pair of clusters with
+
+minimum between-cluster
+
+distance are merged.
+
+Note that, at each stage of
+
+the clustering process the
+
+two clusters, that have the
+
+smallest linkage distance, are
+
+linked together.
+
+Dendrogram
+
+Dendrogram
+
+Dendrograms correspond to
+
+the graphical representation
+
+of the hierarchical tree
+
+generated by the function
+
+hclust(). Dendrogram can be
+
+produced in R using the base
+
+function plot(res.hc), where
+
+res.hc is the output of
+
+hclust(). Here, we’ll use the
+
+function fviz_dend()[ in
+
+factoextra R package] to
+
+produce a beautiful
+
+dendrogram.
+
+First install factoextra by
+
+typing this:
+
+install.packages(“factoextra”);
+
+next visualize the
+
+dendrogram as follow:
+
+# cex: label size
+
+library("factoextr
+
+a")
+
+fviz_dend(res.hc, 
+
+
+
+Complete linkage and
+
+Ward’s method are
+
+generally preferred.
+
+
+
+
+fviz_dend(res.hc, 
+
+cex = 0.5)
+
+
+
+
+
+
+
+In the dendrogram displayed
+
+above, each leaf corresponds
+
+to one object. As we move up
+
+the tree, objects that are
+
+similar to each other are
+
+combined into branches,
+
+which are themselves fused
+
+at a higher height.
+
+The height of the fusion,
+
+provided on the vertical axis,
+
+indicates the
+
+(dis)similarity/distance
+
+between two objects/clusters.
+
+The higher the height of the
+
+fusion, the less similar the
+
+objects are. This height is
+
+known as the cophenetic
+
+distance between the two
+
+objects.
+
+In order to identify sub-
+
+groups, we can cut the
+
+dendrogram at a certain
+
+height as described in the
+
+next sections.
+
+Verify the cluster
+
+Verify the cluster
+
+tree
+
+tree
+
+
+
+Note that,
+
+conclusions about the
+
+proximity of two
+
+objects can be drawn
+
+only based on the
+
+height where
+
+branches containing
+
+those two objects first
+
+are fused. We cannot
+
+use the proximity of
+
+two objects along the
+
+horizontal axis as a
+
+criteria of their
+
+similarity.
+
+
+
+
+After linking the objects in a
+
+data set into a hierarchical
+
+cluster tree, you might want
+
+to assess that the distances
+
+(i.e., heights) in the tree
+
+reflect the original distances
+
+accurately.
+
+One way to measure how
+
+well the cluster tree
+
+generated by the hclust()
+
+function reflects your data is
+
+to compute the correlation
+
+between the cophenetic
+
+distances and the original
+
+distance data generated by
+
+the dist() function. If the
+
+clustering is valid, the linking
+
+of objects in the cluster tree
+
+should have a strong
+
+correlation with the distances
+
+between objects in the
+
+original distance matrix.
+
+The closer the value of the
+
+correlation coefficient is to 1,
+
+the more accurately the
+
+clustering solution reflects
+
+your data. Values above 0.75
+
+are felt to be good. The
+
+“average” linkage method
+
+appears to produce high
+
+values of this statistic. This
+
+may be one reason that it is
+
+so popular.
+
+The R base function
+
+cophenetic() can be used to
+
+compute the cophenetic
+
+distances for hierarchical
+
+clustering.
+
+# Compute cophenti
+
+c distance
+
+res.coph &lt;- cophen
+
+etic(res.hc)
+
+# Correlation betw
+
+een cophenetic dis
+
+tance and
+
+# the original dis
+
+tance
+
+cor(res.dist, res.
+
+coph)
+
+## [1] 0.698
+
+Execute the hclust() function
+
+
+Execute the hclust() function
+
+again using the average
+
+linkage method. Next, call
+
+cophenetic() to evaluate the
+
+clustering solution.
+
+res.hc2 &lt;- hclust(
+
+res.dist, method =
+
+"average")
+
+cor(res.dist, coph
+
+enetic(res.hc2))
+
+## [1] 0.718
+
+The correlation coefficient
+
+shows that using a different
+
+linkage method creates a tree
+
+that represents the original
+
+distances slightly better.
+
+Cut the dendrogram
+
+Cut the dendrogram
+
+into different groups
+
+into different groups
+
+One of the problems with
+
+hierarchical clustering is
+
+that, it does not tell us how
+
+many clusters there are, or
+
+where to cut the dendrogram
+
+to form clusters.
+
+You can cut the hierarchical
+
+tree at a given height in
+
+order to partition your data
+
+into clusters. The R base
+
+function cutree() can be used
+
+to cut a tree, generated by
+
+the hclust() function, into
+
+several groups either by
+
+specifying the desired
+
+number of groups or the cut
+
+height. It returns a vector
+
+containing the cluster
+
+number of each observation.
+
+# Cut tree into 4 
+
+groups
+
+grp &lt;- cutree(res.
+
+hc, k = 4)
+
+head(grp, n = 4)
+
+##  Alabama   Alaska
+
+Arizona Arkansas 
+
+##        1        2
+
+2        3
+
+# Number of member
+
+s in each cluster
+
+table(grp)
+
+
+table(grp)
+
+## grp
+
+##  1  2  3  4 
+
+##  7 12 19 12
+
+# Get the names fo
+
+r the members of c
+
+luster 1
+
+rownames(df)[grp =
+
+= 1]
+
+## [1] "Alabama"    
+
+"Georgia"        "Lo
+
+uisiana"      "Missi
+
+ssippi"   
+
+## [5] "North Caroli
+
+na" "South Carolina"
+
+"Tennessee"
+
+The result of the cuts can be
+
+visualized easily using the
+
+function fviz_dend() [in
+
+factoextra]:
+
+ 
+
+
+
+
+
+
+
+Using the function
+
+fviz_cluster() [in factoextra], we
+
+can also visualize the result
+
+in a scatter plot.
+
+Observations are
+
+represented by points in the
+
+plot, using principal
+
+components. A frame is
+
+drawn around each cluster.
+
+
+
+Here, there are
+
+contents/codes
+
+hidden to non-
+
+premium members.
+
+Signup now to read
+
+all of our premium
+
+contents and to be
+
+awarded a certificate
+
+of course completion.
+
+CLAIM YOUR
+
+MEMBERSHIP
+
+NOW
+
+.
+
+
+
+
+drawn around each cluster.
+
+
+
+
+
+
+
+Cluster R package
+
+Cluster R package
+
+The R package cluster makes
+
+it easy to perform cluster
+
+analysis in R. It provides the
+
+function agnes() and diana()
+
+for computing agglomerative
+
+and divisive clustering,
+
+respectively. These functions
+
+perform all the necessary
+
+steps for you. You don’t need
+
+to execute the scale(), dist()
+
+and hclust() function
+
+separately.
+
+The functions can be
+
+executed as follow:
+
+library("cluster")
+
+# Agglomerative Ne
+
+sting (Hierarchica
+
+l Clustering)
+
+res.agnes &lt;- agnes
+
+(x = USArrests, # 
+
+data matrix
+
+ 
+
+stand = TRUE, # St
+
+andardize the data
+
+ 
+
+metric = "euclidea
+
+n", # metric for d
+
+istance matrix
+
+ 
+
+
+
+Here, there are
+
+contents/codes
+
+hidden to non-
+
+premium members.
+
+Signup now to read
+
+all of our premium
+
+contents and to be
+
+awarded a certificate
+
+of course completion.
+
+CLAIM YOUR
+
+MEMBERSHIP
+
+NOW
+
+.
+
+
+
+
+ 
+
+method = "ward" # 
+
+Linkage method
+
+ 
+
+)
+
+# DIvisive ANAlysi
+
+s Clustering
+
+res.diana &lt;- diana
+
+(x = USArrests, # 
+
+data matrix
+
+ 
+
+stand = TRUE, # st
+
+andardize the data
+
+ 
+
+metric = "euclidea
+
+n" # metric for di
+
+stance matrix
+
+ 
+
+)
+
+After running agnes() and
+
+diana(), you can use the
+
+function fviz_dend()[in
+
+factoextra] to visualize the
+
+output:
+
+fviz_dend(res.agne
+
+s, cex = 0.6, k = 
+
+4)
+
+Application of
+
+Application of
+
+hierarchical
+
+hierarchical
+
+clustering to gene
+
+clustering to gene
+
+expression data
+
+expression data
+
+analysis
+
+analysis
+
+In gene expression data
+
+analysis, clustering is generaly
+
+used as one of the first step
+
+to explore the data. We are
+
+interested in whether there
+
+are groups of genes or
+
+groups of samples that have
+
+similar gene expression
+
+patterns.
+
+Several clustering distance
+
+measures have been
+
+described for assessing the
+
+similarity or the dissimilarity
+
+between items, in order to
+
+decide which items have to
+
+be grouped together or not.
+
+These measures can be used
+
+to cluster genes or samples
+
+that are similar.
+
+For most common clustering
+
+
+For most common clustering
+
+softwares, the default
+
+distance measure is the
+
+Euclidean distance. The most
+
+popular methods for gene
+
+expression data are to use
+
+log2(expression + 0.25),
+
+correlation distance and
+
+complete linkage clustering
+
+agglomerative-clustering.
+
+Single and Complete linkage
+
+give the same dendrogram
+
+whether you use the raw
+
+data, the log of the data or
+
+any other transformation of
+
+the data that preserves the
+
+order because what matters
+
+is which ones have the
+
+smallest distance. The other
+
+methods are sensitive to the
+
+measurement scale.
+
+In principle it is possible to
+
+cluster all the genes,
+
+although visualizing a huge
+
+dendrogram might be
+
+problematic. Usually, some
+
+type of preliminary analysis,
+
+such as differential
+
+expression analysis is used to
+
+select genes for clustering.
+
+Selecting genes based on
+
+differential expression
+
+analysis removes genes
+
+which are likely to have only
+
+chance patterns. This should
+
+
+
+Note that, when the
+
+data are scaled, the
+
+Euclidean distance of
+
+the z-scores is the
+
+same as correlation
+
+distance.
+
+Pearson’s correlation
+
+is quite sensitive to
+
+outliers. When
+
+clustering genes, it is
+
+important to be
+
+aware of the possible
+
+impact of outliers. An
+
+alternative option is
+
+to use Spearman’s
+
+correlation instead of
+
+Pearson’s correlation.
+
+
+
+
+chance patterns. This should
+
+enhance the patterns found
+
+in the gene clusters.
+
+Summary
+
+Summary
+
+Hierarchical clustering is a
+
+cluster analysis method,
+
+which produce a tree-based
+
+representation (i.e.:
+
+dendrogram) of a data.
+
+Objects in the dendrogram
+
+are linked together based on
+
+their similarity.
+
+To perform hierarchical
+
+cluster analysis in R, the first
+
+step is to calculate the
+
+pairwise distance matrix
+
+using the function dist().
+
+Next, the result of this
+
+computation is used by the
+
+hclust() function to produce
+
+the hierarchical tree. Finally,
+
+you can use the function
+
+fviz_dend() [in factoextra R
+
+package] to plot easily a
+
+beautiful dendrogram.
+
+It’s also possible to cut the
+
+tree at a given height for
+
+partitioning the data into
+
+multiple groups (R function
+
+cutree()).
+
+Recommended for
+
+Recommended for
+
+you
+
+you
+
+Coursera - Online
+
+Coursera - Online
+
+
+
+This section contains
+
+best data science and
+
+self-development
+
+resources to help you
+
+on your path.
+
+
+
+
+Coursera - Online
+
+Coursera - Online
+
+Courses and
+
+Courses and
+
+Specialization
+
+Specialization
+
+Data science
+
+Data science
+
+Course: Machine Learning:
+
+Master the Fundamentals by
+
+Stanford
+
+Specialization: Data
+
+Science by Johns Hopkins
+
+University
+
+Specialization: Python for
+
+Everybody by University of
+
+Michigan
+
+Courses: Build Skills for a
+
+Top Job in any Industry by
+
+Coursera
+
+Specialization: Master
+
+Machine Learning
+
+Fundamentals by University
+
+of Washington
+
+Specialization: Statistics
+
+with R by Duke University
+
+Specialization: Software
+
+Development in R by Johns
+
+Hopkins University
+
+Specialization: Genomic
+
+Data Science by Johns
+
+Hopkins University
+
+Popular Courses
+
+Popular Courses
+
+Launched in 2020
+
+Launched in 2020
+
+Google IT Automation with
+
+Python by Google
+
+AI for Medicine by
+
+deeplearning.ai
+
+Epidemiology in Public
+
+Health Practice by Johns
+
+Hopkins University
+
+AWS Fundamentals by
+
+Amazon Web Services
+
+Trending Courses
+
+Trending Courses
+
+The Science of Well-Being
+
+by Yale University
+
+Google IT Support
+
+
+Google IT Support
+
+Professional by Google
+
+Python for Everybody by
+
+University of Michigan
+
+IBM Data Science
+
+Professional Certificate by
+
+IBM
+
+Business Foundations by
+
+University of Pennsylvania
+
+Introduction to Psychology
+
+by Yale University
+
+Excel Skills for Business by
+
+Macquarie University
+
+Psychological First Aid by
+
+Johns Hopkins University
+
+Graphic Design by Cal Arts
+
+Amazon FBA
+
+Amazon FBA
+
+Amazing Selling Machine
+
+Amazing Selling Machine
+
+Free Training - How to
+
+Build a 7-Figure Amazon FBA
+
+Business You Can Run 100%
+
+From Home and Build Your
+
+Dream Life! by ASM
+
+Books - Data Science
+
+Books - Data Science
+
+Our Books
+
+Our Books
+
+Practical Guide to Cluster
+
+Analysis in R by A.
+
+Kassambara (Datanovia)
+
+Practical Guide To Principal
+
+Component Methods in R by
+
+A. Kassambara (Datanovia)
+
+Machine Learning
+
+Essentials: Practical Guide in
+
+R by A. Kassambara
+
+(Datanovia)
+
+R Graphics Essentials for
+
+Great Data Visualization by A.
+
+Kassambara (Datanovia)
+
+GGPlot2 Essentials for
+
+Great Data Visualization in R
+
+by A. Kassambara (Datanovia)
+
+Network Analysis and
+
+Visualization in R by A.
+
+
+(Next Lesson) Divisive
+
+Hierarchical Clustering 
+
+Visualization in R by A.
+
+Kassambara (Datanovia)
+
+Practical Statistics in R for
+
+Comparing Groups:
+
+Numerical Variables by A.
+
+Kassambara (Datanovia)
+
+Inter-Rater Reliability
+
+Essentials: Practical Guide in
+
+R by A. Kassambara
+
+(Datanovia)
+
+Others
+
+Others
+
+R for Data Science: Import,
+
+Tidy, Transform, Visualize,
+
+and Model Data by Hadley
+
+Wickham &amp; Garrett
+
+Grolemund
+
+Hands-On Machine
+
+Learning with Scikit-Learn,
+
+Keras, and TensorFlow:
+
+Concepts, Tools, and
+
+Techniques to Build
+
+Intelligent Systems by
+
+Aurelien Géron
+
+Practical Statistics for Data
+
+Scientists: 50 Essential
+
+Concepts by Peter Bruce &amp;
+
+Andrew Bruce
+
+Hands-On Programming
+
+with R: Write Your Own
+
+Functions And Simulations by
+
+Garrett Grolemund &amp; Hadley
+
+Wickham
+
+An Introduction to
+
+Statistical Learning: with
+
+Applications in R by Gareth
+
+James et al.
+
+Deep Learning with R by
+
+François Chollet &amp; J.J. Allaire
+
+Deep Learning with Python
+
+by François Chollet
+
+
+BACK TO
+
+HIERARCHICAL
+
+CLUSTERING IN R: THE
+
+ESSENTIALS
+
+COMMENTS ( 5 )
+
+COMMENTS ( 5 )
+
+
+
+Jovana
+
+07 Aug 2019
+
+This article is amazing! It’s
+
+simply, but skillfully written
+
+and easy to fallow. Can’t wait
+
+to read new one!
+
+P.S. I started loving my
+
+internship at bioinformatics
+
+lab even more now. Keep
+
+doing your mojo! 
+
+
+
+Kassambara
+
+Kassambara
+
+08 Aug 2019
+
+Thank you
+
+Jovana for
+
+this positive
+
+feedback,
+
+highly
+
+appreciated!
+
+
+
+Serkan Korkmaz
+
+19 Oct 2019
+
+Im not sure if I understand the
+
+output of the Scatterplot. We
+
+obviously have all the clusters,
+
+however, I cant seem to figure
+
+out what the percentages
+
+along the X and Y axis
+
+represents.
+
+Are these the the fractions of
+
+the total variation in the data,
+
+that the clusters captures
+
+along each dimension?
+
+
+
+Jason
+
+REPLY
+
+REPLY
+
+REPLY
+
+REPLY
+
+REPLY
+
+REPLY
+
+
+Give a comment
+
+Give a comment
+
+
+
+Jason
+
+13 Nov 2019
+
+The
+
+percentage is
+
+the variation
+
+of distance
+
+and it’s in 2
+
+dimensions.
+
+What you
+
+seeing is
+
+about 86% of
+
+the total
+
+distance
+
+between each
+
+point in each
+
+cluster, in a
+
+two
+
+dimension
+
+plot. If you
+
+add one more
+
+dimension it
+
+will increase
+
+
+
+DAD
+
+17 Dec 2019
+
+Hey, thank you for your
+
+support. I wanted to color the
+
+labels based on the grouping
+
+they originally from and color
+
+the branches based on the
+
+new clustering. can you please
+
+help?
+
+
+
+Want to post an issue
+
+with R? If yes, please
+
+make sure you have
+
+read this: How to
+
+Include Reproducible
+
+R Script Examples in
+
+Datanovia Comments
+
+
+
+
+
+Your Comment
+
+
+
+Your Name
+
+REPLY
+
+REPLY
+
+REPLY
+
+REPLY
+
+
+COMMENT
+
+
+
+Your Email
+
+
+
+TEACHER
+
+TEACHER
+
+ 30 mins
+
+Agglomerative
+
+Agglomerative
+
+Hierarchical
+
+Hierarchical
+
+Clustering
+
+Clustering
+
+ 5 mins
+
+Divisive Hierarchical
+
+Divisive Hierarchical
+
+Clustering
+
+Clustering
+
+ 30 mins
+
+Examples of
+
+Examples of
+
+Dendrograms
+
+Dendrograms
+
+Visualization
+
+Visualization
+
+ 20 mins
+
+Comparing Cluster
+
+Comparing Cluster
+
+Dendrograms in R
+
+Dendrograms in R
+
+ 35 mins
+
+Heatmap in R: Static
+
+Heatmap in R: Static
+
+and Interactive
+
+and Interactive
+
+Visualization
+
+Visualization
+
+COURSE
+
+COURSE
+
+CURRICULUM
+
+CURRICULUM
+
+
+Alboukadel
+
+Alboukadel
+
+Kassambara
+
+Kassambara
+
+Role : Founder of Datanovia
+
+READ MORE
+
+Website :
+
+https://www.datanovia.com/en
+
+
+
+Experience : &gt;10
+
+years
+
+
+
+Specialist in :
+
+Bioinformatics and
+
+Cancer Biology
+
+
+
+
+
+DataNovia is dedicated to
+
+data mining and statistics to
+
+help you make sense of your
+
+data. 
+
+We offer data science
+
+courses on a large variety of
+
+topics, including: R
+
+programming, Data
+
+processing and visualization,
+
+Biostatistics and
+
+Bioinformatics, and Machine
+
+learning 
+
+START LEARNING NOW
+
+DataNovia
+
+DataNovia
+
+Learn
+
+Learn
+
+All courses
+
+
+
+Data science tutorials
+
+
+
+Pricing
+
+
+
+
+Pricing
+
+
+
+Become an Instructor
+
+
+
+About
+
+About
+
+About Us
+
+
+
+Contact
+
+
+
+Privacy Policy
+
+
+
+Terms of Use
+
+
+
+Copyright © 2018 DataNovia
+
+
+
+
+
+This website uses cookies to ensure you get the best experience on our website, to personalize content and ads and to analyze our traffic.
+
+We also share information about your use of our site with our social media, advertising and analytics partners such as Google. By using our
+
+site you agree to our use of cookies 
+
+Decline
+
+OK
+
+
+
+
+
+SHARES
+
+164
+

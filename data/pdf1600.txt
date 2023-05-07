@@ -1,0 +1,1750 @@
+
+IR&amp;DM ’13/’14
+
+III.3 Probabilistic Retrieval Models
+
+1.  
+
+Probabilistic Ranking Principle 
+
+2.  
+
+Binary Independence Model 
+
+3.  
+
+Okapi BM25 
+
+4.  
+
+Tree Dependence Model 
+
+5.  
+
+Bayesian Networks for IR 
+
+ 
+
+ 
+
+!
+
+!
+
+Based on MRS Chapter 11 
+
+!48
+
+
+IR&amp;DM ’13/’14
+
+TF*IDF vs. Probabilistic IR vs. Statistical LMs
+
+• TF*IDF and VSM produce sufficiently good results in practice 
+
+but often criticized for being “too ad-hoc” or “not principled” 
+
+• Typically outperformed by probabilistic retrieval models and 
+
+statistical language models in IR benchmarks (e.g., TREC) 
+
+• Probabilistic retrieval models 
+
+• use generative models of documents as bags-of-words 
+
+• explicitly model probability of relevance P[R |d, q] 
+
+• Statistical language models 
+
+• use generative models of documents and queries as sequences-of-words 
+
+• consider likelihood of generating query from document model or 
+
+divergence of document model and query model (e.g., Kullback-Leibler)
+
+!49
+
+
+IR&amp;DM ’13/’14
+
+• Generative model 
+
+• probabilistic mechanism for producing documents (or queries) 
+
+• usually based on a family of parameterized probability distributions 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+• Powerful model but restricted through practical limitations 
+
+• often strong independence assumptions required for tractability 
+
+• parameter estimation has to deal with sparseness of available data 
+
+(e.g., collection with M terms has 2M distinct possible documents, but 
+
+model parameters need to be estimated from N &lt;&lt; 2M documents)
+
+Probabilistic Information Retrieval
+
+!50
+
+
+
+t1, …, tM
+
+d1
+
+
+IR&amp;DM ’13/’14
+
+Multivariate Bernoulli Model
+
+• For generating document d from joint (multivariate)  
+
+term distribution Φ 
+
+• consider binary random variables: dt = 1 if term in d, 0 otherwise 
+
+• postulate independence among these random variables 
+
+ 
+
+ 
+
+ 
+
+ 
+
+• Problems: 
+
+• underestimates probability of short documents 
+
+• product for absent terms underestimates probability of likely documents 
+
+• too much probability mass given to very unlikely term combinations
+
+!51
+
+P[d|�] =
+
+Y
+
+t2V
+
+�dt
+
+t (1 � �1�dt
+
+t
+
+)
+
+�t = P[term t occurs in a document]
+
+
+IR&amp;DM ’13/’14
+
+1. Probability Ranking Principle (PRP)
+
+• PRP with costs [Robertson 1977] defines cost of retrieving d  
+
+as the next result in a ranked list for query q as 
+
+ 
+
+ 
+
+with cost constants 
+
+• C1 as cost of retrieving a relevant document  
+
+• C2 as cost of retrieving an irrelevant document 
+
+• For C1 &lt; C0, cost is minimized by choosing
+
+!52
+
+“If a reference retrieval system’s response to each request is a ranking of the 
+
+documents in the collection in order of decreasing probability of relevance to the 
+
+user who submitted the request, where the probabilities are estimated as accurately 
+
+as possible on the basis of whatever data have been made available to the system 
+
+for this purpose, the overall effectiveness of the system to its user will be the best 
+
+that is obtainable on the basis of those data.”
+
+[van Rijsbergen 1979]
+
+cost(d, q) = C1 P[R|d, q] + C0 P[ ¯R|d, q]
+
+arg max
+
+d
+
+P[R|d, q]
+
+
+IR&amp;DM ’13/’14
+
+Derivation of Probability Ranking Principle
+
+• Consider document d to be retrieved next, because it is preferred 
+
+(i.e, has lower cost) over all other candidate documents d’
+
+!53
+
+cost(d, q)
+
+
+
+cost(d0, q)
+
+,
+
+C1 P[R|d, q] + C0 P[ ¯R|d, q]
+
+
+
+C1 P[R|d0, q] + C0 P[ ¯R|d0, q]
+
+,
+
+C1 P[R|d, q] + C0 (1 � P[R|d, q])
+
+
+
+C1 P[R|d0, q] + C0 (1 � P[R|d0, q])
+
+,
+
+C1 P[R|d, q] � C0 P[R|d, q]
+
+
+
+C1 P[R|d0, q] � C0 P[R|d0, q]
+
+,
+
+(C1 � C0) P[R|d, q]
+
+
+
+(C1 � C0) P[R|d0, q]
+
+,
+
+P[R|d, q]
+
+�
+
+P[R|d0, q]
+
+(assuming C1 &lt; C0)
+
+
+IR&amp;DM ’13/’14
+
+Probability Ranking Principle (cont’d)
+
+• Probability ranking principle makes two strong assumptions 
+
+• P[R |d, q] can be determined accurately 
+
+• P[R |d, q] and P[R |d’, q] are pairwise independent for documents d, d’ 
+
+• PRP without costs (based on Bayes’ optimal decision rule)  
+
+• returns set of documents d for which P[R |d, q] &gt; (1 - P[R |d, q]) 
+
+• minimizes the expected loss (aka. Bayes’ risk) under the 1/0 loss function 
+
+!54
+
+
+IR&amp;DM ’13/’14
+
+2. Binary Independence Model (BIM)
+
+• Binary independence model [Robertson and Spärck-Jones 1976] 
+
+has traditionally been used with the probabilistic ranking principle 
+
+• Assumptions: 
+
+• relevant and irrelevant documents differ in their term distribution 
+
+• probabilities of term occurrences are pairwise independent 
+
+• documents are sets of terms, i.e., binary term weights in {0,1} 
+
+• non-query terms have the same probability of occurring in 
+
+relevant and non-relevant documents 
+
+• relevance of a document is independent of relevance others document
+
+!55
+
+
+IR&amp;DM ’13/’14
+
+O(R|d)
+
+=
+
+P [R|d]
+
+P [ ¯
+
+R|d]
+
+(odds for ranking)
+
+=
+
+P [d|R]⇥P [R]
+
+P [d| ¯
+
+R]⇥P [ ¯
+
+R]
+
+(Bayes’ theorem)
+
+/
+
+P [d|R]
+
+P [d| ¯
+
+R]
+
+(rank equivalence)
+
+=
+
+Q
+
+t2V
+
+P [dt|R]
+
+P [dt| ¯
+
+R]
+
+(independence assumption)
+
+=
+
+Q
+
+t2q
+
+P [dt|R]
+
+P [dt| ¯
+
+R]
+
+(non-query terms)
+
+=
+
+Q
+
+t2d
+
+t2q
+
+P [Dt|R]
+
+P [Dt| ¯
+
+R] ⇥ Q
+
+t62d
+
+t2q
+
+P [ ¯
+
+Dt|R]
+
+P [ ¯
+
+Dt| ¯
+
+R]
+
+Ranking Proportional to Relevance Odds
+
+!
+
+!
+
+!
+
+!
+
+!
+
+!
+
+!
+
+!
+
+ 
+
+with dt indicating if document d includes term t 
+
+and Dt indicating if random document includes term t
+
+!56
+
+
+IR&amp;DM ’13/’14
+
+Ranking Proportional to Relevance Odds (cont’d)
+
+!57
+
+=
+
+Q
+
+t2d
+
+t2q
+
+P [Dt|R]
+
+P [Dt| ¯
+
+R] ⇥ Q
+
+t62d
+
+t2q
+
+P [ ¯
+
+Dt|R]
+
+P [ ¯
+
+Dt| ¯
+
+R]
+
+=
+
+Q
+
+t2d
+
+t2q
+
+pt
+
+qt ⇥ Q
+
+t62d
+
+t2q
+
+(1�pt)
+
+1�qt
+
+(shortcuts pt and qt)
+
+=
+
+Q
+
+t2q
+
+pdt
+
+t
+
+qdt
+
+t
+
+⇥ Q
+
+t2q
+
+(1�pt)1�dt
+
+(1�qt)1�dt
+
+/
+
+P
+
+t2q
+
+log
+
+⇣
+
+pdt
+
+t
+
+(1�pt)
+
+(1�pt)dt
+
+⌘
+
+� log
+
+⇣
+
+qdt
+
+t
+
+(1�qt)
+
+(1�qt)dt
+
+⌘
+
+=
+
+P
+
+t2q
+
+dt log
+
+pt
+
+1�pt + P
+
+t2q
+
+dt log 1�qt
+
+qt
+
++ P
+
+t2q
+
+log 1�pt
+
+1�qt
+
+/
+
+P
+
+t2q
+
+dt log
+
+pt
+
+1�pt + P
+
+t2q
+
+dt log 1�qt
+
+qt
+
+(invariant of d)
+
+
+IR&amp;DM ’13/’14
+
+Estimating pt and qt with a Training Sample
+
+• We can estimate pt and qt based on a training sample obtained  
+
+by evaluating the query q on a small sample of the corpus and 
+
+asking the user for relevance feedback about the results 
+
+• Let N be the # documents in our sample 
+
+ R be the # relevant documents in our sample 
+
+ nt be the # documents in our sample that contain t 
+
+ rt be the # relevant documents in our sample that contain t 
+
+we estimate 
+
+ 
+
+ 
+
+ 
+
+or with Lidstone smoothing (λ = 0.5) 
+
+!58
+
+pt = rt
+
+R
+
+qt = nt � rt
+
+N � R
+
+pt = rt + 0.5
+
+R + 1
+
+qt = nt � rt + 0.5
+
+N � R + 1
+
+
+IR&amp;DM ’13/’14
+
+Smoothing (with Uniform Prior)
+
+• Probabilities pt and qt for term t are estimated by  
+
+MLE for Binomial distribution 
+
+• repeated coin tosses for term t in relevant documents (pt) 
+
+• repeated coin tosses for term t in irrelevant documents (qt) 
+
+• Avoid overfitting to the training sample by smoothing estimates 
+
+• Laplace smoothing (based on Laplace’s law of succession) 
+
+ 
+
+ 
+
+• Lidstone smoothing (heuristic generalization with λ &gt; 0)
+
+!59
+
+pt = rt + �
+
+R + 2 �
+
+qt = nt � rt + �
+
+N � R + 2 �
+
+pt = rt + 1
+
+R + 2
+
+qt = nt � rt + 1
+
+N � R + 2
+
+
+IR&amp;DM ’13/’14
+
+Binary Independence Model (Example)
+
+• Consider query q = {t1, …, t6} and sample of four documents 
+
+!
+
+!
+
+!
+
+!
+
+!
+
+!
+
+• For document d6 = {t1, t2, t6} we obtain
+
+!60
+
+t1
+
+t2
+
+t3
+
+t4
+
+t5
+
+t6
+
+R
+
+d1
+
+1
+
+0
+
+1
+
+1
+
+0
+
+0
+
+1
+
+d2
+
+1
+
+1
+
+0
+
+1
+
+1
+
+0
+
+1
+
+d3
+
+0
+
+0
+
+0
+
+1
+
+1
+
+0
+
+0
+
+d4
+
+0
+
+0
+
+1
+
+0
+
+0
+
+0
+
+0
+
+nt
+
+2
+
+1
+
+2
+
+3
+
+2
+
+0
+
+rt
+
+2
+
+1
+
+1
+
+2
+
+1
+
+0
+
+pt
+
+5/6
+
+1/2
+
+1/2
+
+5/6
+
+1/2
+
+1/6
+
+qt
+
+1/6
+
+1/6
+
+1/2
+
+1/2
+
+1/2
+
+1/6
+
+R = 2 
+
+N = 4
+
+P[R|d6, q] / log 5 + log 1 + log 1
+
+5 + log 5 + log 5 + log 5
+
+
+IR&amp;DM ’13/’14
+
+Estimating pt and qt without a Training Sample
+
+• When no training sample is available, we estimate pt and qt as 
+
+ 
+
+ 
+
+• pt reflects that we have no information about relevant documents 
+
+• qt under the assumption that # relevant documents &lt;&lt;&lt; # documents 
+
+• When we plug in these estimates of pt and qt, we obtain 
+
+ 
+
+ 
+
+ 
+
+ 
+
+which can be seen as TF*IDF with binary term frequencies 
+
+and logarithmically dampened inverse document frequencies
+
+!61
+
+pt = (1 � pt) = 1
+
+2
+
+qt = dft
+
+|D|
+
+P[R|d, q] =
+
+X
+
+t2q
+
+dt log 1 +
+
+X
+
+t2q
+
+dt log |D| � dft
+
+dft
+
+⇡
+
+X
+
+t2q
+
+dt log |D|
+
+dft
+
+
+IR&amp;DM ’13/’14
+
+Poisson Model
+
+• For generating document d from joint (multivariate)  
+
+term distribution Φ 
+
+• consider counting random variables: dt = tft,d 
+
+• postulate independence among these random variables 
+
+• Poisson model with term-specific parameters µt: 
+
+!
+
+!
+
+• MLE for µt from n sample documents {d1, …, dn}: 
+
+• no penalty for absent words 
+
+• no control of document length  
+
+!62
+
+P[d|µ] =
+
+Y
+
+t2V
+
+e�µt · µdt
+
+t
+
+dt!
+
+= e� P
+
+t2V µt Y
+
+t2d
+
+µdt
+
+t
+
+dt!
+
+ˆµt = 1
+
+n
+
+n
+
+X
+
+i=1
+
+tft,di
+
+
+IR&amp;DM ’13/’14
+
+3. Okapi BM25
+
+• Generalizes term weight 
+
+ 
+
+ 
+
+ 
+
+into 
+
+ 
+
+ 
+
+ 
+
+where pi and qi denote the probability that term occurs i times 
+
+in a relevant or irrelevant document, respectively 
+
+• Postulates Poisson (or 2-Poisson-mixture) distributions for terms
+
+!63
+
+w = log p(1 � q)
+
+q(1 � p)
+
+qtf = e�µ µtf
+
+tf!
+
+ptf = e�� �tf
+
+tf!
+
+w = log ptfq0
+
+qtfp0
+
+
+IR&amp;DM ’13/’14
+
+Okapi BM25 (cont’d)
+
+• Reduces the number of parameters that have to be learned and 
+
+approximates Poisson model by similarly-shaped function 
+
+!
+
+!
+
+• Finally leads to Okapi BM25 as state-of-the-art retrieval model 
+
+(with top-ranked results in TREC) 
+
+!
+
+!
+
+• k1 controls impact of term frequency (common choice k1 = 1.2) 
+
+• b controls impact of document length (common choice b = 0.75)
+
+!64
+
+w =
+
+tf
+
+k1 + tf log p(1 � q)
+
+q(1 � p)
+
+wt,d =
+
+(k1 + tft,d)
+
+k1((1 � b) + b
+
+|d|
+
+avdl) + tft,d
+
+log |D| � dfj + 0.5
+
+dfj + 0.5
+
+
+IR&amp;DM ’13/’14
+
+
+
+Okapi BM25 (Example)
+
+!
+
+!
+
+!
+
+!
+
+• 3D plot of a simplified 
+
+BM25 scoring function 
+
+using k1 = 1.2 as parameter 
+
+(DF mirrored for better readability) 
+
+• Scores for dft &gt; N/2 are negative 
+
+!65
+
+wt = (k1 + 1) tft,d
+
+k1 + tft,d
+
+log |D| � dft + 0.5
+
+dft + 0.5
+
+
+IR&amp;DM ’13/’14
+
+4. Tree Dependence Model
+
+• Consider term correlations in documents (with binary RV Xi) 
+
+requires estimating m-dimensional probability distribution 
+
+!
+
+• Tree dependence model [van Rijsbergen 1979] 
+
+• considers only 2-dimensional probabilities for term pairs (i, j) 
+
+!
+
+!
+
+!
+
+• estimates for each (i, j) the error made by independence assumptions 
+
+• constructs a tree with terms as nodes and m-1 weighted edges 
+
+connecting the highest-error term pairs
+
+!66
+
+fij(Xi, Xj)
+
+=
+
+P[Xi = .., Xj = ..]
+
+=
+
+P
+
+X1
+
+. . . P
+
+Xi�1
+
+P
+
+Xi+1
+
+. . . P
+
+Xj�1
+
+P
+
+Xj+1
+
+. . . P
+
+Xm
+
+P[X1 = .., . . . , Xm = ..]
+
+P[X1 = .., . . . , Xm = ..] = fX(X1, . . . , Xm)
+
+
+IR&amp;DM ’13/’14
+
+Two-Dimensional Term Correlations
+
+• Kullback-Leibler divergence estimates error of approximating f 
+
+by g assuming pairwise term independence 
+
+!
+
+!
+
+• Correlation coefficient for term pairs 
+
+!
+
+!
+
+• p-values of Χ 2 test of independence
+
+!67
+
+✏(f, g) =
+
+X
+
+X2{0,1}m
+
+f(X) log f(X)
+
+g(X) =
+
+X
+
+X2{0,1}m
+
+f(X) log
+
+f(X)
+
+m
+
+Q
+
+i=1
+
+g(Xi)
+
+⇢(Xi, Xj) =
+
+Cov(Xi, Xj)
+
+p
+
+V ar(Xi)
+
+p
+
+V ar(Xj)
+
+
+IR&amp;DM ’13/’14
+
+Kullback-Leibler Divergence (Example)
+
+• Given are documents d1=(1,1), d2=(0,0), d3=(1,1), d4=(0,1) 
+
+• 2-dimensional probability distribution f: 
+
+f(1,1) = P[X1 = 1, X2 = 1] = 2/4 
+
+f(0,0) = 1/4, f(0,1) = 1/4, f(1,0) = 0 
+
+• 1-dimensional marginal distributions g1 and g2 
+
+g1(1) = P[X1=1] = 2/4, g1(0) = 2/4 
+
+g2(1) = P[X2=1] = 3/4, g2(0) = 1/4 
+
+• 2-dimensional probability distribution assuming independence 
+
+g(1,1) = g1(1) g2(1) = 3/8 
+
+g(0,0) = 1/8, g(0,1) = 3/8, g(1,0) = 1/8 
+
+• approximation error ε (Kullback-Leibler divergence) 
+
+ε = 2/4 log 4/3 + 1/4 log 2 + 1/4 log 2/3 + 0
+
+!68
+
+
+IR&amp;DM ’13/’14
+
+Constructing the Term Dependence Tree
+
+• Input: Complete graph (V, E ) with m nodes Xi ∈ V and m2 
+
+undirected edges (i, j) ∈ E with weights ε 
+
+• Output: Spanning tree (V, E’) with maximum total edge weight 
+
+• Algorithm: 
+
+• Sort m2 edges in descending order of weights 
+
+• E’ = ∅ 
+
+• Repeat until |E’| = m-1 
+
+• E’ = E’ ∪  
+
+ 
+
+{(i, j) ∈ E \ E’ | (i, j) has maximal weight and E’ remains acyclic} 
+
+• Example:
+
+!69
+
+web
+
+surf
+
+net
+
+swim
+
+0.7
+
+0.1
+
+0.3
+
+0.9
+
+0.5
+
+0.1
+
+web
+
+surf
+
+net
+
+swim
+
+
+IR&amp;DM ’13/’14
+
+Estimation with Term Dependence Tree
+
+• Given a term dependence tree (V={X1, …, Xm}, E’) with preorder-
+
+labeled nodes (i.e., X1 is root) and assuming that  
+
+Xi and Xj are independent for (i, j) ∉ E’ 
+
+!
+
+!
+
+!
+
+!
+
+!
+
+!
+
+• Example:
+
+!70
+
+P[X1 = .., . . . , Xm = ..]
+
+=
+
+P[X1 = ..] P[X2 = .., . . . , Xm = ..|X1 = ..]
+
+(conditional probability)
+
+=
+
+m
+
+Q
+
+i=1
+
+P[Xi = ..|X1 = .., . . . , Xi�1 = ..]
+
+(chain rule)
+
+=
+
+P[X1]
+
+Q
+
+(i,j)2E0 P[Xj|Xi]
+
+(independence assumption)
+
+=
+
+P[X1]
+
+Q
+
+(i,j)2E0
+
+P [Xj,Xi]
+
+P [Xi]
+
+(conditional probability)
+
+web
+
+surf
+
+net
+
+swim
+
+P[web, net, surf, swim]
+
+=
+
+P[web] P[net|web] P[surf|web] P[swim|surf]
+
+
+IR&amp;DM ’13/’14
+
+5. Bayesian Networks
+
+• A Bayesian network (BN) is a directed, acyclic graph (V, E) with 
+
+• Vertices V representing random variables 
+
+• Edges E representing dependencies 
+
+• For a root R ∈ V the BN captures the prior probability P[R = …] 
+
+• For a vertex X ∈ V with parents parents(x) = {P1, …, Pk} 
+
+the BN captures the conditional probability P[X |P1, …, Pk ] 
+
+• The vertex X is conditionally independent of a non-parent node Y 
+
+given its parents parents(x) = {P1, …, Pk}, i.e.:
+
+!71
+
+P[X|P1, . . . , Pk, Y ] = P[X|P1, . . . , Pk]
+
+
+IR&amp;DM ’13/’14
+
+Bayesian Networks (cont’d)
+
+• We can determine any joint probability using the BN
+
+!72
+
+P[X1, . . . , Xn]
+
+=
+
+P[X1|X2, . . . , Xn] P[X2, . . . , Xn]
+
+=
+
+Qn
+
+i=1 P[Xi|Xi+1, . . . , Xn]
+
+(chain rule)
+
+=
+
+Qn
+
+i=1 P[Xi|parents(Xi), other nodes]
+
+(conditional independence)
+
+=
+
+Qn
+
+i=1 P[Xi|parents(Xi)]
+
+
+IR&amp;DM ’13/’14
+
+Bayesian Networks (Example)
+
+!73
+
+Cloudy
+
+Sprinklers
+
+Rain
+
+Wet
+
+P[C]
+
+P[¯C]
+
+0.5
+
+0.5
+
+C
+
+P[S]
+
+P[¯S]
+
+F
+
+0.5
+
+0.5
+
+T
+
+0.1
+
+0.9
+
+C
+
+P[R]
+
+P[¯R]
+
+F
+
+0.2
+
+0.8
+
+T
+
+0.8
+
+0.2
+
+S
+
+R
+
+P[W]
+
+P[ ¯
+
+W]
+
+F
+
+F
+
+0.0
+
+1.0
+
+F
+
+T
+
+0.9
+
+0.1
+
+T
+
+F
+
+0.9
+
+0.1
+
+T
+
+T
+
+1.0
+
+0.0
+
+P[C, S, ¯R, W] = P[C] P[S|C] P[ ¯R|C] P[W|S, ¯R] = 0.5 ⇥ 0.1 ⇥ 0.2 ⇥ 0.9
+
+
+IR&amp;DM ’13/’14
+
+Bayesian Networks for IR
+
+!74
+
+P[ti|dj] =
+
+⇢ 1
+
+:
+
+ti 2 dj
+
+0
+
+:
+
+otherwise
+
+P[dj] = 1/N
+
+d1
+
+dj
+
+dN
+
+t1
+
+ti
+
+tM
+
+tk
+
+q
+
+…
+
+…
+
+…
+
+…
+
+P[q, dj]
+
+=
+
+P
+
+(t1,...,tM)
+
+P[q, dj, t1, . . . , tM]
+
+=
+
+P
+
+(t1,...,tM)
+
+P[q|dj, t1, . . . , tM] P[dj, t1, . . . , tM]
+
+=
+
+P
+
+(t1,...,tM)
+
+P[q|t1, . . . , tM] P[t1, . . . , tM|dj] P[dj]
+
+P[q|parents(q)] =
+
+⇢ 1
+
+:
+
+9 t 2 parents(q) : rel(t, q)
+
+0
+
+:
+
+otherwise
+
+
+IR&amp;DM ’13/’14
+
+Advanced Bayesian Networks for IR
+
+• BN not widely adopted in IR due to challenges in parameter 
+
+estimation, representation, efficiency, and practical effectiveness
+
+!75
+
+d1
+
+dj
+
+dN
+
+t1
+
+ti
+
+tM
+
+tk
+
+q
+
+…
+
+…
+
+…
+
+…
+
+c1
+
+cK
+
+…
+
+concepts/topics cl:
+
+P[ck|ti, tl] ⇡
+
+dfil
+
+dfi + dfl � dfil
+
+
+IR&amp;DM ’13/’14
+
+Summary of III.3
+
+• Probabilistic IR as a family of (more) principled approaches 
+
+relying on generative models of documents as bags of words 
+
+• Probabilistic ranking principle as the foundation  
+
+establishing that ranking documents by P[R| d, q] is optimal 
+
+• Binary independence model puts that principle into practice 
+
+based on a multivariate Bernoulli model 
+
+• Smoothing to avoid overfitting to the training sample 
+
+• Okapi BM25 as a state-of-the-art retrieval model 
+
+based on an approximation of a 2-Poisson mixture model 
+
+• Term dependence model and Bayesian networks  
+
+can consider term correlations (but are often intractable)
+
+!76
+
+
+IR&amp;DM ’13/’14
+
+Additional Literature for III.3
+
+• F. Crestani, M. Lalmas, C. J. Van Rijsbergen, and I. Campbell: “Is This Document 
+
+Relevant? ... Probably”: A Survey of Probabilistic Models in Information Retrieval, 
+
+ACM Computing Surveys 30(4):528-552, 1998 
+
+• S.E. Robertson, K. Spärck Jones: Relevance Weighting of Search Terms,  
+
+JASIS 27(3), 1976 
+
+• S.E. Robertson, S. Walker: Some Simple Effective Approximations to the 2-Poisson 
+
+Model for Probabilistic Weighted Retrieval, SIGIR 1994 
+
+• T. Roelleke: Information Retrieval Models: Foundations and Relationships 
+
+Morgan &amp; Claypool Publishers, 2013 
+
+• K. Spärck-Jones, S. Walter, S. E. Robertson: A probabilistic model of information 
+
+retrieval: development and comparative experiments, IP&amp;M 36:779-840, 2000 
+
+• K. J. van Rijsbergen: Information Retrieval, University of Glasgow, 1979 
+
+http://www.dcs.gla.ac.uk/Keith/Preface.html
+
+!77
+

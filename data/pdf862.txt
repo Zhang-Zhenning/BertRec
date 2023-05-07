@@ -1,0 +1,1444 @@
+
+Learning to rank
+
+Toggle the table of contents
+
+
+
+ 4
+
+languages
+
+Article
+
+Talk
+
+Tools From Wikipedia, the free encyclopedia
+
+Part of a series on
+
+Machine learning
+
+and data mining
+
+
+
+Paradigms
+
+Supervised learning · Unsupervised learning · Online learning · Batch learning · Meta-learning · Semi-supervised learning · Self-supervised learning ·
+
+Reinforcement learning · Rule-based learning · Quantum machine learning
+
+Problems
+
+Classification · Generative model · Regression · Clustering · dimension reduction · density estimation · Anomaly detection · Data Cleaning · AutoML ·
+
+Association rules · Semantic analysis · Structured prediction · Feature engineering · Feature learning · Learning to rank · Grammar induction ·
+
+Ontology learning · Multimodal learning
+
+Supervised learning
+
+(classification • regression)
+
+Decision trees · Ensembles (Bagging · Boosting · Random forest) · k-NN · Linear regression · Naive Bayes · Artificial neural networks ·
+
+Logistic regression · Perceptron · Relevance vector machine (RVM) · Support vector machine (SVM)
+
+Clustering
+
+BIRCH · CURE · Hierarchical · k-means · Fuzzy · Expectation–maximization (EM) · 
+
+DBSCAN · OPTICS · Mean shift
+
+Dimensionality reduction
+
+Factor analysis · CCA · ICA · LDA · NMF · PCA · PGD · t-SNE · SDL
+
+Structured prediction
+
+Graphical models (Bayes net · Conditional random field · Hidden Markov)
+
+Anomaly detection
+
+RANSAC · k-NN · Local outlier factor · Isolation forest
+
+Artificial neural network
+
+Autoencoder · Cognitive computing · Deep learning · DeepDream · Multilayer perceptron · RNN (LSTM · GRU · ESN · reservoir computing) ·
+
+Restricted Boltzmann machine · GAN · SOM · Convolutional neural network (U-Net) · Transformer (Vision) · Spiking neural network · Memtransistor ·
+
+Electrochemical RAM (ECRAM)
+
+Reinforcement learning
+
+Q-learning · SARSA · Temporal difference (TD) · Multi-agent (Self-play)
+
+Learning with humans
+
+Active learning · Crowdsourcing · Human-in-the-loop
+
+Model diagnostics
+
+Learning curve
+
+Theory
+
+Kernel machines · Bias–variance tradeoff · Computational learning theory · Empirical risk minimization · Occam learning · PAC learning ·
+
+Statistical learning · VC theory
+
+Machine-learning venues
+
+NeurIPS · ICML · ICLR · ML · JMLR
+
+Related articles
+
+Glossary of artificial intelligence · List of datasets for machine-learning research · Outline of machine learning
+
+v · t · e
+
+Learning to rank[1] or machine-learned ranking (MLR) is the application of machine learning, typically supervised, semi-supervised
+
+or reinforcement learning, in the construction of ranking models for information retrieval systems.[2] Training data consists of lists of
+
+items with some partial order specified between items in each list. This order is typically induced by giving a numerical or ordinal score
+
+
+
+
+
+
+
+
+
+
+A possible architecture of a machine-
+
+learned search engine.
+
+or a binary judgment (e.g. "relevant" or "not relevant") for each item. The goal of constructing the ranking model is to rank new,
+
+unseen lists in a similar way to rankings in the training data.
+
+Applications [edit]
+
+In information retrieval [edit]
+
+Ranking is a central part of many information retrieval problems, such as document
+
+retrieval, collaborative filtering, sentiment analysis, and online advertising.
+
+A possible architecture of a machine-learned search engine is shown in the accompanying
+
+figure.
+
+Training data consists of queries and documents matching them together with relevance
+
+degree of each match. It may be prepared manually by human assessors (or raters, as
+
+Google calls them), who check results for some queries and determine relevance of each
+
+result. It is not feasible to check the relevance of all documents, and so typically a
+
+technique called pooling is used — only the top few documents, retrieved by some existing
+
+ranking models are checked. This technique may introduce selection bias. Alternatively,
+
+training data may be derived automatically by analyzing clickthrough logs (i.e. search
+
+results which got clicks from users),[3] query chains,[4] or such search engines' features as
+
+Google's (since-replaced) SearchWiki. Clickthrough logs can be biased by the tendency of
+
+users to click on the top search results on the assumption that they are already well-
+
+ranked.
+
+Training data is used by a learning algorithm to produce a ranking model which computes the relevance of documents for actual
+
+queries.
+
+Typically, users expect a search query to complete in a short time (such as a few hundred milliseconds for web search), which makes it
+
+impossible to evaluate a complex ranking model on each document in the corpus, and so a two-phase scheme is used.[5] First, a small
+
+number of potentially relevant documents are identified using simpler retrieval models which permit fast query evaluation, such as the
+
+vector space model, boolean model, weighted AND,[6] or BM25. This phase is called top-  document retrieval and many heuristics were
+
+proposed in the literature to accelerate it, such as using a document's static quality score and tiered indexes.[7] In the second phase, a
+
+more accurate but computationally expensive machine-learned model is used to re-rank these documents.
+
+In other areas [edit]
+
+Learning to rank algorithms have been applied in areas other than information retrieval:
+
+In machine translation for ranking a set of hypothesized translations;[8]
+
+In computational biology for ranking candidate 3-D structures in protein structure prediction problem.[8]
+
+In recommender systems for identifying a ranked list of related news articles to recommend to a user after he or she has read a
+
+current news article.[9]
+
+Feature vectors [edit]
+
+For the convenience of MLR algorithms, query-document pairs are usually represented by numerical vectors, which are called feature
+
+vectors. Such an approach is sometimes called bag of features and is analogous to the bag of words model and vector space model
+
+used in information retrieval for representation of documents.
+
+Components of such vectors are called features, factors or ranking signals. They may be divided into three groups (features from
+
+document retrieval are shown as examples):
+
+Query-independent or static features — those features, which depend only on the document, but not on the query. For example,
+
+PageRank or document's length. Such features can be precomputed in off-line mode during indexing. They may be used to
+
+compute document's static quality score (or static rank), which is often used to speed up search query evaluation.[7][10]
+
+Query-dependent or dynamic features — those features, which depend both on the contents of the document and the query, such
+
+as TF-IDF score or other non-machine-learned ranking functions.
+
+Query-level features or query features, which depend only on the query. For example, the number of words in a query.
+
+Some examples of features, which were used in the well-known LETOR
+
+ dataset:
+
+TF, TF-IDF, BM25, and language modeling scores of document's zones (title, body, anchors text, URL) for a given query;
+
+Lengths and IDF sums of document's zones;
+
+Document's PageRank, HITS ranks and their variants.
+
+Selecting and designing good features is an important area in machine learning, which is called feature engineering.
+
+
+Evaluation measures [edit]
+
+Main article: Evaluation_measures_(information_retrieval) § Offline_metrics
+
+There are several measures (metrics) which are commonly used to judge how well an algorithm is doing on training data and to
+
+compare the performance of different MLR algorithms. Often a learning-to-rank problem is reformulated as an optimization problem
+
+with respect to one of these metrics.
+
+Examples of ranking quality measures:
+
+Mean average precision (MAP);
+
+DCG and NDCG;
+
+Precision@n, NDCG@n, where "@n" denotes that the metrics are evaluated only on top n documents;
+
+Mean reciprocal rank;
+
+Kendall's tau;
+
+Spearman's rho.
+
+DCG and its normalized variant NDCG are usually preferred in academic research when multiple levels of relevance are used.[11] Other
+
+metrics such as MAP, MRR and precision, are defined only for binary judgments.
+
+Recently, there have been proposed several new evaluation metrics which claim to model user's satisfaction with search results better
+
+than the DCG metric:
+
+Expected reciprocal rank (ERR);[12]
+
+Yandex's pfound.[13]
+
+Both of these metrics are based on the assumption that the user is more likely to stop looking at search results after examining a more
+
+relevant document, than after a less relevant document.
+
+Approaches [edit]
+
+
+
+This section needs expansion.
+
+You can help by adding to it.
+
+(December 2009)
+
+Tie-Yan Liu of Microsoft Research Asia has analyzed existing algorithms for learning to rank problems in his book Learning to Rank for
+
+Information Retrieval.[1] He categorized them into three groups by their input spaces, output spaces, hypothesis spaces (the core
+
+function of the model) and loss functions: the pointwise, pairwise, and listwise approach. In practice, listwise approaches often
+
+outperform pairwise approaches and pointwise approaches. This statement was further supported by a large scale experiment on the
+
+performance of different learning-to-rank methods on a large collection of benchmark data sets.[14]
+
+In this section, without further notice,  denotes an object to be evaluated, for example, a document or an image, 
+
+ denotes a single-
+
+value hypothesis, 
+
+ denotes a bi-variate or multi-variate function and 
+
+ denotes the loss function.
+
+Pointwise approach [edit]
+
+In this case, it is assumed that each query-document pair in the training data has a numerical or ordinal score. Then the learning-to-
+
+rank problem can be approximated by a regression problem — given a single query-document pair, predict its score. Formally
+
+speaking, the pointwise approach aims at learning a function 
+
+ predicting the real-value or ordinal score of a document  using the
+
+loss function 
+
+.
+
+A number of existing supervised machine learning algorithms can be readily used for this purpose. Ordinal regression and
+
+classification algorithms can also be used in pointwise approach when they are used to predict the score of a single query-document
+
+pair, and it takes a small, finite number of values.
+
+Pairwise approach [edit]
+
+In this case, the learning-to-rank problem is approximated by a classification problem — learning a binary classifier 
+
+ that can tell
+
+which document is better in a given pair of documents. The classifier shall take two images as its input and the goal is to minimize a
+
+loss function 
+
+. The loss function may reflect the average number of inversions in ranking.
+
+In many cases, the binary classifier 
+
+ is implemented with a scoring function 
+
+. As an example, RankNet [15] adapts a probability
+
+model and defines 
+
+ as the estimated probability of the document  has higher quality than :
+
+where 
+
+ is a cumulative distribution function, for example, the standard logistic CDF, i.e.
+
+Listwise approach [edit]
+
+
+These algorithms try to directly optimize the value of one of the above evaluation measures, averaged over all queries in the training
+
+data. This is difficult because most evaluation measures are not continuous functions with respect to ranking model's parameters, and
+
+so continuous approximations or bounds on evaluation measures have to be used.
+
+List of methods [edit]
+
+A partial list of published learning-to-rank algorithms is shown below with years of first publication of each method:
+
+Year
+
+Name
+
+Type
+
+Notes
+
+1989 OPRF [16]
+
+pointwise
+
+Polynomial regression (instead of machine learning, this work refers
+
+to pattern recognition, but the idea is the same)
+
+1992 SLR [17]
+
+pointwise
+
+Staged logistic regression
+
+1994 NMOpt [18]
+
+listwise
+
+Non-Metric Optimization
+
+1999 MART
+
+ (Multiple Additive
+
+Regression Trees)
+
+pairwise
+
+2000 Ranking SVM
+
+ (RankSVM)
+
+pairwise
+
+A more recent exposition is in,[3] which describes an application to
+
+ranking using clickthrough logs.
+
+2002 Pranking[19]
+
+pointwise
+
+Ordinal regression.
+
+2003
+
+
+
+RankBoost
+
+pairwise
+
+2005
+
+
+
+RankNet
+
+pairwise
+
+2006
+
+
+
+IR-SVM
+
+pairwise
+
+Ranking SVM with query-level normalization in the loss function.
+
+2006
+
+
+
+LambdaRank
+
+pairwise/listwise RankNet in which pairwise loss function is multiplied by the change
+
+in the IR metric caused by a swap.
+
+2007
+
+
+
+AdaRank
+
+listwise
+
+2007 FRank
+
+pairwise
+
+Based on RankNet, uses a different loss function - fidelity loss.
+
+2007
+
+
+
+GBRank
+
+pairwise
+
+2007 ListNet
+
+listwise
+
+2007 McRank
+
+pointwise
+
+2007
+
+
+
+QBRank
+
+pairwise
+
+2007
+
+
+
+RankCosine
+
+listwise
+
+2007 RankGP[20]
+
+listwise
+
+2007
+
+
+
+RankRLS
+
+pairwise
+
+Regularized least-squares based ranking. The work is extended in
+
+[21] to learning to rank from general preference graphs.
+
+2007
+
+
+
+SVMmap
+
+listwise
+
+2008
+
+
+
+LambdaSMART/LambdaMART
+
+pairwise/listwise
+
+Winning entry in the Yahoo Learning to Rank competition in 2010,
+
+using an ensemble of LambdaMART models. Based on MART
+
+(1999)[22] “LambdaSMART”, for Lambda-submodel-MART, or
+
+LambdaMART for the case with no submodel.
+
+2008
+
+
+
+ListMLE
+
+listwise
+
+Based on ListNet.
+
+2008
+
+
+
+PermuRank
+
+listwise
+
+2008 SoftRank
+
+listwise
+
+2008
+
+
+
+Ranking Refinement
+
+[23]
+
+pairwise
+
+A semi-supervised approach to learning to rank that uses Boosting.
+
+2008 SSRankBoost
+
+[24]
+
+pairwise
+
+An extension of RankBoost to learn with partially labeled data
+
+(semi-supervised learning to rank)
+
+2008
+
+
+
+SortNet
+
+[25]
+
+pairwise
+
+SortNet, an adaptive ranking algorithm which orders objects using a
+
+neural network as a comparator.
+
+2009
+
+
+
+MPBoost
+
+pairwise
+
+Magnitude-preserving variant of RankBoost. The idea is that the
+
+more unequal are labels of a pair of documents, the harder should
+
+the algorithm try to rank them.
+
+2009
+
+
+
+BoltzRank
+
+listwise
+
+Unlike earlier methods, BoltzRank produces a ranking model that
+
+looks during query time not just at a single document, but also at
+
+pairs of documents.
+
+
+2009
+
+
+
+BayesRank
+
+listwise
+
+A method combines Plackett-Luce Model and neural network to
+
+minimize the expected Bayes risk, related to NDCG, from the
+
+decision-making aspect.
+
+2010
+
+
+
+NDCG Boost
+
+[26]
+
+listwise
+
+A boosting approach to optimize NDCG.
+
+2010 GBlend
+
+pairwise
+
+Extends GBRank to the learning-to-blend problem of jointly solving
+
+multiple learning-to-rank problems with some shared features.
+
+2010
+
+
+
+IntervalRank
+
+pairwise &amp;
+
+listwise
+
+2010
+
+
+
+CRR
+
+pointwise &amp;
+
+pairwise
+
+Combined Regression and Ranking. Uses stochastic gradient
+
+descent to optimize a linear combination of a pointwise quadratic
+
+loss and a pairwise hinge loss from Ranking SVM.
+
+2014
+
+
+
+LCR
+
+pairwise
+
+Applied local low-rank assumption on collaborative ranking.
+
+Received best student paper award at WWW'14.
+
+2015
+
+
+
+FaceNet
+
+pairwise
+
+Ranks face images with the triplet metric via deep convolutional
+
+network.
+
+2016 XGBoost
+
+pairwise
+
+Supports various ranking objectives and evaluation metrics.
+
+2017
+
+
+
+ES-Rank
+
+listwise
+
+Evolutionary Strategy Learning to Rank technique with 7 fitness
+
+evaluation metrics
+
+2018 DLCM
+
+ [27]
+
+listwise
+
+A multi-variate ranking function that encodes multiple items from an
+
+initial ranked list (local context) with a recurrent neural network and
+
+create result ranking accordingly.
+
+2018
+
+
+
+PolyRank
+
+[28]
+
+pairwise
+
+Learns simultaneously the ranking and the underlying generative
+
+model from pairwise comparisons.
+
+2018 FATE-Net/FETA-Net
+
+ [29]
+
+listwise
+
+End-to-end trainable architectures, which explicitly take all items
+
+into account to model context effects.
+
+2019
+
+
+
+FastAP
+
+ [30]
+
+listwise
+
+Optimizes Average Precision to learn deep embeddings
+
+2019 Mulberry
+
+listwise &amp;
+
+hybrid
+
+Learns ranking policies maximizing multiple metrics across the
+
+entire dataset
+
+2019
+
+
+
+DirectRanker
+
+pairwise
+
+Generalisation of the RankNet architecture
+
+2019 GSF
+
+ [31]
+
+listwise
+
+A permutation-invariant multi-variate ranking function that encodes
+
+and ranks items with groupwise scoring functions built with deep
+
+neural networks.
+
+2020
+
+
+
+RaMBO
+
+[32]
+
+listwise
+
+Optimizes rank-based metrics using blackbox backpropagation[33]
+
+2020
+
+
+
+PRM
+
+ [34]
+
+pairwise
+
+Transformer network encoding both the dependencies among items
+
+and the interactions
+
+between the user and items
+
+2020 SetRank
+
+ [35]
+
+listwise
+
+A permutation-invariant multi-variate ranking function that encodes
+
+and ranks items with self-attention networks.
+
+2021
+
+
+
+PiRank
+
+ [36]
+
+listwise
+
+Differentiable surrogates for ranking able to exactly recover the
+
+desired metrics and scales favourably to large list sizes, significantly
+
+improving internet-scale benchmarks.
+
+2022 SAS-Rank
+
+listwise
+
+Combining Simulated Annealing with Evolutionary Strategy for
+
+implicit and explicit learning to rank from relevance labels
+
+2022 VNS-Rank
+
+listwise
+
+Variable Neighborhood Search in 2 Novel Methodologies in AI for
+
+Learning to Rank
+
+2022 VNA-Rank
+
+listwise
+
+Combining Simulated Annealing with Variable Neighbourhood
+
+Search for Learning to Rank
+
+2023 GVN-Rank
+
+listwise
+
+Combining Gradient Ascent with Variable Neighbourhood Search
+
+for Learning to Rank
+
+Note: as most supervised learning to Rank algorithms can be applied to pointwise, pairwise and listwise case, only those methods
+
+which are specifically designed with ranking in mind are shown above.
+
+
+History [edit]
+
+Norbert Fuhr introduced the general idea of MLR in 1992, describing learning approaches in information retrieval as a generalization
+
+of parameter estimation;[37] a specific variant of this approach (using polynomial regression) had been published by him three years
+
+earlier.[16] Bill Cooper proposed logistic regression for the same purpose in 1992 [17] and used it with his Berkeley research group to
+
+train a successful ranking function for TREC. Manning et al.[38] suggest that these early works achieved limited results in their time due
+
+to little available training data and poor machine learning techniques.
+
+Several conferences, such as NIPS, SIGIR and ICML had workshops devoted to the learning-to-rank problem since mid-2000s
+
+(decade).
+
+Practical usage by search engines [edit]
+
+Commercial web search engines began using machine learned ranking systems since the 2000s (decade). One of the first search
+
+engines to start using it was AltaVista (later its technology was acquired by Overture, and then Yahoo), which launched a gradient
+
+boosting-trained ranking function in April 2003.[39][40]
+
+Bing's search is said to be powered by 
+
+
+
+RankNet
+
+ algorithm,[41][when?] which was invented at Microsoft Research in 2005.
+
+In November 2009 a Russian search engine Yandex announced[42] that it had significantly increased its search quality due to
+
+deployment of a new proprietary MatrixNet algorithm, a variant of gradient boosting method which uses oblivious decision trees.[43]
+
+Recently they have also sponsored a machine-learned ranking competition "Internet Mathematics 2009"[44] based on their own search
+
+engine's production data. Yahoo has announced a similar competition in 2010.[45]
+
+As of 2008, Google's Peter Norvig denied that their search engine exclusively relies on machine-learned ranking.[46] Cuil's CEO, Tom
+
+Costello, suggests that they prefer hand-built models because they can outperform machine-learned models when measured against
+
+metrics like click-through rate or time on landing page, which is because machine-learned models "learn what people say they like, not
+
+what people actually like".[47]
+
+In January 2017 the technology was included in the open source search engine Apache Solr™,[48] thus making machine learned
+
+search rank widely accessible also for enterprise search.
+
+Vulnerabilities [edit]
+
+Similar to recognition applications in computer vision, recent neural network based ranking algorithms are also found to be susceptible
+
+to covert adversarial attacks, both on the candidates and the queries.[49] With small perturbations imperceptible to human beings,
+
+ranking order could be arbitrarily altered. In addition, model-agnostic transferable adversarial examples are found to be possible, which
+
+enables black-box adversarial attacks on deep ranking systems without requiring access to their underlying implementations.[49][50]
+
+Conversely, the robustness of such ranking systems can be improved via adversarial defenses such as the Madry defense.[51]
+
+See also [edit]
+
+Content-based image retrieval
+
+Multimedia information retrieval
+
+Image retrieval
+
+Triplet loss
+
+References [edit]
+
+1. ^ a b Tie-Yan Liu (2009), "Learning to Rank for Information Retrieval", Foundations and Trends in Information Retrieval, 3 (3): 225–331,
+
+doi:10.1561/1500000016 , ISBN 978-1-60198-244-5. Slides from Tie-Yan Liu's talk at WWW 2009 conference are 
+
+
+
+available online
+
+
+
+Archived
+
+ 2017-08-08 at the Wayback Machine
+
+2. ^ Mehryar Mohri, Afshin Rostamizadeh, Ameet Talwalkar (2012) Foundations of Machine Learning, The MIT Press ISBN 9780262018258.
+
+3. ^ a b Joachims, T. (2002), 
+
+
+
+"Optimizing Search Engines using Clickthrough Data"
+
+ (PDF), Proceedings of the ACM Conference on
+
+Knowledge Discovery and Data Mining, 
+
+
+
+archived
+
+ (PDF) from the original on 2009-12-29, retrieved 2009-11-11
+
+4. ^ Joachims T.; Radlinski F. (2005), 
+
+
+
+"Query Chains: Learning to Rank from Implicit Feedback"
+
+ (PDF), Proceedings of the ACM
+
+Conference on Knowledge Discovery and Data Mining, arXiv:cs/0605035 , Bibcode:2006cs........5035R , 
+
+
+
+archived
+
+ (PDF) from the
+
+original on 2011-07-27, retrieved 2009-12-19
+
+5. ^ B. Cambazoglu; H. Zaragoza; O. Chapelle; J. Chen; C. Liao; Z. Zheng; J. Degenhardt., "Early exit optimizations for additive machine
+
+
+
+learned ranking systems"
+
+ (PDF), WSDM '10: Proceedings of the Third ACM International Conference on Web Search and Data Mining,
+
+2010., archived from 
+
+
+
+the original
+
+ (PDF) on 2019-08-28, retrieved 2009-12-23
+
+6. ^ Broder A.; Carmel D.; Herscovici M.; Soffer A.; Zien J. (2003), 
+
+
+
+"Efficient query evaluation using a two-level retrieval process"
+
+ (PDF),
+
+Proceedings of the Twelfth International Conference on Information and Knowledge Management: 426–434, doi:10.1145/956863.956944 ,
+
+ISBN 978-1-58113-723-1, S2CID 2432701 , archived from 
+
+
+
+the original
+
+ (PDF) on 2009-05-21, retrieved 2009-12-15
+
+7. ^ a b Manning C.; Raghavan P.; Schütze H. (2008), Introduction to Information Retrieval, Cambridge University Press. Section 7.1
+
+Archived  2009-07-19 at the Wayback Machine
+
+^ a b Kevin K. Duh (2009), Learning to Rank with Partially-Labeled Data
+
+ (PDF), archived
+
+ (PDF) from the original on 2011-07-20,
+
+
+8. ^ a b Kevin K. Duh (2009), 
+
+
+
+Learning to Rank with Partially-Labeled Data
+
+ (PDF), 
+
+
+
+archived
+
+ (PDF) from the original on 2011-07-20,
+
+retrieved 2009-12-27
+
+9. ^ Yuanhua Lv, Taesup Moon, Pranam Kolari, Zhaohui Zheng, Xuanhui Wang, and Yi Chang, Learning to Model Relatedness for News
+
+
+
+Recommendation
+
+ 
+
+
+
+Archived
+
+ 2011-08-27 at the Wayback Machine, in International Conference on World Wide Web (WWW), 2011.
+
+10. ^ Richardson, M.; Prakash, A.; Brill, E. (2006). 
+
+
+
+"Beyond PageRank: Machine Learning for Static Ranking"
+
+ (PDF). Proceedings of the
+
+15th International World Wide Web Conference. pp. 707–715. 
+
+
+
+Archived
+
+ (PDF) from the original on 2009-08-15. Retrieved 2009-11-18.
+
+11. ^ "Archived copy" . Archived  from the original on 2011-01-04. Retrieved 2009-12-14.
+
+12. ^ Olivier Chapelle; Donald Metzler; Ya Zhang; Pierre Grinspan (2009), 
+
+
+
+"Expected Reciprocal Rank for Graded Relevance"
+
+ (PDF), CIKM,
+
+archived from 
+
+
+
+the original
+
+ (PDF) on 2012-02-24
+
+13. ^ Gulin A.; Karpovich P.; Raskovalov D.; Segalovich I. (2009), "Yandex at ROMIP'2009: optimization of ranking algorithms by machine
+
+
+
+learning methods"
+
+ (PDF), Proceedings of ROMIP'2009: 163–168, 
+
+
+
+archived
+
+ (PDF) from the original on 2009-11-22, retrieved 2009-11-13
+
+(in Russian)
+
+14. ^ Tax, Niek; Bockting, Sander; Hiemstra, Djoerd (2015), 
+
+
+
+"A cross-benchmark comparison of 87 learning to rank methods"
+
+ (PDF),
+
+Information Processing &amp; Management, 51 (6): 757–772, doi:10.1016/j.ipm.2015.07.002 , archived from 
+
+
+
+the original
+
+ (PDF) on 2017-08-
+
+09, retrieved 2017-10-15
+
+15. ^ Burges, Chris J. C.; Shaked, Tal; Renshaw, Erin; Lazier, Ari; Deeds, Matt; Hamilton, Nicole; Hullender, Greg (1 August 2005). "Learning
+
+to Rank using Gradient Descent" . Archived  from the original on 26 February 2021. Retrieved 31 March 2021.
+
+16. ^ a b Fuhr, Norbert (1989), "Optimum polynomial retrieval functions based on the probability ranking principle", ACM Transactions on
+
+Information Systems, 7 (3): 183–204, doi:10.1145/65943.65944 , S2CID 16632383
+
+17. ^ a b Cooper, William S.; Gey, Frederic C.; Dabney, Daniel P. (1992), "Probabilistic retrieval based on staged logistic regression", SIGIR '92
+
+Proceedings of the 15th Annual International ACM SIGIR Conference on Research and Development in Information Retrieval: 198–210,
+
+doi:10.1145/133160.133199 , ISBN 978-0897915236, S2CID 125993
+
+18. ^ Bartell, Brian T.; Cottrell Garrison W.; Belew, Richard K. (1994), "Automatic Combination of Multiple Ranked Retrieval Systems" , SIGIR
+
+'94 Proceedings of the 17th Annual International ACM SIGIR Conference on Research and Development in Information Retrieval: 173–181,
+
+doi:10.1007/978-1-4471-2099-5_18 , ISBN 978-0387198897, S2CID 18606472 , archived  from the original on 2018-06-13, retrieved
+
+2020-10-12
+
+19. ^ "Pranking". 2001: 641–647. CiteSeerX 10.1.1.20.378 .
+
+20. ^ "RankGP". CiteSeerX 10.1.1.90.220 .
+
+21. ^ Pahikkala, Tapio; Tsivtsivadze, Evgeni; Airola, Antti; Järvinen, Jouni; Boberg, Jorma (2009), "An efficient algorithm for learning to rank from
+
+preference graphs", Machine Learning, 75 (1): 129–165, doi:10.1007/s10994-008-5097-z .
+
+22. ^ C. Burges. (2010). 
+
+
+
+From RankNet to LambdaRank to LambdaMART: An Overview
+
+ 
+
+
+
+Archived
+
+ 2017-11-10 at the Wayback Machine.
+
+23. ^ Rong Jin, Hamed Valizadegan, Hang Li, 
+
+
+
+Ranking Refinement and Its Application for Information Retrieval
+
+ 
+
+
+
+Archived
+
+ 2012-04-06 at
+
+the Wayback Machine, in International Conference on World Wide Web (WWW), 2008.
+
+24. ^ Massih-Reza Amini, Vinh Truong, Cyril Goutte, 
+
+
+
+A Boosting Algorithm for Learning Bipartite Ranking Functions with Partially Labeled
+
+
+
+Data
+
+ 
+
+
+
+Archived
+
+ 2010-08-02 at the Wayback Machine, International ACM SIGIR conference, 2008. The code Archived  2010-07-23 at
+
+the Wayback Machine is available for research purposes.
+
+25. ^ Leonardo Rigutini, Tiziano Papini, Marco Maggini, Franco Scarselli, 
+
+
+
+"SortNet: learning to rank by a neural-based sorting algorithm"
+
+
+
+Archived
+
+ 2011-11-25 at the Wayback Machine, SIGIR 2008 workshop: Learning to Rank for Information Retrieval, 2008
+
+26. ^ Hamed Valizadegan, Rong Jin, Ruofei Zhang, Jianchang Mao, 
+
+
+
+Learning to Rank by Optimizing NDCG Measure
+
+ 
+
+
+
+Archived
+
+ 2012-04-06
+
+at the Wayback Machine, in Proceeding of Neural Information Processing Systems (NIPS), 2010.
+
+27. ^ Ai, Qingyao; Bi, Keping; Jiafeng, Guo; Croft, W. Bruce (2018), "Learning a deep listwise context model for ranking refinement", SIGIR '18
+
+Proceedings of the 41st Annual International ACM SIGIR Conference on Research and Development in Information Retrieval: 135–144,
+
+doi:10.1145/3209978.3209985 , ISBN 9781450356572, S2CID 4956076
+
+28. ^ Davidov, Ori; Ailon, Nir; Oliveira, Ivo F. D. (2018). "A New and Flexible Approach to the Analysis of Paired Comparison Data" . Journal of
+
+Machine Learning Research. 19 (60): 1–29. ISSN 1533-7928 . Archived  from the original on 2019-10-03. Retrieved 2019-09-17.
+
+29. ^ Pfannschmidt, Karlson; Gupta, Pritha; Hüllermeier, Eyke (2018). "Deep Architectures for Learning Context-dependent Ranking Functions".
+
+arXiv:1803.05796  [stat.ML ].
+
+30. ^ Fatih Cakir, Kun He, Xide Xia, Brian Kulis, Stan Sclaroff, 
+
+
+
+Deep Metric Learning to Rank
+
+ 
+
+
+
+Archived
+
+ 2019-05-14 at the Wayback
+
+Machine, In Proc. IEEE Conference on Computer Vision and Pattern Recognition (CVPR), 2019.
+
+31. ^ Ai, Qingyao; Wang, Xuanhui; Bruch, Sebastian; Golbandi, Nadav; Bendersky, Michael; Najork, Marc (2019), "Learning Groupwise
+
+Multivariate Scoring Functions Using Deep Neural Networks", ICTIR '19: Proceedings of the 2019 ACM SIGIR International Conference on
+
+Theory of Information Retrieval: 85–92, doi:10.1145/3341981.3344218 , ISBN 9781450368810, S2CID 199441954
+
+32. ^ Rolínek, Michal; Musil, Vít; Paulus, Anselm; Vlastelica, Marin; Michaelis, Claudio; Martius, Georg (2020-03-18). "Optimizing Rank-based
+
+Metrics with Blackbox Differentiation". arXiv:1912.03500  [cs.LG ].
+
+33. ^ Vlastelica, Marin; Paulus, Anselm; Musil, Vít; Martius, Georg; Rolínek, Michal (2019-12-04). "Differentiation of Blackbox Combinatorial
+
+Solvers". arXiv:1912.02175 .
+
+34. ^ Liu, Weiwen; Liu, Qing; Tang, Ruiming; Chen, Junyang; He, Xiuqiang; Heng, Pheng Ann (2020-10-19). "Personalized Re-ranking with Item
+
+Relationships for E-commerce" . Proceedings of the 29th ACM International Conference on Information &amp; Knowledge Management. CIKM
+
+'20. Virtual Event, Ireland: Association for Computing Machinery: 925–934. doi:10.1145/3340531.3412332 . ISBN 978-1-4503-6859-9.
+
+S2CID 224281012 . Archived  from the original on 2021-10-17. Retrieved 2021-04-26.
+
+35. ^ Pang, Liang; Xu, Jun; Ai, Qingyao; Lan, Yanyan; Cheng, Xueqi; Wen, Jirong (2020), "SetRank: Learning a Permutation-Invariant Ranking
+
+Model for Information Retrieval", SIGIR '20 Proceedings of the 43rd Annual International ACM SIGIR Conference on Research and
+
+Development in Information Retrieval: 499–508, doi:10.1145/3397271.3401104 , ISBN 9781450380164, S2CID 241534531
+
+
+Privacy policy About Wikipedia Disclaimers
+
+Contact Wikipedia Mobile view Developers
+
+Statistics
+
+Cookie statement
+
+
+
+
+
+This page was last edited on 9 March 2023, at 20:15 (UTC).
+
+Text is available under the Creative Commons Attribution-ShareAlike License 3.0; additional terms may apply. By using this site, you agree to the Terms of
+
+Use and Privacy Policy. Wikipedia® is a registered trademark of the Wikimedia Foundation, Inc., a non-profit organization.
+
+36. ^ Swezey, Robin; Grover, Aditya; Charron, Bruno; Ermon, Stefano (2021-11-27). "PiRank: Scalable Learning To Rank via Differentiable
+
+Sorting". Advances in Neural Information Processing Systems. NeurIPS '21. Virtual Event, Ireland. 34. arXiv:2012.06731 .
+
+37. ^ Fuhr, Norbert (1992), "Probabilistic Models in Information Retrieval", Computer Journal, 35 (3): 243–255, doi:10.1093/comjnl/35.3.243
+
+38. ^ Manning C.; Raghavan P.; Schütze H. (2008), Introduction to Information Retrieval, Cambridge University Press. Sections 7.4
+
+Archived  2009-07-21 at the Wayback Machine and 15.5 Archived  2010-05-09 at the Wayback Machine
+
+39. ^ Jan O. Pedersen. 
+
+
+
+The MLR Story
+
+ 
+
+
+
+Archived
+
+ 2011-07-13 at the Wayback Machine
+
+40. ^ U.S. Patent 7,197,497
+
+41. ^ "Bing Search Blog: User Needs, Features and the Science behind Bing" . Archived  from the original on 2009-11-25. Retrieved
+
+2009-11-19.
+
+42. ^ Yandex corporate blog entry about new ranking model "Snezhinsk" Archived  2012-03-01 at the Wayback Machine (in Russian)
+
+43. ^ The algorithm wasn't disclosed, but a few details were made public in 
+
+
+
+[1]
+
+ 
+
+
+
+Archived
+
+ 2010-06-01 at the Wayback Machine and 
+
+
+
+[2]
+
+
+
+Archived
+
+ 2010-06-01 at the Wayback Machine.
+
+44. ^ "Yandex's Internet Mathematics 2009 competition page" . Archived from the original  on 2015-03-17. Retrieved 2009-11-11.
+
+45. ^ "Yahoo Learning to Rank Challenge" . Archived from the original  on 2010-03-01. Retrieved 2010-02-26.
+
+46. ^ Rajaraman, Anand (2008-05-24). "Are Machine-Learned Models Prone to Catastrophic Errors?" . Archived  from the original on 2010-09-
+
+18. Retrieved 2009-11-11.
+
+47. ^ Costello, Tom (2009-06-26). "Cuil Blog: So how is Bing doing?" . Archived from the original  on 2009-06-27.
+
+48. ^ "How Bloomberg Integrated Learning-to-Rank into Apache Solr | Tech at Bloomberg" . Tech at Bloomberg. 2017-01-23. Archived  from
+
+the original on 2017-03-01. Retrieved 2017-02-28.
+
+49. ^ a b Zhou, Mo; Niu, Zhenxing; Wang, Le; Zhang, Qilin; Hua, Gang (2020). "Adversarial Ranking Attack and Defense". arXiv:2002.11293v2
+
+[cs.CV ].
+
+50. ^ Li, Jie; Ji, Rongrong; Liu, Hong; Hong, Xiaopeng; Gao, Yue; Tian, Qi (2019). "Universal Perturbation Attack Against Image Retrieval" .
+
+International Conference on Computer Vision (ICCV 2019): 4899–4908. arXiv:1812.00552 . Archived  from the original on 2020-07-06.
+
+Retrieved 2020-07-04.
+
+51. ^ Madry, Aleksander; Makelov, Aleksandar; Schmidt, Ludwig; Tsipras, Dimitris; Vladu, Adrian (2017-06-19). "Towards Deep Learning
+
+Models Resistant to Adversarial Attacks". arXiv:1706.06083v4  [stat.ML ].
+
+External links [edit]
+
+Competitions and public datasets
+
+LETOR: A Benchmark Collection for Research on Learning to Rank for Information Retrieval
+
+Yandex's Internet Mathematics 2009
+
+Yahoo! Learning to Rank Challenge
+
+Microsoft Learning to Rank Datasets
+
+Categories: Information retrieval techniques
+
+Machine learning
+
+Ranking functions
+
+
+

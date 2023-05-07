@@ -1,0 +1,386 @@
+
+The Forward-Backward Algorithm
+
+Michael Collins
+
+1
+
+Introduction
+
+This note describes the forward-backward algorithm. The forward-backward algo-
+
+rithm has very important applications to both hidden Markov models (HMMs) and
+
+conditional random ﬁelds (CRFs). It is a dynamic programming algorithm, and is
+
+closely related to the Viterbi algorithm for decoding with HMMs or CRFs.
+
+This note describes the algorithm at a level of abstraction that applies to both
+
+HMMs and CRFs. We will also describe its speciﬁc application to these cases.
+
+2
+
+The Forward-Backward Algorithm
+
+The problem set-up is as follows. Assume that we have some sequence length m,
+
+and some set of possible states S. For any state sequence s1 . . . sm where each
+
+si ∈ S, we deﬁne the potential for the sequence as
+
+ψ(s1 . . . sm) =
+
+m
+
+�
+
+j=1
+
+ψ(sj−1, sj, j)
+
+Here we deﬁne s0 to be *, where * is a special start symbol in the model. Here
+
+ψ(s, s′, j) ≥ 0 for s, s′ ∈ S, j ∈ {1 . . . m} is a potential function, which returns a
+
+value for the state transition s to s′ at position j in the sequence.
+
+The potential functions ψ(sj−1, sj, j) might be deﬁned in various ways. As
+
+one example, consider an HMM applied to an input sentence x1 . . . xm. If we
+
+deﬁne
+
+ψ(s′, s, j) = t(s|s′)e(xj|s)
+
+then
+
+ψ(s1 . . . sm)
+
+=
+
+m
+
+�
+
+j=1
+
+ψ(sj−1, sj, j)
+
+=
+
+m
+
+�
+
+j=1
+
+t(sj|sj−1)e(xj|sj)
+
+1
+
+
+=
+
+p(x1 . . . xm, s1 . . . sm)
+
+where p(x1 . . . xm, s1 . . . sm) is the probability mass function under the HMM.
+
+As another example, consider a CRF where we have a feature-vector deﬁnition
+
+φ(x1 . . . xm, s′, s, j) ∈ Rd, and a parameter vector w ∈ Rd. Assume again that we
+
+have an input sentence x1 . . . xm. If we deﬁne
+
+ψ(s′, s, j) = exp
+
+�
+
+w · φ(x1 . . . xm, s′, s, j)
+
+�
+
+then
+
+ψ(s1 . . . sm)
+
+=
+
+m
+
+�
+
+j=1
+
+ψ(sj−1, sj, j)
+
+=
+
+m
+
+�
+
+j=1
+
+exp
+
+�
+
+w · φ(x1 . . . xm, sj−1, sj, j)
+
+�
+
+=
+
+exp
+
+
+
+
+
+m
+
+�
+
+j=1
+
+w · φ(x1 . . . xm, sj−1, sj, j)
+
+
+
+
+
+Note in particular, by the model form for CRFs, it follows that
+
+p(s1 . . . sm|x1 . . . xm) =
+
+ψ(s1 . . . sm)
+
+�
+
+s1...sm ψ(s1 . . . sm)
+
+The forward-backward algorithm is shown in ﬁgure 1. Given inputs consisting
+
+of a sequence length m, a set of possible states S, and potential functions ψ(s′, s, j)
+
+for s, s′ ∈ S, and j ∈ {1 . . . m}, it computes the following quantities:
+
+1. Z = �
+
+s1...sm ψ(s1 . . . sm).
+
+2. For all j ∈ {1 . . . m}, a ∈ S,
+
+µ(j, a) =
+
+�
+
+s1...sm:sj=a
+
+ψ(s1 . . . sm)
+
+3. For all j ∈ {1 . . . (m − 1)}, a, b ∈ S,
+
+µ(j, a, b) =
+
+�
+
+s1...sm:sj=a,sj+1=b
+
+ψ(s1 . . . sm)
+
+2
+
+
+Inputs: Length m, set of possible states S, function ψ(s, s′, j). Deﬁne * to be a
+
+special initial state.
+
+Initialization (forward terms): For all s ∈ S,
+
+α(1, s) = ψ(*, s, 1)
+
+Recursion (forward terms): For all j ∈ {2 . . . m}, s ∈ S,
+
+α(j, s) =
+
+�
+
+s′∈S
+
+α(j − 1, s′) × ψ(s′, s, j)
+
+Initialization (backward terms): For all s ∈ S,
+
+β(m, s) = 1
+
+Recursion (backward terms): For all j ∈ {1 . . . (m − 1)}, s ∈ S,
+
+β(j, s) =
+
+�
+
+s′∈S
+
+β(j + 1, s′) × ψ(s, s′, j + 1)
+
+Calculations:
+
+Z =
+
+�
+
+s∈S
+
+α(m, s)
+
+For all j ∈ {1 . . . m}, a ∈ S,
+
+µ(j, a) = α(j, a) × β(j, a)
+
+For all j ∈ {1 . . . (m − 1)}, a, b ∈ S,
+
+µ(j, a, b) = α(j, a) × ψ(a, b, j + 1) × β(j + 1, b)
+
+Figure 1: The forward-backward algorithm.
+
+3
+
+
+3
+
+Application to CRFs
+
+The quantities computed by the forward-backward algorithm play a central role in
+
+CRFs. First, consider the problem of calculating the conditional probability
+
+p(s1 . . . sm|x1 . . . xm) =
+
+exp
+
+��m
+
+j=1 w · φ(x1 . . . xm, sj−1, sj, j)
+
+�
+
+�
+
+s1...sm exp{
+
+��m
+
+j=1 w · φ(x1 . . . xm, sj−1, sj, j)
+
+�
+
+The numerator in the above expression is easy to compute; the denominator is
+
+more challenging, because it requires a sum over an exponential number of state
+
+sequences. However, if we deﬁne
+
+ψ(s′, s, j) = exp
+
+�
+
+w · φ(x1 . . . xm, s′, s, j)
+
+�
+
+in the algorithm in ﬁgure 1, then as we argued before we have
+
+ψ(s1 . . . sm) = exp
+
+
+
+
+
+m
+
+�
+
+j=1
+
+w · φ(x1 . . . xm, sj−1, sj, j)
+
+
+
+
+
+It follows that the quantity Z calculated by the algorithm is equal to the denomina-
+
+tor in the above expression; that is,
+
+Z =
+
+�
+
+s1...sm
+
+exp
+
+
+
+
+
+m
+
+�
+
+j=1
+
+w · φ(x1 . . . xm, sj−1, sj, j)
+
+
+
+
+
+Next, recall that the key difﬁculty in the calculation of the gradient of the log-
+
+likelihood function in CRFs was to calculate the terms
+
+qi
+
+j(a, b) =
+
+�
+
+s:sj−1=a,sj=b
+
+p(s|xi; w)
+
+for a given input sequence xi = xi
+
+1 . . . xi
+
+m, for each j ∈ {2 . . . m}, for each a, b ∈
+
+S (see the note on log-linear models). Again, if we deﬁne
+
+ψ(s′, s, j) = exp
+
+�
+
+w · φ(xi
+
+1 . . . xi
+
+m, s′, s, j)
+
+�
+
+then it can be veriﬁed that
+
+qi
+
+j(a, b) = µ(j, a, b)
+
+Z
+
+where µ(j, a, b) and Z are the terms computed by the algorithm in ﬁgure 1.
+
+4
+

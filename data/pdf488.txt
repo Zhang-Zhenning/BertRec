@@ -1,0 +1,474 @@
+
+
+
+An Introduction to Hidden 
+
+Markov Models 
+
+The  basic  theory  of  Markov  chains 
+
+has  been 
+
+known to 
+
+mathematicians  and  engineers for close to 80 years, but it is 
+
+only in the  past  decade that it has  been  applied explicitly to 
+
+problems in speech  processing.  One of the  major  reasons  why 
+
+speech  models,  based on  Markov chains,  have not been  devel- 
+
+oped until recently was the  lack of a  method for optimizing 
+
+the  parameters  of  the  Markov  model 
+
+to match  observed  signal 
+
+patterns.  Such  a  method  was  proposed in the  late 1960’s and 
+
+was immediately  applied to speech  processing in several re- 
+
+search  institutions.  Continiued  refinements in the  theory  and 
+
+implementation  of  Markov  modelling  techniques  have  greatly 
+
+enhanced  the  method,  leading 
+
+to awide,range  of  applications 
+
+of  these  models. It is the  purpose  of  this tutorial paper to 
+
+give  an introduction to, the  theory .of Markov  models, and to 
+
+illustrate  how  they have  been  applied to problems in speech 
+
+recognition. 
+
+L. R. .Rabiner 
+
+B. H. Juang 
+
+4 
+
+IEEE ASSP MAGAZINE JANUARY 1986 
+
+0740-7467/86/0100-0004$01.00@1986 
+
+IEEE 
+
+
+
+
+appropriate  excitation. The  easiest  way 
+
+then to address the 
+
+time-varying  nature of theaprocess is to view it as a direct 
+
+concatenation of these  smaller ”short  time” segments, 
+
+each  such  segment 
+
+being individually represented by.a 
+
+linear system model. In other words, the overall model is 
+
+a synchronous  sequence of symbols  where  each of the 
+
+symbols is a linear system model representing a short seg- 
+
+,merit of the  process. In a sense this type of approach 
+
+models  the  observed  signal  using  representative  tokens 
+
+of 
+
+the  signal itself (or some  suitably  averaged  set 
+
+of such 
+
+,signals if we  have multiple observations). 
+
+Time-varying  processes 
+
+Modeling  time-varying processes with  the above  ap- 
+
+proach assumes that  every  such 
+
+short-time segment  of 
+
+observation is a unit  with a prechosen duration. In gen- 
+
+eral,  hqwever, 
+
+there doesn’t  exist a precise procedure 
+
+to decide  what the  unit  duration  should be so that both 
+
+the time-invariant assumption  holds,  and the  short-time 
+
+linear system models (as well as concatenation of the mod- 
+
+els) are meaningful. In most  physical  systems,  the 
+
+duration 
+
+of a  short-time segment is determined empirically. In 
+
+many  processes, of.course, one would neither  expect  the 
+
+properties of the process to change  synchronously with 
+
+every unit analysis duration, nor observe  drastic  changes 
+
+from each unit  to  the next  except at certain  instances. 
+
+Making  no further assumptions  about the relationship be- 
+
+tween  adjacent short-time models,  and treating temporal 
+
+variations,  small or large, as “typical” phenomena in the 
+
+observed  signal,  are  key  features in the above direct con- 
+
+catenation  technique.  This  template  approach 
+
+to signal 
+
+modeling has proven to be quite useful  and has been  the 
+
+basis of a wide variety of speech recognition systems. 
+
+There  are  good  reasons 
+
+to suspect,  at this point, that the 
+
+above  approach, while useful, may not be the most effi- 
+
+-cient  (in terms of computation,  storage,  parameters  etc.) 
+
+technique as far as representation is concerned.  Many  real 
+
+world processes  seem to manifest a rather  sequentially 
+
+changing  behavior;  the properties  of the  process  are  usu- 
+
+ally held pretty steadily,  except for minor fluctuations, 
+
+for a certain period of time (or a number of the  above- 
+
+mentioned  duration units),  and  then, at certain  instances, 
+
+change (gradually or rapidly) to another set of properties. 
+
+The opportunity  for  more efficient modeling can be ex- 
+
+.plaited if we  can first identify these  periods of rather 
+
+steadily  behavior,  and then are willing  to assume  that the 
+
+temporal  variations within each of these  steady  periods 
+
+are, in a sense, statistical. A more efficient representation 
+
+may then be obtained by using a common short .time 
+
+model for each of the steady, or well-behaved  parts of the 
+
+signal, along with some characterization  of  how 
+
+one 
+
+such period evolves to the next. This is how  hidden 
+
+Markov  models (HMM) come  about.  Clearly, three  prob- 
+
+lems  have to be  addressed: 1) howz’these  steadily or dis- 
+
+tinctively behaving  periods  can  be identified, 2) how  the 
+
+“sequentially”  evolving  nature 
+
+of these  periods can  be 
+
+characterized,  and 3) what  typical or common short  time 
+
+model should  be  chosen for each  of  these  periods. Hid- 
+
+den  Markov  models  successfully  treat  these  problems 
+
+un- 
+
+der a probabilistic or statistical framework. 
+
+It is thus the purpose of this paper to explain-  what a 
+
+hiddenJvlarkov 
+
+model is, why it is appropriate for certain 
+
+types  of  problems,  and how it can be  used in practice. In 
+
+the next  section,  we illustrate hidden  Markov models  via 
+
+some simple coin toss  examples  and 
+
+outline the  three 
+
+fundamental  problems  associated with  the  modeling 
+
+tech- 
+
+nique. We then discuss how these  problems  can  be  solved 
+
+in Section Ill. We will not direct our general  discussion to 
+
+any one  particular  problem, 
+
+but at theend of this paperwe 
+
+illustrate how HMM’s  are  used  via a couple  of examples in 
+
+speech recognition. 
+
+DEFINITION OF 
+
+A HIDDEN MARKOV MODEL 
+
+An HMM is a doubly stochastic  process with an under- 
+
+lying stochastic  process  that is not observable (it is hid- 
+
+den), but can only be  observed through another set of 
+
+stochastic  processes  that  produce  the  sequence  of 
+
+ob- 
+
+served  symbols.  We illustrate HMM’s with the following 
+
+coin toss’example. 
+
+Coin toss example 
+
+To understand  the  concept of the  HMM, consider  the 
+
+following simplified example.  You  are 
+
+in a room with a 
+
+barrier (e.g., a,curtain)  through  which you  cannot see 
+
+what is happening. On the other side of the  barrier is 
+
+a,nother  person who is performing a coin (or multiple 
+
+coin)  tossing  experiment. The other person will not tell 
+
+you  anything  about  what  he is doing exactly;  he will only 
+
+tell you the result of each coin flip. Thus a sequence of 
+
+hidden coin tossing  experiments is performed,  and  you 
+
+only  observe the results of the  coin tosses, i.e. 
+
+I 
+
+0, o2 03. . . . . . :. . * . OT 
+
+where x stands for heads  and T stands for tails. 
+
+Given  the  above  experiment,  the 
+
+problem is how  do we 
+
+build an HMM  to explain  the  observed  sequence 
+
+of heads 
+
+and tails. One possible model is shown in Fig. la. We call 
+
+this  the “l-fair coin” model.  There  are two states in the 
+
+model, but each  state is uniquely associated with either 
+
+heads  (state 1) or tails (state 2). Hence  this  model is not 
+
+hidden because the observation  sequence uniquely de- 
+
+fines the state. The model represents a “fair coin” because 
+
+the probability.of generating a head (or a tail) following a 
+
+head (or a tail) is 0.5; hence  there is no bias  on the  current 
+
+observation: This is a degenerate  example  and  shows how 
+
+independent  trials, like tossing of a fair  coin,  can  be inter- 
+
+preted as a set of sequential  events. Of course, if the 
+
+person behind th.e barrier is, in fact,  tossing a single  fair 
+
+coin,  this model should  explain  the  outcomes  very well. 
+
+A, second  possible HMM  for explaining  the  observed 
+
+sequence of coin toss  outcomes is given iri Fig. Ib. We call 
+
+this model the  “2-fair coin” model.  There  are  again 
+
+2 states 
+
+in the model, but  neither State is uniquely associated with 
+
+JANUARY 1986 IEEE ASSP MAGAZINE 5 
+
+
+
+
+
+
+
+vathn probability  distributions which, of course, repre- 
+
+Using  the  model, 
+
+an observation  sequence, 0 = 
+
+sent random variables or stochastic  processes. 
+
+0, Op, . . . , OT, 
+
+is generated as follows: 
+
+JANUARY 1986 IEEE ASSP  MAGAZINE 
+
+. 7 
+
+
+
+
+
+
+
+JANUARY 1986 IEEE ASSP MAGAZINE 9 
+
+
+
+
+1 0 IEEE ASSP  MAGAZINE  JANUARY 
+
+1986 
+
+
+
+
+sequence  given the model.  This is the most difficult  of  the 
+
+three problems  we have  discussed.  There 
+
+is no known way 
+
+to solve for a maximum likelihood  model analytically. 
+
+Therefore  an iterative procedure,  such as the Baum-Welch 
+
+method,  or  gradient  techniques for optimization must be 
+
+used.  Here  we will only discuss the iterative procedure. It 
+
+appears that with this  procedure, the physical  meaning of 
+
+various  parameter  estimates  can be easily  visualized. 
+
+To describe how we  (re)estimate HMM parameters,  we 
+
+first define t,(i,j).as 
+
+i.e.  the probability  of a path being in state qi at time t and 
+
+making a transition to state qi at time t + 1, given  the 
+
+observation sequence and the  model.' From  Fig. 5 it 
+
+should  be  clear that we  can write tt(i,j) as 
+
+I 
+
+I 
+
+In the. above, at(i) accounts for  the  first t observations, 
+
+ending in state qi at time t, the term aiibj(Ot+Jaccounts 
+
+for the transition to state 9j at time t + 1 with the.occur- 
+
+rence of symbol Ot+,, and the  term pt+l(j) accounts for 
+
+
+
+
+1 2 
+
+,IEEE ASSP.MAGAZINE JANUAPY 1986 
+
+
+
+
+JANUARY 1986 IEEE ASSP  MAGAZINE 
+
+1 3 
+
+
+
+
+rational information is often represented in a normalized of Pr(0, / 1 A) is usually  very  large  and  max, Pr(0, / I A) is 
+
+form for word models,  (since the word boundary is essen- 
+
+usually the only significant  term  in'  the  summation  for 
+
+tially  known), in the form: 
+
+Pr(0 /A). Therefore, in such cases,, either the forward- 
+
+pi(//T) = probabidity of being in state j for exactly (/IT) 
+
+of 
+
+the word,  where T is the  number of, frames in the 
+
+backwakd procedure or the  Viterbi  algorithm 
+
+works 
+
+equally well in the word recognition task. 
+
+REFERENCES 
+
+[I] 
+
+Baker, J. K., "The Dragon System-An  Overview,'' 
+
+IEEE Trans. on Acoustics Speech Signal Processing, 
+
+Vol.  ASSP-23, No. 1, pp. 24-9,  February 1975. 
+
+121 Jelinek, F., "Continuous Speech Recognition by Sta- 
+
+tistical Methods," Proc. /€€,E, 
+
+Vol. 64, pp. 532-556, 
+
+April 1976. 
+
+
+
+
+1 6 
+
+IEEE ASSP MAGAZINE JANUARY 1986 
+

@@ -1,0 +1,2797 @@
+
+Multi-Stage Document Ranking with BERT
+
+Rodrigo Nogueira,1 Wei Yang,2 Kyunghyun Cho,3,4,5,6 and Jimmy Lin2
+
+1 Tandon School of Engineering, New York University
+
+2 David R. Cheriton School of Computer Science, University of Waterloo
+
+3 Courant Institute of Mathematical Sciences, New York University
+
+4 Center for Data Science, New York University
+
+5 Facebook AI Research
+
+6 CIFAR Azrieli Global Scholar
+
+Abstract
+
+The advent of deep neural networks pre-
+
+trained via language modeling tasks has
+
+spurred a number of successful applications in
+
+natural language processing.
+
+This work ex-
+
+plores one such popular model, BERT, in the
+
+context of document ranking. We propose two
+
+variants, called monoBERT and duoBERT,
+
+that formulate the ranking problem as point-
+
+wise and pairwise classiﬁcation, respectively.
+
+These two models are arranged in a multi-
+
+stage ranking architecture to form an end-to-
+
+end search system. One major advantage of
+
+this design is the ability to trade off qual-
+
+ity against latency by controlling the admis-
+
+sion of candidates into each pipeline stage,
+
+and by doing so, we are able to ﬁnd operat-
+
+ing points that offer a good balance between
+
+these two competing metrics. On two large-
+
+scale datasets, MS MARCO and TREC CAR,
+
+experiments show that our model produces re-
+
+sults that are either at or comparable to the
+
+state of the art. Ablation studies show the con-
+
+tributions of each component and characterize
+
+the latency/quality tradeoff space.
+
+1
+
+Introduction
+
+Neural models pre-trained on language modeling
+
+tasks such as ELMo (Peters et al., 2017), Open-
+
+AI GPT (Radford et al., 2018), and BERT (De-
+
+vlin et al., 2019) have achieved impressive results
+
+on NLP tasks ranging from natural language in-
+
+ference to question answering.
+
+One such pop-
+
+ular model, BERT, has recently been applied to
+
+search-related tasks, retrieval-based question an-
+
+swering (Yang et al., 2019b), as well as document
+
+ranking (Yang et al., 2019c; MacAvaney et al.,
+
+2019; Yilmaz et al., 2019).
+
+This
+
+paper
+
+builds
+
+on
+
+previous
+
+initial
+
+work (Nogueira and Cho, 2019) to tackle the
+
+document ranking problem with a multi-stage
+
+ranking architecture.
+
+We introduce two BERT
+
+variants, called monoBERT and duoBERT. The
+
+monoBERT model treats document ranking as
+
+a binary classiﬁcation problem over individual
+
+candidate documents, while the duoBERT model
+
+adopts a pairwise classiﬁcation approach that
+
+considers pairs of candidate documents.
+
+For
+
+end-to-end document ranking, we arrange these
+
+models as stages in a pipeline where each balances
+
+the size of the candidate set against the inherent
+
+complexity of the model.
+
+This design allows
+
+us to obtain the beneﬁts of richer models while
+
+controlling the increased inference latencies that
+
+come with these richer models.
+
+Our work makes the following contributions:
+
+We start by describing monoBERT, a pointwise
+
+classiﬁcation model of document relevance that
+
+was introduced in Nogueira and Cho (2019). Sec-
+
+ond, we propose a novel extension of monoBERT,
+
+called duoBERT, that adopts a pairwise classiﬁca-
+
+tion approach to document relevance. Third, we
+
+integrate monoBERT and duoBERT in a multi-
+
+stage ranking architecture that allows us to reap
+
+the beneﬁts of our richer duoBERT model with
+
+only a modest increase in inference latency. The
+
+architecture adopts an innovation from the in-
+
+formation retrieval (IR) community that to our
+
+knowledge has not been explored by NLP re-
+
+searchers. Fourth, perhaps unsurprising, we show
+
+that pre-training on the corpus of the target task
+
+improves effectiveness over pre-training on out-
+
+of-domain corpora.
+
+We evaluate our models on two large-scale doc-
+
+ument retrieval datasets that are conducive to deep
+
+learning experiments: the MS MARCO dataset
+
+and the Complex Answer Retrieval (CAR) Task
+
+at TREC. On both datasets, our results are either
+
+at or comparable to the state of the art. As we
+
+show through component-level ablation studies,
+
+both monoBERT and duoBERT contribute sig-
+
+niﬁcantly to overall effectiveness.
+
+Additionally,
+
+arXiv:1910.14424v1  [cs.IR]  31 Oct 2019
+
+
+within the framework of multi-stage ranking, we
+
+characterize the latency vs. effectiveness tradeoff
+
+space of each model.
+
+2
+
+Background and Related Work
+
+In this paper, we tackle the document ranking
+
+problem (also known as ad hoc retrieval), fol-
+
+lowing the widely-accepted standard formulation:
+
+Given a user’s information need expressed as a
+
+query q and a (potentially large) corpus of docu-
+
+ments, the system’s task is to produce a ranking of
+
+k documents that maximizes some metric, such as
+
+mean average precision (MAP) or mean reciprocal
+
+rank (MRR). Throughout this paper, per standard
+
+parlance in IR, document is used generically to re-
+
+fer a unit of text being retrieved, when in actuality
+
+it may be a passage, a sentence, etc.
+
+The basic idea behind multi-stage ranking is
+
+to break document ranking down into a series
+
+of pipeline stages. Following an initial retrieval
+
+stage, which typically issues a “bag of words”
+
+query against an inverted index, each subsequent
+
+stage re-ranks the set of candidates passed along
+
+from the previous stage until the ﬁnal output is
+
+returned to the user. This basic approach has re-
+
+ceived much interest in academia (Matveeva et al.,
+
+2006; Wang et al., 2011; Asadi and Lin, 2013;
+
+Chen et al., 2017; Mackenzie et al., 2018) as
+
+well as industry. Known production deployments
+
+include the Bing web search engine (Pedersen,
+
+2010) as well as Alibaba’s e-commerce search en-
+
+gine (Liu et al., 2017).
+
+Multi-stage ranking architectures have evolved
+
+to strike a balance between model complexity and
+
+search latency by controlling the size of the can-
+
+didate set at each stage. Increasingly richer mod-
+
+els can be made practical by considering succes-
+
+sively smaller candidate sets. For certain (easy)
+
+queries, stages of the pipeline can be skipped en-
+
+tirely, known as “early exits” (Cambazoglu et al.,
+
+2010). Viewed in this manner, multi-stage rank-
+
+ing captures the same intuition as progressive re-
+
+ﬁnement in classiﬁer cascades (Viola and Jones,
+
+2004). For example, an early stage might con-
+
+sider only term statistics of single terms, whereas
+
+later stages might consider bigrams, phrases, or
+
+even apply lightweight NLP techniques.
+
+Given
+
+this setup, a number of researchers have proposed
+
+techniques based, for example, on boosting for
+
+composing these stages in an end-to-end man-
+
+ner (Wang et al., 2011; Xu et al., 2012). In our
+
+work, we make the connection between BERT-
+
+based models and multi-stage ranking, which al-
+
+lows us to trade off the quality of the results with
+
+inference latency.
+
+The advent of deep learning has brought
+
+tremendous excitement into the information re-
+
+trieval community.
+
+Although machine-learned
+
+ranking models have been well studied since the
+
+mid-2000s under the banner of “learning to rank”,
+
+the paradigm is heavily driven by manual fea-
+
+ture engineering (Liu, 2009; Li, 2011); commer-
+
+cial web search engines are known to incorporate
+
+thousands of features (or more) in their models.
+
+Continuous vector space representations coupled
+
+with neural models promise to obviate the need
+
+for handcrafted features and have attracted the at-
+
+tention of many researchers. Well-known neural
+
+ranking models include DRMM (Guo et al., 2016),
+
+DUET (Mitra et al., 2017), KNRM (Xiong et al.,
+
+2017), and Co-PACRR (Hui et al., 2018); the liter-
+
+ature is too vast for an exhaustive review here, and
+
+thus we refer readers to recent overviews (Onal
+
+et al., 2018; Mitra and Craswell, 2019).
+
+Although often glossed over, most neural rank-
+
+ing models today (including all the models refer-
+
+enced above) are actually re-ranking models, in
+
+the sense that they operate over the output of a list
+
+of candidate documents, typically produced by a
+
+“bag of words” query. Thus, document retrieval
+
+with neural models today already uses multi-stage
+
+ranking, albeit an impoverished form with only a
+
+single re-ranking stage. This recognition provides
+
+a starting point of our work, from which we build
+
+BERT-based multi-stage ranking.
+
+3
+
+Multi-Stage Ranking with BERT
+
+In our formulation, a multi-stage ranking architec-
+
+ture comprises a number of stages, denoted H0 to
+
+HN. Except for H0, which retrieves k0 candidates
+
+from an inverted index, each stage Hn receives
+
+a ranked list Rn−1 comprising kn−1 candidates
+
+from the previous stage. Each stage, in turn, pro-
+
+vides a ranked list Rn comprising kn candidates
+
+to the subsequent stage, with the obvious require-
+
+ment that kn ≤ kn−1. The ranked list generated by
+
+the ﬁnal stage HN is designated for consumption
+
+by the (human) searcher.
+
+For expository purposes, we consider stages to
+
+receive and produce candidates even though they
+
+may in fact be documents, passages, etc. Within
+
+this general framework, we instantiate a speciﬁc
+
+
+d1
+
+d2
+
+d3
+
+d4
+
+Corpus
+
+d5
+
+BM25
+
+monoBERT
+
+duoBERT
+
+d3
+
+d2
+
+d5
+
+di
+
+q
+
+d2
+
+d3
+
+di
+
+q
+
+dj
+
+R0
+
+R1
+
+R2
+
+d5
+
+q
+
+H0
+
+H1
+
+H2
+
+d2
+
+d3
+
+mono
+
+BERT
+
+pi,j
+
+duo
+
+BERT
+
+d2
+
+d5
+
+d3
+
+d2
+
+d3
+
+d5
+
+d5
+
+d2
+
+d5
+
+d3
+
+Doc Pairwise
+
+si
+
+Figure 1: Illustration of our multi-stage ranking architecture. In the ﬁrst stage H0, given a query q, the top-k0
+
+(k0 = 5 in the ﬁgure) candidate documents R0 are retrieved using BM25. In the second stage H1, monoBERT
+
+produces a relevance score si for each pair of query q and candidate di ∈ R0. The top-k1 (k1 = 3 in the ﬁgure)
+
+candidates with respect to these relevance scores are passed to the last stage H2, in which duoBERT computes a
+
+relevance score pi,j for each triple (q, di, dj). The ﬁnal list of candidates R2 is formed by re-ranking the candidates
+
+according to these scores (see Section 3.3 for a description of how these pairwise scores are aggregated).
+
+design composed of three stages (H0, H1, and
+
+H2), as shown in Figure 1.
+
+In our approach, each stage is unconstrained
+
+in its implementation other than the input–output
+
+speciﬁcations outlined above.
+
+For example, a
+
+pipeline stage is not obligated to consider all can-
+
+didates provided to it, and in fact, latency intro-
+
+duced by each stage can be controlled by truncat-
+
+ing the number of input candidates. Furthermore,
+
+each stage can choose to pay attention or ignore
+
+scores of the candidates it receives; in the latter
+
+case, the ranked list devolves into a set of unranked
+
+candidates. In our experiments, we explore the
+
+latency–quality tradeoff space that is induced by
+
+this design ﬂexibility (see Section 5).
+
+3.1
+
+H0: “Bag of Words” BM25
+
+The ﬁrst stage H0 receives as input the user query
+
+q and produces top-k0 candidates R0. In our im-
+
+plementation, the query is treated as a “bag of
+
+words” for ranking documents from the corpus us-
+
+ing a standard inverted index based on the BM25
+
+scoring function (Robertson et al., 1994). We use
+
+the Anserini IR toolkit (Yang et al., 2017, 2018),1
+
+which is built on the popular open-source Lucene
+
+search engine.
+
+BM25 is based on exact term matches, and all
+
+candidates must contain at least one term from the
+
+user’s query. However, since later BERT stages
+
+operate in continuous vector spaces, they have the
+
+ability to identify relevant candidates that do not
+
+have many matching terms. Thus, it is critical in
+
+1http://anserini.io/
+
+H0 to optimize for recall to provide subsequent
+
+stages a diverse set of documents to work with.
+
+On the other hand, precision is less of a concern
+
+because non-relevant documents can be discarded
+
+by later stages.
+
+3.2
+
+H1: monoBERT
+
+In general, the task of a re-ranking stage Hn is
+
+to estimate a score si quantifying how relevant a
+
+candidate di ∈ Rn−1 is to a query q. Naturally,
+
+we expect that the ranking induced by these scores
+
+yields a higher metric (e.g., MAP or MRR) than
+
+the scores from the previous stage.
+
+In stage H1, we call monoBERT our pointwise
+
+re-ranker, which is a BERT model used as a bi-
+
+nary relevance classiﬁer. Using the same notation
+
+as Devlin et al. (2019), we feed the query q as sen-
+
+tence A and the text of candidate di as sentence
+
+B. We truncate the query to have at most 64 to-
+
+kens. We also truncate the candidate text such that
+
+the concatenation of query, candidate, and separa-
+
+tor tokens have a maximum length of 512 tokens.
+
+Given these limits, we observe that none of the
+
+queries or documents of the datasets used in our
+
+experiments (TREC CAR and MS MARCO) have
+
+to be truncated.
+
+Once the segment is passed through the model,
+
+we use the [CLS] vector as input to a single layer
+
+neural network to obtain a probability si of the
+
+candidate di being relevant to q. We obtain a score
+
+si for each candidate independently and generate
+
+a new list of candidates R1 by keeping only the
+
+top-k1 candidates based on these scores.
+
+
+We train the model for re-ranking using cross-
+
+entropy loss:
+
+Lmono = −
+
+�
+
+j∈Jpos
+
+log(sj)−
+
+�
+
+j∈Jneg
+
+log(1−sj), (1)
+
+where Jpos is the set of indexes of the relevant can-
+
+didates and Jneg is the set of indexes of the non-
+
+relevant candidates in R0.
+
+3.3
+
+H2: duoBERT
+
+The output R1 from the previous stage is used as
+
+input to the pairwise re-ranker we call duoBERT.
+
+Within the framework of “learning to rank”,
+
+duoBERT can be characterized as a “pairwise” ap-
+
+proach, while monoBERT can be characterized as
+
+a “pointwise” approach (Liu, 2009). In this pair-
+
+wise approach, the re-ranker estimates the proba-
+
+bility pi,j of the candidate di being more relevant
+
+than dj.
+
+This re-ranker is also a BERT model that takes
+
+as input the query as sentence A, candidate di as
+
+sentence B, and candidate dj as sentence C. Sim-
+
+ilar to the original implementation, each sentence
+
+type (A, B, and C) has its own embedding that is
+
+summed to the token and positional embeddings.
+
+We truncate the query, candidates di and dj to 62,
+
+223, and 223 tokens, respectively, so the entire se-
+
+quence will have at most 512 tokens when con-
+
+catenated with the [CLS] token and the three sepa-
+
+rator tokens. Using the above truncation limits, in
+
+the datasets used in this work none of the queries
+
+are truncated, and less than 1% of the documents
+
+are truncated.
+
+We use the [CLS] vector as input to a single
+
+layer neural network to obtain the probability pi,j.
+
+Since there are k1 candidates, k1(k1−1) probabil-
+
+ities are computed. We then train the model with
+
+the following loss:
+
+Lduo = −
+
+�
+
+i∈Jpos,j∈Jneg
+
+log(pi,j)
+
+−
+
+�
+
+i∈Jneg,j∈Jpos
+
+log(1 − pi,j),
+
+(2)
+
+Note in the equation above that candidates di and
+
+dj are never both relevant or not relevant.
+
+At inference time, we aggregate the pairwise
+
+scores pi,j so that each document receives a sin-
+
+gle score si. We investigate ﬁve different aggre-
+
+gation methods (SUM, BINARY, MIN, MAX, and
+
+SAMPLE):
+
+SUM : si =
+
+�
+
+j∈Ji
+
+pi,j,
+
+(3)
+
+BINARY : si =
+
+�
+
+j∈Ji
+
+1pi,j&gt;0.5,
+
+(4)
+
+MIN : si = min
+
+j∈Ji pi,j,
+
+(5)
+
+MAX : si = max
+
+j∈Ji pi,j,
+
+(6)
+
+SAMPLE : si =
+
+�
+
+j∈Ji(m)
+
+pi,j,
+
+(7)
+
+where Ji = {0 ≤ j &lt; |R1|, j ̸= i} and m is
+
+the number of samples drawn without replacement
+
+from the set Ji.
+
+The SUM method measures the pairwise agree-
+
+ment that candidate di is more relevant than
+
+the rest of the candidates {dj}j̸=i.
+
+The BI-
+
+NARY method is inspired by the Condorcet
+
+method (Montague and Aslam, 2002), which is
+
+a strong aggregation baseline (Cormack et al.,
+
+2009). The MIN (MAX) method measures the rel-
+
+evance of di only against its strongest (weakest)
+
+competitor. The SAMPLE method aims to decrease
+
+the high inference costs of pairwise computations
+
+via sampling.
+
+The ﬁnal list of candidates R2 is obtained by
+
+re-ranking the candidates in R1 according to their
+
+scores si. In our current design, the output R2 is
+
+provided for human consumption, and serves as
+
+the input to computing the ﬁnal evaluation metrics
+
+(e.g., MAP).
+
+4
+
+Experimental Setup
+
+A fortunate conﬂuence of events has enabled the
+
+multi-stage ranking architecture we propose in this
+
+paper.
+
+First, of course, is the innovation cap-
+
+tured in BERT, as the latest reﬁnement in a long
+
+stream of neural models that make heavy use of
+
+pre-training. Second, and just as important, is the
+
+availability of data. For document retrieval, most
+
+IR researchers have not had access to sufﬁcient
+
+training data until recently.
+
+As demonstrated by Lin (2019), in a limited
+
+data regime, it is not entirely clear that neu-
+
+ral techniques actually perform better than well-
+
+tuned “classic” IR techniques; subsequent work
+
+by Yang et al. (2019a) show that the gains are
+
+modest at best. Until recently, research in neu-
+
+ral ranking models mostly took advantage of pro-
+
+prietary datasets derived from user behavior logs
+
+(which large organizations can gather in abun-
+
+dance).
+
+Since these datasets cannot be shared,
+
+
+only a small set of researchers could productively
+
+work on neural ranking models and different mod-
+
+els could not be easily compared; the combination
+
+of both factors hamper rapid progress.
+
+Fortunately, the ﬁeld has seen the release of two
+
+large-scale datasets for powering data-hungry neu-
+
+ral models: MS MARCO (Bajaj et al., 2018) and
+
+TREC CAR (Dietz et al., 2017). We take advan-
+
+tage of both datasets to train our models, which we
+
+detail below.
+
+4.1
+
+MS MARCO
+
+The Microsoft MAchine Reading COmprehen-
+
+sion dataset (MS MARCO) is a large-scale re-
+
+source created from approximately half a mil-
+
+lion anonymized questions sampled from Bing’s
+
+search query logs. We focus on the passage rank-
+
+ing task, where given a corpus of 8.8M passages
+
+extracted from 3.6M web documents, the system’s
+
+goal is to retrieve passages that answer the ques-
+
+tion.
+
+Each passage contains an average of 55
+
+words (or 340 characters), and hence is relatively
+
+short—however, in order to maintain consistent
+
+terminology throughout this paper, we refer to
+
+these basic units of retrieval as “documents.”
+
+The training set (for the passage ranking task)
+
+comprises approximately 500k pairs of query and
+
+relevant document, and another 400M pairs of
+
+query and non-relevant documents. The relevance
+
+judgments are provided by humans. The develop-
+
+ment set contains 6,980 queries, with, on average,
+
+one relevant document per query. Thus, a notewor-
+
+thy property of this dataset is the sparsity of rel-
+
+evance judgments—as opposed to typical TREC
+
+test collections built using pooling (Voorhees,
+
+2002), which have far fewer topics (usually around
+
+50) but many more judgments per topic (typically,
+
+hundreds). A blind, held-out evaluation set with
+
+6,837 queries is also available, but without rele-
+
+vance judgments. Evaluation on these queries is
+
+provided by the Microsoft organizers upon sub-
+
+mission to the online leaderboard.
+
+The ofﬁcial
+
+metric for this dataset is MRR@10.
+
+Target Corpus Pre-training (TCP).
+
+Before
+
+training our models on the re-ranking task, we ap-
+
+ply a two-phase pre-training. In the ﬁrst phase,
+
+the model is pre-trained using Wikipedia (2.5B
+
+words) and the Toronto Book corpus (0.8B words)
+
+for one million iterations, as described by Devlin
+
+et al. (2019). In the second phase, we further pre-
+
+train the model on the MS MARCO corpus (0.5B
+
+words) for 100k iterations with a maximum se-
+
+quence length of 512 tokens, batches of size 128,
+
+and learning rate of 5 × 10−5. This second pre-
+
+training phase takes approximately 24 hours on a
+
+TPU v3.2
+
+Training.
+
+We ﬁne-tune both monoBERT and
+
+duoBERT using a TPU v3 with a batch size of
+
+128 (128 sequences × 512 tokens = 16,384 to-
+
+kens/batch) for 100k iterations, which takes ap-
+
+proximately 24 hours. This corresponds to train-
+
+ing on 12.8M (100k × 128) query–document
+
+pairs.
+
+We could not see any improvement
+
+on the dev set when training for another three
+
+days, which is equivalent to seeing 50M query–
+
+document pairs in total.
+
+To avoid biasing our
+
+model towards predicting non-relevant labels,
+
+which are approximately 1000 times more fre-
+
+quent in the training set, we build each batch by
+
+sampling an equal amount of relevant and non-
+
+relevant passages.
+
+For both models, we use Adam (Kingma and
+
+Ba, 2014) with the initial learning rate set to
+
+3 × 10−6, β1 = 0.9, β2 = 0.999, L2 weight de-
+
+cay of 0.01, learning rate warmup over the ﬁrst
+
+10,000 steps, and linear decay of the learning rate.
+
+Dropout probability is set to 0.1 in all layers.
+
+Inference.
+
+In our base conﬁguration, we use
+
+top-k0 = 1000 and top-k1 = 50 candidates as
+
+input to monoBERT and duoBERT, respectively.
+
+Our experiments, however, include ablation set-
+
+tings as well as different parameterizations to char-
+
+acterize the contributions of each component as
+
+well as the latency–quality tradeoff space.
+
+4.2
+
+TREC CAR
+
+Our second dataset is from the Complex An-
+
+swer Retrieval (CAR) Track at the 2017 Text Re-
+
+trieval Conference (TREC), whose aim is to ex-
+
+plore passage-level retrieval techniques for sim-
+
+ple fact and entity-centric needs (Dietz et al.,
+
+2017). The primary dataset is synthetically con-
+
+structed by exploiting the hierarchical structure
+
+of Wikipedia: “queries” are constructed by con-
+
+catenating a Wikipedia article title with the title
+
+of one of its sections.
+
+The relevant documents
+
+are the paragraphs within that section. The cor-
+
+pus consists of cleaned paragraphs from English
+
+Wikipedia, except for the abstracts, totaling 29M
+
+documents, with an average of 60 words (or 380
+
+2 https://cloud.google.com/tpu/
+
+
+characters) per document.
+
+The released dataset
+
+has ﬁve predeﬁned folds, and we use the ﬁrst four
+
+as a training set (approximately 3M queries), and
+
+the remaining as a validation set (approximately
+
+700k queries). The test set is the same one used
+
+to evaluate the submissions to TREC 2017 CAR
+
+(2,254 queries).
+
+Although the TREC 2017 CAR organizers pro-
+
+vide manual annotations for the test set, only the
+
+top ﬁve documents retrieved by systems that sub-
+
+mitted to the ofﬁcial evaluation have manual an-
+
+notations. The sparsity of these judgments means
+
+that it is difﬁcult to fairly evaluate runs that did not
+
+participate in the original evaluation. Hence, in
+
+this paper we evaluate using the automatic annota-
+
+tions, which provide a richer set of judgments. Per
+
+the ofﬁcial TREC CAR evaluation, we use Mean
+
+Average Precision (MAP) as the evaluation metric.
+
+Training.
+
+Both monoBERT and duoBERT are
+
+trained in the same manner as for MS MARCO,
+
+with the same hyperparameter settings.
+
+How-
+
+ever, there is an important difference. The ofﬁ-
+
+cial pre-trained BERT models3 are pre-trained on
+
+the full Wikipedia, and therefore they have seen,
+
+although in an unsupervised way, Wikipedia doc-
+
+uments that are used in the test set of TREC CAR.
+
+Thus, to avoid this leak of test data into training,
+
+we pre-train the BERT re-ranker only on the half
+
+of Wikipedia used by TREC CAR’s training set,
+
+which contains 1.1B words.
+
+For
+
+ﬁne-tuning,
+
+we
+
+generate
+
+our
+
+query–
+
+document pairs by retrieving the top ten docu-
+
+ments from the entire TREC CAR corpus using
+
+BM25. This means that we end up with 30M ex-
+
+ample pairs (3M queries × 10 candidates/query)
+
+to train our model.
+
+We train it for 100k itera-
+
+tions, or 12.8M examples (100k iterations × 128
+
+pairs/batch). Similar to the MS MARCO experi-
+
+ments, we did not see any gain on the dev set by
+
+training the model longer.
+
+5
+
+Results
+
+Results on the MS MARCO dataset are shown
+
+in Table 1. The ﬁrst row shows the BM25 base-
+
+line provided by Microsoft. Our initial applica-
+
+tion of BERT to the MS MARCO dataset, de-
+
+noted by the entry monoBERT (Jan 2019), was
+
+published in January 2019 (Nogueira and Cho,
+
+2019). On the evaluation data, it surpassed the
+
+3
+
+https://github.com/google-research/
+
+bert
+
+Method
+
+Dev
+
+Eval
+
+BM25 (Microsoft Baseline)
+
+16.7
+
+16.5
+
+IRNet
+
+27.8
+
+28.1
+
+monoBERT (Jan 2019)
+
+36.5
+
+35.9
+
+Anserini (BM25)
+
+18.7
+
+19.0
+
++ monoBERT
+
+37.2
+
+36.5
+
++ monoBERT + duoBERTMAX
+
+32.6
+
+-
+
++ monoBERT + duoBERTMIN
+
+37.9
+
+-
+
++ monoBERT + duoBERTSUM
+
+38.2
+
+37.0
+
++ monoBERT + duoBERTBINARY
+
+38.3
+
+-
+
++ monoBERT + duoBERTSUM + TCP
+
+39.0
+
+37.9
+
+Leaderboard best
+
+39.7
+
+38.3
+
+Table 1: MS MARCO Results.
+
+previous best entry IRNet (submitted just ﬁve days
+
+earlier) by nearly eight points. This entry imple-
+
+ments what we refer to as monoBERT here, albeit
+
+with a few minor differences, explained below.
+
+We are, based on ofﬁcial leaderboard records, the
+
+ﬁrst to adapt BERT to the MS MARCO dataset,
+
+and to our knowledge, our model represents the
+
+ﬁrst application of BERT to any retrieval task.
+
+We further note that every subsequent submis-
+
+sion on the MS MARCO leaderboard (as of Oc-
+
+tober 2019) exploits BERT in some capacity (evi-
+
+denced by “BERT” appearing in every submission
+
+name). Given the availability of our source code
+
+on GitHub, it is likely that many of these entries
+
+are derived from or build on monoBERT, or are at
+
+least inspired by our innovation.4
+
+Our BM25 baseline with Anserini is shown in
+
+the ﬁrst row of the second block of Table 1; in
+
+our multi-stage ranking architecture, this is R0, the
+
+output of H0. Although both runs purport to im-
+
+plement BM25, Anserini is two points better than
+
+the Microsoft baseline. Our recall at 1000 hits is
+
+85.7%, compared to only 81.5% from Microsoft’s
+
+implementation. It is a well-known fact in IR that
+
+different systems implementing the same scoring
+
+function might report very different results (Müh-
+
+leisen et al., 2014; Lin et al., 2016), owing to
+
+details such as tokenization, stopword selection,
+
+stemming, and parameter tuning. Thus, the differ-
+
+ences between Anserini and the Microsoft base-
+
+line are not surprising.
+
+By applying the monoBERT stage H1 to the top
+
+1000 ranked list from Anserini (H0 with k0 =
+
+4Unfortunately, we cannot know with absolute certainty
+
+because most of the submissions are not paired with associ-
+
+ated papers and source code.
+
+
+Method
+
+MAP
+
+BM25 (Kashyapi et al., 2018)
+
+13.0
+
+Co-PACRR (MacAvaney et al., 2017)
+
+14.8
+
+BM25 (Anserini)
+
+15.3
+
++ monoBERT
+
+34.8
+
++ monoBERT + duoBERTMAX
+
+32.6
+
++ monoBERT + duoBERTSUM
+
+36.9
+
++ monoBERT + duoBERTBINARY
+
+36.9
+
+Table 2: Main Result on TREC 2017 CAR.
+
+1000), we observe a gain of 17.5 points.
+
+This
+
+result is slightly better than the monoBERT en-
+
+try from January 2019 because that submission
+
+re-ranked the Microsoft baseline (a slightly worse
+
+H0, in essence). Other minor differences include
+
+a refactored codebase to improve reusability and
+
+readability.
+
+Adding the duoBERT stage H2 with the
+
+SUM aggregation method (Equation 3), denoted
+
+duoBERTSUM, improves over monoBERT alone
+
+by 0.5 points on the held-out evaluation set. In this
+
+setting, duoBERT considers the top 50 candidates
+
+from H1, and thus requires an additional 50 × 49
+
+BERT inferences to compute the ﬁnal ranking (the
+
+time required for aggregation is negligible). This
+
+improvement in MRR, of course, comes at a cost
+
+in increased latency, an issue we explore in more
+
+detail below.
+
+The entry marked duoBERTMAX
+
+shows that the MAX aggregation method (Equa-
+
+tion 6) performs quite poorly, and in fact makes
+
+monoBERT results worse. We ﬁnd that the BI-
+
+NARY method (Equation 4) performs slightly bet-
+
+ter (0.1 points) than SUM on the development set.
+
+Given these results, we abandon the MAX aggre-
+
+gation method in subsequent experiments.
+
+Note that ofﬁcial ﬁgures from the held-out eval-
+
+uation set are not available for all conditions be-
+
+cause obtaining those values requires formal sub-
+
+mission of runs to the MS MARCO organizers.
+
+As good experimental practice, in order to avoid
+
+too much “unnecessary probing” of the held-out
+
+test data, we only submitted what we felt to be the
+
+most promising conditions.
+
+Finally,
+
+pre-training on the target corpus
+
+(monoBERT + duoBERTSUM + TCP) improves
+
+MRR@10 by another 0.8 points. This result is
+
+in line with recent work that shows improvements
+
+with target corpus pre-training over out-of-domain
+
+corpus pre-training (Beltagy et al., 2019; Raffel
+
+et al., 2019).
+
+Results for TREC CAR are presented in Ta-
+
+ble 2, organized in a similar manner as Table 1.
+
+We see similar trends on this dataset.
+
+Again,
+
+Anserini’s implementation of BM25 leads to 2.3
+
+MAP points improvement over another Lucene-
+
+based
+
+implementation
+
+from
+
+Kashyapi
+
+et
+
+al.
+
+(2018).
+
+It is also 0.5 MAP points higher than
+
+the best entry from TREC 2017 CAR (MacAvaney
+
+et al., 2017). The monoBERT model gives an im-
+
+pressive jump of 19.5 MAP points over the BM25
+
+baseline and duoBERTSUM or duoBERTBINARY
+
+provides another improvement of 2.1 points. To
+
+our knowledge, this is the best-known result on
+
+this dataset. Note that we do not report target cor-
+
+pus pre-training results on TREC CAR because its
+
+target corpus is the same as the original BERT pre-
+
+training corpus, i.e., English Wikipedia.
+
+In general, we notice that improvements from
+
+our BERT models are larger on TREC CAR than
+
+they are on MS MARCO. We believe this is pri-
+
+marily due to the evaluation metric: improvements
+
+in MRR@10 are much harder to achieve, since
+
+only the ﬁrst correct answer contributes to the
+
+score, while better rankings of all relevant doc-
+
+uments improve the MAP score.
+
+Additionally,
+
+MRR@10 is a highly discrete metric (there are
+
+only 11 possible values), and these values are ar-
+
+ranged such that large gains in effectiveness are
+
+only possible in the early ranks (thus increasing
+
+the level of task difﬁculty).
+
+5.1
+
+Tradeoffs with monoBERT
+
+The experimental results presented above capture
+
+monoBERT and duoBERT settings that focus on
+
+obtaining the best output quality. Our next set of
+
+experiments explore different parameterizations of
+
+the multi-stage ranking architecture that realizes
+
+different quality–latency tradeoffs.
+
+For monoBERT, the number of candidates k0 is
+
+the control “knob”: latency increases linearly as
+
+we consider more candidates, but effectiveness in-
+
+creases as well. This relationship is shown in Fig-
+
+ure 2 for MS MARCO on the left and TREC CAR
+
+on the right. To aid in comparisons with duoBERT
+
+experiments below, the x-axis shows the number
+
+of inferences performed per query, which is ex-
+
+actly the same as k0, since each query–candidate
+
+pair from R1 serves as an input to monoBERT.
+
+As expected, we see diminishing returns with
+
+larger k0 values on both datasets. For example,
+
+compared to k0 = 1000, on both datasets we can
+
+
+50
+
+200
+
+500
+
+1,000
+
+33.5
+
+34.5
+
+35.5
+
+36.5
+
+37.5
+
+# inferences/query
+
+MRR@10
+
+MS MARCO
+
+50
+
+200
+
+500
+
+1,000
+
+28
+
+30
+
+32
+
+34
+
+35
+
+# inferences/query
+
+MAP
+
+TREC CAR
+
+Figure 2: Number of inferences per query vs. effectiveness on the MS MARCO and the TREC CAR datasets when
+
+varying the number of candidates k0 fed to monoBERT.
+
+0
+
+380
+
+870
+
+1,560
+
+2,450
+
+37
+
+37.5
+
+38
+
+38.5
+
+# inferences/query
+
+MRR@10
+
+SUM
+
+BINARY
+
+MIN
+
+SAMPLE, m=20
+
+SAMPLE, m=40
+
+MS MARCO
+
+0
+
+380
+
+870
+
+1,560
+
+2,450
+
+34.5
+
+35
+
+35.5
+
+36
+
+36.5
+
+37
+
+# inferences/query
+
+MAP
+
+SUM
+
+BINARY
+
+MIN
+
+SAMPLE, m=20
+
+SAMPLE, m=40
+
+TREC CAR
+
+Figure 3: Number of inferences per query vs. the effectiveness of duoBERT when varying the number of candidates
+
+k1. Each curve has six points that correspond to k1 = {0, 10, 20, 30, 40, 50}, where k1 = 0 corresponds to
+
+monoBERT. The values in the x-axis are computed as k1 ×(k1 −1) for SUM, BINARY, and MIN, and k1 ×(m−1)
+
+for SAMPLE. To avoid clutter, plots for SAMPLE at m = {10, 30} are omitted.
+
+achieve more than half the gain in effectiveness
+
+with only around a ﬁfth of the number of infer-
+
+ences. These curves also highlight the inadequacy
+
+of BM25 scores alone, since with a deep candidate
+
+list R0, monoBERT is considering documents that
+
+have quite low BM25 scores.
+
+5.2
+
+Tradeoffs with duoBERT
+
+Similar to monoBERT, we can control the latency–
+
+quality tradeoff of duoBERT by considering dif-
+
+ferent k1 values. In these experiments, k0 is ﬁxed
+
+at 1000, and in Figure 3 we plot changes in ef-
+
+fectiveness (MRR@10 for MS MARCO on the
+
+left, MAP for TREC CAR on the right) as a func-
+
+tion of latency (inferences/query) for different val-
+
+ues of k1.
+
+We ﬁnd that actual inference laten-
+
+cies (measured in milliseconds) for duoBERT and
+
+monoBERT are comparable, and so the number
+
+of inferences per query provides a natural abstract
+
+time unit to support meaningful comparisons.
+
+In the ﬁgure, each curve represents an aggrega-
+
+tion technique and contains six points that corre-
+
+spond to k1 = {0, 10, 20, 30, 40, 50}. The left-
+
+most point, k1 = 0, corresponds to monoBERT
+
+only, which allows us to quantify the additive im-
+
+pact of the duoBERT stage on top monoBERT re-
+
+sults. The values for the SAMPLE method repre-
+
+sent the average of ten trials.
+
+Of the four aggregation methods compared, BI-
+
+NARY yields the highest effectiveness on the MS
+
+MARCO dataset, albeit by a small margin over
+
+SUM.
+
+On TREC CAR, BINARY and SUM are
+
+very close, although SUM appears to be slightly
+
+better, especially at lower cutoffs. The SAMPLE
+
+
+0
+
+500 1,000
+
+2,000
+
+3,450
+
+33
+
+35
+
+37
+
+38.5
+
+# inferences/query
+
+MRR@10
+
+MS MARCO
+
+0
+
+500 1,000
+
+2,000
+
+3,450
+
+29
+
+31
+
+33
+
+35
+
+37.5
+
+# inferences/query
+
+MAP
+
+k1 = 10
+
+k1 = 30
+
+k1 = 50
+
+TREC CAR
+
+Figure 4: Number of inferences per query vs. the effectiveness of duoBERTSUM when varying the number of
+
+candidates k0 and k1. Each curve has ﬁve points that correspond to k0 = {50, 100, 200, 500, 1000}. The number
+
+of inferences per query is calculated as k0 + k1(k1 − 1).
+
+method has a lower effectiveness than BINARY
+
+and SUM for any ﬁxed number of inferences per
+
+query.
+
+This result shows that the top-k1 candi-
+
+dates from monoBERT are a closer approximation
+
+of the true relevance ranking than uniformly sam-
+
+pling from a larger candidate set. This is an in-
+
+teresting result: given the choice of sampling from
+
+a larger candidate set or exhaustively enumerating
+
+all pairs from a smaller candidate set, the latter op-
+
+tion always seems to yield better answers.
+
+Considering these results, it seems that a good
+
+operating point is k1 = 20 with BINARY aggre-
+
+gation on MS MARCO and SUM aggregation on
+
+TREC CAR. In both cases, we obtain close to the
+
+maximum achievable score, with only a 40% in-
+
+crease in latency compared to monoBERT only
+
+(whereas k1 = 50, SUM or BINARY, more than
+
+doubles the number of inferences required over
+
+monoBERT).
+
+5.3
+
+Multi-Stage Tradeoffs
+
+Our next set of experiments quantify the trade-
+
+offs when changing both k0 and k1; results are
+
+shown in Figure 4. Since inference times are ap-
+
+proximately the same between monoBERT and
+
+duoBERT, we can quantify latency by the number
+
+of inferences.
+
+On both datasets, the most computationally ex-
+
+pensive point in the blue curve (k0 = 1000 and
+
+k1 = 50) has a much higher effectiveness than the
+
+least expensive point in the red curve (k0 = 50
+
+and k1 = 50). This provides an example that an-
+
+alyzing multiple cutoffs jointly can improve our
+
+understanding of the tradeoff space.
+
+5.4
+
+Qualitative Analyses
+
+Finally, we conduct qualitative analyses by sam-
+
+pling retrieved passages from three methods:
+
+BM25, monoBERT, and duoBERTSUM.
+
+A few
+
+examples are shown in Table 3.
+
+From the ﬁrst
+
+two examples, we can see that BM25 tries to
+
+maximize unigram matches between queries and
+
+passages, and thus often neglects n-grams, while
+
+monoBERT learns to assign a high matching score
+
+to n-grams. This also shows an example where a
+
+high BM25 score—that comes from repeated in-
+
+stances of query terms—can be misleading. Our
+
+monoBERT model, at least in this example, does
+
+not appear to be fooled.
+
+From the last two samples in Table 3, we can
+
+see that duoBERT matches the synonyms between
+
+“low” in the query and “reduced” in the passage,
+
+while monoBERT fails to distinguish “low” in the
+
+query and “elevated” in the passage.
+
+6
+
+Future Work and Conclusions
+
+While our work is ﬁrmly situated in the context of
+
+multi-stage ranking architectures, it makes sense
+
+to discuss the broader landscape of applying neu-
+
+ral models to document ranking. Search-related
+
+tasks, almost by deﬁnition, need to consider a
+
+large corpus, and thus it is impractical to apply in-
+
+ference over all documents for a given query. This
+
+simple fact necessitates reliance on standard “bag
+
+of words” techniques to reduce the “working set”
+
+that is presented to neural models.
+
+Such a design, however, is inelegant, which has
+
+led researchers to explore alternatives that are able
+
+to directly perform ranking. The most promising
+
+
+Query
+
+Sample Passage
+
+Label
+
+Rank
+
+Baseline
+
+Comparison
+
+who wrote song
+
+killing the blues
+
+Killing The Blues by Robert Plant and Alison Krauss. This was written by
+
+Chris Isaak’s bass guitarist Roly Salley, and was originally the title track of
+
+Salley’s 2005 solo album. This song was used in an advertising campaign for
+
+the chain store JC Penney, which features sentimental images of heartland
+
+Americana, such as family reunions and Fourth of July celebrations.
+
+R
+
+BM25: 621
+
+monoBERT: 1
+
+Who wrote the blues song Crossroads Cross Road Blues is one of Delta
+
+Blues singer Robert Johnson’s most famous songs. Who wrote the song
+
+’Blue Shades.. Frank Ticheli wrote the song ’Blue Shades’. It is a concert
+
+piece with allusions...
+
+N
+
+BM25: 1
+
+monoBERT: 9
+
+what causes low
+
+liver enzymes
+
+Reduced production of liver enzymes may indicate dysfunction of the liver.
+
+This article explains the causes and symptoms of low liver enzymes. Scroll
+
+down to know how the production of the enzymes can be accelerated.
+
+R
+
+monoBERT: 47
+
+duoBERT: 1
+
+Other causes of elevated liver enzymes may include: Alcoholic hepatitis
+
+(severe liver inﬂammation caused by excessive alcohol consumption)
+
+Autoimmune hepatitis (liver inﬂammation caused by an autoimmune disorder)
+
+Celiac disease (small intestine damage caused by gluten) Cytomegalovirus
+
+(CMV) infection.
+
+N
+
+monoBERT: 1
+
+duoBERT: 7
+
+Table 3: Comparison of BM25 vs. monoBERT, and monoBERT vs. duoBERT, showing result ranks of answers.
+
+(N: not relevant, R: relevant)
+
+approach is formulated as a representational learn-
+
+ing problem, where the task is to learn some non-
+
+linear transformation of queries and documents
+
+(i.e., using a neural network) such that documents
+
+relevant to a query have high similarities in terms
+
+of a simple metric such as cosine similarity (Hen-
+
+derson et al., 2017; Zamani et al., 2018; Ji et al.,
+
+2019). This, in essence, transforms neural rank-
+
+ing into approximate nearest-neighbor search once
+
+queries and documents have been mapped into the
+
+learned representational space.
+
+While this is indeed a promising approach, and
+
+has seen production deployment in limited con-
+
+texts (Henderson et al., 2017), this thread of re-
+
+search is better characterized as exploratory. It is
+
+unclear whether representational learning is sufﬁ-
+
+cient to boil the complex notion of relevance down
+
+to simple similarity computations—and if it isn’t,
+
+the complete end-to-end retrieval architecture will
+
+need to involve multiple stages anyway. In con-
+
+trast, multi-stage ranking architectures are mature,
+
+well understood, easy to deploy, and proven in
+
+production.
+
+Our future work aims to build the stages of
+
+the pipeline jointly, in which hyperparameters are
+
+automatically tuned for end-to-end performance.
+
+Also, explicitly using scoring signals from previ-
+
+ous stages of the pipeline in later stages has the po-
+
+tential to increase overall effectiveness as more in-
+
+formation is shared among stages. Lastly, current
+
+BERT-based models can only handle documents
+
+that are a few sentences long (at the most). Models
+
+that can handle longer documents without trunca-
+
+tion, such as Yilmaz et al. (2019), should be eval-
+
+uated on datasets such as the MS MARCO docu-
+
+ment ranking task. Overall, we believe that multi-
+
+stage ranking architectures pave the way to practi-
+
+cal deployment of complex and computationally-
+
+intensive neural models.
+
+Acknowledgments
+
+RN and KC thank support by NVIDIA and CI-
+
+FAR and were partly supported by Samsung Ad-
+
+vanced Institute of Technology (Next Generation
+
+Deep Learning: from pattern recognition to AI)
+
+and Samsung Electronics (Improving Deep Learn-
+
+ing using Latent Structure).
+
+WY and JL thank
+
+support by the Natural Sciences and Engineering
+
+Research Council (NSERC) of Canada, with addi-
+
+tional computational resources provided by Com-
+
+pute Ontario and Compute Canada.
+
+References
+
+Nima Asadi and Jimmy Lin. 2013.
+
+Effective-
+
+ness/efﬁciency tradeoffs for candidate generation
+
+in multi-stage retrieval architectures.
+
+In Proceed-
+
+ings of the 36th Annual International ACM SIGIR
+
+Conference on Research and Development in In-
+
+formation Retrieval (SIGIR 2013), pages 997–1000,
+
+Dublin, Ireland.
+
+Payal Bajaj, Daniel Campos, Nick Craswell, Li Deng,
+
+Jianfeng Gao, Xiaodong Liu, Rangan Majumder,
+
+Andrew McNamara, Bhaskar Mitra, Tri Nguyen,
+
+Mir Rosenberg, Xia Song, Alina Stoica, Saurabh Ti-
+
+wary, and Tong Wang. 2018. MS MARCO: A hu-
+
+man generated MAchine Reading COmprehension
+
+dataset. arXiv:1611.09268v3.
+
+Iz Beltagy, Arman Cohan, and Kyle Lo. 2019.
+
+Sci-
+
+BERT: Pretrained contextualized embeddings for
+
+scientiﬁc text. arXiv:1903.10676.
+
+
+B.
+
+Barla
+
+Cambazoglu,
+
+Hugo
+
+Zaragoza,
+
+Olivier
+
+Chapelle, Jiang Chen, Ciya Liao, Zhaohui Zheng,
+
+and Jon Degenhardt. 2010. Early exit optimizations
+
+for additive machine learned ranking systems.
+
+In
+
+Proceedings of the Third ACM International Con-
+
+ference on Web Search and Data Mining (WSDM
+
+2010), pages 411–420, New York, New York.
+
+Ruey-Cheng Chen, Luke Gallagher, Roi Blanco, and
+
+J. Shane Culpepper. 2017. Efﬁcient cost-aware cas-
+
+cade ranking in multi-stage retrieval. In Proceedings
+
+of the 40th Annual International ACM SIGIR Con-
+
+ference on Research and Development in Informa-
+
+tion Retrieval (SIGIR 2017), pages 445–454, Tokyo,
+
+Japan.
+
+Gordon V. Cormack, Charles L. A. Clarke, and Stefan
+
+Büttcher. 2009. Reciprocal rank fusion outperforms
+
+Condorcet and individual rank learning methods. In
+
+Proceedings of the 32nd Annual International ACM
+
+SIGIR Conference on Research and Development
+
+in Information Retrieval (SIGIR 2009), pages 758–
+
+759, Boston, Massachusetts.
+
+Jacob Devlin, Ming-Wei Chang, Kenton Lee, and
+
+Kristina Toutanova. 2019.
+
+BERT: Pre-training of
+
+deep bidirectional transformers for language under-
+
+standing. In Proceedings of the 2019 Conference of
+
+the North American Chapter of the Association for
+
+Computational Linguistics: Human Language Tech-
+
+nologies, Volume 1 (Long and Short Papers), pages
+
+4171–4186, Minneapolis, Minnesota.
+
+Laura Dietz, Manisha Verma, Filip Radlinski, and Nick
+
+Craswell. 2017.
+
+TREC complex answer retrieval
+
+overview. In Proceedings of the Twenty-Sixth Text
+
+REtrieval Conference (TREC 2017).
+
+Jiafeng Guo, Yixing Fan, Qingyao Ai, and W. Bruce
+
+Croft. 2016.
+
+A deep relevance matching model
+
+for ad-hoc retrieval.
+
+In Proceedings of the 25th
+
+ACM International on Conference on Information
+
+and Knowledge Management, pages 55–64, Indi-
+
+anapolis, Indiana.
+
+Matthew Henderson, Rami Al-Rfou, Brian Strope, Yun
+
+hsuan Sung, Laszlo Lukacs, Ruiqi Guo, Sanjiv Ku-
+
+mar, Balint Miklos, and Ray Kurzweil. 2017. Efﬁ-
+
+cient natural language response suggestion for Smart
+
+Reply. arXiv:1705.00652.
+
+Kai Hui, Andrew Yates, Klaus Berberich, and Gerard
+
+de Melo. 2018. Co-PACRR: A context-aware neu-
+
+ral IR model for ad-hoc retrieval. In Proceedings of
+
+the Eleventh ACM International Conference on Web
+
+Search and Data Mining (WSDM 2018), pages 279–
+
+287, Marina Del Rey, California.
+
+Shiyu Ji, Jinjin Shao, and Tao Yang. 2019. Efﬁcient
+
+interaction-based neural ranking with locality sen-
+
+sitive hashing.
+
+In Proceedings of the 2019 World
+
+Wide Web Conference (WWW 2019), pages 2858–
+
+2864, San Francisco, California.
+
+Sumanta
+
+Kashyapi,
+
+Shubham
+
+Chatterjee,
+
+Jordan
+
+Ramsdell, and Laura Dietz. 2018. TREMA-UNH
+
+at TREC 2018: Complex answer retrieval and news
+
+track.
+
+In Proceedings of the Twenty-Seventh Text
+
+REtrieval Conference (TREC 2018).
+
+Diederik
+
+P.
+
+Kingma
+
+and
+
+Jimmy
+
+Ba.
+
+2014.
+
+Adam:
+
+A method for stochastic optimization.
+
+arXiv:1412.6980.
+
+Hang Li. 2011. Learning to Rank for Information Re-
+
+trieval and Natural Language Processing. Morgan
+
+&amp; Claypool Publishers.
+
+Jimmy Lin. 2019. The neural hype and comparisons
+
+against weak baselines. In SIGIR Forum, volume 52,
+
+pages 40–51.
+
+Jimmy Lin, Matt Crane, Andrew Trotman, Jamie
+
+Callan, Ishan Chattopadhyaya, John Foley, Grant
+
+Ingersoll, Craig Macdonald, and Sebastiano Vigna.
+
+2016.
+
+Toward reproducible baselines: The open-
+
+source IR reproducibility challenge. In Proceedings
+
+of the 38th European Conference on Information Re-
+
+trieval (ECIR 2016), pages 408–420, Padua, Italy.
+
+Shichen Liu, Fei Xiao, Wenwu Ou, and Luo Si. 2017.
+
+Cascade ranking for operational e-commerce search.
+
+In Proceedings of the 23rd ACM SIGKDD Inter-
+
+national Conference on Knowledge Discovery and
+
+Data Mining (SIGKDD 2017), pages 1557–1565,
+
+Halifax, Nova Scotia, Canada.
+
+Tie-Yan Liu. 2009. Learning to rank for information
+
+retrieval.
+
+Foundations and Trends in Information
+
+Retrieval, 3(3):225–331.
+
+Sean MacAvaney, Andrew Yates, Arman Cohan, and
+
+Nazli Goharian. 2019. CEDR: Contextualized em-
+
+beddings for document ranking. In Proceedings of
+
+the 42nd Annual International ACM SIGIR Confer-
+
+ence on Research and Development in Information
+
+Retrieval (SIGIR 2019), pages 1101–1104, Paris,
+
+France.
+
+Sean MacAvaney, Andrew Yates, and Kai Hui. 2017.
+
+Contextualized PACRR for complex answer re-
+
+trieval. In Proceedings of the Twenty-Sixth Text RE-
+
+trieval Conference (TREC 2017).
+
+Joel Mackenzie, Shane Culpepper, Roi Blanco, Matt
+
+Crane, Charles Clarke, and Jimmy Lin. 2018. Query
+
+driven algorithm selection in early stage retrieval.
+
+In Proceedings of the 11th ACM International Con-
+
+ference on Web Search and Data Mining (WSDM
+
+2018), pages 396–404, Marina Del Rey, California.
+
+Irina Matveeva, Chris Burges, Timo Burkard, Andy
+
+Laucius, and Leon Wong. 2006. High accuracy re-
+
+trieval with multiple nested ranker. In Proceedings
+
+of the 29th Annual International ACM SIGIR Con-
+
+ference on Research and Development in Informa-
+
+tion Retrieval (SIGIR 2006), pages 437–444, Seattle,
+
+Washington.
+
+
+Bhaskar Mitra and Nick Craswell. 2019.
+
+An intro-
+
+duction to neural information retrieval. Foundations
+
+and Trends in Information Retrieval, 13(1):1–126.
+
+Bhaskar Mitra, Fernando Diaz, and Nick Craswell.
+
+2017. Learning to match using local and distributed
+
+representations of text for web search. In Proceed-
+
+ings of the 26th International Conference on World
+
+Wide Web (WWW 2017), pages 1291–1299, Perth,
+
+Australia.
+
+Mark Montague and Javed A. Aslam. 2002. Condorcet
+
+fusion for improved retrieval. In Proceedings of the
+
+Eleventh International Conference on Information
+
+and Knowledge Management (CIKM 2002), pages
+
+538–548, McLean, Virginia.
+
+Hannes Mühleisen, Thaer Samar, Jimmy Lin, and Ar-
+
+jen de Vries. 2014. Old dogs are great at new tricks:
+
+Column stores for IR prototyping. In Proceedings
+
+of the 37th Annual International ACM SIGIR Con-
+
+ference on Research and Development in Informa-
+
+tion Retrieval (SIGIR 2014), pages 863–866, Gold
+
+Coast, Australia.
+
+Rodrigo Nogueira and Kyunghyun Cho. 2019. Passage
+
+re-ranking with BERT. arXiv:1901.04085.
+
+Kezban Dilek Onal, Ye Zhang, Ismail Sengor Al-
+
+tingovde, Md Mustaﬁzur Rahman, Pinar Karagoz,
+
+Alex Braylan, Brandon Dang, Heng-Lu Chang,
+
+Henna Kim, Quinten McNamara, Aaron Angert,
+
+Edward Banner, Vivek Khetan, Tyler McDonnell,
+
+An Thanh Nguyen, Dan Xu, Byron C. Wallace,
+
+Maarten de Rijke, and Matthew Lease. 2018. Neural
+
+information retrieval: At the end of the early years.
+
+Information Retrieval, 21(2–3):111–182.
+
+Jan Pedersen. 2010. Query understanding at Bing. In
+
+Industry Track Keynote at the 33rd Annual Interna-
+
+tional ACM SIGIR Conference on Research and De-
+
+velopment in Information Retrieval (SIGIR 2010),
+
+Geneva, Switzerland.
+
+Matthew E. Peters, Waleed Ammar, Chandra Bhaga-
+
+vatula, and Russell Power. 2017. Semi-supervised
+
+sequence tagging with bidirectional language mod-
+
+els. arXiv:1705.00108.
+
+Alec Radford, Karthik Narasimhan, Tim Salimans, and
+
+Ilya Sutskever. 2018.
+
+Improving language under-
+
+standing by generative pre-training.
+
+Colin Raffel, Noam Shazeer, Adam Roberts, Katherine
+
+Lee, Sharan Narang, Michael Matena, Yanqi Zhou,
+
+Wei Li, and Peter J. Liu. 2019. Exploring the limits
+
+of transfer learning with a uniﬁed text-to-text trans-
+
+former. arXiv:1910.10683.
+
+Stephen E. Robertson, Steve Walker, Susan Jones,
+
+Micheline Hancock-Beaulieu, and Mike Gatford.
+
+1994. Okapi at TREC-3. In Proceedings of the 3rd
+
+Text REtrieval Conference (TREC-3), pages 109–
+
+126, Gaithersburg, Maryland.
+
+Paul Viola and Michael J. Jones. 2004. Robust real-
+
+time face detection. International Journal of Com-
+
+puter Vision, 57:137–154.
+
+Ellen M. Voorhees. 2002. The philosophy of informa-
+
+tion retrieval evaluation.
+
+In Evaluation of Cross-
+
+Language Information Retrieval Systems: Second
+
+Workshop of the Cross-Language Evaluation Forum,
+
+Lecture Notes in Computer Science Volume 2406,
+
+pages 355–370.
+
+Lidan Wang, Jimmy Lin, and Donald Metzler. 2011.
+
+A cascade ranking model for efﬁcient ranked re-
+
+trieval. In Proceedings of the 34th Annual Interna-
+
+tional ACM SIGIR Conference on Research and De-
+
+velopment in Information Retrieval (SIGIR 2011),
+
+pages 105–114, Beijing, China.
+
+Chenyan Xiong, Zhuyun Dai, Jamie Callan, Zhiyuan
+
+Liu, and Russell Power. 2017.
+
+End-to-end neural
+
+ad-hoc ranking with kernel pooling. In Proceedings
+
+of the 40th International ACM SIGIR Conference on
+
+Research and Development in Information Retrieval
+
+(SIGIR 2017), pages 55–64, Tokyo, Japan.
+
+Zhixiang Eddie Xu, Kilian Q. Weinberger, and Olivier
+
+Chapelle. 2012. The greedy miser: Learning under
+
+test-time budgets. In Proceedings of the 29th Inter-
+
+national Conference on Machine Learning (ICML
+
+2012), Edinburgh, Scotland.
+
+Peilin Yang, Hui Fang, and Jimmy Lin. 2017. Anserini:
+
+Enabling the use of Lucene for information retrieval
+
+research.
+
+In Proceedings of the 40th Annual In-
+
+ternational ACM SIGIR Conference on Research
+
+and Development in Information Retrieval (SIGIR
+
+2017), pages 1253–1256, Tokyo, Japan.
+
+Peilin Yang, Hui Fang, and Jimmy Lin. 2018. Anserini:
+
+Reproducible ranking baselines using Lucene. Jour-
+
+nal of Data and Information Quality, 10(4):Article
+
+16.
+
+Wei Yang, Kuang Lu, Peilin Yang, and Jimmy Lin.
+
+2019a.
+
+Critically examining the “neural hype”:
+
+weak baselines and the additivity of effectiveness
+
+gains from neural ranking models.
+
+In Proceed-
+
+ings of the 42nd Annual International ACM SIGIR
+
+Conference on Research and Development in Infor-
+
+mation Retrieval (SIGIR 2019), pages 1129–1132,
+
+Paris, France.
+
+Wei Yang, Yuqing Xie, Aileen Lin, Xingyu Li, Luchen
+
+Tan, Kun Xiong, Ming Li, and Jimmy Lin. 2019b.
+
+End-to-end open-domain question answering with
+
+BERTserini.
+
+In Proceedings of the 2019 Confer-
+
+ence of the North American Chapter of the Asso-
+
+ciation for Computational Linguistics (Demonstra-
+
+tions), pages 72–77, Minneapolis, Minnesota.
+
+Wei Yang, Haotian Zhang, and Jimmy Lin. 2019c.
+
+Simple applications of BERT for ad hoc document
+
+retrieval. arXiv:1903.10972.
+
+
+Zeynep Akkalyoncu Yilmaz,
+
+Wei Yang,
+
+Haotian
+
+Zhang, and Jimmy Lin. 2019. Cross-domain mod-
+
+eling of sentence-level evidence for document re-
+
+trieval. In Proceedings of the 2019 Conference on
+
+Empirical Methods in Natural Language Process-
+
+ing.
+
+Hamed Zamani, Mostafa Dehghani, W. Bruce Croft,
+
+Erik Learned-Miller, and Jaap Kamps. 2018. From
+
+neural re-ranking to neural ranking:
+
+Learning a
+
+sparse representation for inverted indexing. In Pro-
+
+ceedings of the 27th ACM International Conference
+
+on Information and Knowledge Management (CIKM
+
+2018), pages 497–506, Torino, Italy.
+

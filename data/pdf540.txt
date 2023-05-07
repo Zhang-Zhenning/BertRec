@@ -1,0 +1,1895 @@
+
+sequence modeling: 
+
+part-of-speech tagging with 
+
+hidden Markov models
+
+CS 585, Fall 2019
+
+Introduction to Natural Language Processing
+
+http://people.cs.umass.edu/~miyyer/cs585/
+
+Mohit Iyyer
+
+College of Information and Computer Sciences
+
+University of Massachusetts Amherst
+
+many slides from Brendan O’Connor &amp; Jordan Boyd-Graber
+
+
+questions from last time…
+
+• Busy next 2 weeks! 
+
+•
+
+HW2! Due tmrw 
+
+•
+
+Project milestone 1: due Oct 24 
+
+•
+
+Midterm: Oct 31 
+
+• tested on optional readings? no 
+
+• ﬁnal presentations? possibly Dec 12 
+
+• stats on HWs? 
+
+• what is a tensor?
+
+ 2
+
+
+These are all log-linear models
+
+ 3
+
+Logistic Regression
+
+HMMs
+
+Linear-chain CRFs
+
+Naive Bayes
+
+SEQUENCE
+
+SEQUENCE
+
+CONDITIONAL
+
+CONDITIONAL
+
+Gene
+
+GRAP
+
+Gene
+
+GRAP
+
+Fi
+
+2 3 Di
+
+f h
+
+l
+
+i
+
+hi
+
+b
+
+i
+
+B
+
+l
+
+i
+
+i
+
+
+These are all log-linear models
+
+ 4
+
+Logistic Regression
+
+HMMs
+
+Linear-chain CRFs
+
+Naive Bayes
+
+SEQUENCE
+
+SEQUENCE
+
+CONDITIONAL
+
+CONDITIONAL
+
+Gene
+
+GRAP
+
+Gene
+
+GRAP
+
+Fi
+
+2 3 Di
+
+f h
+
+l
+
+i
+
+hi
+
+b
+
+i
+
+B
+
+l
+
+i
+
+i
+
+
+
+
+These are all log-linear models
+
+ 5
+
+Logistic Regression
+
+HMMs
+
+Linear-chain CRFs
+
+Naive Bayes
+
+SEQUENCE
+
+SEQUENCE
+
+CONDITIONAL
+
+CONDITIONAL
+
+Gene
+
+GRAP
+
+Gene
+
+GRAP
+
+Fi
+
+2 3 Di
+
+f h
+
+l
+
+i
+
+hi
+
+b
+
+i
+
+B
+
+l
+
+i
+
+i
+
+
+
+are neural networks log-linear models?
+
+
+ 6
+
+Tagging (Sequence Labeling)
+
+• Given a sequence (in NLP, words), assign appropriate labels to 
+
+each word. 
+
+• Many NLP problems can be viewed as sequence labeling: 
+
+- POS Tagging 
+
+- Chunking 
+
+- Named Entity Tagging 
+
+• Labels of tokens are dependent on the labels of other tokens in 
+
+the sequence, particularly their neighbors
+
+Plays well with others. 
+
+VBZ    RB    IN     NNS
+
+
+ 7
+
+What’s a part-of-speech (POS)?
+
+• Syntax = how words compose to form larger meaning bearing units 
+
+• POS = syntactic categories for words (a.k.a word class) 
+
+• You could substitute words within a class and have a syntactically valid 
+
+sentence 
+
+• Gives information how words combine into larger phrases
+
+I saw the dog 
+
+I saw the cat 
+
+I saw the ___
+
+
+Why do we want POS?
+
+• Useful for many syntactic and other NLP tasks.
+
+• Phrase identiﬁcation (“chunking”)
+
+• Named entity recognition
+
+• Full parsing
+
+• Sentiment
+
+• Especially when there’s a low amount of training 
+
+data
+
+ 8
+
+
+POS patterns: sentiment
+
+• Turney (2002): identify bigram phrases, from unlabeled corpus, 
+
+useful for sentiment analysis.
+
+ 9
+
+review (Brill, 1994).3 Two consecutive words are 
+
+extracted from the review if their tags conform to 
+
+any of the patterns in Table 1. The JJ tags indicate 
+
+adjectives, the NN tags are nouns, the RB tags are 
+
+adverbs, and the VB tags are verbs.4 The second 
+
+pattern, for example, means that two consecutive 
+
+words are extracted if the first word is an adverb 
+
+and the second word is an adjective, but the third 
+
+word (which is not extracted) cannot be a noun. 
+
+NNP and NNPS (singular and plural proper nouns) 
+
+are avoided, so that the names of the items in the 
+
+review cannot influence the classification. 
+
+Table 1. Patterns of tags for extracting two-word 
+
+phrases from reviews.  
+
+ 
+
+First Word 
+
+Second Word 
+
+Third Word  
+
+(Not Extracted) 
+
+1. JJ 
+
+NN or NNS 
+
+anything 
+
+2. RB, RBR, or 
+
+RBS 
+
+JJ 
+
+not NN nor NNS 
+
+3. JJ 
+
+JJ 
+
+not NN nor NNS 
+
+4. NN or NNS 
+
+JJ 
+
+not NN nor NNS 
+
+5. RB, RBR, or 
+
+RBS 
+
+VB, VBD, 
+
+VBN, or VBG 
+
+anything 
+
+The second step is to estimate the semantic ori-
+
+entation of the extracted phrases, using the PMI-IR 
+
+algorithm. This algorithm uses mutual information 
+
+as a measure of the strength of semantic associa-
+
+tion between two words (Church &amp; Hanks, 1989). 
+
+PMI-IR has been empirically evaluated using 80 
+
+synonym test questions from the Test of English as 
+
+a Foreign Language (TOEFL), obtaining a score of 
+
+we acquire about the presence of one of the words 
+
+when we observe the other.  
+
+The Semantic Orientation (SO) of a phrase, 
+
+phrase, is calculated here as follows: 
+
+     SO(phrase) = PMI(phrase, “excellent”)  
+
+                          - PMI(phrase, “poor”) 
+
+(2) 
+
+The reference words “excellent” and “poor” were 
+
+chosen because, in the five star review rating sys-
+
+tem, it is common to define one star as “poor” and 
+
+five stars as “excellent”. SO is positive when 
+
+phrase is more strongly associated with “excellent” 
+
+and negative when phrase is more strongly associ-
+
+ated with “poor”.   
+
+PMI-IR estimates PMI by issuing queries to a 
+
+search engine (hence the IR in PMI-IR) and noting 
+
+the number of hits (matching documents). The fol-
+
+lowing experiments use the AltaVista Advanced 
+
+Search engine5, which indexes approximately 350 
+
+million web pages (counting only those pages that 
+
+are in English). I chose AltaVista because it has a 
+
+NEAR operator. The AltaVista NEAR operator 
+
+constrains the search to documents that contain the 
+
+words within ten words of one another, in either 
+
+order. Previous work has shown that NEAR per-
+
+forms better than AND when measuring the 
+
+strength of semantic association between words 
+
+(Turney, 2001). 
+
+Let hits(query) be the number of hits returned, 
+
+given the query query. The following estimate of 
+
+SO can be derived from equations (1) and (2) with 
+
+The third step is to calculate the average seman-
+
+tic orientation of the phrases in the given review 
+
+and classify the review as recommended if the av-
+
+erage is positive and otherwise not recommended.  
+
+Table 2 shows an example for a recommended 
+
+review and Table 3 shows an example for a not 
+
+recommended review. Both are reviews of the 
+
+Bank of America. Both are in the collection of 410 
+
+reviews from Epinions that are used in the experi-
+
+ments in Section 4. 
+
+Table 2. An example of the processing of a review that 
+
+the author has classified as recommended.6 
+
+Extracted Phrase 
+
+Part-of-Speech 
+
+Tags 
+
+Semantic 
+
+Orientation 
+
+online experience  
+
+JJ NN 
+
+ 2.253 
+
+low fees  
+
+JJ NNS 
+
+ 0.333 
+
+local branch  
+
+JJ NN 
+
+ 0.421 
+
+small part  
+
+JJ NN 
+
+ 0.053 
+
+online service  
+
+JJ NN 
+
+ 2.780 
+
+printable version  
+
+JJ NN 
+
+-0.705 
+
+direct deposit  
+
+JJ NN 
+
+ 1.288 
+
+well other  
+
+RB JJ 
+
+ 0.237 
+
+inconveniently  
+
+located  
+
+RB VBN 
+
+-1.541 
+
+other bank  
+
+JJ NN 
+
+-0.850 
+
+true service  
+
+JJ NN 
+
+-0.732 
+
+Average Semantic Orientation 
+
+ 0.322 
+
+ 
+
+ 
+
+6 The semantic orientation in the following tables is calculated 
+
+using the natural logarithm (base e), rather than base 2. The 
+
+natural log is more common in the literature on log odds ratio
+
+
+POS patterns: simple noun phrases
+
+• Quick and dirty noun phrase identiﬁcation 
+
+ 10
+
+
+
+
+ 11
+
+Open class (lexical) words
+
+Closed class (functional)
+
+Nouns
+
+Verbs
+
+Proper
+
+Common
+
+Modals
+
+Main
+
+Adjectives
+
+Adverbs
+
+Prepositions
+
+Particles
+
+Determiners
+
+Conjunctions
+
+Pronouns
+
+… more
+
+… more
+
+IBM 
+
+Italy
+
+cat / cats 
+
+snow
+
+see 
+
+registered
+
+can 
+
+had
+
+old   older   oldest
+
+slowly
+
+to with
+
+off   up
+
+the some
+
+and or
+
+he its
+
+Numbers
+
+122,312 
+
+one
+
+Interjections
+
+Ow  Eh
+
+
+ 12
+
+Open vs. Closed classes
+
+• Open vs. Closed classes 
+
+• Closed:  
+
+• determiners: a, an, the 
+
+• pronouns: she, he, I 
+
+• prepositions: on, under, over, near, by, … 
+
+• Q: why called “closed”? 
+
+• Open:  
+
+• Nouns, Verbs, Adjectives, Adverbs. 
+
+
+ 13
+
+Many Tagging Standards
+
+• Penn Treebank (45 tags) … this is the most common one 
+
+• Brown corpus (85 tags) 
+
+• Coarse tagsets 
+
+• Universal POS tags (Petrov et. al. https://github.com/slavpetrov/
+
+universal-pos-tags) 
+
+• Motivation: cross-linguistic regularities
+
+
+ 14
+
+
+
+Penn Treebank POS 
+
+• 45 possible tags  
+
+• 34 pages of tagging guidelines
+
+https://catalog.ldc.upenn.edu/docs/LDC99T42/tagguid1.pdf
+
+
+ 15
+
+Ambiguity in POS Tagging
+
+• Words often have more than one POS: back 
+
+• The back door = JJ 
+
+• On my back = NN 
+
+• Win the voters back = RB 
+
+• Promised to back the bill = VB 
+
+• The POS tagging problem is to determine the POS tag for a 
+
+particular instance of a word.
+
+
+ 16
+
+POS Tagging
+
+• Input:       Plays          well                  with  others 
+
+• Ambiguity:  NNS/VBZ UH/JJ/NN/RB IN NNS 
+
+• Output:     Plays/VBZ well/RB with/IN others/NNS
+
+Penn 
+
+Treebank 
+
+POS tags
+
+
+ 17
+
+POS Tagging Performance
+
+• How many tags are correct?  (Tag Accuracy) 
+
+• About 97% currently 
+
+• But baseline is already 90% 
+
+• Baseline is performance of stupidest possible method 
+
+• Tag every word with its most frequent tag 
+
+• Tag unknown words as nouns 
+
+• Partly easy because 
+
+• Many words are unambiguous 
+
+• You get points for them (the, a, etc.) and for punctuation marks!
+
+
+ 18
+
+How difficult is POS tagging?
+
+• About 11% of the word types in the Brown corpus are 
+
+ambiguous with regard to part of speech 
+
+• But they tend to be very common words. E.g., that 
+
+• I know that he is honest = IN 
+
+• Yes, that play was nice = DT 
+
+• You can’t go that far = RB 
+
+• 40% of the word tokens are ambiguous
+
+
+
+Token vs. Type 
+
+Token is instance or individual occurrence of a type.
+
+
+ 19
+
+Stanford CoreNLP Toolkit
+
+
+
+
+ 20
+
+
+
+
+ 21
+
+HMM Intuition
+
+Generative Model
+
+• Probabilistic generative model for sequences.
+
+• Assume an underlying set of hidden (unobserved) states in which
+
+the model can be (e.g. parts of speech).
+
+• Assume probabilistic transitions between states over time (e.g.
+
+transition from POS to another POS as sequence is generated).
+
+• Assume a probabilistic generation of tokens from states (e.g. words
+
+generated for each POS).
+
+different from RNN hidden states!
+
+
+ 22
+
+
+
+are HMMs generative or discriminative models?
+
+
+ 23
+
+HMM Recapitulation
+
+HMM Deﬁnition
+
+Assume K parts of speech, a lexicon size of V , a series of observations
+
+{x1, . . . , xN}, and a series of unobserved states {z1, . . . , zN}.
+
+⇡ A distribution over start states (vector of length K):
+
+⇡i = p(z1 = i)
+
+✓ Transition matrix (matrix of size K by K):
+
+✓i,j = p(zn = j|zn�1 = i)
+
+� An emission matrix (matrix of size K by V ):
+
+�j,w = p(xn = w|zn = j)
+
+Markov assumption! 
+
+
+ 24
+
+HMM Recapitulation
+
+HMM Deﬁnition
+
+Assume K parts of speech, a lexicon size of V , a series of observations
+
+{x1, . . . , xN}, and a series of unobserved states {z1, . . . , zN}.
+
+⇡ A distribution over start states (vector of length K):
+
+⇡i = p(z1 = i)
+
+✓ Transition matrix (matrix of size K by K):
+
+✓i,j = p(zn = j|zn�1 = i)
+
+� An emission matrix (matrix of size K by V ):
+
+�j,w = p(xn = w|zn = j)
+
+Two problems: How do we move from data to a model? (Estimation)
+
+How do we move from a model and unlabled data to labeled data?
+
+(Inference)
+
+Natural Language Processing: Jordan Boyd-Graber
+
+|
+
+Boulder
+
+Part of Speech Tagging
+
+|
+
+26 of 35
+
+today: estimation
+
+
+ 25
+
+HMM Estimation
+
+Reminder: How do we estimate a probability?
+
+• For a multinomial distribution (i.e. a discrete distribution, like over
+
+words):
+
+✓i =
+
+ni + ↵i
+
+P
+
+k nk + ↵k
+
+(1)
+
+• ↵i is called a smoothing factor, a pseudocount, etc.
+
+just like in naive Bayes, we’ll be 
+
+counting to estimate these probabilities!
+
+
+ 26
+
+HMM Estimation
+
+Training Sentences
+
+x
+
+here
+
+come
+
+old
+
+ﬂattop
+
+z
+
+MOD
+
+V
+
+MOD
+
+N
+
+a
+
+crowd
+
+of
+
+people
+
+stopped
+
+and
+
+stared
+
+DET
+
+N
+
+PREP
+
+N
+
+V
+
+CONJ
+
+V
+
+gotta
+
+get
+
+you
+
+into
+
+my
+
+life
+
+V
+
+V
+
+PRO
+
+PREP
+
+PRO
+
+V
+
+and
+
+I
+
+love
+
+her
+
+CONJ
+
+PRO
+
+V
+
+PRO
+
+Natural Language Processing: Jordan Boyd-Graber
+
+|
+
+Boulder
+
+Part of Speech Tagging
+
+|
+
+29 of 35
+
+x = tokens 
+
+z = POS tags
+
+
+ 27
+
+HMM Estimation
+
+Initial Probability ⇡
+
+POS
+
+Frequency
+
+Probability
+
+MOD
+
+1.1
+
+0.234
+
+DET
+
+1.1
+
+0.234
+
+CONJ
+
+1.1
+
+0.234
+
+N
+
+0.1
+
+0.021
+
+PREP
+
+0.1
+
+0.021
+
+PRO
+
+0.1
+
+0.021
+
+V
+
+1.1
+
+0.234
+
+Remember, we’re taking MAP estimates, so we add 0.1 (arbitrarily
+
+chosen) to each of the counts before normalizing to create a
+
+probability distribution. This is easy; one sentence starts with an
+
+adjective, one with a determiner, one with a verb, and one with a
+
+conjunction.
+
+Natural Language Processing: Jordan Boyd-Graber
+
+|
+
+Boulder
+
+Part of Speech Tagging
+
+|
+
+30 of 35
+
+let’s use add-alpha smoothing with alpha = 0.1
+
+
+ 28
+
+HMM Estimation
+
+Training Sentences
+
+here
+
+come
+
+old
+
+ﬂattop
+
+MOD
+
+V
+
+MOD
+
+N
+
+a
+
+crowd
+
+of
+
+people
+
+stopped
+
+and
+
+stared
+
+DET
+
+N
+
+PREP
+
+N
+
+V
+
+CONJ
+
+V
+
+gotta
+
+get
+
+you
+
+into
+
+my
+
+life
+
+V
+
+V
+
+PRO
+
+PREP
+
+PRO
+
+N
+
+and
+
+I
+
+love
+
+her
+
+CONJ
+
+PRO
+
+V
+
+PRO
+
+Natural Language Processing: Jordan Boyd-Graber
+
+|
+
+Boulder
+
+Part of Speech Tagging
+
+|
+
+31 of 35
+
+
+ 29
+
+HMM Estimation
+
+Training Sentences
+
+here
+
+come
+
+old
+
+ﬂattop
+
+MOD
+
+V
+
+MOD
+
+N
+
+a
+
+crowd
+
+of
+
+people
+
+stopped
+
+and
+
+stared
+
+DET
+
+N
+
+PREP
+
+N
+
+V
+
+CONJ
+
+V
+
+gotta
+
+get
+
+you
+
+into
+
+my
+
+life
+
+V
+
+V
+
+PRO
+
+PREP
+
+PRO
+
+N
+
+and
+
+I
+
+love
+
+her
+
+CONJ
+
+PRO
+
+V
+
+PRO
+
+Natural Language Processing: Jordan Boyd-Graber
+
+|
+
+Boulder
+
+Part of Speech Tagging
+
+|
+
+31 of 35
+
+
+ 30
+
+HMM Estimation
+
+Training Sentences
+
+here
+
+come
+
+old
+
+ﬂattop
+
+MOD
+
+V
+
+MOD
+
+N
+
+a
+
+crowd
+
+of
+
+people
+
+stopped
+
+and
+
+stared
+
+DET
+
+N
+
+PREP
+
+N
+
+V
+
+CONJ
+
+V
+
+gotta
+
+get
+
+you
+
+into
+
+my
+
+life
+
+V
+
+V
+
+PRO
+
+PREP
+
+PRO
+
+N
+
+and
+
+I
+
+love
+
+her
+
+CONJ
+
+PRO
+
+V
+
+PRO
+
+Natural Language Processing: Jordan Boyd-Graber
+
+|
+
+Boulder
+
+Part of Speech Tagging
+
+|
+
+31 of 35
+
+
+ 31
+
+HMM Estimation
+
+Transition Probability ✓
+
+• We can ignore the words; just look at the parts of speech. Let’s
+
+compute one row, the row for verbs.
+
+• We see the following transitions: V ! MOD, V ! CONJ, V ! V,
+
+V ! PRO, and V ! PRO
+
+POS
+
+Frequency
+
+Probability
+
+MOD
+
+1.1
+
+0.193
+
+DET
+
+0.1
+
+0.018
+
+CONJ
+
+1.1
+
+0.193
+
+N
+
+0.1
+
+0.018
+
+PREP
+
+0.1
+
+0.018
+
+PRO
+
+2.1
+
+0.368
+
+V
+
+1.1
+
+0.193
+
+• And do the same for each part of speech ...
+
+Natural Language Processing: Jordan Boyd-Graber
+
+|
+
+Boulder
+
+Part of Speech Tagging
+
+|
+
+32 of 35
+
+how many transition probability distributions do we have?
+
+
+ 32
+
+HMM Estimation
+
+Training Sentences
+
+here
+
+come
+
+old
+
+ﬂattop
+
+MOD
+
+V
+
+MOD
+
+N
+
+a
+
+crowd
+
+of
+
+people
+
+stopped
+
+and
+
+stared
+
+DET
+
+N
+
+PREP
+
+N
+
+V
+
+CONJ
+
+V
+
+gotta
+
+get
+
+you
+
+into
+
+my
+
+life
+
+V
+
+V
+
+PRO
+
+PREP
+
+PRO
+
+N
+
+and
+
+I
+
+love
+
+her
+
+CONJ
+
+PRO
+
+V
+
+PRO
+
+Natural Language Processing: Jordan Boyd-Graber
+
+|
+
+Boulder
+
+Part of Speech Tagging
+
+|
+
+33 of 35
+
+
+ 33
+
+HMM Estimation
+
+Training Sentences
+
+here
+
+come
+
+old
+
+ﬂattop
+
+MOD
+
+V
+
+MOD
+
+N
+
+a
+
+crowd
+
+of
+
+people
+
+stopped
+
+and
+
+stared
+
+DET
+
+N
+
+PREP
+
+N
+
+V
+
+CONJ
+
+V
+
+gotta
+
+get
+
+you
+
+into
+
+my
+
+life
+
+V
+
+V
+
+PRO
+
+PREP
+
+PRO
+
+N
+
+and
+
+I
+
+love
+
+her
+
+CONJ
+
+PRO
+
+V
+
+PRO
+
+Natural Language Processing: Jordan Boyd-Graber
+
+|
+
+Boulder
+
+Part of Speech Tagging
+
+|
+
+33 of 35
+
+
+ 34
+
+HMM Estimation
+
+Emission Probability �
+
+Let’s look at verbs . . .
+
+Word
+
+a
+
+and
+
+come
+
+crowd
+
+ﬂattop
+
+Frequency
+
+0.1
+
+0.1
+
+1.1
+
+0.1
+
+0.1
+
+Probability
+
+0.0125
+
+0.0125
+
+0.1375
+
+0.0125
+
+0.0125
+
+Word
+
+get
+
+gotta
+
+her
+
+here
+
+i
+
+Frequency
+
+1.1
+
+1.1
+
+0.1
+
+0.1
+
+0.1
+
+Probability
+
+0.1375
+
+0.1375
+
+0.0125
+
+0.0125
+
+0.0125
+
+Word
+
+into
+
+it
+
+life
+
+love
+
+my
+
+Frequency
+
+0.1
+
+0.1
+
+0.1
+
+1.1
+
+0.1
+
+Probability
+
+0.0125
+
+0.0125
+
+0.0125
+
+0.1375
+
+0.0125
+
+Word
+
+of
+
+old
+
+people
+
+stared
+
+stopped
+
+Frequency
+
+0.1
+
+0.1
+
+0.1
+
+1.1
+
+1.1
+
+Probability
+
+0.0125
+
+0.0125
+
+0.0125
+
+0.1375
+
+0.1375
+
+Natural Language Processing: Jordan Boyd-Graber
+
+|
+
+Boulder
+
+Part of Speech Tagging
+
+|
+
+34 of 35
+
+how many emission probability distributions do we have?
+
+
+ 35
+
+HMM Estimation
+
+Next time . . .
+
+• Viterbi algorithm: dynamic algorithm discovering the most likely
+
+pos sequence given a sentence
+
+• em algorithm: what if we don’t have labeled data?
+
+Natural Language Processing: Jordan Boyd-Graber
+
+|
+
+Boulder
+
+Part of Speech Tagging
+
+|
+
+35 of 35
+
+what if we don’t have any labeled data to estimate an HMM? 
+
+we can still learn a model using the expectation-maximization 
+
+algorithm. but we won’t cover this in class :(
+

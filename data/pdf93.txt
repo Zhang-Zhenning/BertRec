@@ -1,0 +1,1575 @@
+
+
+
+
+
+
+
+
+
+
+
+CSC 411 Lectures 15-16: Gaussian mixture model &amp; EM
+
+Ethan Fetaya, James Lucas and Emad Andrews
+
+University of Toronto
+
+CSC411 Lec15-16
+
+1 / 1
+
+
+A Generative View of Clustering
+
+
+
+Last time: hard and soft k-means algorithm
+
+
+
+Today: statistical formulation of clustering → principled, justiﬁcation for
+
+updates
+
+
+
+We need a sensible measure of what it means to cluster the data well
+
+▶ This makes it possible to judge diﬀerent methods
+
+▶ It may help us decide on the number of clusters
+
+
+
+An obvious approach is to imagine that the data was produced by a
+
+generative model
+
+▶ Then we adjust the model parameters to maximize the probability that
+
+it would produce exactly the data we observed
+
+CSC411 Lec15-16
+
+2 / 1
+
+
+Generative Models Recap
+
+
+
+We model the joint distribution as,
+
+p(x, z) = p(x|z)p(z)
+
+
+
+But in unsupervised clustering we do not have the class labels z.
+
+
+
+What can we do instead?
+
+p(x) =
+
+�
+
+z
+
+p(x, z) =
+
+�
+
+z
+
+p(x|z)p(z)
+
+
+
+This is a mixture model
+
+CSC411 Lec15-16
+
+3 / 1
+
+
+Gaussian Mixture Model (GMM)
+
+Most common mixture model: Gaussian mixture model (GMM)
+
+
+
+A GMM represents a distribution as
+
+p(x) =
+
+K
+
+�
+
+k=1
+
+πkN(x|µk, Σk)
+
+with πk the mixing coeﬃcients, where:
+
+K
+
+�
+
+k=1
+
+πk = 1
+
+and
+
+πk ≥ 0
+
+∀k
+
+
+
+GMM is a density estimator
+
+
+
+GMMs are universal approximators of densities (if you have enough
+
+Gaussians). Even diagonal GMMs are universal approximators.
+
+
+
+In general mixture models are very powerful, but harder to optimize
+
+CSC411 Lec15-16
+
+4 / 1
+
+
+Visualizing a Mixture of Gaussians – 1D Gaussians
+
+
+
+If you ﬁt a Gaussian to data:
+
+
+
+
+
+Now, we are trying to ﬁt a GMM (with K = 2 in this example):
+
+
+
+[Slide credit: K. Kutulakos]
+
+CSC411 Lec15-16
+
+5 / 1
+
+
+Visualizing a Mixture of Gaussians – 2D Gaussians
+
+
+
+
+
+
+
+CSC411 Lec15-16
+
+6 / 1
+
+
+Fitting GMMs: Maximum Likelihood
+
+
+
+Maximum likelihood maximizes
+
+ln p(X|π, µ, Σ) =
+
+N
+
+�
+
+n=1
+
+ln
+
+� K
+
+�
+
+k=1
+
+πkN(x(n)|µk, Σk)
+
+�
+
+w.r.t Θ = {πk, µk, Σk}
+
+
+
+Problems:
+
+▶ Singularities: Arbitrarily large likelihood when a Gaussian explains a
+
+single point
+
+▶ Identiﬁability: Solution is invariant to permutations
+
+▶ Non-convex
+
+
+
+How would you optimize this?
+
+
+
+Can we have a closed form update?
+
+
+
+Don’t forget to satisfy the constraints on πk and Σk
+
+CSC411 Lec15-16
+
+7 / 1
+
+
+Latent Variable
+
+
+
+Our original representation had a hidden (latent) variable z which would
+
+represent which Gaussian generated our observation x, with some probability
+
+
+
+Let z ∼ Categorical(π)
+
+(where πk ≥ 0,
+
+�
+
+k πk = 1)
+
+
+
+Then:
+
+p(x) =
+
+K
+
+�
+
+k=1
+
+p(x, z = k)
+
+=
+
+K
+
+�
+
+k=1
+
+p(z = k)
+
+�
+
+��
+
+�
+
+πk
+
+p(x|z = k)
+
+�
+
+��
+
+�
+
+N (x|µk,Σk)
+
+
+
+This breaks a complicated distribution into simple components - the price is
+
+the hidden variable.
+
+CSC411 Lec15-16
+
+8 / 1
+
+
+Latent Variable Models
+
+
+
+Some model variables may be unobserved, either at training or at test time,
+
+or both
+
+
+
+If occasionally unobserved they are missing, e.g., undeﬁned inputs, missing
+
+class labels, erroneous targets
+
+
+
+Variables which are always unobserved are called latent variables, or
+
+sometimes hidden variables
+
+
+
+We may want to intentionally introduce latent variables to model complex
+
+dependencies between variables – this can actually simplify the model
+
+
+
+Form of divide-and-conquer: use simple parts to build complex models
+
+
+
+In a mixture model, the identity of the component that generated a given
+
+datapoint is a latent variable
+
+CSC411 Lec15-16
+
+9 / 1
+
+
+Back to GMM
+
+
+
+A Gaussian mixture distribution:
+
+p(x) =
+
+K
+
+�
+
+k=1
+
+πkN(x|µk, Σk)
+
+
+
+We had: z ∼ Categorical(π)
+
+(where πk ≥ 0,
+
+�
+
+k πk = 1)
+
+
+
+Joint distribution:
+
+p(x, z) = p(z)p(x|z)
+
+
+
+Log-likelihood:
+
+ℓ(π, µ, Σ) = ln p(X|π, µ, Σ) =
+
+N
+
+�
+
+n=1
+
+ln p(x(n)|π, µ, Σ)
+
+=
+
+N
+
+�
+
+n=1
+
+ln
+
+K
+
+�
+
+z(n)=1
+
+p(x(n)| z(n); µ, Σ)p(z(n)| π)
+
+
+
+Note: We have a hidden variable z(n) for every observation
+
+
+
+General problem: sum inside the log
+
+
+
+How can we optimize this?
+
+CSC411 Lec15-16
+
+10 / 1
+
+
+Maximum Likelihood
+
+
+
+If we knew z(n) for every x(n), the maximum likelihood problem is easy:
+
+ℓ(π, µ, Σ) =
+
+N
+
+�
+
+n=1
+
+ln p(x(n), z(n)|π, µ, Σ) =
+
+N
+
+�
+
+n=1
+
+ln p(x(n)| z(n); µ, Σ)+ln p(z(n)| π)
+
+
+
+We have been optimizing something similar for Gaussian bayes classiﬁers
+
+
+
+We would get this (check old slides):
+
+µk
+
+=
+
+�N
+
+n=1 1[z(n)=k] x(n)
+
+�N
+
+n=1 1[z(n)=k]
+
+Σk
+
+=
+
+�N
+
+n=1 1[z(n)=k] (x(n) − µk)(x(n) − µk)T
+
+�N
+
+n=1 1[z(n)=k]
+
+πk
+
+=
+
+1
+
+N
+
+N
+
+�
+
+n=1
+
+1[z(n)=k]
+
+CSC411 Lec15-16
+
+11 / 1
+
+
+Intuitively, How Can We Fit a Mixture of Gaussians?
+
+
+
+Optimization uses the Expectation Maximization algorithm, which alternates
+
+between two steps:
+
+1. E-step: Compute the posterior probability over z given our current
+
+model - i.e. how much do we think each Gaussian generates each
+
+datapoint.
+
+2. M-step: Assuming that the data really was generated this way, change
+
+the parameters of each Gaussian to maximize the probability that it
+
+would generate the data it is currently responsible for.
+
+.95 
+
+.5 
+
+.5 
+
+.05 
+
+.5 
+
+.5 
+
+.95 
+
+.05 
+
+CSC411 Lec15-16
+
+12 / 1
+
+
+Relation to k-Means
+
+
+
+The K-Means Algorithm:
+
+1. Assignment step: Assign each data point to the closest cluster
+
+2. Reﬁtting step: Move each cluster center to the center of gravity of the
+
+data assigned to it
+
+
+
+The EM Algorithm:
+
+1. E-step: Compute the posterior probability over z given our current
+
+model
+
+2. M-step: Maximize the probability that it would generate the data it is
+
+currently responsible for.
+
+CSC411 Lec15-16
+
+13 / 1
+
+
+Expectation Maximization for GMM Overview
+
+
+
+Elegant and powerful method for ﬁnding maximum likelihood solutions for
+
+models with latent variables
+
+1. E-step:
+
+▶ In order to adjust the parameters, we must ﬁrst solve the inference
+
+problem: Which Gaussian generated each datapoint?
+
+▶ We cannot be sure, so it’s a distribution over all possibilities.
+
+γ(n)
+
+k
+
+= p(z(n) = k|x(n); π, µ, Σ)
+
+2. M-step:
+
+▶ Each Gaussian gets a certain amount of posterior probability for each
+
+datapoint.
+
+▶ We ﬁt each Gaussian to the weighted datapoints
+
+▶ We can derive closed form updates for all parameters
+
+CSC411 Lec15-16
+
+14 / 1
+
+
+Where does EM come from? I
+
+
+
+Remember that optimizing the likelihood is hard because of the sum inside
+
+of the log. Using Θ to denote all of our parameters:
+
+ℓ(X, Θ) =
+
+�
+
+i
+
+log(P(x(i); Θ)) =
+
+�
+
+i
+
+log
+
+
+
+�
+
+j
+
+P(x(i), z(i) = j; Θ)
+
+
+
+
+
+
+
+We can use a common trick in machine learning, introduce a new
+
+distribution, q:
+
+ℓ(X, Θ) =
+
+�
+
+i
+
+log
+
+
+
+�
+
+j
+
+qj
+
+P(x(i), z(i) = j; Θ)
+
+qj
+
+
+
+
+
+
+
+Now we can swap them! Jensen’s inequality - for concave function (like log)
+
+f (E[x]) = f
+
+��
+
+i
+
+pixi
+
+�
+
+≥
+
+�
+
+i
+
+pif (xi) = E[f (x)]
+
+CSC411 Lec15-16
+
+15 / 1
+
+
+Where does EM come from? II
+
+
+
+Applying Jensen’s,
+
+�
+
+i
+
+log
+
+
+
+�
+
+j
+
+qj
+
+P(x(i), z(i) = j; Θ)
+
+qj
+
+
+
+ ≥
+
+�
+
+i
+
+�
+
+j
+
+qj log
+
+�P(x(i), z(i) = j; Θ)
+
+qj
+
+�
+
+
+
+Maximizing this lower bound will force our likelihood to increase.
+
+
+
+But how do we pick a qi that gives a good bound?
+
+CSC411 Lec15-16
+
+16 / 1
+
+
+EM derivation
+
+
+
+We got the sum outside but we have an inequality.
+
+ℓ(X, Θ) ≥
+
+�
+
+i
+
+�
+
+j
+
+qj log
+
+�
+
+P(x(i), z(i) = j; Θ)
+
+qj
+
+�
+
+
+
+Lets ﬁx the current parameters to Θold and try to ﬁnd a good qi
+
+
+
+What happens if we pick qj = p(z(i) = j|x(i), Θold)?
+
+▶
+
+P(x(i),z(i);Θ)
+
+p(z(i)=j|x(i),Θold) = P(x(i); Θold) and the inequality becomes an equality!
+
+
+
+We can now deﬁne and optimize
+
+Q(Θ) =
+
+�
+
+i
+
+�
+
+j
+
+p(z(i) = j|x(i), Θold) log
+
+�
+
+P(x(i), z(i) = j; Θ)
+
+�
+
+= EP(z(i)|x(i),Θold)[log
+
+�
+
+P(x(i), z(i); Θ)
+
+�
+
+]
+
+
+
+We ignored the part that doesn’t depend on Θ
+
+CSC411 Lec15-16
+
+17 / 1
+
+
+EM derivation
+
+
+
+So, what just happened?
+
+
+
+Conceptually: We don’t know z(i) so we average them given the
+
+current model.
+
+
+
+Practically: We deﬁne a function
+
+Q(Θ) = EP(z(i)|x(i),Θold)[log
+
+�
+
+P(x(i), z(i); Θ)
+
+�
+
+] that lower bounds the
+
+desired function and is equal at our current guess.
+
+
+
+If we now optimize Θ we will get a better lower bound!
+
+log(P(X|Θold)) = Q(Θold) ≤ Q(Θnew) ≤ P(P(X|Θnew))
+
+
+
+We can iterate between expectation step and maximization step and
+
+the lower bound will always improve (or we are done)
+
+CSC411 Lec15-16
+
+18 / 1
+
+
+Visualization of the EM Algorithm
+
+
+
+
+
+The EM algorithm involves alternately computing a lower bound on the log
+
+likelihood for the current parameter values and then maximizing this bound
+
+to obtain the new parameter values.
+
+CSC411 Lec15-16
+
+19 / 1
+
+
+General EM Algorithm
+
+1. Initialize Θold
+
+2. E-step: Evaluate p(Z|X, Θold) and compute
+
+Q(Θ, Θold) =
+
+�
+
+z
+
+p(Z|X, Θold) ln p(X, Z|Θ)
+
+3. M-step: Maximize
+
+Θnew = arg max
+
+Θ Q(Θ, Θold)
+
+4. Evaluate log likelihood and check for convergence (or the parameters). If
+
+not converged, Θold = Θnew, Go to step 2
+
+CSC411 Lec15-16
+
+20 / 1
+
+
+GMM E-Step: Responsibilities
+
+Lets see how it works on GMM:
+
+
+
+Conditional probability (using Bayes rule) of z given x
+
+γk = p(z = k|x)
+
+=
+
+p(z = k)p(x|z = k)
+
+p(x)
+
+=
+
+p(z = k)p(x|z = k)
+
+�K
+
+j=1 p(z = j)p(x|z = j)
+
+=
+
+πkN(x|µk, Σk)
+
+�K
+
+j=1 πjN(x|µj, Σj)
+
+
+
+γk can be viewed as the responsibility of cluster k towards x
+
+CSC411 Lec15-16
+
+21 / 1
+
+
+GMM E-Step
+
+
+
+Once we computed γ(i)
+
+k
+
+= p(z(i) = k|x(i)) we can compute the expected
+
+likelihood
+
+EP(z(i)|x(i))
+
+��
+
+i
+
+log(P(x(i), z(i)|Θ))
+
+�
+
+=
+
+�
+
+i
+
+�
+
+k
+
+�
+
+γ(i)
+
+k log(P(zi = k|Θ)) + log(P(x(i)|z(i) = k, Θ))
+
+�
+
+=
+
+�
+
+i
+
+�
+
+k
+
+γ(i)
+
+k
+
+�
+
+log(πk) + log(N(x(i); µk, Σk))
+
+�
+
+=
+
+�
+
+k
+
+�
+
+i
+
+γ(i)
+
+k log(πk) +
+
+�
+
+k
+
+�
+
+i
+
+γ(i)
+
+k log(N(x(i); µk, Σk))
+
+
+
+We need to ﬁt k Gaussians, just need to weight examples by γk
+
+CSC411 Lec15-16
+
+22 / 1
+
+
+GMM M-Step
+
+
+
+Need to optimize
+
+�
+
+k
+
+�
+
+i
+
+γ(i)
+
+k log(πk) +
+
+�
+
+k
+
+�
+
+i
+
+γ(i)
+
+k log(N(x(i); µk, Σk))
+
+
+
+Solving for µk and Σk is like ﬁtting k separate Gaussians but with weights
+
+γ(i)
+
+k .
+
+
+
+Solution is similar to what we have already seen:
+
+µk
+
+=
+
+1
+
+Nk
+
+N
+
+�
+
+n=1
+
+γ(n)
+
+k x(n)
+
+Σk
+
+=
+
+1
+
+Nk
+
+N
+
+�
+
+n=1
+
+γ(n)
+
+k (x(n) − µk)(x(n) − µk)T
+
+πk
+
+=
+
+Nk
+
+N
+
+with
+
+Nk =
+
+N
+
+�
+
+n=1
+
+γ(n)
+
+k
+
+CSC411 Lec15-16
+
+23 / 1
+
+
+EM Algorithm for GMM
+
+
+
+Initialize the means µk, covariances Σk and mixing coeﬃcients πk
+
+
+
+Iterate until convergence:
+
+▶ E-step: Evaluate the responsibilities given current parameters
+
+γ(n)
+
+k
+
+= p(z(n)|x) =
+
+πkN(x(n)|µk, Σk)
+
+�K
+
+j=1 πjN(x(n)|µj, Σj)
+
+▶ M-step: Re-estimate the parameters given current responsibilities
+
+µk
+
+=
+
+1
+
+Nk
+
+N
+
+�
+
+n=1
+
+γ(n)
+
+k x(n)
+
+Σk
+
+=
+
+1
+
+Nk
+
+N
+
+�
+
+n=1
+
+γ(n)
+
+k (x(n) − µk)(x(n) − µk)T
+
+πk
+
+=
+
+Nk
+
+N
+
+with
+
+Nk =
+
+N
+
+�
+
+n=1
+
+γ(n)
+
+k
+
+▶ Evaluate log likelihood and check for convergence
+
+ln p(X|π, µ, Σ) =
+
+N
+
+�
+
+n=1
+
+ln
+
+� K
+
+�
+
+k=1
+
+πkN(x(n)|µk, Σk)
+
+�
+
+CSC411 Lec15-16
+
+24 / 1
+
+
+
+
+CSC411 Lec15-16
+
+25 / 1
+
+
+Mixture of Gaussians vs. K-means
+
+
+
+EM for mixtures of Gaussians is just like a soft version of K-means, with
+
+ﬁxed priors and covariance
+
+
+
+Instead of hard assignments in the E-step, we do soft assignments based on
+
+the softmax of the squared Mahalanobis distance from each point to each
+
+cluster.
+
+
+
+Each center moved by weighted means of the data, with weights given by
+
+soft assignments
+
+
+
+In K-means, weights are 0 or 1
+
+CSC411 Lec15-16
+
+26 / 1
+
+
+EM alternative approach *
+
+
+
+Our goal is to maximize
+
+p(X|Θ) =
+
+�
+
+z
+
+p(X, z|Θ)
+
+
+
+Typically optimizing p(X|Θ) is diﬃcult, but p(X, Z|Θ) is easy
+
+
+
+Let q(Z) be a distribution over the latent variables. For any distribution
+
+q(Z) we have
+
+ln p(X|Θ) = L(q, Θ) + KL(q||p(Z|X, Θ))
+
+where
+
+L(q, Θ)
+
+=
+
+�
+
+Z
+
+q(Z) ln
+
+�p(X, Z|Θ)
+
+q(Z)
+
+�
+
+KL(q||p)
+
+=
+
+−
+
+�
+
+Z
+
+q(Z) ln
+
+�p(Z|X, Θ)
+
+q(Z)
+
+�
+
+CSC411 Lec15-16
+
+27 / 1
+
+
+EM alternative approach *
+
+
+
+The KL-divergence is always positive and have value 0 only if
+
+q(Z) = p(Z|X, Θ)
+
+
+
+Thus L(q, Θ) is a lower bound on the likelihood
+
+L(q, Θ) ≤ ln p(X|Θ)
+
+
+
+CSC411 Lec15-16
+
+28 / 1
+
+
+Visualization of E-step
+
+
+
+
+
+The q distribution equal to the posterior distribution for the current
+
+parameter values Θold, causing the lower bound to move up to the same
+
+value as the log likelihood function, with the KL divergence vanishing.
+
+CSC411 Lec15-16
+
+29 / 1
+
+
+Visualization of M-step
+
+
+
+
+
+The distribution q(Z) is held ﬁxed and the lower bound L(q, Θ) is
+
+maximized with respect to the parameter vector Θ to give a revised value
+
+Θnew. Because the KL divergence is nonnegative, this causes the log
+
+likelihood ln p(X|Θ) to increase by at least as much as the lower bound does.
+
+CSC411 Lec15-16
+
+30 / 1
+
+
+E-step and M-step *
+
+ln p(X|Θ) = L(q, Θ) + KL(q||p(Z|X, Θ))
+
+
+
+In the E-step we maximize q(Z) w.r.t the lower bound L(q, Θold)
+
+
+
+This is achieved when q(Z) = p(Z|X, Θold)
+
+
+
+The lower bound L is then
+
+L(q, Θ)
+
+=
+
+�
+
+Z
+
+p(Z|X, Θold) ln p(X, Z|Θ) −
+
+�
+
+Z
+
+p(Z|X, Θold) ln p(Z|X, Θold)
+
+=
+
+Q(Θ, Θold) + const
+
+with the content the entropy of the q distribution, which is independent of Θ
+
+
+
+In the M-step the quantity to be maximized is the expectation of the
+
+complete data log-likelihood
+
+
+
+Note that Θ is only inside the logarithm and optimizing the complete data
+
+likelihood is easier
+
+CSC411 Lec15-16
+
+31 / 1
+
+
+GMM Recap
+
+
+
+A probabilistic view of clustering - Each cluster corresponds to a
+
+diﬀerent Gaussian.
+
+
+
+Model using latent variables.
+
+
+
+General approach, can replace Gaussian with other distributions
+
+(continuous or discrete)
+
+
+
+More generally, mixture model are very powerful models, universal
+
+approximator
+
+
+
+Optimization is done using the EM algorithm.
+
+CSC411 Lec15-16
+
+32 / 1
+
+
+EM Recap
+
+
+
+A general algorithm for optimizing many latent variable models.
+
+
+
+Iteratively computes a lower bound then optimizes it.
+
+
+
+Converges but maybe to a local minima.
+
+
+
+Can use multiple restarts.
+
+
+
+Can use smart initializers (similar to k-means++) - problem
+
+dependent.
+
+
+
+Limitation - need to be able to compute P(z|x; Θ), not possible for
+
+more complicated models.
+
+▶ Solution: Variational inference (see CSC412)
+
+CSC411 Lec15-16
+
+33 / 1
+

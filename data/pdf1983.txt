@@ -1,0 +1,725 @@
+
+Reinforcement Learning
+
+We now examine:
+
+• some potential shortcomings of hidden Markov models, and of
+
+supervised learning;
+
+• an extension know as the Markov Decision Process (MDP);
+
+• the way in which we might learn from rewards gained as a result
+
+of acting within an environment;
+
+• speciﬁc, simple algorithms for performing such learning, and their
+
+convergence properties.
+
+Reading: Russell and Norvig, chapter 21. Mitchell chapter 13.
+
+Copyright c⃝ Sean Holden 2006-10.
+
+Reinforcement learning and HMMs
+
+Hidden Markov Models (HMMs) are appropriate when our agent
+
+models the world as follows
+
+Pr(S0)
+
+S0
+
+S1
+
+S2
+
+S3
+
+E1
+
+E3
+
+· · ·
+
+Pr(St|St−1)
+
+Pr(Et|St)
+
+E2
+
+and only wants to infer information about the state of the world on
+
+the basis of observing the available evidence.
+
+This might be criticised as un-necessarily restricted, although it is
+
+very effective for the right kind of problem.
+
+Reinforcement learning and supervised learning
+
+Supervised learners learn from speciﬁcally labelled chunks of in-
+
+formation:
+
+x ???
+
+(x1, 1)
+
+(x2, 1)
+
+(x3, 0)
+
+...
+
+This might also be criticised as un-necessarily restricted: there are
+
+other ways to learn.
+
+Reinforcement learning: the basic case
+
+We now begin to model the world in a more realistic way as follows:
+
+S0
+
+S1
+
+S2
+
+S3
+
+· · ·
+
+In any state:
+
+Perform an action a to move to a new state. (There may be many possibilities.)
+
+Receive a reward r depending on the start state and action.
+
+The agent can perform actions in order to change the world’s
+
+state.
+
+If the agent performs an action in a particular state, then it gains a
+
+corresponding reward.
+
+
+Deterministic Markov Decision Processes
+
+Formally, we have a set of states
+
+S = {s1, s2, . . . , sn}
+
+and in each state we can perform one of a set of actions
+
+A = {a1, a2, . . . , am}.
+
+We also have a function
+
+S : S × A → S
+
+such that S(s, a) is the new state resulting from performing action a
+
+in state s, and a function
+
+R : S × A → R
+
+such that R(s, a) is the reward obtained by executing action a in state
+
+s.
+
+Deterministic Markov Decision Processes
+
+From the point of view of the agent, there is a matter of considerable
+
+importance:
+
+The agent does not have access to the functions S and R .
+
+It therefore has to learn a policy, which is a function
+
+p : S → A
+
+such that p(s) provides the action a that should be executed in state
+
+s.
+
+What might the agent use as its criterion for learning a policy?
+
+Measuring the quality of a policy
+
+Say we start in a state at time t, denoted st, and we follow a policy p.
+
+At each future step in time we get a reward. Denote the rewards rt,
+
+rt+1, . . . and so on.
+
+A common measure of the quality of a policy p is the discounted
+
+cumulative reward
+
+V p(st) =
+
+∞
+
+�
+
+i=0
+
+ǫirt+i
+
+= rt + ǫrt+1 + ǫ2rt+2 + · · ·
+
+where 0 ≤ ǫ ≤ 1 is a constant, which deﬁnes a trade-off for how
+
+much we value immediate rewards against future rewards.
+
+The intuition for this measure is that, on the whole, we should like
+
+our agent to prefer rewards gained quickly.
+
+Measuring the quality of a policy
+
+Other common measures are the average reward
+
+lim
+
+T→∞
+
+1
+
+T
+
+T
+
+�
+
+i=0
+
+rt+i
+
+and the ﬁnite horizon reward
+
+T
+
+�
+
+i=0
+
+rt+i
+
+In these notes we will only address the discounted cumulative re-
+
+ward.
+
+
+Two important issues
+
+Note that in this kind of problem we need to address two particularly
+
+relevant issues:
+
+• The temporal credit assignment problem: that is, how do we
+
+decide which speciﬁc actions are important in obtaining a re-
+
+ward?
+
+• The exploration/exploitation problem. How do we decide be-
+
+tween exploiting the knowledge we already have, and exploring
+
+the environment in order to possibly obtain new (and more useful)
+
+knowledge?
+
+We will see later how to deal with these.
+
+The optimal policy
+
+Ultimately, our learner’s aim is to learn the optimal policy
+
+popt = argmax
+
+p
+
+V p(s)
+
+for all s. We will denote the optimal discounted cumulative reward as
+
+Vopt(s) = V popt(s).
+
+How might we go about learning the optimal policy?
+
+Learning the optimal policy
+
+The only information we have during learning is the individual re-
+
+wards obtained from the environment.
+
+We could try to learn Vopt(s) directly, so that states can be compared:
+
+Consider s as better than s′ if Vopt(s) &gt; Vopt(s′).
+
+However we actually want to compare actions, not states. Learning
+
+Vopt(s) might help as
+
+popt(s) = argmax
+
+a
+
+[R(s, a) + ǫVopt(S(s, a))]
+
+but only if we know S and R.
+
+As we are interested in the case where these functions are not
+
+known, we need something slightly different.
+
+The Q function
+
+The trick is to deﬁne the following function:
+
+Q(s, a) = R(s, a) + ǫVopt(S(s, a))
+
+This function speciﬁes the discounted cumulative reward obtained if
+
+you do action a in state s and then follow the optimal policy.
+
+As
+
+popt(s) = argmax
+
+a
+
+Q(s, a)
+
+then provided one can learn Q it is not necessary to have knowl-
+
+edge of S and R to obtain the optimal policy.
+
+
+The Q function
+
+Note also that
+
+Vopt(s) = max
+
+α
+
+Q(s, α)
+
+and so
+
+Q(s, a) = R(s, a) + ǫ max
+
+α
+
+Q(S(s, a), α)
+
+which suggests a simple learning algorithm.
+
+Let Q′ be our learner’s estimate of what the exact Q function is.
+
+That is, in the current scenario Q′ is a table containing the estimated
+
+values of Q(s, a) for all pairs (s, a).
+
+Q-learning
+
+Start with all entries in Q′ set to 0. (In fact we will see in a moment
+
+that random entries will do.)
+
+Repeat the following:
+
+1. Look at the current state s and choose an action a. (We will see
+
+how to do this in a moment.)
+
+2. Do the action a and obtain some reward R(s, a).
+
+3. Observe the new state S(s, a).
+
+4. Perform the update
+
+Q′(s, a) = R(s, a) + ǫ max
+
+α
+
+Q′(S(s, a), α)
+
+Note that this can be done in episodes. For example, in learning
+
+to play games, we can play multiple games, each being a single
+
+episode.
+
+Convergence of Q-learning
+
+This looks as though it might converge!
+
+Note that, if the rewards are at least 0 and we initialise Q′ to 0 then,
+
+∀n, s, a Q′
+
+n+1(s, a) ≥ Q′
+
+n(s, a)
+
+and
+
+∀n, s, a Q(s, a) ≥ Q′
+
+n(s, a) ≥ 0
+
+However, we need to be a bit more rigorous than this...
+
+Convergence of Q-learning
+
+If:
+
+1. the agent is operating in an environment that is a deterministic
+
+MDP;
+
+2. rewards are bounded in the sense that there is a constant δ &gt; 0
+
+such that
+
+∀s, a |R(s, a)| &lt; δ
+
+3. all possible pairs s and a are visited inﬁnitely often;
+
+then the Q-learning algorithm converges, in the sense that
+
+∀a, s Q′
+
+n(s, a) → Q(s, a)
+
+as n → ∞.
+
+
+Convergence of Q-learning
+
+This is straightforward to demonstrate.
+
+Using condition 3, take two stretches of time in which all s and a pairs
+
+occur:
+
+All s, a occur
+
+All s, a occur
+
+Deﬁne
+
+ξ(n) = max
+
+s,a |Q′
+
+n(s, a) − Q(s, a)|
+
+the maximum error in Q′ at n.
+
+What happens when Q′
+
+n(s, a) is updated to Q′
+
+n+1(s, a)?
+
+Convergence of Q-learning
+
+We have,
+
+|Q′
+
+n+1(s, a) − Q(s, a)|
+
+= |(R(s, a) − ǫ max
+
+α
+
+Q′
+
+n(S(s, a), α)) − (R(s, a) − ǫ max
+
+α
+
+Q(S(s, a), α))|
+
+= ǫ| max
+
+α
+
+Q′
+
+n(S(s, a), α) − max
+
+α
+
+Q(S(s, a), α)|
+
+≤ ǫ max
+
+α
+
+|Q′
+
+n(S(s, a), α) − Q(S(s, a), α)|
+
+≤ ǫ max
+
+s,a |Q′
+
+n(s, a) − Q(s, a)|
+
+= ǫξ(n).
+
+Convergence as described follows.
+
+Choosing actions to perform
+
+We have not yet answered the question of how to choose actions to
+
+perform during learning.
+
+One approach is to choose actions based on our current estimate
+
+Q′. For instance
+
+action chosen in current state s = argmax
+
+a
+
+Q′(s, a).
+
+However we have already noted the trade-off between exploration
+
+and exploitation. It makes more sense to:
+
+• explore during the early stages of training;
+
+• exploit during the later stages of training.
+
+This seems particularly important in the light of condition 3 of the
+
+convergence proof.
+
+Choosing actions to perform
+
+One way in which to choose actions that incorporates these require-
+
+ments is to introduce a constant λ and choose actions probabilisti-
+
+cally according to
+
+Pr(action a|state s) =
+
+λQ′(s,a)
+
+�
+
+a λQ′(s,a)
+
+Note that:
+
+• if λ is small this promotes exploration;
+
+• if λ is large this promotes exploitation.
+
+We can vary λ as training progresses.
+
+
+Improving the training process
+
+There are two simple ways in which the process can be improved:
+
+1. If training is episodic, we can store the rewards obtained during
+
+an episode and update backwards at the end.
+
+This allows better updating at the expense of requiring more mem-
+
+ory.
+
+2. We can remember information about rewards and occasionally
+
+re-use it by re-training.
+
+Nondeterministic MDPs
+
+The Q-learning algorithm generalises easily to a more realistic situ-
+
+ation, where the outcomes of actions are probabilistic.
+
+Instead of the functions S and R we have probability distributions
+
+Pr(new state|current state, action)
+
+and
+
+Pr(reward|current state, action).
+
+and we now use S(s, a) and R(s, a) to denote the corresponding ran-
+
+dom variables.
+
+We now have
+
+V p = E
+
+� ∞
+
+�
+
+i=0
+
+ǫirt+i
+
+�
+
+and the best policy popt maximises V p.
+
+Q-learning for nondeterministic MDPs
+
+We now have
+
+Q(s, a) = E(R(s, a)) + ǫ
+
+�
+
+σ
+
+Pr(σ|s, a)V opt(σ)
+
+= E(R(s, a)) + ǫ
+
+�
+
+σ
+
+Pr(σ|s, a) max
+
+α
+
+Q(σ, α)
+
+and the rule for learning becomes
+
+Q′
+
+n+1 = (1 − θn+1)Q′
+
+n(s, a) + θn+1
+
+�
+
+R(s, a) + max
+
+α
+
+Q′
+
+n(S(s, a), α)
+
+�
+
+with
+
+θn+1 =
+
+1
+
+1 + vn+1(s, a)
+
+where vn+1(s, a) is the number of times the pair s and a has been
+
+visited so far.
+
+Convergence of Q-learning for nondeterministic MDPs
+
+If:
+
+1. the agent is operating in an environment that is a nondeterministic
+
+MDP;
+
+2. rewards are bounded in the sense that there is a constant δ &gt; 0
+
+such that
+
+∀s, a |R(s, a)| &lt; δ
+
+3. all possible pairs s and a are visited inﬁnitely often;
+
+4. ni(s, a) is the ith time that we do action a in state s;
+
+and also...
+
+
+Convergence of Q-learning for nondeterministic MDPs
+
+...we have
+
+0 ≤θn &lt; 1
+
+∞
+
+�
+
+i=1
+
+θni(s,a) = ∞
+
+∞
+
+�
+
+i=1
+
+θ2
+
+ni(s,a) &lt; ∞
+
+then with probability 1 the Q-learning algorithm converges, in the
+
+sense that
+
+∀a, s Q′
+
+n(s, a) → Q(s, a)
+
+as n → ∞.
+
+Alternative representation for the Q′ table
+
+But there’s always a catch...
+
+We have to store the table for Q′:
+
+• even for quite straightforward problems it is HUGE!!! - certainly
+
+big enough that it can’t be stored;
+
+• a standard approach to this problem is, for example, to represent
+
+it as a neural network;
+
+• one way might be to make s and a the inputs to the network and
+
+train it to produce Q′(s, a) as its output.
+
+This, of course, introduces its own problems, although it has been
+
+used very successfully in practice.
+
+It might be covered in Artiﬁcial Intelligence III, which unfortunately
+
+does not yet exist!
+
+26
+

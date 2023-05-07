@@ -1,0 +1,674 @@
+
+
+
+DEVOPEDIA
+
+for developers. by developers.
+
+
+
+®
+
+
+
+Unigrams, bigrams and trigrams. Source: Mehmood 2019.  
+
+Given a sequence of N-1 words, an N-gram model predicts the most probable word that might follow this
+
+sequence. It's a probabilistic model that's trained on a corpus of text. Such a model is useful in many 
+
+applications including speech recognition, machine translation and predictive text input.
+
+An N-gram model is built by counting how often word sequences occur in corpus text and then estimating
+
+the probabilities. Since a simple N-gram model has limitations, improvements are often made via
+
+smoothing, interpolation and backoff.
+
+An N-gram model is one type of a Language Model (
+
+), which is about finding the probability
+
+distribution over word sequences.
+
+Discussion
+
+
+
+ Could you explain N-gram models with an example?
+
+N-GRAM MODEL
+
+
+
+NLP
+
+
+
+
+
+LM
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Introduction to N-gram models. Source: Jurafsky 2019.
+
+
+
+A trigram model generates more natural sentences. Source: Jurafsky and Martin 2009, fig. 4.4.  
+
+Consider two sentences: "There was heavy rain" vs. "There was heavy flood". From experience, we know
+
+that the former sentence sounds better. An N-gram model will tell us that "heavy rain" occurs much more
+
+often than "heavy flood" in the training corpus. Thus, the first sentence is more probable and will be
+
+selected by the model.
+
+A model that simply relies on how often a word occurs without looking at previous words is called
+
+unigram. If a model considers only the previous word to predict the current word, then it's called bigram.
+
+If two previous words are considered, then it's a trigram model.
+
+An n-gram model for the above example would calculate the following probability:
+
+P('There was heavy rain') = P('There', 'was', 'heavy', 'rain') = P('There')P('was'|'There')P('heavy'|'There
+
+was')P('rain'|'There was heavy')
+
+Since it's impractical to calculate these conditional probabilities, using Markov assumption, we
+
+approximate this to a bigram model:
+
+P('There was heavy rain') ~ P('There')P('was'|'There')P('heavy'|'was')P('rain'|'heavy')
+
+
+
+ What are typical applications of N-gram models?
+
+In speech recognition, input may be noisy and this can lead to wrong speech-to-text conversions. N-gram
+
+models can correct this based on their knowledge of the probabilities. Likewise, N-gram models are used
+
+in machine translation to produce more natural sentences in the target language.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Perplexity helps us compare different N-gram models. Source: Ablimit et al. 2015, slide 45.  
+
+When correcting for spelling errors, sometimes dictionary lookups will not help. For example, in the
+
+phrase "in about fifteen mineuts" the word 'minuets' is a valid dictionary word but it's incorrect in this
+
+context. N-gram models can correct such errors.
+
+N-gram models are usually at word level. It's also been used at character level to do stemming, that is,
+
+separate the root word from the suffix.  By looking at N-gram statistics, we could also classify languages
+
+or differentiate between US and UK spellings. For example, 'sz' is common in Czech; 'gb' and 'kp' are
+
+common in Igbo.
+
+In general, many 
+
+ applications benefit from N-gram models including part-of-speech tagging, natural
+
+language generation, word similarity, sentiment extraction and predictive text input.
+
+
+
+ How do we evaluate an N-gram model?
+
+The best way to evaluate a model is to check how well it predicts in end-to-end application testing. This
+
+approach is called extrinsic evaluation but it's time consuming and expensive. An alternative approach is
+
+to define a suitable metric and evaluate independent of the application. This is called intrinsic evaluation.
+
+This doesn't guarantee application performance but it's a quick first step to check algorithmic performance.
+
+A common metric is to use perplexity, often written as PP. Given a test set 
+
+, 
+
+. Because of the inverse relationship with probability, minimizing
+
+perplexity implies maximizing the test set probability.  Perplexity can also be related to the concept of
+
+entropy in information theory.
+
+It's important in any N-gram model to include markers at start and end of sentences. This ensures that the
+
+total probability of the whole language sums to one. However, all calculations should include the end
+
+
+
+
+
+
+
+NLP
+
+
+
+
+
+
+
+W = w1w2 …wn
+
+PP(W) = P(w1w2 …wn)−1/N
+
+
+
+
+
+
+markers but not the start markers in the count of word tokens.  
+
+
+
+ What is smoothing in the context of N-gram modelling?
+
+It's quite possible that some word sequences occur in test data that were never seen during training. When
+
+this happens, the probability of the sequence equals zero. Evaluation is also difficult since perplexity
+
+metric becomes infinite.
+
+The usual way to solve this is to give non-zero counts to N-grams that are seen in testing but not in training.
+
+We can't just add 1 to all the zero counts since the overall probability distribution will not be normalized.
+
+Instead, we remove some probability mass from non-zero counts (called discounting) and add them to the
+
+zero counts. The overall process is called smoothing.
+
+The simplest technique is Laplace Smoothing where we add 1 to all counts including non-zero counts. An
+
+alternative is to add k, with k tuned using test data.  Other techniques include Good-Turing Discounting,
+
+Witten-Bell Discounting, and Kneser-Ney Smoothing. All of these try to estimate the count of things never
+
+seen based on count of things seen once. Kneser-Ney Smoothing provides a good baseline and it's based
+
+on absolute discounting.
+
+
+
+ How do backoff and interpolation techniques help N-gram models?
+
+Smoothing solves the zero-count problem but there are techniques to help us better estimate the
+
+probabilities of unseen n-gram sequences.
+
+Suppose we want to get trigram probability of a certain word sequence that never occurs. We can estimate
+
+this using the bigram probability. If the latter is also not possible, we use unigram probability. This
+
+technique is called backoff. One such technique that's popular is called Katz Backoff.
+
+Interpolation is another technique in which we can estimate an n-gram probability based on a linear
+
+combination of all lower-order probabilities. For instance, a 4-gram probability can be estimated using a
+
+combination of trigram, bigram and unigram probabilities. The weights in which these are combined can
+
+also be estimated by reserving some part of the corpus for this purpose.
+
+While backoff considers each lower order one at a time, interpolation considers all the lower order
+
+probabilities together.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ What are some limitations of N-gram models?
+
+A model trained on the works of Shakespeare will not give good predictions when applied to another
+
+genre. We need to therefore ensure that the training corpus looks similar to the test corpus.
+
+There's also the problem of Out of Vocabulary (
+
+) words. These are words that appear during testing
+
+but not in training. One way to solve this is to start with a fixed vocabulary and convert 
+
+ words in
+
+training to UNK  pseudo-word.
+
+In one study, when applied to sentiment analysis, a bigram model outperformed a unigram model but the
+
+number of features doubled. Thus, scaling N-gram models to larger datasets or moving to a higher N needs
+
+good feature selection techniques.
+
+N-gram models poorly capture longer-distance context. It's been shown that after 6-grams, performance
+
+gains are limited. Other language models such cache 
+
+, topic-based 
+
+ and latent semantic indexing do
+
+better.
+
+
+
+ What software tools are available to do N-gram modelling?
+
+R has a few useful packages including ngram, tm, tau and RWeka.  Package tidytext has functions to do N-
+
+gram analysis.
+
+In Python, NTLK has the function nltk.utils.ngrams().  A more comprehensive package is nltk.lm. Outside
+
+NLTK, the ngram package can compute n-gram string similarity.
+
+Written in C++ and open sourced, SRILM is a useful toolkit for building language models. This includes
+
+the tool ngram-format that can read or write N-grams models in the popular 
+
+ backoff format, which
+
+was invented by Doug Paul at MIT Lincoln Labs.
+
+A demo of an N-gram predictive model implemented in R Shiny can be tried out online.
+
+Ngram Viewer is a useful research tool by Google. It's based on material collected for Google Books.
+
+Given a sequence of words, it shows how the N-gram counts have changed over the years.
+
+Milestones
+
+
+
+OOV
+
+OOV
+
+
+
+
+
+LM
+
+LM
+
+
+
+
+
+
+
+
+
+
+
+ARPA
+
+
+
+
+
+
+Jul
+
+1948
+
+
+
+A bigram model of five letters due to Shannon. Source: Shannon 1948, fig. 4.  
+
+In his paper titled A Mathematical Theory of Communication, Claude Shannon describes an example in which the next letter
+
+depends on the previous one based on defined probabilities. This is an application of Markov process to natural languages.
+
+
+
+
+
+1980
+
+Although smoothing techniques can be traced back to Lidstone (1920), or even earlier to Laplace (18th century), an early
+
+application of smoothing to n-gram models for 
+
+ is by Jelinek and Mercer (1980). A better smoothing technique is due to
+
+Katz (1987). More smoothing techniques are proposed in the 1990s.
+
+NLP
+
+
+
+1991
+
+Jelinek and team at the IBM Research Division adapt a trigram 
+
+ to match the current document better. By caching a recent
+
+history of words, they propose Cache Trigram Language Model (
+
+). They show that for long text of 500-800 words,
+
+there's a drop in error rate by about 24%.
+
+LM
+
+CTLM
+
+
+
+1993
+
+N-gram models look at the preceding (n-1) words but for larger n, there's a data sparsity problem. Huang et al. propose a
+
+skipping n-gram model in which some preceding words may be ignored or skipped. For example, in the phrase "Show John a
+
+good time", the last word would be predicted based on P(time|Show __ a good) rather than P(time|Show John a good). Many
+
+such skipping models are proposed through the 1990s.
+
+
+
+1995
+
+Kneser and Ney propose improved backoff and discounting. It's based on the concept of absolute discounting in which a
+
+small constant is removed from all non-zero counts. Kneser-Ney Smoothing improves on absolute discounting by estimating
+
+the count of a word in a new context based on the number of different contexts in which the word has already appeared.
+
+
+
+1998
+
+Chen and Goodman at Harvard University give an empirical comparison of different smoothing techniques.  Other papers from
+
+them around the late 1990s become influential in this area of research. Due to their work, Interpolated Kneser-Ney has
+
+become a popular language model.
+
+
+
+
+
+Jul
+
+1999
+
+Version 0.99 of the SRILM toolkit is open sourced for public use.  Earlier versions of SRILM can be traced back to 1995.
+
+Version 1.00 is released in June 2000. Version 1.7.3 comes out in September 2019.
+
+
+
+
+
+2002
+
+Researchers at Carnegie Mellon University apply N-grams to model whole-genome protein sequences.  Their research triggers
+
+further application of N-gram models to computational biology.
+
+
+
+
+
+Sep
+
+2006
+
+For the benefit of research in linguistics, Google releases a dataset of counts of about a billion five-word sequences that appear
+
+at least 40 times from a text of trillion words. The dataset becomes available via the Linguistic Data Consortium (
+
+).
+
+LDC
+
+
+
+
+
+
+Sample Code
+
+# Source: http://www.albertauyeung.com/post/generating-ngrams-python/
+
+# Accessed: 2019-09-26
+
+ 
+
+import re
+
+from nltk.util import ngrams
+
+ 
+
+s = "Natural-language processing (NLP) is an area of computer science " \
+
+ "and artificial intelligence concerned with the interactions " \
+
+ "between computers and human (natural) languages."
+
+ 
+
+s = s.lower()
+
+s = re.sub(r'[^a-zA-Z0-9\s]', ' ', s)
+
+tokens = [token for token in s.split(" ") if token != ""]
+
+output = list(ngrams(tokens, 5))
+
+ 
+
+References
+
+1. Ablimit, Mijit, Tatsuya Kawahara, and Askar Hamdulla. 2015. "Lexicon Optimization Approaches for Language Models of Agglutinative Language." SlidePlayer.
+
+Accessed 2019-09-25.
+
+2. Chen, Stanley F. and Joshua Goodman. 1998. "An Empirical Study of Smoothing Techniques for Language Modeling." Harvard Computer Science Group Technical
+
+Report TR-10-98. Accessed 2019-09-26.
+
+3. Franz, Alex and Thorsten Brants. 2006. "All Our N-gram are Belong to You." Google AI Blog, August 03. Accessed 2019-09-26.
+
+4. Ganapathiraju, M., D. Weisser, R. Rosenfeld, J. Carbonell, R. Reddy, and J. Klein-Seetharaman. 2002. "Comparative n-gram analysis of whole-genome protein
+
+sequences." Proceedings of HLT 2002, Second International Conference on Human Language Technology Research, M. Marcus, ed., Morgan Kaufmann, San Francisco.
+
+Accessed 2019-09-26.
+
+5. Goodman, Joshua. 2001. "A Bit of Progress in Language Modeling." arXiv, v1, August 9. Accessed 2020-01-25.
+
+6. Jelinek, F., B. Merialdo, S. Roukos, and M. Strauss. 1991. "A Dynamic Language Model for Speech Recognition." Speech and Natural Language: Proceedings of a
+
+Workshop Held at Pacific Grove, California, pp. 293-295, February 19-22. Accessed 2019-09-26.
+
+7. Jurafsky, Daniel. 2019. "Introduction to N grams." Via André Ribeiro Miranda, on YouTube, February 24. Accessed 2023-03-01.
+
+8. Jurafsky, Daniel and James H. Martin. 2009. "N-grams." Chapter 4 in: Speech and Language Processing, Second Edition, Prentice-Hall, Inc. Accessed 2019-09-07.
+
+9. Machine Learning TV. 2018. "NLP: Understanding the N-gram language models." Machine Learning TV, on YouTube, August 12. Accessed 2019-09-25.
+
+10. Mayfield, James, and Paul McNamee. 2003. "Single n-gram stemming." Proceedings of the 26th annual international ACM SIGIR conference on Research and
+
+development in information retrieval, pp. 415-416, Toronto, Canada, July 28 - August 01. Accessed 2019-09-25.
+
+11. Mehmood, Arshad. 2019. "Generate Unigrams Bigrams Trigrams Ngrams Etc In Python." March 19. Accessed 2019-09-26.
+
+12. NGram. 2017. "NGram Module Documentation." v3.3.2, via Python Hosted, June 20. Accessed 2019-09-25.
+
+13. Ogbuji, Uche. 2018. "Word analysis and N-grams in a variety of practical applications." IBM Developer, April 18. Accessed 2019-09-25.
+
+14. Osmanbeyoglu, Hatice Ulku and Madhavi K Ganapathiraju. 2011. "N-gram analysis of 970 microbial organisms reveals presence of biological language models." BMC
+
+Bioinformatics, vol. 12, no. 12. Accessed 2019-09-26.
+
+15. Potapenko, Anna. 2018. "Natural Language Processing." National Research University, Higher School of Economics, via Coursera. Accessed 2019-09-25.
+
+16. SRILM Docs. 2019. "Version History." SRI International, September 09. Accessed 2019-09-26.
+
+17. SRILM Manpage. 2004. "ngram-format." SRI International. Accessed 2019-09-26.
+
+18. Schmidt, Drew and Christian Heckendorf. 2017. "Guide to the ngram Package." V3.0.4, CRAN, November 17. Accessed 2019-09-25.
+
+19. Shannon, C. E. 1948. "A Mathematical Theory of Communication." The Bell System Technical Journal, vol. 27, pp. 379–423, July. Accessed 2019-09-26.
+
+20. Silge, Julia and David Robinson. 2019. "Relationships between words: n-grams and correlations." Chapter 4 In: Text Mining with R, A Tidy Approach, February 02.
+
+Accessed 2019-09-26.
+
+21. Sookocheff, Kevin. 2015. "Modeling Natural Language with N-Gram Models." July 25. Accessed 2019-09-25.
+
+22. Stolcke, Andreas. 2002. "SRILM--An Extensible Language Modeling Toolkit." Proceedings of the 7th International Conference on Spoken Language Processing (ICSLP
+
+PYTHON
+
+R
+
+
+
+
+1716
+
+Words
+
+1
+
+Authors
+
+8
+
+Edits
+
+3
+
+Chats
+
+19
+
+Likes
+
+56639
+
+Hits
+
+2002). Accessed 2019-09-26.
+
+23. Thiel, Kilian. 2016. "Sentiment Analysis with N-grams." Blog, KNIME, January 08. Accessed 2019-09-25.
+
+24. Yeung, Albert Au. 2018. "Generating N-grams from Sentences Python." June 03. Accessed 2019-09-25.
+
+Further Reading
+
+1. Jurafsky, Daniel and James H. Martin. 2009. "N-grams." Chapter 4 in: Speech and Language Processing, Second Edition, Prentice-Hall, Inc. Accessed 2019-09-07.
+
+2. Ogbuji, Uche. 2018. "Word analysis and N-grams in a variety of practical applications." IBM Developer, April 18. Accessed 2019-09-25.
+
+3. Yeung, Albert Au. 2018. "Generating N-grams from Sentences Python." June 03. Accessed 2019-09-25.
+
+4. Mariòo, José B., Rafael E. Banchs, Josep M. Crego, Adrià de Gispert, Patrik Lambert, José A. R. Fonollosa, and Marta R. Costa-jussà. 2006. "N-gram-based Machine
+
+Translation." J. Computational Linguistics, MIT Press, vol. 32, no. 4, pp. 527-549, December. Accessed 2019-09-26.
+
+5. Wang, Xuerui, Andrew McCallum, and Xing Wei. 2007. "Topical N-grams: Phrase and Topic Discovery,with an Application to Information Retrieval." Seventh IEEE
+
+International Conference on Data Mining (ICDM 2007), October 28-31. Accessed 2019-09-26.
+
+Article Stats
+
+Cite As
+
+Devopedia. 2023. "N-Gram Model." Version 8, March 1. Accessed 2023-03-01. https://devopedia.org/n-gram-model
+
+
+
+COPY
+
+CITATION
+
+ABOUT
+
+TERMS OF USE
+
+PRIVACY
+
+POLICY
+
+FOUNDATION
+
+TRUSTEES
+
+DONATIONS
+
+MISSION
+
+VALUES
+
+LICENSING
+
+EVENTS
+
+REPORT
+
+ISSUES
+
+OPEN SOURCE
+
+
+
+    
+

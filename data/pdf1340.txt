@@ -1,0 +1,903 @@
+
+
+
+Log in
+
+Sign up
+
+
+
+Mark Amery
+
+159
+
+5
+
+
+
+tumultous_rooster
+
+1,155
+
+4
+
+15
+
+28
+
+In Naive Bayes, why bother with Laplace smoothing when we have unknown words in the test set?
+
+Asked 8 years, 9 months ago
+
+Modified 3 years ago
+
+Viewed 103k times
+
+36
+
+ 
+
+ 
+
+I was reading over Naive Bayes Classification today. I read, under the heading of Parameter Estimation with add 1 smoothing:
+
+My question is this: why do we bother with this Laplace smoothing at all? If these unknown words that we encounter in the testing set have a probability that is obviously almost zero, ie, 
+
+1
+
+count(c)+|V| +1, what is the point of
+
+including them in the model? Why not just disregard and delete them?
+
+Share
+
+Improve this question
+
+edited Jun 24, 2019 at 9:10
+
+asked Jul 22, 2014 at 4:29
+
+3
+
+If you don't then any statement you encounter containing a previously unseen word will have p =0. This means that an impossible event has come to pass. Which means your model was an incredibly bad fit. Also in a proper
+
+Bayesian model this could never happen, as the unknown word probability would have a numerator given by the prior (possibly not 1). So I don't know why this requires the fancy name 'Laplace smoothing'.
+
+– conjectures
+
+Jan 29, 2016 at 9:55 
+
+2
+
+What was the text that the reading came from?
+
+– wordsforthewise
+
+Jan 31, 2018 at 0:18
+
+In addition to the fact that the unsmoothed probability is strictly worse, if you use big data and still have unobserved cases, you're probably going to have a lot of them. I built a Markov model for protein sequences of length 7
+
+(IIRC). There are 1.3 billion of them. 100,000 might be unobserved in your training data. The odds of going through an entire new genome without getting one of those 100,000 aren't good. Hitting one will make the gene it's in
+
+have probability zero, so you'll miss that gene. That's if it doesn't crash the program.
+
+– Phil Goetz
+
+Mar 24 at 1:45 
+
+8 Answers
+
+Sorted by:
+
+21
+
+ 
+
+ 
+
+Let's say you've trained your Naive Bayes Classifier on 2 classes, "Ham" and "Spam" (i.e. it classifies emails). For the sake of simplicity, we'll assume prior probabilities to be 50/50.
+
+Now let's say you have an email (w1,w2,...,wn) which your classifier rates very highly as "Ham", say
+
+P(Ham|w1,w2,...wn) =.90
+
+and
+
+P(Spam|w1,w2,..wn) =.10
+
+So far so good.
+
+Now let's say you have another email (w1,w2,...,wn,wn+1) which is exactly the same as the above email except that there's one word in it that isn't included in the vocabulary. Therefore, since this word's count is 0,
+
+P(Ham|wn+1) =P(Spam|wn+1) =0
+
+Suddenly,
+
+P(Ham|w1,w2,...wn,wn+1) =P(Ham|w1,w2,...wn) ∗ P(Ham|wn+1) =0
+
+and
+
+P(Spam|w1,w2,..wn,wn+1) =P(Spam|w1,w2,...wn) ∗ P(Spam|wn+1) =0
+
+Despite the 1st email being strongly classified in one class, this 2nd email may be classified differently because of that last word having a probability of zero.
+
+Laplace smoothing solves this by giving the last word a small non-zero probability for both classes, so that the posterior probabilities don't suddenly drop to zero.
+
+Share
+
+Ask Question
+
+Let c refer to a class (such as Positive or Negative), and let w refer to a token or word.
+
+The maximum likelihood estimator for P(w|c) is
+
+count(w,c)
+
+count(c) =
+
+counts w in class c
+
+counts of words in class c.
+
+This estimation of P(w|c) could be problematic since it would give us probability 0 for documents with unknown words. A common way of solving this problem is to use Laplace smoothing.
+
+Let V be the set of words in the training set, add a new element UNK (for unknown) to the set of words.
+
+Define
+
+P(w|c) =
+
+count(w,c)+1
+
+count(c)+|V| +1,
+
+where V refers to the vocabulary (the words in the training set).
+
+In particular, any unknown word will have probability
+
+1
+
+count(c)+|V| +1.
+
+machine-learning classification
+
+text-mining naive-bayes laplace-smoothing
+
+Cite
+
+Follow
+
+
+
+
+
+
+
+
+
+Highest score (default)
+
+
+
+
+Mehrdad Salimi
+
+103
+
+6
+
+
+
+RVC
+
+443
+
+4
+
+9
+
+
+
+Sid
+
+2,577
+
+11
+
+16
+
+
+
+Mark Amery
+
+159
+
+5
+
+
+
+T. Jiang
+
+157
+
+2
+
+4
+
+Improve this answer
+
+edited Oct 25, 2019 at 10:34
+
+answered Sep 5, 2015 at 8:58
+
+1
+
+why would we keep a word which doesn't exists in the vocabulary at all? why not just remove it?
+
+– avocado
+
+Sep 28, 2016 at 8:05
+
+4
+
+if your classifier rates an email as likely to be ham, then p(ham| w1,...,wn) is 0.9, not p(w1,...,wn|ham)
+
+– braaterAfrikaaner
+
+Feb 28, 2018 at 20:59
+
+18
+
+ 
+
+ 
+
+You always need this 'fail-safe' probability.
+
+To see why consider the worst case where none of the words in the training sample appear in the test sentence. In this case, under your model we would conclude that the sentence is impossible but it clearly exists creating a
+
+contradiction.
+
+Another extreme example is the test sentence "Alex met Steve." where "met" appears several times in the training sample but "Alex" and "Steve" don't. Your model would conclude this statement is very likely which is not true.
+
+Share
+
+Improve this answer
+
+answered Jul 22, 2014 at 5:21
+
+I hate to sound like a complete moron, but would you mind elaborating? How does removing "Alex" and "Steve" change the likelihood of the statement occurring?
+
+– tumultous_rooster
+
+Jul 22, 2014 at 6:21
+
+2
+
+If we assume independence of the words P(Alex)P(Steve)P(met) &lt;&lt; P(met)
+
+– Sid
+
+Jul 22, 2014 at 8:48
+
+1
+
+we could build a vocabulary when training the model on the training data set, so why not just remove all new words not occur in vocabulary when make predictions on test data set?
+
+– avocado
+
+Sep 28, 2016 at 7:16
+
+8
+
+ 
+
+ 
+
+This question is rather simple if you are familiar with Bayes estimators, since it is the directly conclusion of Bayes estimator.
+
+In the Bayesian approach, parameters are considered to be a quantity whose variation can be described by a probability distribution(or prior distribution).
+
+So, if we view the procedure of picking up as multinomial distribution, then we can solve the question in few steps.
+
+First, define
+
+m = |V|,n = ∑ni
+
+If we assume the prior distribution of pi is uniform distribution, we can calculate it's conditional probability distribution as
+
+p(p1,p2,...,pm|n1,n2,...,nm) =
+
+Γ(n+m)
+
+m
+
+∏
+
+i=1Γ(ni +1)
+
+m
+
+∏
+
+i=1pnii
+
+we can find it's in fact Dirichlet distribution, and expectation of pi is
+
+E[pi] =
+
+ni +1
+
+n+m
+
+A natural estimate for pi is the mean of the posterior distribution. So we can give the Bayes estimator of pi:
+
+ˆpi =E[pi]
+
+You can see we just draw the same conclusion as Laplace Smoothing.
+
+Share
+
+Improve this answer
+
+edited Jun 24, 2019 at 13:24
+
+answered Jul 24, 2016 at 17:09
+
+7
+
+Cite
+
+Follow
+
+
+
+Cite
+
+Follow
+
+
+
+Cite
+
+Follow
+
+
+
+
+
+
+jpmuc
+
+13.4k
+
+1
+
+35
+
+69
+
+
+
+Aiaioo Labs
+
+21
+
+2
+
+ 
+
+ 
+
+Disregarding those words is another way to handle it. It corresponds to averaging (integrate out) over all missing variables. So the result is different. How?
+
+Assuming the notation used here:
+
+P(C∗ |d) =arg
+
+max
+
+C
+
+∏ip(ti|C)P(C)
+
+P(d)
+
+∝ arg
+
+max
+
+C ∏
+
+i p(ti|C)P(C)
+
+where ti are the tokens in the vocabulary and d is a document.
+
+Let say token tk does not appear. Instead of using a Laplace smoothing (which comes from imposing a Dirichlet prior on the multinomial Bayes), you sum out tk which corresponds to saying: I take a weighted voting over all
+
+possibilities for the unknown tokens (having them or not).
+
+P(C∗ |d) ∝ arg
+
+max
+
+C
+
+∑
+
+tk ∏
+
+i p(ti|C)P(C) =arg
+
+max
+
+C P(C)
+
+∏
+
+i≠kp(ti|C)
+
+∑
+
+tk p(tk|C) =arg
+
+max
+
+C P(C)
+
+∏
+
+i≠kp(ti|C)
+
+But in practice one prefers the smoothing approach. Instead of ignoring those tokens, you assign them a low probability which is like thinking: if I have unknown tokens, it is more unlikely that is the kind of document I'd otherwise
+
+think it is.
+
+Share
+
+Improve this answer
+
+answered Jul 22, 2014 at 8:33
+
+2
+
+ 
+
+ 
+
+You want to know why we bother with smoothing at all in a Naive Bayes classifier (when we can throw away the unknown features instead).
+
+The answer to your question is: not all words have to be unknown in all classes.
+
+Say there are two classes M and N with features A, B and C, as follows:
+
+M: A=3, B=1, C=0
+
+(In the class M, A appears 3 times and B only once)
+
+N: A=0, B=1, C=3
+
+(In the class N, C appears 3 times and B only once)
+
+Let's see what happens when you throw away features that appear zero times.
+
+A) Throw Away Features That Appear Zero Times In Any Class
+
+If you throw away features A and C because they appear zero times in any of the classes, then you are only left with feature B to classify documents with.
+
+And losing that information is a bad thing as you will see below!
+
+If you're presented with a test document as follows:
+
+B=1, C=3
+
+(It contains B once and C three times)
+
+Now, since you've discarded the features A and B, you won't be able to tell whether the above document belongs to class M or class N.
+
+So, losing any feature information is a bad thing!
+
+B) Throw Away Features That Appear Zero Times In All Classes
+
+Is it possible to get around this problem by discarding only those features that appear zero times in all of the classes?
+
+No, because that would create its own problems!
+
+The following test document illustrates what would happen if we did that:
+
+A=3, B=1, C=1
+
+The probability of M and N would both become zero (because we did not throw away the zero probability of A in class N and the zero probability of C in class M).
+
+C) Don't Throw Anything Away - Use Smoothing Instead
+
+Smoothing allows you to classify both the above documents correctly because:
+
+1. You do not lose count information in classes where such information is available and
+
+2. You do not have to contend with zero counts.
+
+Naive Bayes Classifiers In Practice
+
+The Naive Bayes classifier in NLTK used to throw away features that had zero counts in any of the classes.
+
+This used to make it perform poorly when trained using a hard EM procedure (where the classifier is bootstrapped up from very little training data).
+
+Share
+
+Improve this answer
+
+edited Jan 29, 2016 at 10:59
+
+answered Jan 29, 2016 at 9:46
+
+3
+
+@ Aiaioo Labs You failed to realize that he was referring to words that did not appear in the training set at all, for your example, he was referring to say if D appeared, the issue isn't with laplace smoothing on the calculations
+
+from the training set rather the test set. Using laplace smoothing on unknown words from the TEST set causes probability to be skewed towards whichever class had the least amount of tokens due to 0 + 1 / 2 + 3 being bigger that
+
+0 + 1 / 3 + 3 (if one of the classes had 3 tokens and the other had 2). ...
+
+– user114004
+
+Apr 29, 2016 at 18:20 
+
+2
+
+This can actually turn a correct classification into an incorrect classification if enough unknown words are smoothed into the equation. Laplace smoothing is ok for Training set calculations, but detrimental to test set analysis.
+
+Also imagine you have a test set with all unkown words, it should be classified immediately to the class with highest probability, but in fact it can and will usually, not be classified as such, and is usually classified as the class with the
+
+lowest amount of tokens.
+
+– user114004
+
+Apr 29, 2016 at 18:20 
+
+@DrakeThatcher, highly agree with you, yes if we don't remove words not in vocabulary, then predicted proba will be skewed to class with least amount of words.
+
+– avocado
+
+Sep 28, 2016 at 8:10 
+
+1
+
+ 
+
+ 
+
+I also came across the same problem while studying Naive Bayes.
+
+Cite
+
+Follow
+
+
+
+Cite
+
+Follow
+
+
+
+
+
+
+
+
+
+
+
+
+Sarthak Khanna
+
+11
+
+3
+
+
+
+Mark Amery
+
+159
+
+5
+
+
+
+samthebest
+
+913
+
+5
+
+11
+
+
+
+Lerner Zhang
+
+5,908
+
+1
+
+36
+
+64
+
+According to me, whenever we encounter a test example which we hadn't come across during training, then out Posterior probability will become 0.
+
+So adding the 1 , even if we never train on a particular feature/class, the Posterior probability will never be 0.
+
+Share
+
+Improve this answer
+
+answered Sep 15, 2016 at 6:48
+
+1
+
+ 
+
+ 
+
+Matt you are correct you raise a very good point - yes Laplace Smoothing is quite frankly nonsense! Just simply throwing away those features can be a valid approach, particularly when the denominator is also a small number - there
+
+is simply not enough evidence to support the probability estimation.
+
+I have a strong aversion to solving any problem via use of some arbitrary adjustment. The problem here is zeros, the "solution" is to just "add some small value to zero so it's not zero anymore - MAGIC the problem is no more". Of
+
+course that's totally arbitrary.
+
+Your suggestion of better feature selection to begin with is a less arbitrary approach and IME increases performance. Furthermore Laplace Smoothing in conjunction with naive Bayes as the model has in my experience worsens the
+
+granularity problem - i.e. the problem where scores output tend to be close to 1.0 or 0.0 (if the number of features is infinite then every score will be 1.0 or 0.0 - this is a consequence of the independence assumption).
+
+Now alternative techniques for probability estimation exist (other than max likelihood + Laplace smoothing), but are massively under documented. In fact there is a whole field called Inductive Logic and Inference Processes that use
+
+a lot of tools from Information Theory.
+
+What we use in practice is of Minimum Cross Entropy Updating which is an extension of Jeffrey's Updating where we define the convex region of probability space consistent with the evidence to be the region such that a point in it
+
+would mean the Maximum Likelihood estimation is within the Expected Absolute Deviation from the point.
+
+This has a nice property that as the number of data points decreases the estimations peace-wise smoothly approach the prior - and therefore their effect in the Bayesian calculation is null. Laplace smoothing on the other hand
+
+makes each estimation approach the point of Maximum Entropy that may not be the prior and therefore the effect in the calculation is not null and will just add noise.
+
+Share
+
+Improve this answer
+
+edited Jun 24, 2019 at 13:24
+
+answered Jul 23, 2014 at 9:50
+
+0
+
+ 
+
+ 
+
+You may don't have enough data for the task and hence the estimate would not be accurate or the model would overfit training data, for example, we may end up with a black swan problem. There is no black swan in our training
+
+examples but that doesn't mean that there exists no black swan in the world. We can just add a prior to our model and we can also call it "pseudocount".
+
+Share
+
+Improve this answer
+
+answered Apr 7, 2020 at 23:52
+
+Your Answer
+
+By clicking “Post Your Answer”, you agree to our terms of service, privacy policy and cookie policy
+
+Not the answer you're looking for? Browse other questions tagged machine-learning classification
+
+text-mining naive-bayes laplace-smoothing  or ask your own question.
+
+Linked
+
+0
+
+How can I apply Bayesian Statistics when the number of data that I have is 1?
+
+2
+
+How to use the Dirichlet prior for estimating the multinomial parameters?
+
+2
+
+Mathematical implications of Naive Bayes Classifier on imbalanced data set
+
+0
+
+Regarding probabilites for naiveBayes algo
+
+0
+
+R Naive Bayes and Laplace: Even turned off, works fine with unseen words in test data?
+
+1
+
+Laplace smoothing and naive bayes
+
+Cite
+
+Follow
+
+
+
+Cite
+
+Follow
+
+
+
+Cite
+
+Follow
+
+
+
+Post Your Answer
+
+Featured on Meta
+
+
+
+New blog post from our CEO Prashanth: Community is the future of AI
+
+
+
+Improving the copy in the close modal and post notices - 2023 edition
+
+
+CROSS VALIDATED
+
+Tour
+
+Help
+
+Chat
+
+Contact
+
+Feedback
+
+COMPANY
+
+Stack Overflow
+
+Teams
+
+Advertising
+
+Collectives
+
+Talent
+
+About
+
+Press
+
+Legal
+
+Privacy Policy
+
+Terms of Service
+
+Cookie Settings
+
+Cookie Policy
+
+STACK EXCHANGE NETWORK
+
+Technology
+
+Culture &amp; recreation
+
+Life &amp; arts
+
+Science
+
+Professional
+
+Business
+
+API
+
+Data
+
+Blog
+
+Facebook
+
+Twitter
+
+LinkedIn
+
+Instagram
+
+Site design / logo © 2023 Stack Exchange Inc; user contributions licensed under CC BY-SA. rev 2023.4.21.43403
+
+1
+
+Why do we need to apply Laplace smoothing to all the words in Naive Bayes for text classification?
+
+0
+
+Posterior becomes infinity for bayes-theorem interpretation
+
+0
+
+&lt;unk&gt; masking n-grams
+
+0
+
+Do information entropy probabilities have to sum to one?
+
+See more linked questions
+
+Related
+
+16
+
+In Kneser-Ney smoothing, how are unseen words handled?
+
+2
+
+bayesian classification unknown domain
+
+0
+
+Naive Bayes with Laplace Smoothing Probabilities Not Adding Up
+
+1
+
+Laplace smoothing and naive bayes
+
+0
+
+R Naive Bayes and Laplace: Even turned off, works fine with unseen words in test data?
+
+Hot Network Questions
+
+
+
+On what basis are pardoning decisions made by presidents or governors when exercising their pardoning power?
+
+
+
+QGIS automatic fill of the attribute table by expression
+
+
+
+Is it safe to publish research papers in cooperation with Russian academics?
+
+
+
+Checks and balances in a 3 branch market economy
+
+
+
+Has depleted uranium been considered for radiation shielding in crewed spacecraft beyond LEO?
+
+more hot questions
+
+ Question feed
+
+Your privacy
+
+By clicking “Accept all cookies”, you agree Stack Exchange can store cookies on your device and disclose information in accordance with our Cookie Policy.
+
+ 
+
+Accept all cookies
+
+Necessary cookies only
+
+Customize settings
+

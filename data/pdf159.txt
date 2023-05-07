@@ -1,0 +1,835 @@
+
+CS229 Project Report
+
+Document Retrieval by Similarity: An Application of
+
+Probabilistic Latent Semantic Analysis (PLSA)
+
+Firouzeh Jalilian
+
+Haiyan Liu
+
+Jia Pu
+
+December 10, 2009
+
+1
+
+Introduction
+
+In this project, we explored using Probabilistic
+
+Latent Semantic Analysis (PLSA) technique to
+
+model a large collection of documents. Based on
+
+such a model, we also investigated the possibility
+
+of an interface that allows a user to 1) observe
+
+and explore the document collection on macro-
+
+scopic level; 2) conduct speciﬁc search based
+
+on document similarity.
+
+PLSA’s performance
+
+on standard information retrieval (IR) tasks has
+
+been well documented [2]. The emphasis of this
+
+project is to build an application based on PLSA
+
+model to help end-users to explore and search in
+
+large collection of documents.
+
+Many practical
+
+issues arise during this attempt, such as compu-
+
+tational eﬃciency and interpretation of learned
+
+model parameters. This report summarizes ex-
+
+perience gained and lessons learned from build-
+
+ing such an application.
+
+2
+
+Motivations
+
+There are two main motivations for providing
+
+similarity based document search facility to end
+
+users. First, as storage capacity keeps growing,
+
+large repository of documents exists not only on
+
+enterprise databases or internet, but also on per-
+
+sonal computers. For instance, it’s quite com-
+
+mon to have tens of thousands of email messages
+
+on a personal email account. Given such large
+
+number of documents, a user not only expects a
+
+good precision-recall rate, but also expects to see
+
+most relevant results ﬁrst. Secondly, a keyword
+
+based search system requires a user to know the
+
+exact term used in the document he wants to re-
+
+trieve. The value of a similarity based search sys-
+
+tem is to retrieve other related documents based
+
+on what the user has found using the keyword
+
+method.
+
+3
+
+PLSA
+
+Detail of PLSA can be found in [2]. PLSA model
+
+can be viewed as unsupervised variation of naive
+
+Bayes model. In PLSA, the topic (i.e. class la-
+
+bel) of each document example is unknown. So
+
+it is necessary to learn the topics from train-
+
+ing data.
+
+Since the number of topics is given
+
+(often determined empirically), PLSA model as-
+
+signs probability distributions over the topics to
+
+documents. Intuitively, such a ”soft” classiﬁca-
+
+tion agrees with the fact that a document often
+
+contains more than one topic.
+
+Formally, given a set of documents D with
+
+terms from a vocabulary W, we assume there
+
+are a set of latent topics, Z, so that:
+
+P(d, w) = P(d)
+
+�
+
+z∈Z
+
+P(w|z)P(z|d)
+
+Let f(d, w) denote the number of occurrence of
+
+word w in document d. The parameters, P(w|z),
+
+1
+
+
+and P(z|d), are learned by maximizing the log-
+
+likelihood:
+
+L =
+
+�
+
+d∈D
+
+�
+
+w∈d
+
+f(d, w)logP(d)+
+
+�
+
+d∈D
+
+�
+
+w∈d
+
+f(d, w)logP(w|d)
+
+which can be maximized with EM algorithm as
+
+following:
+
+E-step:
+
+P(z|d, w) =
+
+P(z|d)P(w|z)
+
+�
+
+z′∈Z P(z′|d)P(w|z′)
+
+M-step:
+
+P(w|z) =
+
+�
+
+d∈D f(d, w)P(z|d, w)
+
+�
+
+d∈D
+
+�
+
+w′∈W f(d, w′)P(z|d, w′)
+
+P(z|d) =
+
+�
+
+w∈W f(d, w)P(z|d, w)
+
+�
+
+w∈W f(d, w)
+
+4
+
+Deﬁnition of Similarity
+
+In order to put the learned PLSA model into
+
+use in our ﬁnal application, we need to obtain a
+
+deﬁnition of similarity.
+
+Assume we have a model using K latent top-
+
+ics, i.e. |Z| = K. We use P(Z|d), a multino-
+
+mial distribution, to denote the probabilities of
+
+document d being on each topic of Z.
+
+Since
+
+�
+
+z∈Z P(z|d) = 1, document d can be repre-
+
+sented as a point in the (K-1)-simplex deﬁned
+
+by �K
+
+i=1 xi = 1. A possible geometric interpre-
+
+tation of similarity is Euclidean distance in this
+
+simplex:
+
+DEuclidean(d1, d2) =∥ P(Z|d1) − P(Z|d2) ∥2
+
+However, a major drawback of this deﬁnition of
+
+similarity is that it does not take any advantage
+
+of information theory. For example, if we have
+
+a two-topic PLSA model, and four documents
+
+d1, d2, d3 and d4. Also, if these documents have
+
+following probabilities on the two topics:
+
+P(Z|d1) = {0.0, 1.0}
+
+P(Z|d2) = {0.1, 0.9}
+
+P(Z|d3) = {0.5, 0.5}
+
+P(Z|d4) = {0.6, 0.4}
+
+In this case,
+
+DEuclidean(d1, d2) is same as
+
+DEuclidean(d3, d4), although from information
+
+theory perspective, the diﬀerence between hav-
+
+ing probability 0 and 0.1 is much more signiﬁcant
+
+than the diﬀerence between 0.5 and 0.6.
+
+Kullback-Leibler (KL) divergence is another
+
+measure of the diﬀerence between two probabil-
+
+ity distributions. It has been used to measure
+
+diﬀerence between two multinomial distributions
+
+in similar context [5] as document similarity in
+
+this report. Using KL divergence as document
+
+similarity, it is deﬁned as:
+
+DKL(d1, d2) =
+
+K
+
+�
+
+i=1
+
+P(zi|d1) log P(zi|d1)
+
+P(zi|d2)
+
+But one issue with KL divergence is that it is
+
+non-symmetric, hence diﬃcult to interpret in
+
+this application.
+
+After all, what do we mean
+
+when we say that A is similar to B, but B is
+
+not similar to A? Also, this deﬁnition of similar-
+
+ity does not utilize P(z), the probability of each
+
+topic on the whole training corpus. Intuitively
+
+the fact that d1 and d2 both have high probabil-
+
+ity on topic z is more signiﬁcant if z has overall
+
+low probability.
+
+So we need a deﬁnition of similarity that is
+
+based on sound statistic theory, and has the
+
+properties of well deﬁned metric. In [4], the au-
+
+thors proposed a Fisher kernel for generative sta-
+
+tistical model. For two examples x1 and x2 gen-
+
+erated by a model which is parameterized by θ,
+
+Fisher kernel is deﬁned as:
+
+K(x1, x2) ∝ U T
+
+x1I−1Uxi
+
+where Ux = ∇θ log P(x|θ). The value of Fisher
+
+kernel is that it deﬁnes a metric relationship di-
+
+rectly on generative model. In [3], the authors
+
+derived the Fisher kernel for PLSA model. In
+
+2
+
+
+their derivation, the kernel consists of two com-
+
+ponents:
+
+K1(d1, d2) =
+
+�
+
+k
+
+P(zk|d1)P(zk|d2)
+
+P(zk)
+
+,
+
+and
+
+K2(d1, d2) =
+
+�
+
+j
+
+�
+
+tf(wj|d1)tf(wj|d2)·
+
+�
+
+k
+
+P(zk|d1, wj)P(zk|d2, wj)
+
+P(wj|zk)
+
+�
+
+where tf(w|d) is the term-frequency deﬁned as
+
+f(d, w)/�
+
+w f(d, w). The two components em-
+
+phasize two aspects of PLSA model. K1 com-
+
+pares two documents based on their topics, while
+
+K2 compares two documents based their shared
+
+words.
+
+Since the computation of K2(d1, d2) is
+
+expensive, due to the limited time, we only use
+
+K1(d1, d2) as similarity measure in our imple-
+
+mentation, which alone shows improved preci-
+
+sion in certain scenario (detail in section 5). To
+
+summarize, in our ﬁnal application, similarity
+
+between two documents is deﬁned as :
+
+D(d1, d2) =
+
+1
+
+K1(d1, d2) = 1/
+
+�
+
+k
+
+P(zk|d1)P(zk|d2)
+
+P(zk)
+
+The inversion is just to make smaller distance to
+
+indicate higher degree of similarity, so that it is
+
+consistent with other deﬁnitions of similarity we
+
+studied in this project.
+
+5
+
+Experiments
+
+People have done many precision-recall evalua-
+
+tions on various corpus using PLSA model. We
+
+repeated some of the experiments during our
+
+project to 1) ﬁnd better parameters; 2) verify
+
+that our PLSA implementation is correct.
+
+In this project, we used a subset of 6432 doc-
+
+uments from Reuters-21578 dataset.
+
+In this
+
+dataset, each document d has been given a set
+
+of tags Td by human annotators.
+
+To evalu-
+
+ate, a random document q is chosen as a query,
+
+and up to N most similar documents, D =
+
+{d1, · · · , dN}, are returned. For each di in D, if
+
+it shares at least one tag with q, i.e. Tdi ∩Tq ̸= ∅,
+
+then di is a successful retrieval. Our dataset con-
+
+tains 101 unique tags.
+
+Although this type of evaluation is standard
+
+practice in IR research, we need to view it with
+
+a grain of salt, because matching tags is rather
+
+a narrow view of document similarity. For ex-
+
+ample, in Reuter corpus, document 06114 is
+
+on the subject of China’s winter crop produc-
+
+tion.
+
+This document is tagged with “grain”,
+
+“wheat” and “rice”. When using this document
+
+as query, one of the returned similar documents,
+
+00229, is tagged with “soybean”, “red-bean” and
+
+“oilseed”. For some users, this would be appro-
+
+priate search result in that they are both clearly
+
+on the topic of agriculture. But if we only look
+
+at the tags, this is considered a false positive.
+
+For text processing, we only used rather triv-
+
+ial methods. Each document is tokenized using
+
+white spaces. Then tokens that do not contain
+
+any alphabet, and tokens that are only one char-
+
+acter long are removed. After that, all tokens,
+
+except acronyms that consist of only upper-case
+
+letters, are converted to lower case. And a Porter
+
+stemmer is applied.
+
+Finally, we removed top
+
+words that are identiﬁed using normalized en-
+
+tropy [1].
+
+Using evaluation described above, Fig 1 shows
+
+the precision-recall rate of using three diﬀerent
+
+deﬁnitions of similarity. As it is shown, Fisher
+
+kernel generally achieves better precision-recall
+
+accuracy than other two similarity measures.
+
+Also, empirically we determined to use 30 la-
+
+tent topics in our ﬁnal model. Fig 2 shows the
+
+precision-recall curves using diﬀerent number of
+
+topics.
+
+6
+
+“Spotlight”
+
+The second component of this project is a GUI
+
+based application that allows one to explore a
+
+collection of documents. It also helped us to sub-
+
+jectively evaluate PLSA model. This application
+
+is designed with following goals:
+
+3
+
+
+0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1
+
+0
+
+0.1
+
+0.2
+
+0.3
+
+0.4
+
+0.5
+
+0.6
+
+0.7
+
+0.8
+
+0.9
+
+1
+
+Recall
+
+Precision
+
+ 
+
+ 
+
+Fisher kernel
+
+KL divergence
+
+Euclidean
+
+Figure 1: Precision-recall with 30 latent topics
+
+0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1
+
+0
+
+0.1
+
+0.2
+
+0.3
+
+0.4
+
+0.5
+
+0.6
+
+0.7
+
+0.8
+
+0.9
+
+Recall 
+
+Precision
+
+ 
+
+ 
+
+  15 topics
+
+  30 topics
+
+  50 topics
+
+  100 topics
+
+Figure 2: Precision-recall of diﬀerent number of
+
+topics
+
+• It shows similar documents given a query
+
+document.
+
+This is done by showing the
+
+nodes connected by edge. From subjective
+
+evaluation, it seems PLSA is quite accurate
+
+on identifying similar documents, at least on
+
+this dataset.
+
+• Given a pair of similar documents, it shows
+
+words from the two documents that con-
+
+tribute most to their common topic. How-
+
+ever, sometimes these words are not really
+
+essential to the subject of the documents.
+
+For instance, for documents about grain
+
+production forecast, word such as ”Decem-
+
+ber”, or ”February” often show up.
+
+• By expanding nodes that are connected, it
+
+allows a user to identify a set of documents
+
+that are similar to each other, but are not
+
+similar to any other documents.
+
+In fact,
+
+these documents form a connected compo-
+
+nent in the graph built on the whole corpus.
+
+We set oﬀ on this project to investigate
+
+the possibility of using PLSA on personal
+
+computers.
+
+From implementing it, we re-
+
+alized that it is computationally very ex-
+
+pensive when the number of latent topics is
+
+high, due to the iterative method of learn-
+
+ing PLSA model.
+
+In our implementation,
+
+we processed up to eight data partitions si-
+
+multaneously. Even with this optimization,
+
+it takes more than 5 hours to run EM train-
+
+ing for 100 iterations on 100 topics. The de-
+
+mand on computation resource makes it a
+
+less attractive solution on today’s personal
+
+computer.
+
+But it still could be useful for
+
+moderate dataset.
+
+7
+
+Conclusion
+
+This project demonstrated that PLSA is a pow-
+
+erful technique for modeling document similar-
+
+ity. Combined with keyword search, it provides
+
+more ﬂexibility on searching in large collection
+
+of documents. In our implementation, we didn’t
+
+utilize P(w|z). It deserves further investigation
+
+on how we can take advantage of P(w|z) to pro-
+
+vide more useful information.
+
+References
+
+[1] J.R. Bellegarda. Latent semantic mapping:
+
+dimensionality reduction via globally opti-
+
+4
+
+
+
+
+Figure 3: Screen capture of “Spotlight” application
+
+mal continuous parameter modeling. In Au-
+
+tomatic Speech Recognition and Understand-
+
+ing, 2005 IEEE Workshop on, pages 127–
+
+132, Nov. 2005.
+
+[2] Thorsten Brants.
+
+Test data likelihood for
+
+plsa models. Inf. Retr., 8(2):181–196, 2005.
+
+[3] Thomas Hofmann.
+
+Learning the similarity
+
+of documents: An information-geometric ap-
+
+proach to document retrieval and categoriza-
+
+tion, 2000.
+
+[4] Tommi S. Jaakkola and David Haussler. Ex-
+
+ploiting generative models in discriminative
+
+classiﬁers.
+
+In Proceedings of the 1998 con-
+
+ference on Advances in neural information
+
+processing systems II, pages 487–493, Cam-
+
+bridge, MA, USA, 1999. MIT Press.
+
+[5] Dong Zhang, Daniel G. Perez, Samy Ben-
+
+gio, and Deb Roy. Learning inﬂuence among
+
+interacting Markov chains.
+
+IDIAP-RR 48,
+
+IDIAP, Martigny, Switzerland, 2005.
+
+5
+

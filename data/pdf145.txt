@@ -1,0 +1,158 @@
+
+Docs  » plsa.algorithms package  » plsa.algorithms.plsa module
+
+plsa.algorithms.plsa module
+
+Implements probabilistic latent semantic analysis (PLSA).
+
+At its core lies the assumption that the normalized document-word (or term-frequency) matrix p(d, w),
+
+weighted with the inverse document frequency or not, can be factorized as:
+
+p(d,w) ≈
+
+∑
+
+t ˜p(d|t)˜p(w|t)˜p(t)
+
+Parameters:
+
+corpus (Corpus) – The corpus of preprocessed and numerically represented documents.
+
+n_topics (int) – The number of latent topics to identify.
+
+tf_idf (bool) – Whether to use the term-frequency inverse-document-frequency or just the
+
+term-frequency matrix as joint probability p(d, w) of documents and words.
+
+Raises:
+
+ValueError  – If the number of topics is &lt; 2 or the number of both, words and documents, in
+
+the corpus isn’t greater than the number of topics.
+
+Notes
+
+The implementation follows algorithm 15.2 in Barber’s book 
+
+ to the letter. What is not said there is
+
+that, in order to update the conditional probability p(t|d, w) of a certain topic given a certain word in a
+
+certain document, one first needs to find the joint probability of all random variables as
+
+˜p(t,d,w) = ˜p(d|t)˜p(w|t)˜p(t)
+
+and then divide by the marginal ˜p(d,w).
+
+References
+
+[1]
+
+“Bayesian Reasoning and Machine Learning”, David Barber (Cambridge Press, 2012).
+
+Finds the best PLSA model among the specified number of runs.
+
+As with any iterative algorithm, also the probabilities in PSLA need to be (randomly) initialized prior
+
+to the first iteration step. Therefore, calling the fit  method of two different instances operating
+
+on the same corpus with the same number of topics potentially leads to (slightly) different results,
+
+corresponding to different local minima of the Kullback-Leibler divergence between the true
+
+document-word probability and its approximate factorization. To mitigate this effect, perform
+
+multiple runs and pick the best model.
+
+Parameters:
+
+n_runs (int, optional) – Number of runs to pick the best model of. Defaults to 3.
+
+**kwargs – Keyword-only arguments are passed on to the fit  method.
+
+
+
+PLSA
+
+class plsa.algorithms.plsa.PLSA(corpus: plsa.corpus.Corpus, n_topics: int, tf_idf: bool = True)
+
+[1]
+
+best_of(n_runs: int = 3, **kwargs) → plsa.algorithms.result.PlsaResult
+
+
+
+
+Next 
+
+
+
+ Previous
+
+Returns:
+
+Container class for the best result.
+
+Return type:
+
+PlsaResult
+
+Run EM-style training to find latent topics in documents.
+
+Expectation-maximization (EM) iterates until either the maximum number of iterations is reached or
+
+if relative changes of the Kullback- Leibler divergence between the actual document-word
+
+probability and its approximate fall below a certain threshold, whichever occurs first.
+
+Since all quantities are update in-place, calling the fit  method again after a successful run
+
+(possibly with changed convergence criteria) will continue to add more iterations on top of the
+
+status quo rather than starting all over again from scratch.
+
+Because a few EM iterations are needed to get things going, you can specify an initial warm-up
+
+period, during which progress in the Kullback-Leibler divergence is not tracked, and which does not
+
+count towards the maximum number of iterations.
+
+Parameters:
+
+eps (float, optional) – The convergence cutoff for relative changes in the Kullback- Leibler
+
+divergence between the actual document-word probability and its approximate.
+
+Defaults to 1e-5.
+
+max_iter (int, optional) – The maximum number of iterations to perform. Defaults to
+
+200.
+
+warmup (int, optional) – The number of iterations to perform before changes in the
+
+Kullback-Leibler divergence are tracked for convergence.
+
+Returns:
+
+Container class for the results of the latent semantic analysis.
+
+Return type:
+
+PlsaResult
+
+The number of topics to find.
+
+Use inverse document frequency to weigh the document-word counts?
+
+© Copyright 2019, Georg Heimel Revision 5f039ddc.
+
+Built with Sphinx using a theme provided by Read the Docs.
+
+fit(eps: float = 1e-05, max_iter: int = 200, warmup: int = 5) → plsa.algorithms.result.PlsaResult
+
+n_topics
+
+tf_idf
+

@@ -1,0 +1,711 @@
+
+Expectation–maximization algorithm
+
+Toggle the table of contents
+
+
+
+ 21
+
+languages
+
+Article
+
+Talk
+
+Tools
+
+
+
+EM clustering of Old Faithful eruption data. The random initial
+
+model (which, due to the different scales of the axes, appears to
+
+be two very flat and wide elipses) is fit to the observed data. In the
+
+first iterations, the model changes substantially, but then
+
+converges to the two modes of the geyser. Visualized using ELKI.
+
+From Wikipedia, the free encyclopedia
+
+In statistics, an expectation–maximization (EM) algorithm is an iterative method to find (local) maximum likelihood or maximum a posteriori (MAP) estimates of parameters in statistical models, where the model depends
+
+on unobserved latent variables.[1] The EM iteration alternates between performing an expectation (E) step, which creates a function for the expectation of the log-likelihood evaluated using the current estimate for the
+
+parameters, and a maximization (M) step, which computes parameters maximizing the expected log-likelihood found on the E step. These parameter-estimates are then used to determine the distribution of the latent
+
+variables in the next E step.
+
+History [edit]
+
+The EM algorithm was explained and given its name in a classic 1977 paper by Arthur Dempster, Nan Laird, and Donald Rubin.[2] They pointed out that the
+
+method had been "proposed many times in special circumstances" by earlier authors. One of the earliest is the gene-counting method for estimating allele
+
+frequencies by Cedric Smith.[3] Another was proposed by H.O. Hartley in 1958, and Hartley and Hocking in 1977, from which many of the ideas in the
+
+Dempster-Laird-Rubin paper originated.[4] Another one by S.K Ng, Thriyambakam Krishnan and G.J McLachlan in 1977.[5] Hartley’s ideas can be broadened to
+
+any grouped discrete distribution. A very detailed treatment of the EM method for exponential families was published by Rolf Sundberg in his thesis and
+
+several papers,[6][7][8] following his collaboration with Per Martin-Löf and Anders Martin-Löf.[9][10][11][12][13] The Dempster–Laird–Rubin paper in 1977
+
+generalized the method and sketched a convergence analysis for a wider class of problems. The Dempster–Laird–Rubin paper established the EM method as
+
+an important tool of statistical analysis. See also Meng and van Dyk (1997).
+
+The convergence analysis of the Dempster–Laird–Rubin algorithm was flawed and a correct convergence analysis was published by C. F. Jeff Wu in 1983.[14]
+
+Wu's proof established the EM method's convergence also outside of the exponential family, as claimed by Dempster–Laird–Rubin.[14]
+
+Introduction [edit]
+
+The EM algorithm is used to find (local) maximum likelihood parameters of a statistical model in cases where the equations cannot be solved directly. Typically
+
+these models involve latent variables in addition to unknown parameters and known data observations. That is, either missing values exist among the data, or
+
+the model can be formulated more simply by assuming the existence of further unobserved data points. For example, a mixture model can be described more
+
+simply by assuming that each observed data point has a corresponding unobserved data point, or latent variable, specifying the mixture component to which
+
+each data point belongs.
+
+Finding a maximum likelihood solution typically requires taking the derivatives of the likelihood function with respect to all the unknown values, the parameters and the latent variables, and simultaneously solving the
+
+resulting equations. In statistical models with latent variables, this is usually impossible. Instead, the result is typically a set of interlocking equations in which the solution to the parameters requires the values of the latent
+
+variables and vice versa, but substituting one set of equations into the other produces an unsolvable equation.
+
+The EM algorithm proceeds from the observation that there is a way to solve these two sets of equations numerically. One can simply pick arbitrary values for one of the two sets of unknowns, use them to estimate the
+
+second set, then use these new values to find a better estimate of the first set, and then keep alternating between the two until the resulting values both converge to fixed points. It's not obvious that this will work, but it can
+
+be proven in this context. Additionally, it can be proven that the derivative of the likelihood is (arbitrarily close to) zero at that point, which in turn means that the point is either a local maximum or a saddle point.[14] In
+
+general, multiple maxima may occur, with no guarantee that the global maximum will be found. Some likelihoods also have singularities in them, i.e., nonsensical maxima. For example, one of the solutions that may be
+
+found by EM in a mixture model involves setting one of the components to have zero variance and the mean parameter for the same component to be equal to one of the data points.
+
+Description [edit]
+
+The symbols [edit]
+
+Given the statistical model which generates a set  of observed data, a set of unobserved latent data or missing values , and a vector of unknown parameters , along with a likelihood function 
+
+, the
+
+maximum likelihood estimate (MLE) of the unknown parameters is determined by maximizing the marginal likelihood of the observed data
+
+However, this quantity is often intractable since  is unobserved and the distribution of  is unknown before attaining .
+
+The EM algorithm [edit]
+
+The EM algorithm seeks to find the MLE of the marginal likelihood by iteratively applying these two steps:
+
+Expectation step (E step): Define 
+
+ as the expected value of the log likelihood function of , with respect to the current conditional distribution of  given  and the current estimates of the parameters 
+
+:
+
+Maximization step (M step): Find the parameters that maximize this quantity:
+
+More succinctly, we can write it as one equation:
+
+Interpretation of the variables [edit]
+
+The typical models to which EM is applied use  as a latent variable indicating membership in one of a set of groups:
+
+1. The observed data points  may be discrete (taking values in a finite or countably infinite set) or continuous (taking values in an uncountably infinite set). Associated with each data point may be a vector of
+
+observations.
+
+2. The missing values (aka latent variables)  are discrete, drawn from a fixed number of values, and with one latent variable per observed unit.
+
+3. The parameters are continuous, and are of two kinds: Parameters that are associated with all data points, and those associated with a specific value of a latent variable (i.e., associated with all data points whose
+
+corresponding latent variable has that value).
+
+However, it is possible to apply EM to other sorts of models.
+
+The motivation is as follows. If the value of the parameters  is known, usually the value of the latent variables  can be found by maximizing the log-likelihood over all possible values of , either simply by iterating over  or
+
+through an algorithm such as the Viterbi algorithm for hidden Markov models. Conversely, if we know the value of the latent variables , we can find an estimate of the parameters  fairly easily, typically by simply grouping
+
+the observed data points according to the value of the associated latent variable and averaging the values, or some function of the values, of the points in each group. This suggests an iterative algorithm, in the case
+
+where both  and  are unknown:
+
+1. First, initialize the parameters  to some random values.
+
+2. Compute the probability of each possible value of  , given .
+
+3. Then, use the just-computed values of  to compute a better estimate for the parameters .
+
+4. Iterate steps 2 and 3 until convergence.
+
+The algorithm as just described monotonically approaches a local minimum of the cost function.
+
+Properties [edit]
+
+Although an EM iteration does increase the observed data (i.e., marginal) likelihood function, no guarantee exists that the sequence converges to a maximum likelihood estimator. For multimodal distributions, this means
+
+that an EM algorithm may converge to a local maximum of the observed data likelihood function, depending on starting values. A variety of heuristic or metaheuristic approaches exist to escape a local maximum, such as
+
+random-restart hill climbing (starting with several different random initial estimates 
+
+), or applying simulated annealing methods.
+
+EM is especially useful when the likelihood is an exponential family, see Sundberg (2019, Ch. 8) for a comprehensive treatment:[15] the E step becomes the sum of expectations of sufficient statistics, and the M step
+
+involves maximizing a linear function. In such a case, it is usually possible to derive closed-form expression updates for each step, using the Sundberg formula[16] (proved and published by Rolf Sundberg, based on
+
+
+
+
+
+
+
+
+unpublished results of Per Martin-Löf and Anders Martin-Löf).[7][8][10][11][12][13]
+
+The EM method was modified to compute maximum a posteriori (MAP) estimates for Bayesian inference in the original paper by Dempster, Laird, and Rubin.
+
+Other methods exist to find maximum likelihood estimates, such as gradient descent, conjugate gradient, or variants of the Gauss–Newton algorithm. Unlike EM, such methods typically require the evaluation of first and/or
+
+second derivatives of the likelihood function.
+
+Proof of correctness [edit]
+
+Expectation-Maximization works to improve 
+
+ rather than directly improving 
+
+. Here it is shown that improvements to the former imply improvements to the latter.[17]
+
+For any  with non-zero probability 
+
+, we can write
+
+We take the expectation over possible values of the unknown data  under the current parameter estimate  by multiplying both sides by 
+
+ and summing (or integrating) over . The left-hand side is the expectation
+
+of a constant, so we get:
+
+where 
+
+ is defined by the negated sum it is replacing. This last equation holds for every value of  including 
+
+,
+
+and subtracting this last equation from the previous equation gives
+
+However, Gibbs' inequality tells us that 
+
+, so we can conclude that
+
+In words, choosing  to improve 
+
+ causes 
+
+ to improve at least as much.
+
+As a maximization–maximization procedure [edit]
+
+The EM algorithm can be viewed as two alternating maximization steps, that is, as an example of coordinate descent.[18][19] Consider the function:
+
+where q is an arbitrary probability distribution over the unobserved data z and H(q) is the entropy of the distribution q. This function can be written as
+
+where 
+
+ is the conditional distribution of the unobserved data given the observed data  and 
+
+ is the Kullback–Leibler divergence.
+
+Then the steps in the EM algorithm may be viewed as:
+
+Expectation step: Choose  to maximize :
+
+Maximization step: Choose  to maximize :
+
+Applications [edit]
+
+EM is frequently used for parameter estimation of mixed models,[20][21] notably in quantitative genetics.[22]
+
+In psychometrics, EM is an important tool for estimating item parameters and latent abilities of item response theory models.
+
+With the ability to deal with missing data and observe unidentified variables, EM is becoming a useful tool to price and manage risk of a portfolio.[citation needed]
+
+The EM algorithm (and its faster variant ordered subset expectation maximization) is also widely used in medical image reconstruction, especially in positron emission tomography, single-photon emission computed
+
+tomography, and x-ray computed tomography. See below for other faster variants of EM.
+
+In structural engineering, the Structural Identification using Expectation Maximization (STRIDE)[23] algorithm is an output-only method for identifying natural vibration properties of a structural system using sensor data (see
+
+Operational Modal Analysis).
+
+EM is also used for data clustering. In natural language processing, two prominent instances of the algorithm are the Baum–Welch algorithm for hidden Markov models, and the inside-outside algorithm for unsupervised
+
+induction of probabilistic context-free grammars.
+
+In the analysis of intertrade waiting times i.e. the time between subsequent trades in shares of stock at a stock exchange the EM algorithm has proved to be very useful.[24]
+
+Filtering and smoothing EM algorithms [edit]
+
+A Kalman filter is typically used for on-line state estimation and a minimum-variance smoother may be employed for off-line or batch state estimation. However, these minimum-variance solutions require estimates of the
+
+state-space model parameters. EM algorithms can be used for solving joint state and parameter estimation problems.
+
+Filtering and smoothing EM algorithms arise by repeating this two-step procedure:
+
+E-step
+
+Operate a Kalman filter or a minimum-variance smoother designed with current parameter estimates to obtain updated state estimates.
+
+M-step
+
+Use the filtered or smoothed state estimates within maximum-likelihood calculations to obtain updated parameter estimates.
+
+Suppose that a Kalman filter or minimum-variance smoother operates on measurements of a single-input-single-output system that possess additive white noise. An updated measurement noise variance estimate can be
+
+obtained from the maximum likelihood calculation
+
+where  are scalar output estimates calculated by a filter or a smoother from N scalar measurements . The above update can also be applied to updating a Poisson measurement noise intensity. Similarly, for a first-order
+
+auto-regressive process, an updated process noise variance estimate can be calculated by
+
+where  and 
+
+ are scalar state estimates calculated by a filter or a smoother. The updated model coefficient estimate is obtained via
+
+The convergence of parameter estimates such as those above are well studied.[25][26][27][28]
+
+Variants [edit]
+
+A number of methods have been proposed to accelerate the sometimes slow convergence of the EM algorithm, such as those using conjugate gradient and modified Newton's methods (Newton–Raphson).[29] Also, EM can
+
+be used with constrained estimation methods.
+
+Parameter-expanded expectation maximization (PX-EM) algorithm often provides speed up by "us[ing] a `covariance adjustment' to correct the analysis of the M step, capitalising on extra information captured in the
+
+imputed complete data".[30]
+
+Expectation conditional maximization (ECM) replaces each M step with a sequence of conditional maximization (CM) steps in which each parameter θi is maximized individually, conditionally on the other parameters
+
+remaining fixed.[31] Itself can be extended into the Expectation conditional maximization either (ECME) algorithm.[32]
+
+This idea is further extended in generalized expectation maximization (GEM) algorithm, in which is sought only an increase in the objective function F for both the E step and M step as described in the As a maximization–
+
+maximization procedure section.[18] GEM is further developed in a distributed environment and shows promising results.[33]
+
+It is also possible to consider the EM algorithm as a subclass of the MM (Majorize/Minimize or Minorize/Maximize, depending on context) algorithm,[34] and therefore use any machinery developed in the more general case.
+
+α-EM algorithm [edit]
+
+The Q-function used in the EM algorithm is based on the log likelihood. Therefore, it is regarded as the log-EM algorithm. The use of the log likelihood can be generalized to that of the α-log likelihood ratio. Then, the α-
+
+log likelihood ratio of the observed data can be exactly expressed as equality by using the Q-function of the α-log likelihood ratio and the α-divergence. Obtaining this Q-function is a generalized E step. Its maximization is
+
+a generalized M step. This pair is called the α-EM algorithm[35] which contains the log-EM algorithm as its subclass. Thus, the α-EM algorithm by Yasuo Matsuyama is an exact generalization of the log-EM algorithm. No
+
+
+
+
+Comparison of k-means and EM on artificial data visualized with
+
+ELKI. Using the variances, the EM algorithm can describe the normal
+
+distributions exactly, while k-means splits the data in Voronoi-cells. The
+
+cluster center is indicated by the lighter, bigger symbol.
+
+
+
+An animation demonstrating the EM
+
+algorithm fitting a two component
+
+Gaussian mixture model to the Old Faithful
+
+dataset. The algorithm steps through from
+
+a random initialization to convergence.
+
+computation of gradient or Hessian matrix is needed. The α-EM shows faster convergence than the log-EM algorithm by choosing an appropriate α. The α-EM algorithm leads to a faster version of the Hidden Markov
+
+model estimation algorithm α-HMM. [36]
+
+Relation to variational Bayes methods [edit]
+
+EM is a partially non-Bayesian, maximum likelihood method. Its final result gives a probability distribution over the latent variables (in the Bayesian style) together with a point estimate for θ (either a maximum likelihood
+
+estimate or a posterior mode). A fully Bayesian version of this may be wanted, giving a probability distribution over θ and the latent variables. The Bayesian approach to inference is simply to treat θ as another latent
+
+variable. In this paradigm, the distinction between the E and M steps disappears. If using the factorized Q approximation as described above (variational Bayes), solving can iterate over each latent variable (now including
+
+θ) and optimize them one at a time. Now, k steps per iteration are needed, where k is the number of latent variables. For graphical models this is easy to do as each variable's new Q depends only on its Markov blanket,
+
+so local message passing can be used for efficient inference.
+
+Geometric interpretation [edit]
+
+Further information: Information geometry
+
+In information geometry, the E step and the M step are interpreted as projections under dual affine connections, called the e-connection and the m-connection; the Kullback–Leibler divergence can also be understood in
+
+these terms.
+
+Examples [edit]
+
+Gaussian mixture [edit]
+
+Let 
+
+ be a sample of  independent observations from a mixture of two multivariate normal distributions of dimension , and let 
+
+ be
+
+the latent variables that determine the component from which the observation originates.[19]
+
+ and 
+
+where
+
+ and 
+
+The aim is to estimate the unknown parameters representing the mixing value between the Gaussians and the means and covariances of each:
+
+where the incomplete-data likelihood function is
+
+and the complete-data likelihood function is
+
+or
+
+where  is an indicator function and  is the probability density function of a multivariate normal.
+
+In the last equality, for each i, one indicator 
+
+ is equal to zero, and one indicator is equal to one. The inner sum thus reduces to one term.
+
+E step
+
+[edit]
+
+Given our current estimate of the parameters θ(t), the conditional distribution of the Zi is determined by Bayes theorem to be the proportional height of the normal density
+
+weighted by τ:
+
+These are called the "membership probabilities", which are normally considered the output of the E step (although this is not the Q function of below).
+
+This E step corresponds with setting up this function for Q:
+
+The expectation of 
+
+ inside the sum is taken with respect to the probability density function 
+
+, which might be different for each  of the training set. Everything in the E step is known before the step is
+
+taken except 
+
+, which is computed according to the equation at the beginning of the E step section.
+
+This full conditional expectation does not need to be calculated in one step, because τ and μ/Σ appear in separate linear terms and can thus be maximized independently.
+
+M step
+
+[edit]
+
+Q(θ | θ(t)) being quadratic in form means that determining the maximizing values of θ is relatively straightforward. Also, τ, (μ1,Σ1) and (μ2,Σ2) may all be maximized independently since they all appear in separate linear
+
+terms.
+
+To begin, consider τ, which has the constraint τ1 + τ2=1:
+
+This has the same form as the MLE for the binomial distribution, so
+
+For the next estimates of (μ1,Σ1):
+
+This has the same form as a weighted MLE for a normal distribution, so
+
+ and 
+
+and, by symmetry,
+
+ and 
+
+Termination
+
+[edit]
+
+Conclude the iterative process if 
+
+ for  below some preset threshold.
+
+Generalization
+
+[edit]
+
+The algorithm illustrated above can be generalized for mixtures of more than two multivariate normal distributions.
+
+Truncated and censored regression [edit]
+
+The EM algorithm has been implemented in the case where an underlying linear regression model exists explaining the variation of some quantity, but where the values actually observed are censored or truncated
+
+versions of those represented in the model.[37] Special cases of this model include censored or truncated observations from one normal distribution.[37]
+
+Alternatives [edit]
+
+EM typically converges to a local optimum, not necessarily the global optimum, with no bound on the convergence rate in general. It is possible that it can be arbitrarily poor in high dimensions and there can be an
+
+
+exponential number of local optima. Hence, a need exists for alternative methods for guaranteed learning, especially in the high-dimensional setting. Alternatives to EM exist with better guarantees for consistency, which
+
+are termed moment-based approaches[38] or the so-called spectral techniques[39][40][citation needed]. Moment-based approaches to learning the parameters of a probabilistic model are of increasing interest recently[when?]
+
+since they enjoy guarantees such as global convergence under certain conditions unlike EM which is often plagued by the issue of getting stuck in local optima. Algorithms with guarantees for learning can be derived for a
+
+number of important models such as mixture models, HMMs etc. For these spectral methods, no spurious local optima occur, and the true parameters can be consistently estimated under some regularity
+
+conditions[citation needed].
+
+See also [edit]
+
+mixture distribution
+
+compound distribution
+
+density estimation
+
+Principal component analysis
+
+total absorption spectroscopy
+
+The EM algorithm can be viewed as a special case of the majorize-minimization (MM) algorithm.[41]
+
+References [edit]
+
+1. ^ Meng, X.-L.; van Dyk, D. (1997). "The EM algorithm – an old folk-song sung to a fast new tune". J. Royal Statist. Soc. B. 59 (3): 511–567.
+
+2. ^ Dempster, A.P.; Laird, N.M.; Rubin, D.B. (1977). "Maximum Likelihood from Incomplete Data via the EM Algorithm". Journal of the Royal Statistical Society, Series B. 39 (1): 1–38. JSTOR 2984875 . MR 0501537 .
+
+3. ^ Ceppelini, R.M. (1955). "The estimation of gene frequencies in a random-mating population". Ann. Hum. Genet. 20 (2): 97–115. doi:10.1111/j.1469-1809.1955.tb01360.x . PMID 13268982 . S2CID 38625779 .
+
+4. ^ Hartley, Herman Otto (1958). "Maximum Likelihood estimation from incomplete data". Biometrics. 14 (2): 174–194. doi:10.2307/2527783 . JSTOR 2527783 .
+
+5. ^ Ng, Shu Kay; Krishnan, Thriyambakam; McLachlan, Geoffrey J. (2011-12-21), "The EM Algorithm" , Handbook of Computational Statistics, Berlin, Heidelberg: Springer Berlin Heidelberg, pp. 139–172, doi:10.1007/978-3-642-21551-
+
+3_6 , ISBN 978-3-642-21550-6, S2CID 59942212 , retrieved 2022-10-15
+
+6. ^ Sundberg, Rolf (1974). "Maximum likelihood theory for incomplete data from an exponential family". Scandinavian Journal of Statistics. 1 (2): 49–58. JSTOR 4615553 . MR 0381110 .
+
+7. ^ a b Rolf Sundberg. 1971. Maximum likelihood theory and applications for distributions generated when observing a function of an exponential family variable. Dissertation, Institute for Mathematical Statistics, Stockholm University.
+
+8. ^ a b Sundberg, Rolf (1976). "An iterative method for solution of the likelihood equations for incomplete data from exponential families". Communications in Statistics – Simulation and Computation. 5 (1): 55–64.
+
+doi:10.1080/03610917608812007 . MR 0443190 .
+
+9. ^ See the acknowledgement by Dempster, Laird and Rubin on pages 3, 5 and 11.
+
+10. ^ a b Per Martin-Löf. 1966. Statistics from the point of view of statistical mechanics. Lecture notes, Mathematical Institute, Aarhus University. ("Sundberg formula", credited to Anders Martin-Löf).
+
+11. ^ a b Per Martin-Löf. 1970. Statistiska Modeller (Statistical Models): Anteckningar från seminarier läsåret 1969–1970 (Lecture notes 1969-1970), with the assistance of Rolf Sundberg. Stockholm University.
+
+12. ^ a b Martin-Löf, P. The notion of redundancy and its use as a quantitative measure of the deviation between a statistical hypothesis and a set of observational data. With a discussion by F. Abildgård, A. P. Dempster, D. Basu, D. R.
+
+Cox, A. W. F. Edwards, D. A. Sprott, G. A. Barnard, O. Barndorff-Nielsen, J. D. Kalbfleisch and G. Rasch and a reply by the author. Proceedings of Conference on Foundational Questions in Statistical Inference (Aarhus, 1973), pp.
+
+1–42. Memoirs, No. 1, Dept. Theoret. Statist., Inst. Math., Univ. Aarhus, Aarhus, 1974.
+
+13. ^ a b Martin-Löf, Per (1974). "The notion of redundancy and its use as a quantitative measure of the discrepancy between a statistical hypothesis and a set of observational data". Scand. J. Statist. 1 (1): 3–18.
+
+14. ^ a b c Wu, C. F. Jeff (Mar 1983). "On the Convergence Properties of the EM Algorithm" . Annals of Statistics. 11 (1): 95–103. doi:10.1214/aos/1176346060 . JSTOR 2240463 . MR 0684867 .
+
+15. ^ Sundberg, Rolf (2019). Statistical Modelling by Exponential Families. Cambridge University Press. ISBN 9781108701112.
+
+16. ^ Laird, Nan (2006). "Sundberg formulas" . Wiley online library. Wiley.
+
+17. ^ Little, Roderick J.A.; Rubin, Donald B. (1987). Statistical Analysis with Missing Data . Wiley Series in Probability and Mathematical Statistics. New York: John Wiley &amp; Sons. pp. 134 –136. ISBN 978-0-471-80254-9.
+
+18. ^ a b Neal, Radford; Hinton, Geoffrey (1999). Michael I. Jordan (ed.). 
+
+
+
+A view of the EM algorithm that justifies incremental, sparse, and other variants
+
+ (PDF). Learning in Graphical Models. Cambridge, MA: MIT Press. pp. 355–368.
+
+ISBN 978-0-262-60032-3. Retrieved 2009-03-22.
+
+19. ^ a b Hastie, Trevor; Tibshirani, Robert; Friedman, Jerome (2001). "8.5 The EM algorithm". The Elements of Statistical Learning . New York: Springer. pp. 236 –243. ISBN 978-0-387-95284-0.
+
+20. ^ Lindstrom, Mary J; Bates, Douglas M (1988). "Newton—Raphson and EM Algorithms for Linear Mixed-Effects Models for Repeated-Measures Data". Journal of the American Statistical Association. 83 (404): 1014.
+
+doi:10.1080/01621459.1988.10478693 .
+
+21. ^ Van Dyk, David A (2000). "Fitting Mixed-Effects Models Using Efficient EM-Type Algorithms". Journal of Computational and Graphical Statistics. 9 (1): 78–98. doi:10.2307/1390614 . JSTOR 1390614 .
+
+22. ^ Diffey, S. M; Smith, A. B; Welsh, A. H; Cullis, B. R (2017). "A new REML (parameter expanded) EM algorithm for linear mixed models" . Australian &amp; New Zealand Journal of Statistics. 59 (4): 433. doi:10.1111/anzs.12208 .
+
+23. ^ Matarazzo, T. J., and Pakzad, S. N. (2016). “STRIDE for Structural Identification using Expectation Maximization: Iterative Output-Only Method for Modal Identification.” Journal of Engineering Mechanics.http://ascelibrary.org/doi/abs
+
+/10.1061/(ASCE)EM.1943-7889.0000951
+
+24. ^ Kreer, Markus; Kizilersu, Ayse; Thomas, Anthony W. (2022). "Censored expectation maximization algorithm for mixtures: Application to intertrade waiting times" . Physica A: Statistical Mechanics and its Applications. 587 (1):
+
+126456. doi:10.1016/j.physa.2021.126456 . ISSN 0378-4371 .
+
+25. ^ Einicke, G. A.; Malos, J. T.; Reid, D. C.; Hainsworth, D. W. (January 2009). "Riccati Equation and EM Algorithm Convergence for Inertial Navigation Alignment". IEEE Trans. Signal Process. 57 (1): 370–375.
+
+Bibcode:2009ITSP...57..370E . doi:10.1109/TSP.2008.2007090 . S2CID 1930004 .
+
+26. ^ Einicke, G. A.; Falco, G.; Malos, J. T. (May 2010). "EM Algorithm State Matrix Estimation for Navigation". IEEE Signal Processing Letters. 17 (5): 437–440. Bibcode:2010ISPL...17..437E . doi:10.1109/LSP.2010.2043151 .
+
+S2CID 14114266 .
+
+27. ^ Einicke, G. A.; Falco, G.; Dunn, M. T.; Reid, D. C. (May 2012). "Iterative Smoother-Based Variance Estimation". IEEE Signal Processing Letters. 19 (5): 275–278. Bibcode:2012ISPL...19..275E . doi:10.1109/LSP.2012.2190278 .
+
+S2CID 17476971 .
+
+28. ^ Einicke, G. A. (Sep 2015). "Iterative Filtering and Smoothing of Measurements Possessing Poisson Noise". IEEE Transactions on Aerospace and Electronic Systems. 51 (3): 2205–2011. Bibcode:2015ITAES..51.2205E .
+
+doi:10.1109/TAES.2015.140843 . S2CID 32667132 .
+
+29. ^ Jamshidian, Mortaza; Jennrich, Robert I. (1997). "Acceleration of the EM Algorithm by using Quasi-Newton Methods". Journal of the Royal Statistical Society, Series B. 59 (2): 569–587. doi:10.1111/1467-9868.00083 .
+
+MR 1452026 . S2CID 121966443 .
+
+30. ^ Liu, C (1998). "Parameter expansion to accelerate EM: The PX-EM algorithm". Biometrika. 85 (4): 755–770. CiteSeerX 10.1.1.134.9617 . doi:10.1093/biomet/85.4.755 .
+
+31. ^ Meng, Xiao-Li; Rubin, Donald B. (1993). "Maximum likelihood estimation via the ECM algorithm: A general framework". Biometrika. 80 (2): 267–278. doi:10.1093/biomet/80.2.267 . MR 1243503 . S2CID 40571416 .
+
+32. ^ Liu, Chuanhai; Rubin, Donald B (1994). "The ECME Algorithm: A Simple Extension of EM and ECM with Faster Monotone Convergence". Biometrika. 81 (4): 633. doi:10.1093/biomet/81.4.633 . JSTOR 2337067 .
+
+33. ^ Jiangtao Yin; Yanfeng Zhang; Lixin Gao (2012). 
+
+
+
+"Accelerating Expectation–Maximization Algorithms with Frequent Updates"
+
+ (PDF). Proceedings of the IEEE International Conference on Cluster Computing.
+
+34. ^ Hunter DR and Lange K (2004), 
+
+
+
+A Tutorial on MM Algorithms
+
+, The American Statistician, 58: 30–37
+
+35. ^ Matsuyama, Yasuo (2003). "The α-EM algorithm: Surrogate likelihood maximization using α-logarithmic information measures". IEEE Transactions on Information Theory. 49 (3): 692–706. doi:10.1109/TIT.2002.808105 .
+
+36. ^ Matsuyama, Yasuo (2011). "Hidden Markov model estimation based on alpha-EM algorithm: Discrete and continuous alpha-HMMs". International Joint Conference on Neural Networks: 808–816.
+
+37. ^ a b Wolynetz, M.S. (1979). "Maximum likelihood estimation in a linear model from confined and censored normal data". Journal of the Royal Statistical Society, Series C. 28 (2): 195–206. doi:10.2307/2346749 . JSTOR 2346749 .
+
+38. ^ Pearson, Karl (1894). "Contributions to the Mathematical Theory of Evolution" . Philosophical Transactions of the Royal Society of London A. 185: 71–110. Bibcode:1894RSPTA.185...71P . doi:10.1098/rsta.1894.0003 .
+
+ISSN 0264-3820 . JSTOR 90667 .
+
+Further reading [edit]
+
+Hogg, Robert; McKean, Joseph; Craig, Allen (2005). Introduction to Mathematical Statistics. Upper Saddle River, NJ: Pearson Prentice Hall. pp. 359–364.
+
+Dellaert, Frank (2002). "The Expectation Maximization Algorithm". CiteSeerX 10.1.1.9.9735
+
+. gives an easier explanation of EM algorithm as to lowerbound maximization.
+
+Bishop, Christopher M. (2006). Pattern Recognition and Machine Learning. Springer. ISBN 978-0-387-31073-2.
+
+Gupta, M. R.; Chen, Y. (2010). "Theory and Use of the EM Algorithm". Foundations and Trends in Signal Processing. 4 (3): 223–296. CiteSeerX 10.1.1.219.6830
+
+. doi:10.1561/2000000034
+
+. A well-written short
+
+book on EM, including detailed derivation of EM for GMMs, HMMs, and Dirichlet.
+
+Bilmes, Jeff (1998). "A Gentle Tutorial of the EM Algorithm and its Application to Parameter Estimation for Gaussian Mixture and Hidden Markov Models". CiteSeerX 10.1.1.28.613
+
+. includes a simplified derivation of
+
+the EM equations for Gaussian Mixtures and Gaussian Mixture Hidden Markov Models.
+
+McLachlan, Geoffrey J.; Krishnan, Thriyambakam (2008). The EM Algorithm and Extensions (2nd ed.). Hoboken: Wiley. ISBN 978-0-471-20170-0.
+
+External links [edit]
+
+Various 1D, 2D and 3D demonstrations of EM together with Mixture Modeling
+
+ are provided as part of the paired SOCR activities and applets. These applets and activities show empirically the properties of the EM
+
+algorithm for parameter estimation in diverse settings.
+
+Class hierarchy
+
+ in C++ (GPL) including Gaussian Mixtures
+
+The on-line textbook: Information Theory, Inference, and Learning Algorithms
+
+, by David J.C. MacKay includes simple examples of the EM algorithm such as clustering using the soft k-means algorithm, and
+
+emphasizes the variational view of the EM algorithm, as described in Chapter 33.7 of version 7.2 (fourth edition).
+
+
+
+Variational Algorithms for Approximate Bayesian Inference
+
+, by M. J. Beal includes comparisons of EM to Variational Bayesian EM and derivations of several models including Variational Bayesian HMMs (chapters
+
+).
+
+
+
+The Expectation Maximization Algorithm: A short tutorial
+
+, A self-contained derivation of the EM Algorithm by Sean Borman.
+
+
+
+The EM Algorithm
+
+, by Xiaojin Zhu.
+
+EM algorithm and variants: an informal tutorial
+
+ by Alexis Roche. A concise and very clear description of EM and many interesting variants.
+
+Categories: Estimation methods
+
+Machine learning algorithms
+
+Missing data
+
+Statistical algorithms
+
+Optimization algorithms and methods
+
+Cluster analysis algorithms
+
+
+Privacy policy About Wikipedia Disclaimers
+
+Contact Wikipedia Mobile view Developers
+
+Statistics
+
+Cookie statement
+
+
+
+
+
+This page was last edited on 27 April 2023, at 16:20 (UTC).
+
+Text is available under the Creative Commons Attribution-ShareAlike License 3.0; additional terms may apply. By using this site, you agree to the Terms of Use and Privacy Policy. Wikipedia® is a registered trademark of the Wikimedia Foundation, Inc., a
+
+non-profit organization.
+
+
+

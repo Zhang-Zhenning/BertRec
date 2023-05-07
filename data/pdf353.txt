@@ -1,0 +1,624 @@
+
+Markov decision process
+
+Toggle the table of contents
+
+
+
+ 18
+
+languages
+
+Article
+
+Talk
+
+Tools
+
+
+
+Example of a simple MDP with three states (green circles) and two
+
+actions (orange circles), with two rewards (orange arrows).
+
+From Wikipedia, the free encyclopedia
+
+In mathematics, a Markov decision process (MDP) is a discrete-time stochastic control process. It provides a mathematical framework for modeling decision making in situations where outcomes are partly random and
+
+partly under the control of a decision maker. MDPs are useful for studying optimization problems solved via dynamic programming. MDPs were known at least as early as the 1950s;[1] a core body of research on Markov
+
+decision processes resulted from Ronald Howard's 1960 book, Dynamic Programming and Markov Processes.[2] They are used in many disciplines, including robotics, automatic control, economics and manufacturing. The
+
+name of MDPs comes from the Russian mathematician Andrey Markov as they are an extension of Markov chains.
+
+At each time step, the process is in some state , and the decision maker may choose any action  that is available in state . The process responds at the next time step by randomly moving into a new state , and giving
+
+the decision maker a corresponding reward 
+
+.
+
+The probability that the process moves into its new state  is influenced by the chosen action. Specifically, it is given by the state transition function 
+
+. Thus, the next state  depends on the current state  and the
+
+decision maker's action . But given  and , it is conditionally independent of all previous states and actions; in other words, the state transitions of an MDP satisfy the Markov property.
+
+Markov decision processes are an extension of Markov chains; the difference is the addition of actions (allowing choice) and rewards (giving motivation). Conversely, if only one action exists for each state (e.g. "wait") and
+
+all rewards are the same (e.g. "zero"), a Markov decision process reduces to a Markov chain.
+
+Definition [edit]
+
+A Markov decision process is a 4-tuple 
+
+, where:
+
+ is a set of states called the state space,
+
+ is a set of actions called the action space (alternatively,  is the set of actions available from state ),
+
+ is the probability that action  in state  at time  will lead to state  at time 
+
+,
+
+ is the immediate reward (or expected immediate reward) received after transitioning from state  to state , due to action 
+
+The state and action spaces may be finite or infinite, for example the set of real numbers. Some processes with countably infinite state and action
+
+spaces can be reduced to ones with finite state and action spaces.[3]
+
+A policy function  is a (potentially probabilistic) mapping from state space ( ) to action space ( ).
+
+Optimization objective [edit]
+
+The goal in a Markov decision process is to find a good "policy" for the decision maker: a function  that specifies the action 
+
+ that the decision maker
+
+will choose when in state . Once a Markov decision process is combined with a policy in this way, this fixes the action for each state and the resulting
+
+combination behaves like a Markov chain (since the action chosen in state  is completely determined by 
+
+ and 
+
+ reduces to 
+
+, a Markov transition matrix).
+
+The objective is to choose a policy  that will maximize some cumulative function of the random rewards, typically the expected discounted sum over a
+
+potentially infinite horizon:
+
+ (where we choose 
+
+, i.e. actions given by the policy). And the expectation is taken over 
+
+where  is the discount factor satisfying 
+
+, which is usually close to 1 (for example, 
+
+ for some discount rate r). A lower discount factor motivates the decision maker to favor taking actions early, rather than
+
+postpone them indefinitely.
+
+A policy that maximizes the function above is called an optimal policy and is usually denoted . A particular MDP may have multiple distinct optimal policies. Because of the Markov property, it can be shown that the optimal
+
+policy is a function of the current state, as assumed above.
+
+Simulator models [edit]
+
+In many cases, it is difficult to represent the transition probability distributions, 
+
+, explicitly. In such cases, a simulator can be used to model the MDP implicitly by providing samples from the transition distributions. One
+
+common form of implicit MDP model is an episodic environment simulator that can be started from an initial state and yields a subsequent state and reward every time it receives an action input. In this manner, trajectories
+
+of states, actions, and rewards, often called episodes may be produced.
+
+Another form of simulator is a generative model, a single step simulator that can generate samples of the next state and reward given any state and action.[4] (Note that this is a different meaning from the term generative
+
+model in the context of statistical classification.) In algorithms that are expressed using pseudocode,  is often used to represent a generative model. For example the expression 
+
+ might denote the action of
+
+sampling from the generative model where  and  are the current state and action, and  and  are the new state and reward. Compared to an episodic simulator, a generative model has the advantage that it can yield
+
+data from any state, not only those encountered in a trajectory.
+
+These model classes form a hierarchy of information content: an explicit model trivially yields a generative model through sampling from the distributions, and repeated application of a generative model yields an episodic
+
+simulator. In the opposite direction, it is only possible to learn approximate models through regression. The type of model available for a particular MDP plays a significant role in determining which solution algorithms are
+
+appropriate. For example, the dynamic programming algorithms described in the next section require an explicit model, and Monte Carlo tree search requires a generative model (or an episodic simulator that can be
+
+copied at any state), whereas most reinforcement learning algorithms require only an episodic simulator.
+
+Algorithms [edit]
+
+Solutions for MDPs with finite state and action spaces may be found through a variety of methods such as dynamic programming. The algorithms in this section apply to MDPs with finite state and action spaces and
+
+explicitly given transition probabilities and reward functions, but the basic concepts may be extended to handle other problem classes, for example using function approximation.
+
+The standard family of algorithms to calculate optimal policies for finite state and action MDPs requires storage for two arrays indexed by state: value , which contains real values, and policy , which contains actions. At
+
+the end of the algorithm,  will contain the solution and 
+
+ will contain the discounted sum of the rewards to be earned (on average) by following that solution from state .
+
+The algorithm has two steps, (1) a value update and (2) a policy update, which are repeated in some order for all the states until no further changes take place. Both recursively update a new estimation of the optimal
+
+policy and state value using an older estimation of those values.
+
+Their order depends on the variant of the algorithm; one can also do them for all states at once or state by state, and more often to some states than others. As long as no state is permanently excluded from either of the
+
+steps, the algorithm will eventually arrive at the correct solution.[5]
+
+Notable variants [edit]
+
+Value iteration
+
+[edit]
+
+In value iteration (Bellman 1957), which is also called backward induction, the  function is not used; instead, the value of 
+
+ is calculated within 
+
+ whenever it is needed. Substituting the calculation of 
+
+ into the
+
+calculation of 
+
+ gives the combined step[further explanation needed]:
+
+where  is the iteration number. Value iteration starts at 
+
+ and  as a guess of the value function. It then iterates, repeatedly computing 
+
+ for all states , until  converges with the left-hand side equal to the right-hand
+
+side (which is the "Bellman equation" for this problem[clarification needed]). Lloyd Shapley's 1953 paper on stochastic games included as a special case the value iteration method for MDPs,[6] but this was recognized only
+
+later on.[7]
+
+Policy iteration
+
+[edit]
+
+In policy iteration (Howard 1960), step one is performed once, and then step two is performed once, then both are repeated until policy converges. Then step one is again performed once and so on. (Policy iteration was
+
+invented by Howard to optimize Sears catalogue mailing, which he had been optimizing using value iteration[8].)
+
+
+
+
+
+
+
+
+Instead of repeating step two to convergence, it may be formulated and solved as a set of linear equations. These equations are merely obtained by making 
+
+ in the step two equation.[clarification needed] Thus, repeating
+
+step two to convergence can be interpreted as solving the linear equations by relaxation.
+
+This variant has the advantage that there is a definite stopping condition: when the array  does not change in the course of applying step 1 to all states, the algorithm is completed.
+
+Policy iteration is usually slower than value iteration for a large number of possible states.
+
+Modified policy iteration
+
+[edit]
+
+In modified policy iteration (van Nunen 1976; Puterman &amp; Shin 1978), step one is performed once, and then step two is repeated several times.[9][10] Then step one is again performed once and so on.
+
+Prioritized sweeping
+
+[edit]
+
+In this variant, the steps are preferentially applied to states which are in some way important – whether based on the algorithm (there were large changes in  or  around those states recently) or based on use (those
+
+states are near the starting state, or otherwise of interest to the person or program using the algorithm).
+
+Extensions and generalizations [edit]
+
+A Markov decision process is a stochastic game with only one player.
+
+Partial observability [edit]
+
+Main article: Partially observable Markov decision process
+
+The solution above assumes that the state  is known when action is to be taken; otherwise 
+
+ cannot be calculated. When this assumption is not true, the problem is called a partially observable Markov decision process
+
+or POMDP.
+
+Reinforcement learning [edit]
+
+Main article: Reinforcement learning
+
+Reinforcement learning uses MDPs where the probabilities or rewards are unknown.[11]
+
+For this purpose it is useful to define a further function, which corresponds to taking the action  and then continuing optimally (or according to whatever policy one currently has):
+
+While this function is also unknown, experience during learning is based on 
+
+ pairs (together with the outcome ; that is, "I was in state  and I tried doing  and  happened"). Thus, one has an array  and uses
+
+experience to update it directly. This is known as Q-learning.
+
+Reinforcement learning can solve Markov-Decision processes without explicit specification of the transition probabilities; the values of the transition probabilities are needed in value and policy iteration. In reinforcement
+
+learning, instead of explicit specification of the transition probabilities, the transition probabilities are accessed through a simulator that is typically restarted many times from a uniformly random initial state. Reinforcement
+
+learning can also be combined with function approximation to address problems with a very large number of states.
+
+Learning automata [edit]
+
+Main article: Learning automata
+
+Another application of MDP process in machine learning theory is called learning automata. This is also one type of reinforcement learning if the environment is stochastic. The first detail learning automata paper is
+
+surveyed by Narendra and Thathachar (1974), which were originally described explicitly as finite state automata.[12] Similar to reinforcement learning, a learning automata algorithm also has the advantage of solving the
+
+problem when probability or rewards are unknown. The difference between learning automata and Q-learning is that the former technique omits the memory of Q-values, but updates the action probability directly to find
+
+the learning result. Learning automata is a learning scheme with a rigorous proof of convergence.[13]
+
+In learning automata theory, a stochastic automaton consists of:
+
+a set x of possible inputs,
+
+a set Φ = { Φ1, ..., Φs } of possible internal states,
+
+a set α = { α1, ..., αr } of possible outputs, or actions, with r ≤ s,
+
+an initial state probability vector p(0) = ≪ p1(0), ..., ps(0) ≫,
+
+a computable function A which after each time step t generates p(t + 1) from p(t), the current input, and the current state, and
+
+a function G: Φ → α which generates the output at each time step.
+
+The states of such an automaton correspond to the states of a "discrete-state discrete-parameter Markov process".[14] At each time step t = 0,1,2,3,..., the automaton reads an input from its environment, updates P(t) to
+
+P(t + 1) by A, randomly chooses a successor state according to the probabilities P(t + 1) and outputs the corresponding action. The automaton's environment, in turn, reads the action and sends the next input to the
+
+automaton.[13]
+
+Category theoretic interpretation [edit]
+
+Other than the rewards, a Markov decision process 
+
+ can be understood in terms of Category theory. Namely, let  denote the free monoid with generating set A. Let Dist denote the Kleisli category of the Giry
+
+monad
+
+. Then a functor 
+
+ encodes both the set S of states and the probability function P.
+
+In this way, Markov decision processes could be generalized from monoids (categories with one object) to arbitrary categories. One can call the result 
+
+ a context-dependent Markov decision process, because
+
+moving from one object to another in  changes the set of available actions and the set of possible states.[citation needed]
+
+Continuous-time Markov decision process [edit]
+
+In discrete-time Markov Decision Processes, decisions are made at discrete time intervals. However, for continuous-time Markov decision processes, decisions can be made at any time the decision maker chooses.
+
+In comparison to discrete-time Markov decision processes, continuous-time Markov decision processes can better model the decision making process for a system that has continuous dynamics, i.e., the system dynamics
+
+is defined by ordinary differential equations (ODEs).
+
+Definition [edit]
+
+In order to discuss the continuous-time Markov decision process, we introduce two sets of notations:
+
+If the state space and action space are finite,
+
+: State space;
+
+: Action space;
+
+: 
+
+, transition rate function;
+
+: 
+
+, a reward function.
+
+If the state space and action space are continuous,
+
+: state space;
+
+: space of possible control;
+
+: 
+
+, a transition rate function;
+
+: 
+
+, a reward rate function such that 
+
+, where 
+
+ is the reward function we discussed in previous case.
+
+Problem [edit]
+
+Like the discrete-time Markov decision processes, in continuous-time Markov decision processes we want to find the optimal policy or control which could give us the optimal expected integrated reward:
+
+where 
+
+Linear programming formulation [edit]
+
+If the state space and action space are finite, we could use linear programming to find the optimal policy, which was one of the earliest approaches applied. Here we only consider the ergodic model, which means our
+
+continuous-time MDP becomes an ergodic continuous-time Markov chain under a stationary policy. Under this assumption, although the decision maker can make a decision at any time at the current state, they could not
+
+benefit more by taking more than one action. It is better for them to take an action only at the time when system is transitioning from the current state to another state. Under some conditions,(for detail check Corollary
+
+3.14 of Continuous-Time Markov Decision Processes
+
+), if our optimal value function  is independent of state , we will have the following inequality:
+
+If there exists a function , then  will be the smallest  satisfying the above equation. In order to find , we could use the following linear programming model:
+
+Primal linear program(P-LP)
+
+
+Dual linear program(D-LP)
+
+ is a feasible solution to the D-LP if 
+
+ is nonnative and satisfied the constraints in the D-LP problem. A feasible solution 
+
+ to the D-LP is said to be an optimal solution if
+
+for all feasible solution 
+
+ to the D-LP. Once we have found the optimal solution 
+
+, we can use it to establish the optimal policies.
+
+Hamilton–Jacobi–Bellman equation [edit]
+
+In continuous-time MDP, if the state space and action space are continuous, the optimal criterion could be found by solving Hamilton–Jacobi–Bellman (HJB) partial differential equation. In order to discuss the HJB equation,
+
+we need to reformulate our problem
+
+ is the terminal reward function, 
+
+ is the system state vector, 
+
+ is the system control vector we try to find. 
+
+ shows how the state vector changes over time. The Hamilton–Jacobi–Bellman equation is as follows:
+
+We could solve the equation to find the optimal control 
+
+, which could give us the optimal value function 
+
+Application [edit]
+
+Continuous-time Markov decision processes have applications in queueing systems, epidemic processes, and population processes.
+
+Alternative notations [edit]
+
+The terminology and notation for MDPs are not entirely settled. There are two main streams — one focuses on maximization problems from contexts like economics, using the terms action, reward, value, and calling the
+
+discount factor β or γ, while the other focuses on minimization problems from engineering and navigation[citation needed], using the terms control, cost, cost-to-go, and calling the discount factor α. In addition, the notation for
+
+the transition probability varies.
+
+in this article
+
+alternative
+
+comment
+
+action a
+
+control u
+
+reward R
+
+cost g
+
+g is the negative of R
+
+value V
+
+cost-to-go J
+
+J is the negative of V
+
+policy π
+
+policy μ
+
+discounting factor γ
+
+discounting factor α
+
+transition probability 
+
+transition probability 
+
+In addition, transition probability is sometimes written 
+
+, 
+
+ or, rarely, 
+
+Constrained Markov decision processes [edit]
+
+Constrained Markov decision processes (CMDPS) are extensions to Markov decision process (MDPs). There are three fundamental differences between MDPs and CMDPs.[15]
+
+There are multiple costs incurred after applying an action instead of one.
+
+CMDPs are solved with linear programs only, and dynamic programming does not work.
+
+The final policy depends on the starting state.
+
+There are a number of applications for CMDPs. It has recently been used in motion planning scenarios in robotics.[16]
+
+See also [edit]
+
+Probabilistic automata
+
+Odds algorithm
+
+Quantum finite automata
+
+Partially observable Markov decision process
+
+Dynamic programming
+
+Bellman equation for applications to economics.
+
+Hamilton–Jacobi–Bellman equation
+
+Optimal control
+
+Recursive economics
+
+Mabinogion sheep problem
+
+Stochastic games
+
+Q-learning
+
+References [edit]
+
+1. ^ Bellman, R. (1957). "A Markovian Decision Process" . Journal of Mathematics and Mechanics. 6 (5): 679–684. JSTOR 24900506 .
+
+2. ^ Howard, Ronald A. (1960). 
+
+
+
+Dynamic Programming and Markov Processes
+
+ (PDF). The M.I.T. Press.
+
+3. ^ Wrobel, A. (1984). "On Markovian Decision Models with a Finite Skeleton". Mathematical Methods of Operations Research. 28 (February): 17–27. doi:10.1007/bf01919083 . S2CID 2545336 .
+
+4. ^ Kearns, Michael; Mansour, Yishay; Ng, Andrew (2002). "A Sparse Sampling Algorithm for Near-Optimal Planning in Large Markov Decision Processes" . Machine Learning. 49 (193–208): 193–208. doi:10.1023/A:1017932429737 .
+
+5. ^ Reinforcement Learning: Theory and Python Implementation. Beijing: China Machine Press. 2019. p. 44. ISBN 9787111631774.
+
+6. ^ Shapley, Lloyd (1953). "Stochastic Games" . Proceedings of the National Academy of Sciences of the United States of America. 39 (10): 1095–1100. Bibcode:1953PNAS...39.1095S . doi:10.1073/pnas.39.10.1095 .
+
+PMC 1063912 . PMID 16589380 .
+
+7. ^ Kallenberg, Lodewijk (2002). "Finite state and action MDPs". In Feinberg, Eugene A.; Shwartz, Adam (eds.). Handbook of Markov decision processes: methods and applications. Springer. ISBN 978-0-7923-7459-6.
+
+8. ^ Howard 2002, "Comments on the Origin and Application of Markov Decision Processes"
+
+9. ^ Puterman, M. L.; Shin, M. C. (1978). "Modified Policy Iteration Algorithms for Discounted Markov Decision Problems". Management Science. 24 (11): 1127–1137. doi:10.1287/mnsc.24.11.1127 .
+
+10. ^ van Nunen, J.A. E. E (1976). "A set of successive approximation methods for discounted Markovian decision problems". Zeitschrift für Operations Research. 20 (5): 203–208. doi:10.1007/bf01920264 . S2CID 5167748 .
+
+11. ^ Shoham, Y.; Powers, R.; Grenager, T. (2003). 
+
+
+
+"Multi-agent reinforcement learning: a critical survey"
+
+ (PDF). Technical Report, Stanford University: 1–13. Retrieved 2018-12-12.
+
+12. ^ Narendra, K. S.; Thathachar, M. A. L. (1974). "Learning Automata – A Survey". IEEE Transactions on Systems, Man, and Cybernetics. SMC-4 (4): 323–334. CiteSeerX 10.1.1.295.2280 . doi:10.1109/TSMC.1974.5408453 .
+
+ISSN 0018-9472 .
+
+13. ^ a b Narendra, Kumpati S.; Thathachar, Mandayam A. L. (1989). Learning automata: An introduction . Prentice Hall. ISBN 9780134855585.
+
+14. ^ Narendra &amp; Thathachar 1974, p.325 left.
+
+15. ^ Altman, Eitan (1999). Constrained Markov decision processes. Vol. 7. CRC Press.
+
+Further reading [edit]
+
+Bellman., R. E. (2003) [1957]. Dynamic Programming (Dover paperback ed.). Princeton, NJ: Princeton University Press. ISBN 978-0-486-42809-3.
+
+Bertsekas, D. (1995). Dynamic Programming and Optimal Control. Vol. 2. MA: Athena.
+
+Derman, C. (1970). Finite state Markovian decision processes. Academic Press.
+
+Feinberg, E.A.; Shwartz, A., eds. (2002). Handbook of Markov Decision Processes
+
+. Boston, MA: Kluwer. ISBN 9781461508052.
+
+Guo, X.; Hernández-Lerma, O. (2009). Continuous-Time Markov Decision Processes
+
+. Stochastic Modelling and Applied Probability. Springer. ISBN 9783642025464.
+
+Meyn, S. P. (2007). Control Techniques for Complex Networks
+
+. Cambridge University Press. ISBN 978-0-521-88441-9. Archived from the original
+
+ on 19 June 2010. Appendix contains abridged "Meyn &amp;
+
+Tweedie"
+
+. Archived from the original
+
+ on 18 December 2012.
+
+Puterman., M. L. (1994). Markov Decision Processes. Wiley.
+
+
+Privacy policy About Wikipedia Disclaimers
+
+Contact Wikipedia Mobile view Developers
+
+Statistics
+
+Cookie statement
+
+
+
+
+
+This page was last edited on 16 April 2023, at 08:08 (UTC).
+
+Text is available under the Creative Commons Attribution-ShareAlike License 3.0; additional terms may apply. By using this site, you agree to the Terms of Use and Privacy Policy. Wikipedia® is a registered trademark of the Wikimedia Foundation, Inc., a
+
+non-profit organization.
+
+Ross, S. M. (1983). 
+
+
+
+Introduction to stochastic dynamic programming
+
+ (PDF). Academic press.
+
+Sutton, R. S.; Barto, A. G. (2017). Reinforcement Learning: An Introduction
+
+. Cambridge, MA: The MIT Press.
+
+Tijms., H.C. (2003). A First Course in Stochastic Models
+
+. Wiley. ISBN 9780470864289.
+
+External links [edit]
+
+Learning to Solve Markovian Decision Processes
+
+ by Satinder P. Singh
+
+Categories: Optimal decisions
+
+Dynamic programming
+
+Markov processes
+
+Stochastic control
+
+
+

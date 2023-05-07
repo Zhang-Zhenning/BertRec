@@ -1,0 +1,411 @@
+
+Implementing Katz’s BackOff Model
+
+
+
+Apoorv Saxena
+
+A series of (mis?)adventures from playing around with data. Other occasional flim flam.
+
+5 minute read
+
+Having decided to formalize my foray into Data Science, I dived into the Data Science Specialization hosted by Dr. Roger
+
+Peng and company of Johns Hopkins University on Coursera (A pretty good introduction into the basics, I’ll perhaps review
+
+the Specialization as a whole one of these days). Anyways, the Capstone Project of the specialization has us dealing with text
+
+corpuses from blogs, Twitter and the news and we’re asked to build a predictive model for text input.
+
+While reading about different n-gram and backoff models, I came across Kneser-Ney Smoothing and Katz’s Back-off Model
+
+and thought that it would be a decent place to start to try and implement these. In this post, I’ll be covering Katz’s Backoff
+
+Model.
+
+What is Katz’s Back-off Model?
+
+Katz’s Backoff Model is a generative model used in language modeling to estimate the conditional probability of a word,
+
+given its history given the previous few words. However, probability estimates can change suddenly on adding more data
+
+when the back-off algorithm selects a different order of n-gram model on which to base the estimate.
+
+Before getting into it, let’s talk a little bit about the concept of discounting as it’s pretty important for the Katz Back-off Model.
+
+Essentially, in discounting, we take away some of the probability mass from observed n-grams and instead give them to
+
+unobserved n-grams so that we can account for the n-grams that we haven’t seen yet.
+
+Anyways, let’s get started!
+
+Implementation
+
+Let’s use the ngram “I was just” as a tester for the implementation. ### Organizing Data We require tables of n-grams and
+
+their frequencies. I’ve already loaded in the three text corpuses, stripped all punctuation except those in common contractions
+
+and emojis, and removed profanity using the lexicon package.
+
+Now, let’s write a function to give us the n-gram frequency tables for the corpuses.
+
+library(dplyr)
+
+Data Junkie
+
+
+
+Follow
+
+
+Calculating Probabilities of Words Completing the n-gram
+
+Let’s write a function that takes an input n-gram string and after checking it’s length makes a dataframe consisting of words
+
+that would complete a tetra/tri/bi-gram with the given string. We’ll keep an absolute discounting of 0.5 overall (Look into
+
+cross validation to get the best possible values for discounts).
+
+library(dplyr)
+
+library(tokenizers)
+
+library(reshape)
+
+ngram &lt;- "I was just"
+
+ngram_freqs &lt;- function(m){
+
+  ngrams &lt;- melt(tokenize_ngrams(data$sample, n = m))
+
+  ngrams&lt;-ngrams[ngrams$value %in% na.omit(ngrams$value),]
+
+  ngrams&lt;- ngrams %&gt;% count(ngrams$value, sort = TRUE, )
+
+  colnames(ngrams) &lt;- c("ngram", "frequency")
+
+  ngrams$ngram &lt;- as.character(ngrams$ngram)
+
+  ngrams
+
+}
+
+o_gram &lt;- ngram_freqs(1)
+
+bigram &lt;- ngram_freqs(2)
+
+trigram &lt;- ngram_freqs(3)
+
+tetragram &lt;- ngram_freqs(4)
+
+head(bigram)
+
+##     ngram frequency
+
+## 1  of the      2011
+
+## 2  in the      1878
+
+## 3  to the       974
+
+## 4  on the       852
+
+## 5 for the       834
+
+## 6   to be       753
+
+gamma &lt;- 0.5
+
+
+Finding Unobserved ngrams
+
+Now, we find words that would make up tetra/tri/bi-grams but haven’t been observed.
+
+Discounted Probability Mass
+
+Now, we should go ahead and find the amount of discounted probability mass taken from the n-gram.
+
+gamma &lt;- 0.5
+
+kbo &lt;- function(ngram, input,s){
+
+    ngram &lt;- tolower(ngram)
+
+    subset &lt;- data.frame(ngram = as.character(), frequency = as.numeric())
+
+ if(s==2)  regex &lt;-sprintf("%s%s", ngram, " ") 
+
+ if(s==3) regex &lt;-sprintf("%s%s%s%s", 
+
+                             unlist(strsplit(ngram, " "))[1]," ",
+
+                             unlist(strsplit(ngram, " "))[2], " ") 
+
+ if(s==4) regex &lt;-sprintf("%s%s%s%s%s%s", 
+
+                             unlist(strsplit(ngram, " "))[1], " ",
+
+                             unlist(strsplit(ngram, " "))[2], " ",
+
+                             unlist(strsplit(ngram, " "))[3], " ") 
+
+    contained_ngrams &lt;- grep(regex, input$ngram)
+
+ if(length(contained_ngrams)&gt;0) subset &lt;- input[contained_ngrams,]
+
+    subset
+
+}
+
+length_pass &lt;- function(ngram){
+
+ if(length(unlist(strsplit(ngram, " ")))==1) output &lt;- kbo(ngram, bigram,2)
+
+ if(length(unlist(strsplit(ngram, " ")))==2) output &lt;- kbo(ngram, trigram,3)
+
+ if(length(unlist(strsplit(ngram, " ")))==3) output &lt;- kbo(ngram, tetragram,4)
+
+  output$probability &lt;- (output$frequency-gamma)/sum(output$frequency)
+
+  output
+
+}
+
+head(length_pass(ngram))
+
+##                           ngram frequency probability
+
+## 2604           i was just about         2      0.1875
+
+## 2605          i was just trying         2      0.1875
+
+## 162200        i was just called         1      0.0625
+
+## 162201 i was just flabbergasted         1      0.0625
+
+## 162202      i was just speaking         1      0.0625
+
+## 162203       i was just talking         1      0.0625
+
+library(stringr)
+
+unobserved &lt;- function(ngram){
+
+  s &lt;- length_pass(ngram)
+
+  k&lt;-strsplit(s$ngram, " ")
+
+  ex &lt;- o_gram$ngram
+
+ for (i in 1:length(k)) {
+
+    ex &lt;- ex[!(ex %in% unlist(k[i])[length(unlist(k[i]))])]
+
+  }
+
+  ex
+
+}
+
+head(unobserved(ngram), 10)
+
+##  [1] "the"  "to"   "and"  "a"    "of"   "i"    "in"   "that" "is"   "for"
+
+
+Now, we should go ahead and find the amount of discounted probability mass taken from the n-gram.
+
+Calculating Backed Off Probabilities
+
+Having found the amount of probability mass to be discounted for a level, we will find the backed off probabilities for
+
+observed and unobserved n-grams. Combinging the two dataframes, we’ll get our predictions!
+
+alpha &lt;- function(ngram, n){
+
+  temp &lt;- unlist(strsplit(ngram, " "))
+
+  f &lt;- c()
+
+ for (i in 2:n) {
+
+    f&lt;- paste(temp[length(temp)-i+1], f)    
+
+  }
+
+  e &lt;- paste(trimws(f), temp[length(temp)])
+
+  t&lt;- length_pass(trimws(f))
+
+ 
+
+  a &lt;- 1 - t[t$ngram==tolower(trimws(e)),]$frequency*(1-gamma)/sum(t$frequency)
+
+  a
+
+}
+
+alpha(ngram, 3)
+
+## [1] 0.9891008
+
+qbo_observed &lt;- function(ngram, n){
+
+
+Final Predictions
+
+Most Katz Backoff Implementations go for trigrams as the highest order considered but I wanted to implement it for the
+
+tetragram level as well. So let’s join the two tables and group them by ngram and summing up their respective probabilities.
+
+qbo_observed &lt;- function(ngram, n){
+
+  temps &lt;- unlist(strsplit(ngram, " "))
+
+  f &lt;- c()
+
+ for (i in 1:(n-1)) {
+
+    f &lt;- paste(temps[length(temps)-i], f)    
+
+  }
+
+  temp &lt;- strsplit(length_pass(trimws(f))$ngram, " ")
+
+  y &lt;- length_pass(trimws(f))
+
+ for (i in 1:length(temp)) {
+
+    y$ngram[i] &lt;- unlist(temp[i])[length(unlist(temp[i]))]
+
+  }
+
+  y &lt;- subset(y, select = -c(frequency))
+
+  y
+
+}
+
+qbo_unobserved &lt;- function(ngram, n){
+
+  temps &lt;- unlist(strsplit(ngram, " "))
+
+  f &lt;- c()
+
+ for (i in 1:(n-1)) {
+
+    f&lt;- paste(temps[length(temps)-i], f)    
+
+  }
+
+  temp &lt;- o_gram[o_gram$ngram %in% unobserved(f),]
+
+  temp$probability &lt;- alpha(ngram, n)*temp$frequency/sum(temp$frequency)
+
+  temp&lt;- subset(temp, select = -c(frequency))
+
+  temp
+
+}
+
+net_table &lt;- function(ngram, n){
+
+comb &lt;- rbind(qbo_unobserved(ngram, n), qbo_observed(ngram, n))
+
+output &lt;- comb[order(comb$probability, decreasing = TRUE),]
+
+output
+
+}
+
+head(net_table(ngram, 2))
+
+##        ngram probability
+
+## 37100      a  0.09089323
+
+## 101100   the  0.04972087
+
+## 1        the  0.04824658
+
+## 2         to  0.02632334
+
+## 3        and  0.02499493
+
+## 4          a  0.02360031
+
+final_table &lt;- function(ngram){
+
+
+Previous
+
+Next
+
+YOU MAY ALSO ENJOY
+
+Et voilà! We have our predictions for an ngram (“I was just”) using the Katz Backoff Model using tetragram and trigram tables
+
+with backing off to the trigram and bigram levels respectively. Further scope for improvement is with respect to the speed
+
+and perhaps applying some sort of smoothing technique like Good-Turing Estimation.
+
+final_table &lt;- function(ngram){
+
+ output &lt;- rbind(net_table(ngram, 2),net_table(ngram, 3))
+
+ output &lt;- output %&gt;% 
+
+   group_by(`ngram`) %&gt;% 
+
+   summarise_at(vars(probability),funs(sum(.,na.rm=TRUE)))  %&gt;% 
+
+   arrange(desc(probability))
+
+ output
+
+}
+
+head(final_table(ngram))
+
+## # A tibble: 6 x 2
+
+##   ngram probability
+
+##   &lt;chr&gt;       &lt;dbl&gt;
+
+## 1 a          0.139 
+
+## 2 the        0.106 
+
+## 3 in         0.0706
+
+## 4 and        0.0595
+
+## 5 going      0.0521
+
+## 6 i          0.0429
+
+Updated: June 15, 2020
+
+SHARE ON
+
+ 
+
+ 
+
+People Map of India:Part 2
+
+3 minute read
+
+People Map of India: Part 1 (Scraper)
+
+5 minute read
+
+Modi vs RaGa:Twitter Edition
+
+6 minute read
+
+Unknown Pleasures Artwork Generator
+
+1 minute read
+
+

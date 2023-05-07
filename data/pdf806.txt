@@ -1,0 +1,1456 @@
+
+
+
+Home
+
+Prateek Joshi — Published On March 11, 2019 and Last Modified On June 23rd, 2022
+
+Advanced NLP Python Social Media Technique Text Unstructured Data Unsupervised Word Embeddings
+
+
+
+A Step-by-Step NLP Guide to Learn ELMo for Extracting Features from Text
+
+
+
+
+
+
+
+
+
+Introduction
+
+I work on different Natural Language Processing (NLP) problems (the perks of being a data scientist!). Each NLP
+
+problem is a unique challenge in its own way. That’s just a reflection of how complex, beautiful and wonderful the
+
+human language is.
+
+But one thing has always been a thorn in an NLP practitioner’s mind is the inability (of machines) to understand the
+
+true meaning of a sentence. Yes, I’m talking about context. Traditional NLP techniques and frameworks were great
+
+when asked to perform basic tasks. Things quickly went south when we tried to add context to the situation.
+
+The NLP landscape has significantly changed in the last 18 months or so. NLP frameworks like Google’s BERT and
+
+Zalando’s Flair are able to parse through sentences and grasp the context in which they were written.
+
+ 
+
+
+
+ 
+
+Embeddings from Language Models (ELMo)
+
+One of the biggest breakthroughs in this regard came thanks to ELMo, a state-of-the-art NLP framework developed
+
+by AllenNLP. By the time you finish this article, you too will have become a big ELMo fan – just as I did.
+
+
+In this article, we will explore ELMo (Embeddings from Language Models) and use it to build a mind-blowing NLP
+
+model using Python on a real-world dataset.
+
+Note: This article assumes you are familiar with the different types of word embeddings and LSTM architecture.
+
+You can refer to the below articles to learn more about the topics:
+
+An Intuitive Understanding of Word Embeddings
+
+Essentials of Deep Learning : Introduction to Long Short Term Memory
+
+ 
+
+Table of Contents
+
+What is ELMo?
+
+Understanding how ELMo works
+
+How is ELMo different from other word embeddings?
+
+Implementation: ELMo for Text Classification in Python
+
+Understanding the Problem Statement
+
+About the Dataset
+
+Import Libraries
+
+Read and Inspect Data
+
+Text Cleaning and Pre-processing
+
+Brief Intro to TensorFlow Hub
+
+ELMo Vectors Preparation
+
+Model Building and Evaluation
+
+What else we can do with ELMo?
+
+ 
+
+What is ELMo?
+
+No, the ELMo we are referring to isn’t the character from Sesame Street! A classic example of the importance of
+
+context.
+
+
+
+ELMo is a novel way to represent words in vectors or embeddings. These word embeddings are helpful in achieving
+
+state-of-the-art (SOTA) results in several NLP tasks:
+
+
+
+
+NLP scientists globally have started using ELMo for various NLP tasks, both in research as well as the industry. You
+
+must check out the original ELMo research paper here – https://arxiv.org/pdf/1802.05365.pdf. I don’t usually ask
+
+people to read research papers because they can often come across as heavy and complex but I’m making an
+
+exception for ELMo. This one is a really cool explanation of how ELMo was designed.
+
+ 
+
+Understanding how ELMo works
+
+Let’s get an intuition of how ELMo works underneath before we implement it in Python. Why is this important?
+
+Well, picture this. You’ve successfully copied the ELMo code from GitHub into Python and managed to build a model
+
+on your custom text data. You get average results so you need to improve the model. How will you do that if you
+
+don’t understand the architecture of ELMo? What parameters will you tweak if you haven’t studied about it?
+
+This line of thought applies to all machine learning algorithms. You need not get into their derivations but you
+
+should always know enough to play around with them and improve your model.
+
+Now, let’s come back to how ELMo works.
+
+As I mentioned earlier, ELMo word vectors are computed on top of a two-layer bidirectional language model (biLM).
+
+This biLM model has two layers stacked together. Each layer has 2 passes — forward pass and backward pass:
+
+
+
+
+The architecture above uses a character-level convolutional neural network (CNN) to represent words of a text
+
+string into raw word vectors
+
+These raw word vectors act as inputs to the first layer of biLM
+
+The forward pass contains information about a certain word and the context (other words) before that word
+
+The backward pass contains information about the word and the context after it
+
+This pair of information, from the forward and backward pass, forms the intermediate word vectors
+
+These intermediate word vectors are fed into the next layer of biLM
+
+The final representation (ELMo) is the weighted sum of the raw word vectors and the 2 intermediate word
+
+vectors
+
+As the input to the biLM is computed from characters rather than words, it captures the inner structure of the word.
+
+For example, the biLM will be able to figure out that terms like beauty and beautiful are related at some level
+
+without even looking at the context they often appear in. Sounds incredible!
+
+ 
+
+How is ELMo different from other word embeddings?
+
+How is ELMo different from other word embeddings?
+
+Unlike traditional word embeddings such as word2vec and GLoVe, the ELMo vector assigned to a token or word is
+
+actually a function of the entire sentence containing that word. Therefore, the same word can have different word
+
+vectors under different contexts.
+
+I can imagine you asking – how does knowing that help me deal with NLP problems? Let me explain this using an
+
+example.
+
+Suppose we have a couple of sentences:
+
+I read
+
+read the book yesterday.
+
+Can you read
+
+read the letter now?
+
+
+Take a moment to ponder the difference between these two. The verb “read” in the first sentence is in the past tense.
+
+And the same verb transforms into present tense in the second sentence. This is a case of Polysemy
+
+Polysemy wherein a word
+
+could have multiple meanings or senses.
+
+Language is such a wonderfully complex thing.
+
+Traditional word embeddings come up with the same vector for the word “read” in both the sentences. Hence, the
+
+system would fail to distinguish between the polysemous words. These word embeddings just cannot grasp the
+
+context in which the word was used.
+
+ELMo word vectors successfully address this issue. ELMo word representations take the entire input sentence into
+
+equation for calculating the word embeddings. Hence, the term “read” would have different ELMo vectors under
+
+different context.
+
+ 
+
+Implementation: ELMo for Text Classification in Python
+
+Implementation: ELMo for Text Classification in Python
+
+And now the moment you have been waiting for – implementing ELMo in Python! Let’s take this step-by-step.
+
+
+
+1. Understanding the Problem Statement
+
+1. Understanding the Problem Statement
+
+The first step towards dealing with any data science challenge is defining the problem statement. It forms the base
+
+for our future actions.
+
+For this article, we already have the problem statement in hand:
+
+Sentiment analysis remains one of the key problems that has seen extensive application of natural language
+
+Sentiment analysis remains one of the key problems that has seen extensive application of natural language
+
+processing (NLP). This time around, given the tweets from customers about various tech firms who manufacture
+
+processing (NLP). This time around, given the tweets from customers about various tech firms who manufacture
+
+and sell mobiles, computers, laptops, etc., the task is to identify if the tweets have a negative sentiment towards
+
+and sell mobiles, computers, laptops, etc., the task is to identify if the tweets have a negative sentiment towards
+
+such companies or products.
+
+such companies or products.
+
+It is clearly a binary text classification task wherein we have to predict the sentiments from the extracted tweets.
+
+ 
+
+2. About the Dataset
+
+2. About the Dataset
+
+Here’s a breakdown of the dataset we have:
+
+The train set contains 7,920 tweets
+
+The test set contains 1,953 tweets
+
+
+view raw
+
+You can download the dataset from this 
+
+You can download the dataset from this page
+
+page..  Note that you will have to register or sign-in to do so.
+
+Caution:
+
+Caution: Most profane and vulgar terms in the tweets have been replaced with “$&amp;@*#”. However, please note that
+
+the dataset might still contain text that could be considered profane, vulgar, or offensive.
+
+Alright, let’s fire up our favorite Python IDE and get coding!
+
+ 
+
+3. Import Libraries
+
+3. Import Libraries
+
+Import the libraries we’ll be using throughout our notebook:
+
+import_libraries_elmo.py hosted with  by GitHub
+
+4. Read and Inspect the Data
+
+4. Read and Inspect the Data
+
+# read data
+
+train = pd.read_csv("train_2kmZucJ.csv")
+
+test = pd.read_csv("test_oJQbWVk.csv")
+
+train.shape, test.shape
+
+Output:
+
+Output: ((7920, 3), (1953, 2))
+
+The train set has 7,920 tweets while the test set has only 1,953. Now let’s check the class distribution in the train
+
+set:
+
+train['label'].value_counts(normalize = True)
+
+Output:
+
+Output:
+
+0    0.744192
+
+1    0.255808
+
+Name: label, dtype: float64
+
+Here, 1 represents a negative tweet while 0 represents a non-negative tweet.
+
+Let’s take a quick look at the first 5 rows in our train set:
+
+Python Code:
+
+Python Code:
+
+1
+
+import pandas as pd
+
+2
+
+import numpy as np
+
+3
+
+import spacy
+
+4
+
+from tqdm import tqdm
+
+5
+
+import re
+
+6
+
+import time
+
+7
+
+import pickle
+
+8
+
+pd.set_option('display.max_colwidth', 200)
+
+
+
+
+
+view raw
+
+view raw
+
+We have three columns to work with. The column ‘tweet’ is the independent variable while the column ‘label’ is the
+
+target variable.
+
+ 
+
+5. Text Cleaning and Preprocessing
+
+5. Text Cleaning and Preprocessing
+
+We would have a clean and structured dataset to work with in an ideal world. But things are not that simple in NLP
+
+(yet).
+
+We need to spend a significant amount of time cleaning the data to make it ready for the model building stage.
+
+Feature extraction from the text becomes easy and even the features contain more information. You’ll see a
+
+meaningful improvement in your model’s performance the better your data quality becomes.
+
+So let’s clean the text we’ve been given and explore it.
+
+There seem to be quite a few URL links in the tweets. They are not telling us much (if anything) about the sentiment
+
+of the tweet so let’s remove them.
+
+remove_url_elmo.py hosted with  by GitHub
+
+We have used Regular Expressions (or RegEx) to remove the URLs.
+
+Note:
+
+Note: You can learn more about Regex in this article.
+
+We’ll go ahead and do some routine text cleaning now.
+
+text_preprocessing_elmo.py hosted with  by GitHub
+
+I’d also like to normalize the text, aka, perform text normalization. This helps in reducing a word to its base form. For
+
+example, the base form of the words ‘produces’, ‘production’, and ‘producing’ is ‘product’
+
+‘product’. It happens quite often that
+
+multiple forms of the same word are not really that important and we only need to know the base form of that word.
+
+We will lemmatize (normalize) the text by leveraging the popular spaCy library.
+
+1
+
+# remove URL's from train and test
+
+2
+
+train['clean_tweet'] = train['tweet'].apply(lambda x: re.sub(r'http\S+', '', x))
+
+3
+
+4
+
+test['clean_tweet'] = test['tweet'].apply(lambda x: re.sub(r'http\S+', '', x))
+
+1
+
+# remove punctuation marks
+
+2
+
+punctuation = '!"#$%&amp;()*+-/:;&lt;=&gt;?@[\\]^_`{|}~'
+
+3
+
+4
+
+train['clean_tweet'] = train['clean_tweet'].apply(lambda x: ''.join(ch for ch in x if ch not in set(punctuation)))
+
+5
+
+test['clean_tweet'] = test['clean_tweet'].apply(lambda x: ''.join(ch for ch in x if ch not in set(punctuation)))
+
+6
+
+7
+
+# convert text to lowercase
+
+8
+
+train['clean_tweet'] = train['clean_tweet'].str.lower()
+
+9
+
+test['clean_tweet'] = test['clean_tweet'].str.lower()
+
+10
+
+11
+
+# remove numbers
+
+12
+
+train['clean_tweet'] = train['clean_tweet'].str.replace("[0-9]", " ")
+
+13
+
+test['clean_tweet'] = test['clean_tweet'].str.replace("[0-9]", " ")
+
+14
+
+15
+
+# remove whitespaces
+
+16
+
+train['clean_tweet'] = train['clean_tweet'].apply(lambda x:' '.join(x.split()))
+
+17
+
+test['clean_tweet'] = test['clean_tweet'].apply(lambda x: ' '.join(x.split()))
+
+
+view raw
+
+text_normalization_elmo.py hosted with  by GitHub
+
+Lemmatize tweets in both the train and test sets:
+
+train['clean_tweet'] = lemmatization(train['clean_tweet'])
+
+test['clean_tweet'] = lemmatization(test['clean_tweet'])
+
+Let’s have a quick look at the original tweets vs our cleaned ones:
+
+train.sample(10)
+
+
+
+Check out the above columns closely. The tweets in the ‘clean_tweet’ column appear to be much more legible than
+
+the original tweets.
+
+However, I feel there is still plenty of scope for cleaning the text. I encourage you to explore the data as much as you
+
+can and find more insights or irregularities in the text.
+
+ 
+
+6. Brief Intro to TensorFlow Hub
+
+6. Brief Intro to TensorFlow Hub
+
+Wait, what does TensorFlow have to do with our tutorial?
+
+TensorFlow Hub is a library that enables transfer learning by allowing the use of many machine learning models for
+
+different tasks. ELMo is one such example. That’s why we will access ELMo via TensorFlow Hub in our
+
+implementation.
+
+1
+
+# import spaCy's language model
+
+2
+
+nlp = spacy.load('en', disable=['parser', 'ner'])
+
+3
+
+4
+
+# function to lemmatize text
+
+5
+
+def lemmatization(texts):
+
+6
+
+    output = []
+
+7
+
+ for i in texts:
+
+8
+
+        s = [token.lemma_ for token in nlp(i)]
+
+9
+
+        output.append(' '.join(s))
+
+10
+
+ return output
+
+
+view raw
+
+
+
+Before we do anything else though, we need to install TensorFlow Hub. You must install or upgrade your
+
+TensorFlow package to at least 1.7 to use TensorFlow Hub:
+
+$ pip install "tensorflow&gt;=1.7.0"
+
+$ pip install tensorflow-hub
+
+7. Preparing ELMo Vectors
+
+ELMo Vectors
+
+We will now import the pretrained ELMo model. A note of caution – the model is over 350 mb in size so it might take
+
+you a while to download this.
+
+import tensorflow_hub as hub
+
+import tensorflow as tf
+
+elmo = hub.Module("https://tfhub.dev/google/elmo/2", trainable=True)
+
+I will first show you how we can get ELMo vectors for a sentence. All you have to do is pass a list of string(s) in the
+
+object elmo
+
+elmo.
+
+elmo_example.py hosted with  by GitHub
+
+Output:
+
+Output: TensorShape([Dimension(1), Dimension(8), Dimension(1024)])
+
+The output is a 3 dimensional tensor of shape (1, 8, 1024):
+
+The first dimension of this tensor represents the number of training samples. This is 1 in our case
+
+The second dimension represents the maximum length of the longest string in the input list of strings. Since we
+
+have only 1 string in our input list, the size of the 2nd dimension is equal to the length of the string – 8
+
+The third dimension is equal to the length of the ELMo vector
+
+Hence, every word in the input sentence has an ELMo vector of size 1024.
+
+every word in the input sentence has an ELMo vector of size 1024.
+
+Let’s go ahead and extract ELMo vectors for the cleaned tweets in the train and test datasets. However, to arrive at
+
+the vector representation of an entire tweet, we will take the mean of the ELMo vectors of constituent terms or
+
+tokens of the tweet.
+
+Let’s define a function for doing this:
+
+1
+
+# just a random sentence
+
+2
+
+x = ["Roasted ants are a popular snack in Columbia"]
+
+3
+
+4
+
+# Extract ELMo features 
+
+5
+
+embeddings = elmo(x, signature="default", as_dict=True)["elmo"]
+
+6
+
+7
+
+embeddings.shape
+
+
+view raw
+
+view raw
+
+view raw
+
+elmo_vectors_func.py hosted with  by GitHub
+
+You might run out of computational resources (memory) if you use the above function to extract embeddings for the
+
+tweets in one go. As a workaround, split both train and test set into batches of 100 samples each. Then, pass these
+
+batches sequentially to the function elmo_vectors( )
+
+elmo_vectors( ).
+
+I will keep these batches in a list:
+
+list_train = [train[i:i+100] for i in range(0,train.shape[0],100)]
+
+list_test = [test[i:i+100] for i in range(0,test.shape[0],100)]
+
+Now, we will iterate through these batches and extract the ELMo vectors. Let me warn you, this will take a long time.
+
+# Extract ELMo embeddings
+
+elmo_train = [elmo_vectors(x['clean_tweet']) for x in list_train]
+
+elmo_test = [elmo_vectors(x['clean_tweet']) for x in list_test]
+
+Once we have all the vectors, we can concatenate them back to a single array:
+
+elmo_train_new = np.concatenate(elmo_train, axis = 0)
+
+elmo_test_new = np.concatenate(elmo_test, axis = 0)
+
+I would advice you to save these arrays as it took us a long time to get the ELMo vectors for them. We will save them
+
+as pickle files:
+
+save_pickle_elmo.py hosted with  by GitHub
+
+Use the following code to load them back:
+
+load_pickle_elmo.py hosted with  by GitHub
+
+8. Model Building and Evaluation
+
+8. Model Building and Evaluation
+
+Let’s build our NLP model with ELMo!
+
+1
+
+def elmo_vectors(x):
+
+2
+
+  embeddings = elmo(x.tolist(), signature="default", as_dict=True)["elmo"]
+
+3
+
+4
+
+ with tf.Session() as sess:
+
+5
+
+    sess.run(tf.global_variables_initializer())
+
+6
+
+    sess.run(tf.tables_initializer())
+
+7
+
+ # return average of ELMo features
+
+8
+
+ return sess.run(tf.reduce_mean(embeddings,1))
+
+1
+
+# save elmo_train_new
+
+2
+
+pickle_out = open("elmo_train_03032019.pickle","wb")
+
+3
+
+pickle.dump(elmo_train_new, pickle_out)
+
+4
+
+pickle_out.close()
+
+5
+
+6
+
+# save elmo_test_new
+
+7
+
+pickle_out = open("elmo_test_03032019.pickle","wb")
+
+8
+
+pickle.dump(elmo_test_new, pickle_out)
+
+9
+
+pickle_out.close()
+
+1
+
+# load elmo_train_new
+
+2
+
+pickle_in = open("elmo_train_03032019.pickle", "rb")
+
+3
+
+elmo_train_new = pickle.load(pickle_in)
+
+4
+
+5
+
+# load elmo_train_new
+
+6
+
+pickle_in = open("elmo_test_03032019.pickle", "rb")
+
+7
+
+elmo_test_new = pickle.load(pickle_in)
+
+
+view raw
+
+view raw
+
+view raw
+
+We will use the ELMo vectors of the train dataset to build a classification model. Then, we will use the model to
+
+make predictions on the test set. But before all of that, split elmo_train_new
+
+elmo_train_new into training and validation set to
+
+evaluate our model prior to the testing phase.
+
+split_data_elmo.py hosted with  by GitHub
+
+Since our objective is to set a baseline score, we will build a simple logistic regression model using ELMo vectors as
+
+features:
+
+train_model_elmo.py hosted with  by GitHub
+
+Prediction time! First, on the validation set:
+
+preds_valid = lreg.predict(xvalid)
+
+We will evaluate our model by the F1 score metric since this is the official evaluation metric of the contest.
+
+f1_score(yvalid, preds_valid)
+
+Output:
+
+Output: 0.789976
+
+The F1 score on the validation set is pretty impressive. Now let’s proceed and make predictions on the test set:
+
+# make predictions on test set
+
+preds_test = lreg.predict(elmo_test_new)
+
+Prepare the submission file which we will upload on the contest page:
+
+create_submission.py hosted with  by GitHub
+
+These predictions give us a score of 0.875672 
+
+0.875672 on the public leaderboard. That is frankly pretty impressive given that
+
+we only did fairly basic text preprocessing and used a very simple model. Imagine what the score could be with more
+
+advanced techniques. Try them out on your end and let me know the results!
+
+ 
+
+What else we can do with ELMo?
+
+What else we can do with ELMo?
+
+1
+
+from sklearn.model_selection import train_test_split
+
+2
+
+3
+
+xtrain, xvalid, ytrain, yvalid = train_test_split(elmo_train_new, 
+
+4
+
+                                                  train['label'],  
+
+5
+
+                                                  random_state=42, 
+
+6
+
+                                                  test_size=0.2)
+
+1
+
+from sklearn.linear_model import LogisticRegression
+
+2
+
+from sklearn.metrics import f1_score
+
+3
+
+4
+
+lreg = LogisticRegression()
+
+5
+
+lreg.fit(xtrain, ytrain)
+
+1
+
+# prepare submission dataframe
+
+2
+
+sub = pd.DataFrame({'id':test['id'], 'label':preds_test})
+
+3
+
+4
+
+# write predictions to a CSV file
+
+5
+
+sub.to_csv("sub_lreg.csv", index=False)
+
+
+We just saw first hand how effective ELMo can be for text classification. If coupled with a more sophisticated model,
+
+it would surely give an even better performance. The application of ELMo is not limited just to the task of text
+
+classification. You can use it whenever you have to vectorize text data.
+
+Below are a few more NLP tasks where we can utilize ELMo:
+
+Machine Translation
+
+Language Modeling
+
+Text Summarization
+
+Named Entity Recognition
+
+Question-Answering Systems
+
+ 
+
+End Notes
+
+End Notes
+
+ELMo is undoubtedly a significant progress in NLP and is here to stay. Given the sheer pace at which research in NLP
+
+is progressing, other new state-of-the-art word embeddings have also emerged in the last few months, like Google
+
+BERT and Falando’s Flair. Exciting times ahead for NLP practitioners!
+
+I strongly encourage you to use ELMo on other datasets and experience the performance boost yourself. If you have
+
+any questions or want to share your experience with me and the community, please do so in the comments section
+
+below. You should also check out the below NLP related resources if you’re starting out in this field:
+
+Natural Language Processing (NLP) course
+
+Natural Language Processing (NLP) course
+
+Certified Program: Natural Language Processing (NLP) for Beginners
+
+Certified Program: Natural Language Processing (NLP) for Beginners
+
+Related
+
+
+
+
+
+
+28 thoughts on "A Step-by-Step NLP Guide to Learn ELMo for Extracting
+
+Features from Text"
+
+
+
+Sanjoy Datta says:
+
+March 11, 2019 at 12:51 pm
+
+This line in the lemmatization(texts) function is not working: s = [token.lemma_ for token in nlp(i)] name 'nlp is not defined'
+
+Have run all the code upto this function. Pls advise.
+
+ELMo
+
+Natural language processing
+
+NLP
+
+python
+
+word embedding
+
+
+
+About the Author
+
+Prateek Joshi
+
+Data Scientist at Analytics Vidhya with multidisciplinary academic background. Experienced in machine learning, NLP, graphs
+
+&amp; networks. Passionate about learning and applying data science to solve real world problems.
+
+
+
+
+
+Our Top Authors
+
+Download Analytics Vidhya App for the Latest blog/Article
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+view more
+
+Next Post
+
+5 Amazing Deep Learning Frameworks Every Data Scientist Must Know! (with Illustrated Infographic)
+
+
+Reply
+
+
+
+Sangamesh K S says:
+
+March 11, 2019 at 2:21 pm
+
+Interesting!!
+
+Reply
+
+
+
+Prateek Joshi says:
+
+March 11, 2019 at 3:22 pm
+
+Hi Sanjoy, Thanks for pointing it out. nlp
+
+nlp is a language model imported using spaCy by excuting this code nlp =
+
+spacy.load('en', disable=['parser', 'ner']). I have updated the same in the blog as well.
+
+Reply
+
+
+
+Subash says:
+
+March 11, 2019 at 5:19 pm
+
+Wonderful article. Thanks. Can you point me to a resource like yours where ELMo/BERT/ULMFiT/or any others is used in
+
+NER and /or Text Summarization?
+
+Reply
+
+
+
+Shan says:
+
+March 18, 2019 at 9:37 am
+
+Hi.. Thanks for introducing to a concept. Its a nice and interesting article. I am getting the following errors, while executing:
+
+# Extract ELMo embeddings elmo_train = [elmo_vectors(x['clean_tweet']) for x in list_train] elmo_test =
+
+[elmo_vectors(x['clean_tweet']) for x in list_test **Errors** UnknownError (see above for traceback): Failed to get
+
+convolution algorithm. This is probably because cuDNN failed to initialize, so try looking to see if a warning log message
+
+was printed above. [[node module_2_apply_default_1/bilm/CNN_1/Conv2D_6 (defined at /usr/local/lib/python3.6/dist-
+
+packages/tensorflow_hub/native_module.py:517) ]] May be its version compatibilty issue. I was wondering, if you can
+
+guide regarding exact pointers and code to resolve the issue. Thanks
+
+Reply
+
+
+
+Saumit says:
+
+March 20, 2019 at 11:22 pm
+
+# import spaCy's language model nlp = spacy.load('en', disable=['parser', 'ner']) # function to lemmatize text def
+
+lemmatization(texts): output = [] for i in texts: s = [token.lemma_ for token in nlp(i)] output.append(' '.join(s)) return output
+
+Here error occured : OSError Traceback (most recent call last) in 1 # import spaCy's language model ----&gt; 2 nlp =
+
+spacy.load('en', disable=['parser', 'ner']) 3 4 # function to lemmatize text 5 def lemmatization(texts):
+
+~\Anaconda3\lib\site-packages\spacy\__init__.py in load(name, **overrides) 20 if depr_path not in (True, False, None): 21
+
+deprecation_warning(Warnings.W001.format(path=depr_path)) ---&gt; 22 return util.load_model(name, **overrides) 23 24
+
+~\Anaconda3\lib\site-packages\spacy\util.py in load_model(name, **overrides) 134 elif hasattr(name, "exists"): # Path or
+
+Path-like to model data 135 return load_model_from_path(name, **overrides) --&gt; 136 raise
+
+IOError(Errors.E050.format(name=name)) 137 138 OSError: [E050] Can't find model 'en'. It doesn't seem to be a shortcut
+
+link, a Python package or a valid path to a data directory.
+
+Reply
+
+
+
+vamsi says:
+
+
+March 25, 2019 at 11:01 am
+
+Thanks for the post. I have a doubt in the output from the pretrained elmo model. The output vectors depend on the text
+
+you want to get elmo vectors for. I mean , considering the above example, you split the data into 100 batches each.
+
+Consider only 1st batch whose output might be Y. If you split this batch into two batches , whose output will be Y1 and Y2.
+
+let Y3 be after concatenation of Y1 and Y2. Now Y3 won't be equal to Y. Why is it like this ? If I had taken 1000 batches
+
+each in the above example, I would have got an another result. Please explain
+
+Reply
+
+
+
+Prateek Joshi says:
+
+March 25, 2019 at 12:30 pm
+
+Hi Saumit, It seems you have not downloaded the spaCy's pre-trained English model. Please download it by using this
+
+code python -m spacy download en in your terminal. Another option is to use Google Colab which has spaCy's pre-trained
+
+models already installed.
+
+Reply
+
+
+
+Nazish says:
+
+March 26, 2019 at 7:57 pm
+
+Hey, sorry to be so plain, I need help regarding data set. When I browse that page shared in content, that page doesn't
+
+show any data set. Help me fix this Thanks
+
+Reply
+
+
+
+Prateek Joshi says:
+
+March 26, 2019 at 8:16 pm
+
+Hi Nazish, You would first have to register yourself for the contest and then you can download the dataset.
+
+Reply
+
+
+
+Nazish says:
+
+March 26, 2019 at 9:34 pm
+
+Hey again, sir can you help me with spacy lib problem. I tried every solution given in comment section but it is still lagging.
+
+Reply
+
+
+
+Prateek Joshi says:
+
+March 27, 2019 at 1:04 pm
+
+Hi Vamsi, Yes, you are right. The vectors would vary if you change the size of the batch because the biLM model would get
+
+fine-tuned by that batch. I selected 100 as batch-size to speed up the process.
+
+Reply
+
+
+
+vamsi says:
+
+March 28, 2019 at 2:41 pm
+
+If it gets fine-tuned, how to select the batch size for better accuracy? Also what do you mean by fine-tuned ? Is it with the
+
+weights ? We are not training the model. We are obtaining word emebeddings from a pretrained model.
+
+Reply
+
+
+
+
+Prateek Joshi says:
+
+March 29, 2019 at 10:58 am
+
+Try to keep the batch size as high as possible to get better accuracy if computational resources is not a constraint. By fine-
+
+tuning I mean some of the weights of the model are getting updated.
+
+Reply
+
+
+
+bharath says:
+
+April 02, 2019 at 10:13 am
+
+Great Presentation !!!!
+
+Reply
+
+
+
+Richa Sharma says:
+
+May 09, 2019 at 5:01 pm
+
+Hi Thanks for sharing such a great post. Is there any ELMO pretrained model to work for Hindi text.
+
+Reply
+
+
+
+Prateek Joshi says:
+
+May 09, 2019 at 6:10 pm
+
+Thanks Richa, You can find pre-trained ELMo for multiple languages (including Hindi) here.
+
+Reply
+
+
+
+Nguyễn Bá Phước says:
+
+June 04, 2019 at 3:25 pm
+
+Do you have any demo using ELMo with 2 sentence datasets like MRPC .!!!
+
+Reply
+
+
+
+Biroz says:
+
+June 17, 2019 at 1:57 pm
+
+Hello sir, Could you tell me how long will it take for execution. In my system it has been running for about 28hrs. My
+
+system has an i5 with 8gb ram and data size is 40k
+
+Reply
+
+
+
+Pranav Hari says:
+
+June 26, 2019 at 8:39 am
+
+Hey, can we find most similar words using Elmo Word Embeddings. Similar to how gensim provides a most_similar() in
+
+their word2vec package? And this was a great and lucid tutorial on ELMo
+
+Reply
+
+
+
+Badal says:
+
+June 26, 2019 at 11:28 am
+
+Can we train the model on our own corpus?
+
+Reply
+
+
+Leave a Reply
+
+Your email address will not be published. Required fields are marked *
+
+
+
+bharath says:
+
+June 28, 2019 at 9:28 am
+
+Great Post !!!
+
+Reply
+
+
+
+Harshali Patil says:
+
+July 26, 2019 at 9:01 pm
+
+Hi, this post really helped. Thanks. How can i use this elmo vectors with lstm model. Do you have any example?
+
+Reply
+
+
+
+Chetan Ambi says:
+
+August 04, 2019 at 9:31 am
+
+Hi Prateek - Thank you for this article. I am trying this in Kaggle kernels, but when running below code, kernels getting
+
+restarted. Any thoughts? # Extract ELMo embeddings elmo_train = [elmo_vectors(x['clean_tweet']) for x in list_train]
+
+elmo_test = [elmo_vectors(x['clean_tweet']) for x in list_test]
+
+Reply
+
+
+
+Jose says:
+
+August 10, 2019 at 4:08 am
+
+just a quick heads up, in the end notes there is a typo - Falando -&gt; Zalando. Thanks for the tutorial, keep em coming
+
+Reply
+
+
+
+Prateek Joshi says:
+
+August 10, 2019 at 6:48 pm
+
+Thanks Jose for the feedback. I have made the correction.
+
+Reply
+
+
+
+Atiq says:
+
+September 06, 2019 at 6:17 pm
+
+can we find most similar words using Elmo Word Embeddings pretrained model. Similar to how gensim provides a
+
+most_similar() in their word2vec package? Good tutorial on ELMo
+
+Reply
+
+
+
+Sujoy Sarkar says:
+
+September 25, 2019 at 10:46 pm
+
+Hi, Can we use the word embeddings directly for NLP task instead of taking mean to prepare sentence level embedding?
+
+Reply
+
+
+ Notify me of follow-up comments by email.
+
+ Notify me of new posts by email.
+
+
+
+Submit
+
+Top Resources
+
+
+
+Comment
+
+
+
+Name*
+
+
+
+Email*
+
+
+
+Website
+
+
+
+
+
+
+
+
+© Copyright 2013-2023 Analytics Vidhya.
+
+Privacy &amp; Cookies Policy
+
+
+
+
+
+Make Money While Sleeping: Side Hustles to Generate Passive Income..
+
+Aayush Tyagi - APR 27, 2023
+
+
+
+
+
+From Zero to Millionaire: Generate Passive Income using ChatGPT
+
+Aravindpai Pai - APR 17, 2023
+
+
+
+
+
+FreedomGPT: Personal, Bold and Uncensored Chatbot Running Locally on Your..
+
+K.sabreena - APR 08, 2023
+
+
+
+
+
+Understand Random Forest Algorithms With Examples (Updated 2023)
+
+Sruthi E R - JUN 17, 2021
+
+Privacy Policy Terms of Use Refund Policy
+

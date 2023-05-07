@@ -1,0 +1,511 @@
+
+
+
+Home
+
+Sudeep Laha — Published On May 17, 2021 and Last Modified On August 24th, 2022
+
+Data Science Intermediate NLP Python Unstructured Data Unsupervised
+
+
+
+Build your own NLP based search engine Using BM25
+
+
+
+
+
+
+
+
+
+This article was published as a part of the Data Science Blogathon.
+
+
+
+Introduction
+
+Ever wondered how these search engines like Google and Yahoo work. And ever thought about how can they scan all
+
+through the internet and return relevant results in just About 5,43,00,000 results (0.004seconds). Well, they work
+
+on the concept of Crawling 
+
+Crawling and Indexing.
+
+Indexing.
+
+Crawling: 
+
+Crawling: Automated bots looks for pages that are new or updated. And stores the key information like — URL,
+
+title, keywords, and so on from the pages to be used later.
+
+Indexing: 
+
+Indexing: Data captured from crawling is analyzed like — what the page is about. Key content, images, and video
+
+files on the page are used in the process. This information is indexed and stored to be returned later for a search
+
+query.
+
+Hence, whenever we asked them to search anything for us they are not scanning through the length and breadth of
+
+the internet but just scanning through those indexed URLs in step 2.
+
+
+Well, today we would work on how to develop a small prototype, very similar to the indexing functionality of any
+
+search engine. We would be using a tweets dataset on #COVID and try to index them based on our search term.
+
+A. Importing packages
+
+A. Importing packages
+
+import pandas as pd
+
+from rank_bm25 import *
+
+What is BM25?
+
+BM25 is a simple Python package and can be used to index the data, tweets in our case, based on the search query. It
+
+works on the concept of TF/IDF i.e.
+
+TF or Term Frequency — Simply put, indicates the number of occurrences of the search term in our tweet
+
+IDF or Inverse Document Frequency — It measures how important your search term is. Since TF considers all
+
+terms equally important, thus, we can’t only use term frequencies to calculate the weight of a term in your text.
+
+We would need to weigh down the frequent terms while scaling up the rare terms showing their relevancy to the
+
+tweet.
+
+Once you run the query, BM25 will show the relevancy of your search term with each of the tweets. You can sort it to
+
+index the most relevant ones.
+
+B. Preparing your tweets
+
+B. Preparing your tweets
+
+Since this is not a discussion on Twitter API, will start using an excel based feed. You can clean your text data on
+
+these key steps to make the search more robust.
+
+       1. Tokenization: 
+
+       1. Tokenization: 
+
+Splitting the sentence into words. So that each word can be considered uniquely.
+
+
+ 2. 
+
+2. Removing special characters
+
+Removing special characters:
+
+Removing the special characters from your tweets
+
+def spl_chars_removal(lst):
+
+    lst1=list()
+
+    for element in lst:
+
+        str=””
+
+        str = re.sub(“[⁰-9a-zA-Z]”,” “,element)
+
+        lst1.append(str)
+
+    return lst1
+
+ 3. 
+
+3. Removing stop words
+
+Removing stop words:
+
+Stop words are commonly used words (is, for, the, etc.) in the tweets. These words do not signify any importance as
+
+they do not help in distinguishing two tweets. I used Gensim package to remove my stopwords, you can also try it
+
+using nltk, but I found Gensim much faster than others.
+
+One can also easily add new words to the stop words list, in case your data is particularly surrounded with those
+
+words and is frequently occurring.
+
+#adding words to stopwords
+
+from nltk.tokenize import word_tokenize
+
+from gensim.parsing.preprocessing import STOPWORDS
+
+
+#adding custom words to the pre-defined stop words list
+
+all_stopwords_gensim = STOPWORDS.union(set([‘disease’]))
+
+def stopwprds_removal_gensim_custom(lst):
+
+    lst1=list()
+
+    for str in lst:
+
+        text_tokens = word_tokenize(str)
+
+        tokens_without_sw = [word for word in text_tokens if not word in all_stopwords_gensim]
+
+        str_t = “ “.join(tokens_without_sw)
+
+        lst1.append(str_t)
+
+ 
+
+    return lst1
+
+     4. Normalization
+
+     4. Normalization:
+
+ Text normalization is the process of transforming a text into a canonical (standard) form. For example, the word
+
+“gooood” and “gud” can be transformed to “good”, its canonical form. Another example is mapping of near-identical
+
+words such as “stopwords”, “stop-words” and “stop words” to just “stopwords”.
+
+This technique is important for noisy texts such as social media comments, text messages, and comments to blog
+
+posts where abbreviations, misspellings, and use of out-of-vocabulary words (oov) are prevalent. People tend to
+
+write comments in short-hand and hence this pre-processing becomes very important.
+
+Raw
+
+Raw
+
+Normalized
+
+Normalized
+
+yest, yday
+
+yesterday
+
+tomo, 2moro, 2mrw, tmrw
+
+tomorrow
+
+brb
+
+be right back
+
+    5. Stemming
+
+    5. Stemming:
+
+Process of transforming the words to their root form. It’s the process of reducing inflection in words (e.g. troubled, troubles) to their root form
+
+(e.g. trouble). The “root” in this case may not be a real root word, but just a canonical form of the original word.
+
+Stemming uses a heuristic process that chops off the ends of words in the hope of correctly transforming words into their root form. It needs to
+
+be reviewed as in the below example you can see “Machine” gets transformed to “Machin”, “e” is chopped off in the stemming process.
+
+import nltk
+
+from nltk.stem
+
+import PorterStemmer
+
+ps = PorterStemmer() sentence = “Machine Learning is cool”
+
+for word in sentence.split():
+
+    print(ps.stem(word))
+
+Output: [‘Machin’, ‘Learning’, ‘cool’]
+
+C. Tokenizing tweets and running BM25
+
+C. Tokenizing tweets and running BM25
+
+This is the central piece where we run the query for search. We search the tweets based on the word “vaccine” user-
+
+based. One can enter a phrase too and it will fluently as we tokenize our search term in the 2nd line below.
+
+tokenized_corpus = [doc.split(” “) for doc in lst1]
+
+bm25 = BM25Okapi(tokenized_corpus)
+
+query = “vaccine” ## Enter search query
+
+query = “vaccine” ## Enter search query
+
+tokenized_query = query.split(” “)
+
+You can check the association of each tweet with your search term using .get_scores
+
+.get_scores function.
+
+
+doc_scores = bm25.get_scores(tokenized_query)
+
+print(doc_scores)
+
+As we enter n=5 in .get_top_n
+
+.get_top_n we would get five most associated tweets as our result. You can put the value of n
+
+according to your needs.
+
+docs = bm25.get_top_n(tokenized_query, lst1, n=5)
+
+df_search = df[df[‘Text’].isin(docs)]
+
+df_search.head()
+
+D. Top Five associated Tweets
+
+D. Top Five associated Tweets
+
+Top 5 Tweets
+
+Top 5 Tweets
+
+Tweeted By
+
+Tweeted By
+
+@MikeCarlton01 Re #ABC funding, looked up Budget Papers. After massive prior cuts, it got extra
+
+$4.7M in funding (.00044% far less than inflation).
+
+#Morrison wastes $Ms on over-priced &amp;amp; ineffective services eg useless #Covid app.; delivery
+
+vaccine #agedcare; consultancies vaccine roll-out..
+
+MORRIGAN
+
+@TonyHWindsor @barriecassidy @4corners @abc730 For its invaluable work, #ABC got extra $4.7M
+
+in funding (.00044% far less than inflation).
+
+While #Morrison Govt spends like drunken sailor on buying over-priced &amp;amp; ineffective services
+
+from mates (eg useless #Covid app.; delivery vaccine #agedcare; vaccine roll-out) #auspol
+
+MORRIGAN
+
+It’s going to be a month after my #Covid recovery. Now I will go vaccine 
+
+Simi
+
+Elizabeth
+
+RT @pradeepkishan : What a despicable politician is #ArvindKejariwal ! The minute oxygen hoarding
+
+came to light his propaganda shifted to vaccine shortage. He is more dangerous than #COVID itself!
+
+@BJP4India @TajinderBagga
+
+p.hariharan
+
+RT @AlexBerenson : TL: DR – In the @pfizer teen #Covid vaccine trial, 4 or 5 (the exact figure is hidden)
+
+of 1,100 kids who got the vaccine had serious side effects, compared to 1 who got placebo.
+
+@US_FDA did not disclose specifics, so we have no idea what they were or if they follow any pattern.
+
+https://t.co/n5igf2xXFN
+
+Sagezza
+
+E. Additional use cases of BM25
+
+E. Additional use cases of BM25
+
+There can be many use cases where a search feature is required. One of the most relevant ones is around parsing the
+
+PDF and developing a search function over the PDF content.
+
+This is one of the widely used cases for BM25. As the globe slowly shifts to better data strategy and efficient storage
+
+techniques, the old PDF documents can be retrieved efficiently using algorithms like BM25.
+
+Hope you enjoyed reading this and find this helpful. Thank you, folks!
+
+Reference Links
+
+Reference Links
+
+BM25 Journal
+
+Pre-Processing for NLP
+
+Normalization Process on Twitter data
+
+
+Google Search Engine
+
+The media shown in this article are not owned by Analytics Vidhya and is used at the Author’s discretion. 
+
+The media shown in this article are not owned by Analytics Vidhya and is used at the Author’s discretion. 
+
+blogathon
+
+NLP
+
+Search Engines
+
+tweet
+
+Related
+
+
+
+
+
+
+
+About the Author
+
+Sudeep Laha
+
+
+
+
+
+Our Top Authors
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+view more
+
+
+Leave a Reply
+
+Your email address will not be published. Required fields are marked *
+
+ Notify me of follow-up comments by email.
+
+ Notify me of new posts by email.
+
+
+
+Submit
+
+2 thoughts on "Build your own NLP based search engine Using BM25"
+
+
+
+Ganesh says:
+
+May 17, 2021 at 8:49 pm
+
+Amazing. You've explained it in a very concise and clear manner. Will try this out.
+
+Reply
+
+
+
+Yuri Moreno says:
+
+August 25, 2022 at 4:16 am
+
+Great explanation. Tks
+
+Reply
+
+Download Analytics Vidhya App for the Latest blog/Article
+
+Next Post
+
+5 Tips and Tricks to speed up your Python Programs
+
+
+
+Comment
+
+
+
+Name*
+
+
+
+Email*
+
+
+
+Website
+
+
+Top Resources
+
+
+
+
+
+
+
+
+© Copyright 2013-2023 Analytics Vidhya.
+
+Privacy &amp; Cookies Policy
+
+
+
+
+
+Make Money While Sleeping: Side Hustles to Generate Passive Income..
+
+Aayush Tyagi - APR 27, 2023
+
+
+
+
+
+From Zero to Millionaire: Generate Passive Income using ChatGPT
+
+Aravindpai Pai - APR 17, 2023
+
+
+
+
+
+FreedomGPT: Personal, Bold and Uncensored Chatbot Running Locally on Your..
+
+K.sabreena - APR 08, 2023
+
+
+
+
+
+Understand Random Forest Algorithms With Examples (Updated 2023)
+
+Sruthi E R - JUN 17, 2021
+
+Privacy Policy Terms of Use Refund Policy
+

@@ -1,0 +1,4455 @@
+
+Unigram mixtures and the EM algorithm
+
+Guillaume Obozinski
+
+INRIA - Ecole Normale Sup´erieure - Paris
+
+
+
+
+
+RussIR summer school
+
+Yaroslavl, August 6-10th 2012
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+1/17
+
+
+The bag-of-word model, a vector-space representation of documents
+
+Given
+
+
+
+a vocabulary of size d,
+
+Represent a document consisting of N words
+
+(w1, . . . , wN)
+
+
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+2/17
+
+
+The bag-of-word model, a vector-space representation of documents
+
+Given
+
+
+
+a vocabulary of size d,
+
+Represent a document consisting of N words
+
+(w1, . . . , wN)
+
+as x the vector of counts, or the vector of frequencies of the number of
+
+appearances of each of the words (possibly corrected with tf-idf):
+
+x =
+
+
+
+
+
+x1
+
+...
+
+xd
+
+
+
+ ∈ Nd
+
++,
+
+or [0, 1]d
+
++,
+
+or Rd.
+
+
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+2/17
+
+
+The bag-of-word model, a vector-space representation of documents
+
+Given
+
+
+
+a vocabulary of size d,
+
+Represent a document consisting of N words
+
+(w1, . . . , wN)
+
+as x the vector of counts, or the vector of frequencies of the number of
+
+appearances of each of the words (possibly corrected with tf-idf):
+
+x =
+
+
+
+
+
+x1
+
+...
+
+xd
+
+
+
+ ∈ Nd
+
++,
+
+or [0, 1]d
+
++,
+
+or Rd.
+
+Document collection
+
+
+
+X =
+
+
+
+
+
+|
+
+|
+
+x(1)
+
+. . .
+
+x(M)
+
+|
+
+|
+
+
+
+ =
+
+
+
+
+
+x(1)
+
+1
+
+x(M)
+
+1
+
+...
+
+...
+
+...
+
+x(1)
+
+d
+
+x(M)
+
+d
+
+
+
+ ∈ Rd×M
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+2/17
+
+
+Multinomial mixture model (Unigram mixture)
+
+
+
+K topics
+
+
+
+z component indicator vector
+
+
+
+z = (z1, . . . , zK)⊤ ∈ {0, 1}K
+
+
+
+z ∼ M(1, (π1, . . . , πK))
+
+
+
+p(z) =
+
+K
+
+�
+
+k=1
+
+πzk
+
+k
+
+
+
+
+
+
+
+
+
+π
+
+z
+
+wn
+
+B
+
+N
+
+M
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+3/17
+
+
+Multinomial mixture model (Unigram mixture)
+
+
+
+K topics
+
+
+
+z component indicator vector
+
+
+
+z = (z1, . . . , zK)⊤ ∈ {0, 1}K
+
+
+
+z ∼ M(1, (π1, . . . , πK))
+
+
+
+p(z) =
+
+K
+
+�
+
+k=1
+
+πzk
+
+k
+
+
+
+
+
+
+
+
+
+π
+
+z
+
+wn
+
+B
+
+N
+
+M
+
+π
+
+z
+
+x
+
+B
+
+M
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+3/17
+
+
+Multinomial mixture model (Unigram mixture)
+
+
+
+K topics
+
+
+
+z component indicator vector
+
+
+
+z = (z1, . . . , zK)⊤ ∈ {0, 1}K
+
+
+
+z ∼ M(1, (π1, . . . , πK))
+
+
+
+p(z) =
+
+K
+
+�
+
+k=1
+
+πzk
+
+k
+
+
+
+wn | {zk =1} ∼ M(1, (b1k, . . . , bdk))
+
+
+
+p(wnj = 1 | zk = 1) = bjk
+
+
+
+
+
+π
+
+z
+
+wn
+
+B
+
+N
+
+M
+
+π
+
+z
+
+x
+
+B
+
+M
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+3/17
+
+
+Multinomial mixture model (Unigram mixture)
+
+
+
+K topics
+
+
+
+z component indicator vector
+
+
+
+z = (z1, . . . , zK)⊤ ∈ {0, 1}K
+
+
+
+z ∼ M(1, (π1, . . . , πK))
+
+
+
+p(z) =
+
+K
+
+�
+
+k=1
+
+πzk
+
+k
+
+
+
+wn | {zk =1} ∼ M(1, (b1k, . . . , bdk))
+
+
+
+p(wnj = 1 | zk = 1) = bjk
+
+
+
+p(w, z) =
+
+N
+
+�
+
+n=1
+
+d
+
+�
+
+j=1
+
+K
+
+�
+
+k=1
+
+�
+
+bjkπk
+
+�wnjzk
+
+
+
+π
+
+z
+
+wn
+
+B
+
+N
+
+M
+
+π
+
+z
+
+x
+
+B
+
+M
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+3/17
+
+
+Multinomial mixture model (Unigram mixture)
+
+
+
+K topics
+
+
+
+z component indicator vector
+
+
+
+z = (z1, . . . , zK)⊤ ∈ {0, 1}K
+
+
+
+z ∼ M(1, (π1, . . . , πK))
+
+
+
+p(z) =
+
+K
+
+�
+
+k=1
+
+πzk
+
+k
+
+
+
+wn | {zk =1} ∼ M(1, (b1k, . . . , bdk))
+
+
+
+p(wnj = 1 | zk = 1) = bjk
+
+
+
+p(w, z) =
+
+N
+
+�
+
+n=1
+
+d
+
+�
+
+j=1
+
+K
+
+�
+
+k=1
+
+�
+
+bjkπk
+
+�wnjzk
+
+
+
+p(x, z) ∝
+
+d
+
+�
+
+j=1
+
+K
+
+�
+
+k=1
+
+�
+
+bjkπk
+
+�xjzk
+
+π
+
+z
+
+wn
+
+B
+
+N
+
+M
+
+π
+
+z
+
+x
+
+B
+
+M
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+3/17
+
+
+Applying maximum likelihood to the multinomial mixture
+
+Let Z = {z ∈ {0, 1}K | �K
+
+k=1 zk = 1}
+
+
+
+
+
+
+
+
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+4/17
+
+
+Applying maximum likelihood to the multinomial mixture
+
+Let Z = {z ∈ {0, 1}K | �K
+
+k=1 zk = 1}
+
+p(x) =
+
+
+
+
+
+
+
+
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+4/17
+
+
+Applying maximum likelihood to the multinomial mixture
+
+Let Z = {z ∈ {0, 1}K | �K
+
+k=1 zk = 1}
+
+p(x) =
+
+�
+
+z∈Z
+
+p(x, z)
+
+
+
+
+
+
+
+
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+4/17
+
+
+Applying maximum likelihood to the multinomial mixture
+
+Let Z = {z ∈ {0, 1}K | �K
+
+k=1 zk = 1}
+
+p(x) =
+
+�
+
+z∈Z
+
+p(x, z) =
+
+�
+
+z∈Z
+
+K
+
+�
+
+k=1
+
+� d
+
+�
+
+j=1
+
+bxjzk
+
+jk
+
+�
+
+πzk
+
+k =
+
+
+
+
+
+
+
+
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+4/17
+
+
+Applying maximum likelihood to the multinomial mixture
+
+Let Z = {z ∈ {0, 1}K | �K
+
+k=1 zk = 1}
+
+p(x) =
+
+�
+
+z∈Z
+
+p(x, z) =
+
+�
+
+z∈Z
+
+K
+
+�
+
+k=1
+
+� d
+
+�
+
+j=1
+
+bxjzk
+
+jk
+
+�
+
+πzk
+
+k =
+
+K
+
+�
+
+k=1
+
+� d
+
+�
+
+j=1
+
+bxj
+
+jk
+
+�
+
+πk
+
+
+
+
+
+
+
+
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+4/17
+
+
+Applying maximum likelihood to the multinomial mixture
+
+Let Z = {z ∈ {0, 1}K | �K
+
+k=1 zk = 1}
+
+p(x) =
+
+�
+
+z∈Z
+
+p(x, z) =
+
+�
+
+z∈Z
+
+K
+
+�
+
+k=1
+
+� d
+
+�
+
+j=1
+
+bxjzk
+
+jk
+
+�
+
+πzk
+
+k =
+
+K
+
+�
+
+k=1
+
+� d
+
+�
+
+j=1
+
+bxj
+
+jk
+
+�
+
+πk
+
+Issue
+
+
+
+
+
+The marginal log-likelihood ℓ(B, π) = �
+
+i log(p(x(i))) is now
+
+complicated
+
+
+
+
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+4/17
+
+
+Applying maximum likelihood to the multinomial mixture
+
+Let Z = {z ∈ {0, 1}K | �K
+
+k=1 zk = 1}
+
+p(x) =
+
+�
+
+z∈Z
+
+p(x, z) =
+
+�
+
+z∈Z
+
+K
+
+�
+
+k=1
+
+� d
+
+�
+
+j=1
+
+bxjzk
+
+jk
+
+�
+
+πzk
+
+k =
+
+K
+
+�
+
+k=1
+
+� d
+
+�
+
+j=1
+
+bxj
+
+jk
+
+�
+
+πk
+
+Issue
+
+
+
+
+
+The marginal log-likelihood ℓ(B, π) = �
+
+i log(p(x(i))) is now
+
+complicated
+
+
+
+No hope to ﬁnd a simple solution to the maximum likelihood
+
+problem
+
+
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+4/17
+
+
+Applying maximum likelihood to the multinomial mixture
+
+Let Z = {z ∈ {0, 1}K | �K
+
+k=1 zk = 1}
+
+p(x) =
+
+�
+
+z∈Z
+
+p(x, z) =
+
+�
+
+z∈Z
+
+K
+
+�
+
+k=1
+
+� d
+
+�
+
+j=1
+
+bxjzk
+
+jk
+
+�
+
+πzk
+
+k =
+
+K
+
+�
+
+k=1
+
+� d
+
+�
+
+j=1
+
+bxj
+
+jk
+
+�
+
+πk
+
+Issue
+
+
+
+
+
+The marginal log-likelihood ℓ(B, π) = �
+
+i log(p(x(i))) is now
+
+complicated
+
+
+
+No hope to ﬁnd a simple solution to the maximum likelihood
+
+problem
+
+
+
+By contrast the complete log-likelihood has a rather simple form:
+
+˜ℓ(B, π) =
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+4/17
+
+
+Applying maximum likelihood to the multinomial mixture
+
+Let Z = {z ∈ {0, 1}K | �K
+
+k=1 zk = 1}
+
+p(x) =
+
+�
+
+z∈Z
+
+p(x, z) =
+
+�
+
+z∈Z
+
+K
+
+�
+
+k=1
+
+� d
+
+�
+
+j=1
+
+bxjzk
+
+jk
+
+�
+
+πzk
+
+k =
+
+K
+
+�
+
+k=1
+
+� d
+
+�
+
+j=1
+
+bxj
+
+jk
+
+�
+
+πk
+
+Issue
+
+
+
+
+
+The marginal log-likelihood ℓ(B, π) = �
+
+i log(p(x(i))) is now
+
+complicated
+
+
+
+No hope to ﬁnd a simple solution to the maximum likelihood
+
+problem
+
+
+
+By contrast the complete log-likelihood has a rather simple form:
+
+˜ℓ(B, π) =
+
+M
+
+�
+
+i=1
+
+log p(x(i), z(i))
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+4/17
+
+
+Applying maximum likelihood to the multinomial mixture
+
+Let Z = {z ∈ {0, 1}K | �K
+
+k=1 zk = 1}
+
+p(x) =
+
+�
+
+z∈Z
+
+p(x, z) =
+
+�
+
+z∈Z
+
+K
+
+�
+
+k=1
+
+� d
+
+�
+
+j=1
+
+bxjzk
+
+jk
+
+�
+
+πzk
+
+k =
+
+K
+
+�
+
+k=1
+
+� d
+
+�
+
+j=1
+
+bxj
+
+jk
+
+�
+
+πk
+
+Issue
+
+
+
+
+
+The marginal log-likelihood ℓ(B, π) = �
+
+i log(p(x(i))) is now
+
+complicated
+
+
+
+No hope to ﬁnd a simple solution to the maximum likelihood
+
+problem
+
+
+
+By contrast the complete log-likelihood has a rather simple form:
+
+˜ℓ(B, π) =
+
+M
+
+�
+
+i=1
+
+log p(x(i), z(i)) =
+
+�
+
+i, j, k
+
+x(i)
+
+j
+
+z(i)
+
+k log(bjk) +
+
+�
+
+i,k
+
+z(i)
+
+k log(πk)
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+4/17
+
+
+Applying maximum likelihood to the multinomial mixture
+
+˜ℓ(B, π) =
+
+M
+
+�
+
+i=1
+
+log p(x(i), z(i)) =
+
+�
+
+i, j, k
+
+x(i)
+
+j
+
+z(i)
+
+k log(bjk) +
+
+�
+
+i,k
+
+z(i)
+
+k log(πk)
+
+
+
+
+
+
+
+
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+5/17
+
+
+Applying maximum likelihood to the multinomial mixture
+
+˜ℓ(B, π) =
+
+M
+
+�
+
+i=1
+
+log p(x(i), z(i)) =
+
+�
+
+i, j, k
+
+x(i)
+
+j
+
+z(i)
+
+k log(bjk) +
+
+�
+
+i,k
+
+z(i)
+
+k log(πk)
+
+
+
+If we knew z(i) we could maximize ˜ℓ(B, π).
+
+
+
+
+
+
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+5/17
+
+
+Applying maximum likelihood to the multinomial mixture
+
+˜ℓ(B, π) =
+
+M
+
+�
+
+i=1
+
+log p(x(i), z(i)) =
+
+�
+
+i, j, k
+
+x(i)
+
+j
+
+z(i)
+
+k log(bjk) +
+
+�
+
+i,k
+
+z(i)
+
+k log(πk)
+
+
+
+If we knew z(i) we could maximize ˜ℓ(B, π).
+
+
+
+If we knew B and π, we could ﬁnd the best z(i) since we could
+
+compute the true a posteriori on z(i) given x(i):
+
+
+
+
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+5/17
+
+
+Applying maximum likelihood to the multinomial mixture
+
+˜ℓ(B, π) =
+
+M
+
+�
+
+i=1
+
+log p(x(i), z(i)) =
+
+�
+
+i, j, k
+
+x(i)
+
+j
+
+z(i)
+
+k log(bjk) +
+
+�
+
+i,k
+
+z(i)
+
+k log(πk)
+
+
+
+If we knew z(i) we could maximize ˜ℓ(B, π).
+
+
+
+If we knew B and π, we could ﬁnd the best z(i) since we could
+
+compute the true a posteriori on z(i) given x(i):
+
+p(zk = 1 | x; B, π) =
+
+πk
+
+�d
+
+j=1 bxj
+
+jk
+
+�K
+
+k′=1 πk′ �d
+
+j=1 bxj
+
+jk′
+
+
+
+
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+5/17
+
+
+Applying maximum likelihood to the multinomial mixture
+
+˜ℓ(B, π) =
+
+M
+
+�
+
+i=1
+
+log p(x(i), z(i)) =
+
+�
+
+i, j, k
+
+x(i)
+
+j
+
+z(i)
+
+k log(bjk) +
+
+�
+
+i,k
+
+z(i)
+
+k log(πk)
+
+
+
+If we knew z(i) we could maximize ˜ℓ(B, π).
+
+
+
+If we knew B and π, we could ﬁnd the best z(i) since we could
+
+compute the true a posteriori on z(i) given x(i):
+
+p(zk = 1 | x; B, π) =
+
+πk
+
+�d
+
+j=1 bxj
+
+jk
+
+�K
+
+k′=1 πk′ �d
+
+j=1 bxj
+
+jk′
+
+→ Seems a chicken and egg problem...
+
+
+
+
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+5/17
+
+
+Applying maximum likelihood to the multinomial mixture
+
+˜ℓ(B, π) =
+
+M
+
+�
+
+i=1
+
+log p(x(i), z(i)) =
+
+�
+
+i, j, k
+
+x(i)
+
+j
+
+z(i)
+
+k log(bjk) +
+
+�
+
+i,k
+
+z(i)
+
+k log(πk)
+
+
+
+If we knew z(i) we could maximize ˜ℓ(B, π).
+
+
+
+If we knew B and π, we could ﬁnd the best z(i) since we could
+
+compute the true a posteriori on z(i) given x(i):
+
+p(zk = 1 | x; B, π) =
+
+πk
+
+�d
+
+j=1 bxj
+
+jk
+
+�K
+
+k′=1 πk′ �d
+
+j=1 bxj
+
+jk′
+
+→ Seems a chicken and egg problem...
+
+
+
+In addition, we want to solve
+
+max
+
+B,π
+
+�
+
+i
+
+log
+
+� �
+
+z(i)
+
+p(x(i), z(i))
+
+�
+
+
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+5/17
+
+
+Applying maximum likelihood to the multinomial mixture
+
+˜ℓ(B, π) =
+
+M
+
+�
+
+i=1
+
+log p(x(i), z(i)) =
+
+�
+
+i, j, k
+
+x(i)
+
+j
+
+z(i)
+
+k log(bjk) +
+
+�
+
+i,k
+
+z(i)
+
+k log(πk)
+
+
+
+If we knew z(i) we could maximize ˜ℓ(B, π).
+
+
+
+If we knew B and π, we could ﬁnd the best z(i) since we could
+
+compute the true a posteriori on z(i) given x(i):
+
+p(zk = 1 | x; B, π) =
+
+πk
+
+�d
+
+j=1 bxj
+
+jk
+
+�K
+
+k′=1 πk′ �d
+
+j=1 bxj
+
+jk′
+
+→ Seems a chicken and egg problem...
+
+
+
+In addition, we want to solve
+
+max
+
+B,π
+
+�
+
+i
+
+log
+
+� �
+
+z(i)
+
+p(x(i), z(i))
+
+�
+
+and not
+
+max
+
+B,π,
+
+z(1),...,z(M)
+
+�
+
+i
+
+log p(x(i), z(i))
+
+
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+5/17
+
+
+Applying maximum likelihood to the multinomial mixture
+
+˜ℓ(B, π) =
+
+M
+
+�
+
+i=1
+
+log p(x(i), z(i)) =
+
+�
+
+i, j, k
+
+x(i)
+
+j
+
+z(i)
+
+k log(bjk) +
+
+�
+
+i,k
+
+z(i)
+
+k log(πk)
+
+
+
+If we knew z(i) we could maximize ˜ℓ(B, π).
+
+
+
+If we knew B and π, we could ﬁnd the best z(i) since we could
+
+compute the true a posteriori on z(i) given x(i):
+
+p(zk = 1 | x; B, π) =
+
+πk
+
+�d
+
+j=1 bxj
+
+jk
+
+�K
+
+k′=1 πk′ �d
+
+j=1 bxj
+
+jk′
+
+→ Seems a chicken and egg problem...
+
+
+
+In addition, we want to solve
+
+max
+
+B,π
+
+�
+
+i
+
+log
+
+� �
+
+z(i)
+
+p(x(i), z(i))
+
+�
+
+and not
+
+max
+
+B,π,
+
+z(1),...,z(M)
+
+�
+
+i
+
+log p(x(i), z(i))
+
+
+
+Can we still use the intuitions above to construct an algorithm
+
+maximizing the marginal likelihood?
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+5/17
+
+
+Principle of the Expectation-Maximization Algorithm
+
+log p(x; θ)
+
+=
+
+
+
+
+
+
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+6/17
+
+
+Principle of the Expectation-Maximization Algorithm
+
+log p(x; θ)
+
+=
+
+log
+
+�
+
+z
+
+p(x, z; θ)
+
+
+
+
+
+
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+6/17
+
+
+Principle of the Expectation-Maximization Algorithm
+
+log p(x; θ)
+
+=
+
+log
+
+�
+
+z
+
+p(x, z; θ) = log
+
+�
+
+z
+
+q(z)p(x, z; θ)
+
+q(z)
+
+
+
+
+
+
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+6/17
+
+
+Principle of the Expectation-Maximization Algorithm
+
+log p(x; θ)
+
+=
+
+log
+
+�
+
+z
+
+p(x, z; θ) = log
+
+�
+
+z
+
+q(z)p(x, z; θ)
+
+q(z)
+
+≥
+
+�
+
+z
+
+q(z) log p(x, z; θ)
+
+q(z)
+
+
+
+
+
+
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+6/17
+
+
+Principle of the Expectation-Maximization Algorithm
+
+log p(x; θ)
+
+=
+
+log
+
+�
+
+z
+
+p(x, z; θ) = log
+
+�
+
+z
+
+q(z)p(x, z; θ)
+
+q(z)
+
+≥
+
+�
+
+z
+
+q(z) log p(x, z; θ)
+
+q(z)
+
+= Eq[log p(x, z; θ)] + H(q)
+
+
+
+
+
+
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+6/17
+
+
+Principle of the Expectation-Maximization Algorithm
+
+log p(x; θ)
+
+=
+
+log
+
+�
+
+z
+
+p(x, z; θ) = log
+
+�
+
+z
+
+q(z)p(x, z; θ)
+
+q(z)
+
+≥
+
+�
+
+z
+
+q(z) log p(x, z; θ)
+
+q(z)
+
+= Eq[log p(x, z; θ)] + H(q) =: L(q, θ)
+
+
+
+
+
+
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+6/17
+
+
+Principle of the Expectation-Maximization Algorithm
+
+log p(x; θ)
+
+=
+
+log
+
+�
+
+z
+
+p(x, z; θ) = log
+
+�
+
+z
+
+q(z)p(x, z; θ)
+
+q(z)
+
+≥
+
+�
+
+z
+
+q(z) log p(x, z; θ)
+
+q(z)
+
+= Eq[log p(x, z; θ)] + H(q) =: L(q, θ)
+
+
+
+This shows that L(q, θ) ≤ log p(x; θ)
+
+
+
+
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+6/17
+
+
+Principle of the Expectation-Maximization Algorithm
+
+log p(x; θ)
+
+=
+
+log
+
+�
+
+z
+
+p(x, z; θ) = log
+
+�
+
+z
+
+q(z)p(x, z; θ)
+
+q(z)
+
+≥
+
+�
+
+z
+
+q(z) log p(x, z; θ)
+
+q(z)
+
+= Eq[log p(x, z; θ)] + H(q) =: L(q, θ)
+
+
+
+This shows that L(q, θ) ≤ log p(x; θ)
+
+
+
+Moreover: θ �→ L(q, θ) is a concave function.
+
+
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+6/17
+
+
+Principle of the Expectation-Maximization Algorithm
+
+log p(x; θ)
+
+=
+
+log
+
+�
+
+z
+
+p(x, z; θ) = log
+
+�
+
+z
+
+q(z)p(x, z; θ)
+
+q(z)
+
+≥
+
+�
+
+z
+
+q(z) log p(x, z; θ)
+
+q(z)
+
+= Eq[log p(x, z; θ)] + H(q) =: L(q, θ)
+
+
+
+This shows that L(q, θ) ≤ log p(x; θ)
+
+
+
+Moreover: θ �→ L(q, θ) is a concave function.
+
+
+
+Finally it is possible to show that
+
+L(q, θ) = log p(x; θ) − KL(q||p(·|x; θ))
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+6/17
+
+
+Principle of the Expectation-Maximization Algorithm
+
+log p(x; θ)
+
+=
+
+log
+
+�
+
+z
+
+p(x, z; θ) = log
+
+�
+
+z
+
+q(z)p(x, z; θ)
+
+q(z)
+
+≥
+
+�
+
+z
+
+q(z) log p(x, z; θ)
+
+q(z)
+
+= Eq[log p(x, z; θ)] + H(q) =: L(q, θ)
+
+
+
+This shows that L(q, θ) ≤ log p(x; θ)
+
+
+
+Moreover: θ �→ L(q, θ) is a concave function.
+
+
+
+Finally it is possible to show that
+
+L(q, θ) = log p(x; θ) − KL(q||p(·|x; θ))
+
+So that if we set q(z) = p(z | x; θ(t)) then
+
+L(q, θ(t)) = p(x; θ(t)).
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+6/17
+
+
+Principle of the Expectation-Maximization Algorithm
+
+log p(x; θ)
+
+=
+
+log
+
+�
+
+z
+
+p(x, z; θ) = log
+
+�
+
+z
+
+q(z)p(x, z; θ)
+
+q(z)
+
+≥
+
+�
+
+z
+
+q(z) log p(x, z; θ)
+
+q(z)
+
+= Eq[log p(x, z; θ)] + H(q) =: L(q, θ)
+
+
+
+This shows that L(q, θ) ≤ log p(x; θ)
+
+
+
+Moreover: θ �→ L(q, θ) is a concave function.
+
+
+
+Finally it is possible to show that
+
+L(q, θ) = log p(x; θ) − KL(q||p(·|x; θ))
+
+So that if we set q(z) = p(z | x; θ(t)) then
+
+L(q, θ(t)) = p(x; θ(t)).
+
+θold θnew
+
+L (q, θ)
+
+ln p(X|θ)
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+6/17
+
+
+A graphical idea of the EM algorithm
+
+θold θnew
+
+L (q, θ)
+
+ln p(X|θ)
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+7/17
+
+
+Expectation Maximization algorithm
+
+Expectation step
+
+
+
+
+
+
+
+Maximization step
+
+
+
+
+
+θold θnew
+
+L (q, θ)
+
+ln p(X|θ)
+
+θold
+
+=
+
+θ(t−1)
+
+θnew
+
+=
+
+θ(t)
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+8/17
+
+
+Expectation Maximization algorithm
+
+Expectation step
+
+
+
+
+
+1 q(z) = p(z | x; θ(t−1))
+
+
+
+Maximization step
+
+
+
+
+
+θold θnew
+
+L (q, θ)
+
+ln p(X|θ)
+
+θold
+
+=
+
+θ(t−1)
+
+θnew
+
+=
+
+θ(t)
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+8/17
+
+
+Expectation Maximization algorithm
+
+Expectation step
+
+
+
+
+
+1 q(z) = p(z | x; θ(t−1))
+
+
+
+2
+
+L(q, θ) = Eq
+
+�
+
+log p(x, z; θ(t−1))
+
+�
+
++ H(q)
+
+Maximization step
+
+
+
+
+
+θold θnew
+
+L (q, θ)
+
+ln p(X|θ)
+
+θold
+
+=
+
+θ(t−1)
+
+θnew
+
+=
+
+θ(t)
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+8/17
+
+
+Expectation Maximization algorithm
+
+Expectation step
+
+
+
+
+
+1 q(z) = p(z | x; θ(t−1))
+
+
+
+2
+
+L(q, θ) = Eq
+
+�
+
+log p(x, z; θ(t−1))
+
+�
+
++ H(q)
+
+Maximization step
+
+
+
+
+
+1 θ(t) = argmax
+
+θ
+
+Eq
+
+�
+
+log p(x, z; θ(t−1))
+
+�
+
+θold θnew
+
+L (q, θ)
+
+ln p(X|θ)
+
+θold
+
+=
+
+θ(t−1)
+
+θnew
+
+=
+
+θ(t)
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+8/17
+
+
+Expectation Maximization algorithm
+
+Initialize θ = θ0
+
+WHILE (Not converged)
+
+Expectation step
+
+
+
+
+
+1 q(z) = p(z | x; θ(t−1))
+
+
+
+2
+
+L(q, θ) = Eq
+
+�
+
+log p(x, z; θ(t−1))
+
+�
+
++ H(q)
+
+Maximization step
+
+
+
+
+
+1 θ(t) = argmax
+
+θ
+
+Eq
+
+�
+
+log p(x, z; θ(t−1))
+
+�
+
+ENDWHILE
+
+θold θnew
+
+L (q, θ)
+
+ln p(X|θ)
+
+θold
+
+=
+
+θ(t−1)
+
+θnew
+
+=
+
+θ(t)
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+8/17
+
+
+Expected complete log-likelihood
+
+With the notation: q(t)
+
+ik = Pq(t)
+
+i (z(i)
+
+k
+
+= 1) = Eq(t)
+
+i
+
+�
+
+z(i)
+
+k
+
+�
+
+, we have
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+9/17
+
+
+Expected complete log-likelihood
+
+With the notation: q(t)
+
+ik = Pq(t)
+
+i (z(i)
+
+k
+
+= 1) = Eq(t)
+
+i
+
+�
+
+z(i)
+
+k
+
+�
+
+, we have
+
+Eq(t)
+
+�˜ℓ(B, π)
+
+�
+
+=
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+9/17
+
+
+Expected complete log-likelihood
+
+With the notation: q(t)
+
+ik = Pq(t)
+
+i (z(i)
+
+k
+
+= 1) = Eq(t)
+
+i
+
+�
+
+z(i)
+
+k
+
+�
+
+, we have
+
+Eq(t)
+
+�˜ℓ(B, π)
+
+�
+
+=
+
+Eq(t)
+
+�
+
+log p(X, Z; B, π)
+
+�
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+9/17
+
+
+Expected complete log-likelihood
+
+With the notation: q(t)
+
+ik = Pq(t)
+
+i (z(i)
+
+k
+
+= 1) = Eq(t)
+
+i
+
+�
+
+z(i)
+
+k
+
+�
+
+, we have
+
+Eq(t)
+
+�˜ℓ(B, π)
+
+�
+
+=
+
+Eq(t)
+
+�
+
+log p(X, Z; B, π)
+
+�
+
+=
+
+Eq(t)
+
+� M
+
+�
+
+i=1
+
+log p(x(i), z(i); B, π)
+
+�
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+9/17
+
+
+Expected complete log-likelihood
+
+With the notation: q(t)
+
+ik = Pq(t)
+
+i (z(i)
+
+k
+
+= 1) = Eq(t)
+
+i
+
+�
+
+z(i)
+
+k
+
+�
+
+, we have
+
+Eq(t)
+
+�˜ℓ(B, π)
+
+�
+
+=
+
+Eq(t)
+
+�
+
+log p(X, Z; B, π)
+
+�
+
+=
+
+Eq(t)
+
+� M
+
+�
+
+i=1
+
+log p(x(i), z(i); B, π)
+
+�
+
+=
+
+Eq(t)
+
+� �
+
+i, j, k
+
+x(i)
+
+j
+
+z(i)
+
+k log(bjk) +
+
+�
+
+i,k
+
+z(i)
+
+k log(πk)
+
+�
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+9/17
+
+
+Expected complete log-likelihood
+
+With the notation: q(t)
+
+ik = Pq(t)
+
+i (z(i)
+
+k
+
+= 1) = Eq(t)
+
+i
+
+�
+
+z(i)
+
+k
+
+�
+
+, we have
+
+Eq(t)
+
+�˜ℓ(B, π)
+
+�
+
+=
+
+Eq(t)
+
+�
+
+log p(X, Z; B, π)
+
+�
+
+=
+
+Eq(t)
+
+� M
+
+�
+
+i=1
+
+log p(x(i), z(i); B, π)
+
+�
+
+=
+
+Eq(t)
+
+� �
+
+i, j, k
+
+x(i)
+
+j
+
+z(i)
+
+k log(bjk) +
+
+�
+
+i,k
+
+z(i)
+
+k log(πk)
+
+�
+
+=
+
+�
+
+i, j, k
+
+x(i)
+
+j
+
+Eq(t)
+
+i
+
+�
+
+z(i)
+
+k
+
+�
+
+log(bjk) +
+
+�
+
+i,k
+
+Eq(t)
+
+i
+
+�
+
+z(i)
+
+k
+
+�
+
+log(πk)
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+9/17
+
+
+Expected complete log-likelihood
+
+With the notation: q(t)
+
+ik = Pq(t)
+
+i (z(i)
+
+k
+
+= 1) = Eq(t)
+
+i
+
+�
+
+z(i)
+
+k
+
+�
+
+, we have
+
+Eq(t)
+
+�˜ℓ(B, π)
+
+�
+
+=
+
+Eq(t)
+
+�
+
+log p(X, Z; B, π)
+
+�
+
+=
+
+Eq(t)
+
+� M
+
+�
+
+i=1
+
+log p(x(i), z(i); B, π)
+
+�
+
+=
+
+Eq(t)
+
+� �
+
+i, j, k
+
+x(i)
+
+j
+
+z(i)
+
+k log(bjk) +
+
+�
+
+i,k
+
+z(i)
+
+k log(πk)
+
+�
+
+=
+
+�
+
+i, j, k
+
+x(i)
+
+j
+
+Eq(t)
+
+i
+
+�
+
+z(i)
+
+k
+
+�
+
+log(bjk) +
+
+�
+
+i,k
+
+Eq(t)
+
+i
+
+�
+
+z(i)
+
+k
+
+�
+
+log(πk)
+
+=
+
+�
+
+i, j, k
+
+x(i)
+
+j
+
+q(t)
+
+ik log(bjk) +
+
+�
+
+i,k
+
+q(t)
+
+ik log(πk)
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+9/17
+
+
+Expectation step for the Multinomial mixture
+
+We computed previously q(t)
+
+i
+
+(z(i)), which is a multinomial distribution
+
+deﬁned by
+
+q(t)
+
+i
+
+(z(i)) = p(z(i)|x(i); B(t−1), π(t−1))
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+10/17
+
+
+Expectation step for the Multinomial mixture
+
+We computed previously q(t)
+
+i
+
+(z(i)), which is a multinomial distribution
+
+deﬁned by
+
+q(t)
+
+i
+
+(z(i)) = p(z(i)|x(i); B(t−1), π(t−1))
+
+Abusing notation we will denote (q(t)
+
+i1 , . . . , q(t)
+
+iK ) the corresponding vector
+
+of probabilities deﬁned by
+
+q(t)
+
+ik = Pq(t)
+
+i (z(i)
+
+k
+
+= 1) = Eq(t)
+
+i
+
+�
+
+z(i)
+
+k
+
+�
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+10/17
+
+
+Expectation step for the Multinomial mixture
+
+We computed previously q(t)
+
+i
+
+(z(i)), which is a multinomial distribution
+
+deﬁned by
+
+q(t)
+
+i
+
+(z(i)) = p(z(i)|x(i); B(t−1), π(t−1))
+
+Abusing notation we will denote (q(t)
+
+i1 , . . . , q(t)
+
+iK ) the corresponding vector
+
+of probabilities deﬁned by
+
+q(t)
+
+ik = Pq(t)
+
+i (z(i)
+
+k
+
+= 1) = Eq(t)
+
+i
+
+�
+
+z(i)
+
+k
+
+�
+
+q(t)
+
+ik = p(z(i)
+
+k
+
+= 1 | x(i); B(t−1), π(t−1)) =
+
+π(t−1)
+
+k
+
+�d
+
+j=1
+
+�
+
+b(t−1)
+
+jk
+
+�x(i)
+
+j
+
+�K
+
+k′=1 π(t−1)
+
+k′
+
+�d
+
+j=1
+
+�
+
+b(t−1)
+
+jk′
+
+�x(i)
+
+j
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+10/17
+
+
+Maximization step for the Multinomial mixture
+
+(Bt, πt) = argmax
+
+B,π
+
+Eq(t)
+
+�˜ℓ(B, π)
+
+�
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+11/17
+
+
+Maximization step for the Multinomial mixture
+
+(Bt, πt) = argmax
+
+B,π
+
+Eq(t)
+
+�˜ℓ(B, π)
+
+�
+
+This yields the updates:
+
+b(t)
+
+jk =
+
+�
+
+i x(i)
+
+j
+
+q(t)
+
+ik
+
+�
+
+i q(t)
+
+ik
+
+and
+
+π(t)
+
+k
+
+=
+
+�
+
+i q(t)
+
+ik
+
+�
+
+i,k′ q(t)
+
+ik′
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+11/17
+
+
+Final EM algorithm for the Multinomial mixture model
+
+Initialize θ = θ0
+
+WHILE (Not converged)
+
+Expectation step
+
+
+
+q(t)
+
+ik ←
+
+π(t−1)
+
+k
+
+�d
+
+j=1
+
+�
+
+b(t−1)
+
+jk
+
+�x(i)
+
+j
+
+�K
+
+k′=1 π(t−1)
+
+k′
+
+�d
+
+j=1
+
+�
+
+b(t−1)
+
+jk′
+
+�x(i)
+
+j
+
+Maximization step
+
+
+
+b(t)
+
+jk ←
+
+�
+
+i x(i)
+
+j
+
+q(t)
+
+ik
+
+�
+
+i q(t)
+
+ik
+
+and
+
+π(t)
+
+k
+
+←
+
+�
+
+i q(t)
+
+ik
+
+�
+
+i N(i)
+
+ENDWHILE
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+12/17
+
+
+The EM algorithm
+
+for the
+
+Gaussian mixture model
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+13/17
+
+
+Gaussian mixture model
+
+
+
+K components
+
+
+
+z component indicator
+
+
+
+z = (z1, . . . , zK)⊤ ∈ {0, 1}K
+
+
+
+z ∼ M(1, (π1, . . . , πK))
+
+
+
+p(z) =
+
+K
+
+�
+
+k=1
+
+πzk
+
+k
+
+
+
+
+
+
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+14/17
+
+
+Gaussian mixture model
+
+
+
+K components
+
+
+
+z component indicator
+
+
+
+z = (z1, . . . , zK)⊤ ∈ {0, 1}K
+
+
+
+z ∼ M(1, (π1, . . . , πK))
+
+
+
+p(z) =
+
+K
+
+�
+
+k=1
+
+πzk
+
+k
+
+
+
+p(x|z; (µk, Σk)k) =
+
+K
+
+�
+
+k=1
+
+zk N(x; µk, Σk)
+
+
+
+
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+14/17
+
+
+Gaussian mixture model
+
+
+
+K components
+
+
+
+z component indicator
+
+
+
+z = (z1, . . . , zK)⊤ ∈ {0, 1}K
+
+
+
+z ∼ M(1, (π1, . . . , πK))
+
+
+
+p(z) =
+
+K
+
+�
+
+k=1
+
+πzk
+
+k
+
+
+
+p(x|z; (µk, Σk)k) =
+
+K
+
+�
+
+k=1
+
+zk N(x; µk, Σk)
+
+
+
+p(x) =
+
+K
+
+�
+
+k=1
+
+πk N(x; µk, Σk)
+
+
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+14/17
+
+
+Gaussian mixture model
+
+
+
+K components
+
+
+
+z component indicator
+
+
+
+z = (z1, . . . , zK)⊤ ∈ {0, 1}K
+
+
+
+z ∼ M(1, (π1, . . . , πK))
+
+
+
+p(z) =
+
+K
+
+�
+
+k=1
+
+πzk
+
+k
+
+
+
+p(x|z; (µk, Σk)k) =
+
+K
+
+�
+
+k=1
+
+zk N(x; µk, Σk)
+
+
+
+p(x) =
+
+K
+
+�
+
+k=1
+
+πk N(x; µk, Σk)
+
+
+
+Estimation:
+
+argmax
+
+µk,Σk
+
+log
+
+� K
+
+�
+
+k=1
+
+πk N(x; µk, Σk)
+
+�
+
+xn
+
+zn
+
+N
+
+µ
+
+Σ
+
+π
+
+(a)
+
+0
+
+0.5
+
+1
+
+0
+
+0.5
+
+1
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+14/17
+
+
+EM Algorithm for the Gaussian mixture model
+
+Soit θt = (πt, (µt
+
+k, Σt
+
+k)k).
+
+n
+
+�
+
+i=1
+
+p(zi, xi; θ) =
+
+n
+
+�
+
+i=1
+
+K
+
+�
+
+k=1
+
+π
+
+zi
+
+k
+
+k
+
+�
+
+N(xi; µk, Σk)
+
+�zi
+
+k
+
+xn
+
+zn
+
+N
+
+µ
+
+Σ
+
+π
+
+E step:
+
+
+
+p(z1, . . . , zn|x1, . . . , xn; θt) = �n
+
+i=1 p(zi|xi; θt)
+
+qi
+
+k = P(zi
+
+k =1|xi; θt) = p(xi|zi
+
+k =1; θt) P(zi
+
+k =1; θt)
+
+p(xi; θt)
+
+=
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+15/17
+
+
+EM Algorithm for the Gaussian mixture model
+
+Soit θt = (πt, (µt
+
+k, Σt
+
+k)k).
+
+n
+
+�
+
+i=1
+
+p(zi, xi; θ) =
+
+n
+
+�
+
+i=1
+
+K
+
+�
+
+k=1
+
+π
+
+zi
+
+k
+
+k
+
+�
+
+N(xi; µk, Σk)
+
+�zi
+
+k
+
+xn
+
+zn
+
+N
+
+µ
+
+Σ
+
+π
+
+E step:
+
+
+
+p(z1, . . . , zn|x1, . . . , xn; θt) = �n
+
+i=1 p(zi|xi; θt)
+
+qi
+
+k = P(zi
+
+k =1|xi; θt) = p(xi|zi
+
+k =1; θt) P(zi
+
+k =1; θt)
+
+p(xi; θt)
+
+=
+
+πt
+
+k N(xi; µt
+
+k, Σt
+
+k)
+
+�
+
+ℓ πt
+
+ℓ N(xi; µt
+
+ℓ, Σt
+
+ℓ)
+
+Eq[log p(z, x|θ)] = Eq
+
+� �
+
+i,k
+
+zi
+
+k
+
+�
+
+log πk + log N(xi; µk, Σk)
+
+� �
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+15/17
+
+
+EM Algorithm for the Gaussian mixture model
+
+Soit θt = (πt, (µt
+
+k, Σt
+
+k)k).
+
+n
+
+�
+
+i=1
+
+p(zi, xi; θ) =
+
+n
+
+�
+
+i=1
+
+K
+
+�
+
+k=1
+
+π
+
+zi
+
+k
+
+k
+
+�
+
+N(xi; µk, Σk)
+
+�zi
+
+k
+
+xn
+
+zn
+
+N
+
+µ
+
+Σ
+
+π
+
+E step:
+
+
+
+p(z1, . . . , zn|x1, . . . , xn; θt) = �n
+
+i=1 p(zi|xi; θt)
+
+qi
+
+k = P(zi
+
+k =1|xi; θt) = p(xi|zi
+
+k =1; θt) P(zi
+
+k =1; θt)
+
+p(xi; θt)
+
+=
+
+πt
+
+k N(xi; µt
+
+k, Σt
+
+k)
+
+�
+
+ℓ πt
+
+ℓ N(xi; µt
+
+ℓ, Σt
+
+ℓ)
+
+Eq[log p(z, x|θ)] = Eq
+
+� �
+
+i,k
+
+zi
+
+k
+
+�
+
+log πk + log N(xi; µk, Σk)
+
+� �
+
+=
+
+�
+
+i,k
+
+qi
+
+k log πk − 1
+
+2qi
+
+k(xi − µk)⊤Σ−1
+
+k (xi − µk) − 1
+
+2qi
+
+k log((2π)d|Σk|)
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+15/17
+
+
+EM Algorithm for the Gaussian mixture model II
+
+Q(θ, θt) =
+
+�
+
+i,k
+
+qi
+
+k log πk − 1
+
+2qi
+
+k(xi − µk)⊤Σ−1
+
+k (xi − µk) − 1
+
+2qi
+
+k log((2π)d|Σk|)
+
+
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+16/17
+
+
+EM Algorithm for the Gaussian mixture model II
+
+Q(θ, θt) =
+
+�
+
+i,k
+
+qi
+
+k log πk − 1
+
+2qi
+
+k(xi − µk)⊤Σ−1
+
+k (xi − µk) − 1
+
+2qi
+
+k log((2π)d|Σk|)
+
+M step:
+
+
+
+max
+
+π, (µk,Σk)k
+
+Q
+
+��
+
+π, (µk, Σk)k
+
+�
+
+, θt�
+
+s.t.
+
+�
+
+k
+
+πk = 1
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+16/17
+
+
+EM Algorithm for the Gaussian mixture model II
+
+Q(θ, θt) =
+
+�
+
+i,k
+
+qi
+
+k log πk − 1
+
+2qi
+
+k(xi − µk)⊤Σ−1
+
+k (xi − µk) − 1
+
+2qi
+
+k log((2π)d|Σk|)
+
+M step:
+
+
+
+max
+
+π, (µk,Σk)k
+
+Q
+
+��
+
+π, (µk, Σk)k
+
+�
+
+, θt�
+
+s.t.
+
+�
+
+k
+
+πk = 1
+
+After calculations:
+
+nt+1
+
+k
+
+=
+
+�
+
+i
+
+qi
+
+k
+
+πt+1
+
+k
+
+= nt+1
+
+k
+
+n
+
+µt+1
+
+k
+
+=
+
+1
+
+nt+1
+
+k
+
+�
+
+i
+
+qi
+
+kxi
+
+Σt+1
+
+k
+
+=
+
+1
+
+nt+1
+
+k
+
+�
+
+i
+
+qi
+
+k(xi − µt+1
+
+k
+
+)(xi − µt+1
+
+k
+
+)⊤
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+16/17
+
+
+EM Algorithm for the Gaussian mixture model III
+
+p(x|z)
+
+
+
+p(z|x)
+
+
+
+Guillaume Obozinski
+
+Unigram mixtures and the EM algorithm
+
+17/17
+

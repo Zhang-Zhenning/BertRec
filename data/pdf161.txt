@@ -1,0 +1,2116 @@
+
+
+
+
+
+
+
+
+
+--; 
+
+289 
+
+Probabilistic Latent Semantic Analysis 
+
+Thomas Hofmann 
+
+EECS Department, Computer Science Division, University of California, Berkeley &amp; 
+
+International Computer Science Institute, Berkeley, CA 
+
+hofmann @cs. berkeley .edu 
+
+Abstract 
+
+Probabilistic Latent Semantic Analysis is a 
+
+novel statistical technique for the analysis 
+
+of two-mode and co-occurrence data, which 
+
+has applications in information retrieval and 
+
+filtering, natural language processing, ma­
+
+chine learning from text, and in related ar­
+
+eas. Compared to standard Latent Semantic 
+
+Analysis which stems from linear algebra and 
+
+performs a Singular Value Decomposition of 
+
+co-occurrence tables, the proposed method 
+
+is based on a mixture decomposition derived 
+
+from a latent class model. This results. in a 
+
+more principled approach which has a solid 
+
+foundation in statistics. In order to avoid 
+
+overfitting, we propose a widely applicable 
+
+generalization of maximum likelihood model 
+
+fitting by tempered EM. Our approach yields 
+
+substantial and consistent improvements over 
+
+Latent Semantic Analysis in a number of ex­
+
+periments. 
+
+1 
+
+Introduction 
+
+Learning from text and natural language is one of the 
+
+great challenges of Artificial Intelligence and Machine 
+
+Learning. Any substantial progress in this domain has 
+
+strong impact on many applications ranging from in­
+
+formation retrieval, information filtering, and intelli­
+
+gent interfaces, to speech recognition, natural language 
+
+processing, and machine translation. One of the fun­
+
+damental problems is to learn the meaning and usage 
+
+of words in a data-driven fashion, i.e., from some given 
+
+text corpus, possibly without further linguistic prior 
+
+knowledge. 
+
+The main challenge a machine learning system has to 
+
+address roots in the distinction between the lexical 
+
+level of "what actually has been said or written" and 
+
+the semantical level of "what was intended" or "what 
+
+was referred to" in a text or an utterance. The result­
+
+ing problems are twofold: (i) polysems, i.e., a word 
+
+may have multiple senses and multiple types of usage 
+
+in different context, and (ii) synonymys and semanti­
+
+cally related words, i.e., different words may have a 
+
+similar meaning, they may at least in certain contexts 
+
+denote the same concept or - in a weaker sense - refer 
+
+to the same topic. 
+
+Latent semantic analysis (LSA) (3] is well-known tech­
+
+nique which partially addresses these questions. The 
+
+key idea is to map high-dimensional count vectors, 
+
+such as the ones arising in vector space representa­
+
+tions of text documents (12], to a lower dimensional 
+
+representation in a so-called latent semantic space. As 
+
+the name suggests, the goal of LSA is to find a data 
+
+mapping which provides information well beyond the 
+
+lexical level and reveals semantical relations between 
+
+the entities of interest. Due to its generality, LSA 
+
+has proven to be a valuable analysis tool with a wide 
+
+range of applications (e.g. (3, 5, 8, 1]). Yet its theoreti­
+
+cal foundation remains to a large extent unsatisfactory 
+
+and incomplete. 
+
+This paper presents a statistical view on LSA which 
+
+leads to a new model called Probabilistic Latent Se­
+
+mantics Analysis (PLSA). In contrast to standard 
+
+LSA, its probabilistic variant has a sound statistical 
+
+foundation and defines a proper generative model of 
+
+the data. A detailed discussion of the numerous ad­
+
+vantages of PLSA can be found in subsequent sections. 
+
+2 
+
+Latent Semantic Analysis 
+
+2.1 
+
+Count Data and Co-occurrence Tables 
+
+LSA can in principle be applied to any type of count 
+
+data over a discrete dyadic domain ( cf. [7]). How­
+
+ever, since the most prominent application of LSA is 
+
+in the analysis and retrieval of text documents, we 
+
+focus on this setting for sake of concreteness. Sup­
+
+pose therefore we have given a collection of text doc-
+
+
+
+
+
+
+290 
+
+Hofmann 
+
+uments D = { d1, . . .  , dN} with terms from a vocab-
+
+ulary W = { w1, ... w M}. By ignoring the sequen-
+
+tial order in which words occur in a document, one 
+
+may summarize the data in a N x M co-occurrence 
+
+table of counts N = (n(d;,wj))ij' where n(d,w) E IN 
+
+denotes how often the term w occurred in document 
+
+d. In this particular case, N is also called the term­
+
+document matrix and the rows/columns of N are re­
+
+ferred to as document/term vectors, respectively. The 
+
+key assumption is that the simplified 'bag-of-words' or 
+
+vector-space representation [12] of documents will in 
+
+many cases preserve most of the relevant information, 
+
+e.g., for tasks like text retrieval based on keywords. 
+
+2.2 
+
+Latent Semantic Analysis by SVD 
+
+As mentioned in the introduction, the key idea of LSA 
+
+is to map documents (and by symmetry terms) to a 
+
+vector space of reduced dimensionality, the latent se­
+
+mantic space [3]. The mapping is restricted to be lin­
+
+ear and is based on a Singular Value Decomposition 
+
+(SVD) of the co-occurrence table. One thus starts 
+
+with the standard SVD given by N = UEV1, where 
+
+U and V are orthogonal matrices U1U = V1V = I 
+
+and the diagonal matrix E contains the singular val­
+
+ues of N. The LSA approximation of N is computed 
+
+by setting all but the largest K singular values in E 
+
+to zero (= E), which is rank K optimal in the sense 
+
+of the L2-matrix norm. One obtains the approxima­
+
+tion N = UEV1 � UEV1 = N. Notice that the 
+
+document-to-document inner products based on this 
+
+approximation are given by NN1 = UE2U1 and hence 
+
+one might think of the rows of UE as defining coor­
+
+dinates for documents in the latent space. While the 
+
+original high-dimensional vectors are sparse, the corre­
+
+sponding low-dimensional latent vectors will typically 
+
+not be sparse. This implies that it is possible to com­
+
+pute meaningful association values between pairs of 
+
+documents, even if the documents do not have any 
+
+terms in common. The hope is that terms having a 
+
+common meaning, in particular synonyms, are roughly 
+
+mapped to the same direction in the latent space. 
+
+3 
+
+Probabilistic LSA 
+
+3.1 
+
+The Aspect Model 
+
+The starting point for Probabilistic Latent Semantic 
+
+Analysis is a statistical model which has been called 
+
+aspect model [7]. The aspect model is a latent variable 
+
+model for co-occurrence data which associates an un­
+
+observed class variable z E Z = { z1, ... , ZK} with each 
+
+observation. A joint probability model over D x W is 
+
+(a) 
+
+(b) 
+
+PC�CzldJf:\"Cw!&gt;Q 
+
+� 
+
+Figure 1: Graphical model representation of the as­
+
+pect model in the asymmetric (a) and symmetric (b) 
+
+parameterization. 
+
+defined by the mixture 
+
+P(d,w)=P(d)P(wid), P(wld)=LP(wlz)P(zid). (1) 
+
+zEZ 
+
+Like virtually all statistical latent variable models the 
+
+aspect model introduces a conditional independence 
+
+assumption, namely that d and ware independent con­
+
+ditioned on the state of the associated latent variable 
+
+(the corresponding graphical model representation is 
+
+depicted in Figure 1 (a)). Since the cardinality of z is 
+
+smaller than the number of documents/words in the 
+
+collection, z acts as a bottleneck variable in predict­
+
+ing words. It is worth noticing that the model can be 
+
+equivalently parameterized by (cf. Figure 1 (b)) 
+
+P(d, w) = L P(z)P(diz)P(wiz) , 
+
+(2) 
+
+zEZ 
+
+which is perfectly symmetric in both entities, docu­
+
+ments and words. 
+
+3.2 
+
+Model Fitting with the EM Algorithm 
+
+The standard procedure for maximum likelihood es­
+
+timation in latent variable models is the Expectation 
+
+Maximization (EM) algorithm [4]. EM alternates two 
+
+coupled steps: (i) an expectation (E) step where poste­
+
+rior probabilities are computed for the latent variables, 
+
+(ii) an maximization (M) step, where parameters are 
+
+updated. Standard calculations ( cf. [7, 13]) yield the 
+
+E-step equation 
+
+P(zid, w) 
+
+P(z)P(diz)P(wlz) 
+
+Lz'EZ P(z')P(diz')P(wlz') ' (3) 
+
+as well as the following M-step formulae 
+
+P(wiz) 
+
+ex 
+
+L n(d, w)P(zld, w), 
+
+(4) 
+
+dE'D 
+
+P(dlz) 
+
+ex 
+
+L n(d, w)P(zld, w), 
+
+(5) 
+
+wEW 
+
+P(z) 
+
+ex 
+
+L L n(d, w)P(zld, w). 
+
+(6) 
+
+dE'D wEW 
+
+Before discussing further algorithmic refinements, we 
+
+will study the relationship between the proposed 
+
+model and LSA in more detail. 
+
+
+
+
+
+
+
+
+
+
+
+
+�:� :�.�- _____ ���I�����������������������:�--------�-�-#-#-#1 �����ing 
+
+' 
+
+' 
+
+' 
+
+' 
+
+' 
+
+' 
+
+' 
+
+' 
+
+' 
+
+' 
+
+' 
+
+' 
+
+' 
+
+' 
+
+' 
+
+' 
+
+' 
+
+' 
+
+' 
+
+' 
+
+' 
+
+: 
+
+: 
+
+: 
+
+' 
+
+' 
+
+' 
+
+' 
+
+' 
+
+' 
+
+' 
+
+' 
+
+' 
+
+' 
+
+' 
+
+' 
+
+i 
+
+i 
+
+j 
+
+' 
+
+' 
+
+' 
+
+: 
+
+: 
+
+: 
+
+: 
+
+: 
+
+: 
+
+' 
+
+' 
+
+' 
+
+' 
+
+' 
+
+' 
+
+' 
+
+' 
+
+' 
+
+' 
+
+' 
+
+' 
+
+: 
+
+:----·------:;"\ 
+
+:. --------------------------------#----j 
+
+� # ---# 
+
+Figure 2: 
+
+Sketch of the probability sub-simplex 
+
+spanned by the aspect model. 
+
+3.3 
+
+Probabilistic Latent Semantic Space 
+
+Consider the class-conditional multinomial distribu­
+
+tions P(-iz) over the vocabulary which we call factors. 
+
+They can be represented as points on the M - 1 di­
+
+mensional simplex of all possible multinomials. Via 
+
+its convex hull, this set of K points defines a L :S 
+
+K -1 dimensional sub-simplex. The modeling assump­
+
+tion expressed by (1) is that conditional distributions 
+
+P(wid) for all document are approximated by a multi­
+
+nomial representable as a convex combination of fac­
+
+tors P(wlz), where the mixing weights P(zid) uniquely 
+
+define a point on the spanned sub-simplex. A simple 
+
+sketch of this situation is shown in Figure 2. Despite 
+
+of the discreteness of the introduced latent variables, a 
+
+continuous latent space is obtained within the space of 
+
+all multinomial distributions. Since the dimensionality 
+
+of the sub-simplex is :S K -1 as opposed to a maximum 
+
+of M -1 for the complete probability simplex, this per­
+
+forms a dimensionality reduction in the space of multi­
+
+nomial distributions and the spanned sub-simplex can 
+
+be identified with a probabilistic latent semantic space. 
+
+To stress this point and to clarify the relation to 
+
+LSA, let us rewrite the aspect model as parameter­
+
+ized by (2) in matrix notati'?n. Hence define ma­
+
+trices by U = (P(d;izk));,k, V = (P(wjizk))j,k, and 
+
+i: = diag( P( Zk) )k. 
+
+The joint probability model P 
+
+can then be written as a matrix product P = (ri;yt. 
+
+Comparing this with SVD, one can make the follow­
+
+ing observations: (i) outer products between rows of 
+
+U and V reflect conditional independence in PLSA, 
+
+(ii) the K factors correspond to the mixture compo­
+
+nents in the aspect model, (iii) the mixing proportions 
+
+in PLSA substitute the singular values. The crucial 
+
+difference between PLSA and LSA, however, is the 
+
+objective function utilized to determine the optimal 
+
+decomposition/approximation. In LSA, this is the L2-
+
+or Frobenius norm, which corresponds to an implicit 
+
+additive Gaussian noise assumption on (possibly trans­
+
+formed) counts. In contrast, PLSA relies on the like-
+
+Probabilistic Latent Semantic Analysis 
+
+291 
+
+lihood function of multinomial sampling and aims at 
+
+an explicit maximization of the predictive power of 
+
+the model. As is well known, this corresponds to a 
+
+minimization of the cross entropy or Kullback-Leibler 
+
+divergence between the empirical distribution and the 
+
+model, which is very different from any type of squared 
+
+deviation. On the modeling side this offers important 
+
+advantages, for example, the mixture approximation 
+
+P of the co-occurrence table is a well-defined proba­
+
+bility distribution and factors have a clear probabilistic 
+
+meaning. In contrast, LSA does not define a properly 
+
+normalized probability distribution and N may even 
+
+contain negative entries. In addition, there is no obvi­
+
+ous interpretation of the directions in the LSA latent 
+
+space, while the directions in the PLSA space are in­
+
+terpretable as multinomial word distributions. The 
+
+probabilistic approach can also take advantage of the 
+
+well-established statistical theory for model selection 
+
+and complexity control, e.g., to determine the opti­
+
+mal number of latent space dimensions. Choosing the 
+
+number of dimensions in LSA on the other hand is 
+
+typically based on ad hoc heuristics. 
+
+A comparison of the computational complexity might 
+
+suggest some advantages for LSA: ignoring potential 
+
+problems of numerical stability the SVD can be com­
+
+puted exactly, while the EM algorithm is an iterative 
+
+method which is only guaranteed to find a local max­
+
+imum of the likelihood function. However, in all our 
+
+experiments the computing time of EM has not been 
+
+significantly worse than performing an SVD on the co­
+
+occurrence matrix. There is also a large potential for 
+
+improving run-time performance of EM by on-line up­
+
+date schemes, which has not been explored so far. 
+
+3.4 
+
+Topic Decomposition and Polysemy 
+
+Let us briefly discuss some elucidating examples at 
+
+this point which will also reveal a further advantage of 
+
+PLSA over LSA in the context of polsemous words. We 
+
+have generated a dataset (CLUSTER) with abstracts 
+
+of 1568 documents on clustering and trained an aspect 
+
+model with 128 latent classes. Four pairs of factors are 
+
+visualized in Figure 3. These pairs have been selected 
+
+as the two factors that have the highest probability to 
+
+generate the words "segment", "matrix", "line", and 
+
+"power", respectively. The sketchy characterization of 
+
+the factors by their 10 most probable words already re­
+
+veals interesting topics. In particular, notice that the 
+
+term used to select a particular pair has a different 
+
+meaning in either topic factor: (i) 'Segment' refers to 
+
+an image region in the first and to a phonetic segment 
+
+in the second factor. (ii) 'Matrix' denotes a rectangu­
+
+lar table of numbers and to a material in which some­
+
+thing is embedded or enclosed. (iii) 'Line' can refer to 
+
+a line in an image, but also to a line in a spectrum. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+292 
+
+Hofmann 
+
+"segment 1" 
+
+"segment 2" 
+
+"matrix 1" 
+
+"matrix 2" 
+
+"line 1" 
+
+"line 2" 
+
+"power 1" 
+
+power 2" 
+
+imag 
+
+speaker 
+
+robust 
+
+manufactur 
+
+constraint 
+
+alpha 
+
+POWER 
+
+load 
+
+SEGMENT 
+
+speech 
+
+MATRIX 
+
+cell 
+
+LINE 
+
+red shift 
+
+spectrum 
+
+memon 
+
+texture 
+
+recogni 
+
+eigenvalu 
+
+part 
+
+match 
+
+LINE 
+
+omega 
+
+vlsi 
+
+color 
+
+signal 
+
+uncertainti 
+
+MATRIX 
+
+locat 
+
+galaxi 
+
+mpc 
+
+POWER 
+
+tissue 
+
+train 
+
+plane 
+
+cellular 
+
+imag 
+
+quasar 
+
+hsup 
+
+systolic 
+
+brain 
+
+hmm 
+
+linear 
+
+famili 
+
+geometr 
+
+absorp 
+
+larg 
+
+input 
+
+slice 
+
+source 
+
+condition 
+
+design 
+
+1mpos 
+
+high 
+
+redshift 
+
+complex 
+
+cluster 
+
+speakerind. 
+
+perturb 
+
+machinepart 
+
+segment 
+
+ssup 
+
+galaxi 
+
+arra1 
+
+mn 
+
+SEGMENT 
+
+root 
+
+format 
+
+fundament 
+
+densiti 
+
+standard 
+
+present 
+
+volume 
+
+sound 
+
+suffici 
+
+group 
+
+recogn 
+
+veloc 
+
+model 
+
+implement 
+
+Figure 3: Eight selected factors from a 128 factor decomposition. The displayed word stems are the 10 most 
+
+probable words in the class-conditional distribution P(wJz), from top to bottom in descending order. 
+
+Document I, P(z,jd1,w; ='segment')= (0.95!,0.0001, ... ) 
+
+P{w; = 'segment'jdi) = 0.06 
+
+SEGMENT medic imag challeng problem field imag analysi diagnost base proper SEGMENT digit imag SEGMENT medic imag need 
+
+applic involv estim boundari object classif tissu abnorm shape analysi contour detec textur SEGMENT despit exist techniqu SEGMENT 
+
+specif medic imag remain crucial problem[ ... ] 
+
+Document 2, P(z,jd2,w; ='segment')= (0.025,0.867, . . . ) 
+
+P{w; = 'segment'jd,) = 0.010 
+
+consid signal origin sequenc sourc specif problem SEGMENT signal relat SEGMENT sourc address issu wide applic field report describ 
+
+resolu method ergod hidden markov model hmm hmm state correspond signal sourc signal sourc sequenc determin decod procedur viterbi 
+
+algorithm forward algorithm observ sequenc baumwelch train estim hmm paramet train materi applic multipl signal sourc identif problem 
+
+experi perform unknown speaker identif [ ... ] 
+
+Figure 4: Abstracts of 2 exemplary documents from the CLUSTER collection along with latent class posterior 
+
+probabilities P{zJd, w = 'segment'} and word probabilities P{ w = 'segment'Jd}. 
+
+(iv) 'Power' is used in the context of radiating objects 
+
+in astronomy, but also in electrical engineering. 
+
+Figure 4 shows the abstracts of two exemplary docu­
+
+ments which have been pre-processed by a standard 
+
+stop-word list and a stemmer. The posterior probabil­
+
+ities for the classes given the different occurrences of 
+
+'segment' indicate how likely it is for each of the factors 
+
+in the first pair of Figure 3 to have generated this ob­
+
+servation. We have also displayed the estimates of the 
+
+conditional word probabilities P{ w = 'segment'Jd1,2}. 
+
+One can see that the correct meaning of the word 'seg­
+
+ment' is identified in both cases. This implies that al­
+
+though 'segment' occurs frequently in both document, 
+
+the overlap in the factored representation is low, since 
+
+'segement' is identified as a polysemous word (relative 
+
+to the chosen resolution level) which - dependent on 
+
+the context - is explained by different factors. 
+
+3.5 
+
+Aspects versus Clusters 
+
+It is worth comparing the aspect model with statistical 
+
+clustering models ( cf. also [7]). In clustering models 
+
+for documents, one typically associates a latent class 
+
+variable with each document in the collection. Most 
+
+closely related to our approach is the distributional 
+
+clustering model [10, 7] which can be thought of as an 
+
+unsupervised version of a naive Bayes' classifier. It 
+
+can be shown that the conditional word probability of 
+
+a probabilistic clustering model is given by 
+
+P(wJd)= LP{c(d)=z}P(wJz), 
+
+(7) 
+
+zEZ 
+
+where P{ c( d) = z} is the posterior probability of doc­
+
+ument d having latent class z. It is a simple impli­
+
+cation of Bayes' rule that these posterior probabili­
+
+ties will concentrate their probability mass on a cer­
+
+tain value z with an increasing number of observations 
+
+(i.e., with the length of the document). This means 
+
+that although (1) and (7) are algebraically equiva­
+
+lent, they are conceptually very different and yield in 
+
+fact different results. The aspect model assumes that 
+
+document-specific distributions are a convex combina­
+
+tion of aspects, while the clustering model assumes 
+
+there is just one cluster-specific distribution which is 
+
+inherited by all documents in the cluster 1 Thus in 
+
+clustering models the class-conditionals P(wJz) have 
+
+1 In the distributional clustering model it is only the pos­
+
+terior uncertainty of the cluster assignments that induces 
+
+some averaging over the class-conditional word distribu­
+
+tions P( wlz ). 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+to capture the complete vocabulary of a subset ( clus­
+
+ter) of documents, while factors can focus on certain 
+
+aspects of the vocabulary of a subset of documents. 
+
+For example, a factor can be very well used to ex­
+
+plain some fraction of the words occurring in a doc­
+
+ument, although it might not explain other words at 
+
+all (e.g., even assign zero probability), because these 
+
+other words can be taken care of by other factors. 
+
+3.6 
+
+Model Fitting Revisited: Improving 
+
+Generalization by Tempered EM 
+
+So far we have focused on maximum likelihood estima­
+
+tion to fit a model from a given document collection. 
+
+Although the likelihood or, equivalently, the perplex­
+
+ity2 is the quantity we believe to be crucial in assessing 
+
+the quality of a model, one clearly has to distinguish 
+
+between the performance on the training data and on 
+
+unseen test data. To derive conditions under which 
+
+generalization on unseen data can be guaranteed is ac­
+
+tually the fundamental problem of statistical learning 
+
+theory. Here, we propose a generalization of maxi­
+
+mum likelihood for mixture models which is known as 
+
+annealing and is based on an entropic regularization 
+
+term. The resulting method is called Tempered Expec­
+
+tation Maximization (TEM) and is closely related to 
+
+deterministic annealing [11]. 
+
+The starting point of TEM is a derivation of the E­
+
+step based on an optimization principle. As has been 
+
+pointed out in [9] the EM procedure in latent variable 
+
+models can be obtained by minimizing a common ob­
+
+jective function - the (Helmholtz) free energy- which 
+
+for the aspect model is given by 
+
+Fr; ::: -,8 L n(d, w) L P(z; d, w) logP(d, wlz)P(z) 
+
+d,w 
+
+z 
+
++ L n(d,w) L P(z;d,w)logP(z;d,w). (8) 
+
+d,w 
+
+Here P(z; d, w) are variational parameters which de­
+
+fine a conditional distribution over Z and ,8 is a pa­
+
+rameter which - in analogy to physical systems - is 
+
+called the inverse computational temperature. Notice 
+
+that the first contribution in (8) is the negative ex­
+
+pected log-likelihood scaled by /3. Thus in the case of 
+
+P(z; d, w) = P(zid, w) minimizing F w.r.t. the param­
+
+eters defining P(d, wlz)P(z) amounts to the standard 
+
+M-step in EM. In fact, it is straightforward to ver­
+
+ify that the posteriors are obtained by minimizing F 
+
+w.r.t. Pat ,8::: 1. In general Pis determined by 
+
+-
+
+[P(z)P(d\z)P( w\z)]il 
+
+P(z; d, w) = L::':z,[P(z')P(dlz')P(wlz')]il · 
+
+(9) 
+
+2 Perplexity refers to the log-averaged inverse probabil­
+
+ity on unseen data. 
+
+Probabilistic Latent Semantic Analysis 
+
+293 
+
+(a) 
+
+oooo�,=======� 
+
+2500 
+
+2000 
+
+'· 
+
+1500 
+
+·. ·. 
+
+LsA 
+
+........... ........... 
+
+IOOJ�· ·· .. ........ PLSA" 
+
+EM 
+
+TEM 
+
+-· 
+
+200 
+
+400 
+
+600 
+
+800 
+
+1000 
+
+Latent space dim!!lnsions 
+
+(b) 
+
+,.,F=======:i:l 
+
+""" 
+
+""" 
+
+-�1000 I 
+
+� 
+
+' 
+
+i 900 \ 
+
+D.. 800 
+
+'.,, 
+
+• 
+
+lOO��·-..... 
+
+LSA 
+
+� 
+
+........................... 
+
+600 
+
+PLSA 
+
+500 
+
+500 
+
+1 000 
+
+1500 
+
+Latent space dimensions 
+
+Figure 5: Perplexity results as a function of the latent 
+
+space dimensionality for (a) the MED data (rank 1033) 
+
+and (b) the LOB data (rank 1674). Plotted results 
+
+are for LSA (dashed-dotted curve) and PLSA (trained 
+
+by TEM = solid curve, trained by early stopping EM 
+
+= dotted curve). The upper baseline is the unigram 
+
+model corresponding to marginal independence. The 
+
+star at the right end of the PLSA denotes the perplex­
+
+ity of the largest trained aspect models (K::: 2048). 
+
+This shows that the effect of the entropy at ,8 &lt; 1 is 
+
+to dampen the posterior probabilities such that they 
+
+will become closer to the uniform distribution with 
+
+decreasing ,8. 
+
+Somewhat contrary to the spirit of annealing as a con­
+
+tinuation method, we propose an 'inverse' annealing 
+
+strategy which first performs EM iterations and then 
+
+decreases ,8 until performance on held-out data deteri­
+
+orates. Compared to annealing this may accelerate the 
+
+model fitting procedure significantly (e.g., by a factor 
+
+of� 10- 50) and we have not found the test set per­
+
+formance of 'heated' models to be worse than the one 
+
+achieved by carefully 'annealed' models. The TEM 
+
+algorithm can thus be implemented in the following 
+
+way: 
+
+1. Set ,8 +- 1 and perform EM with early stopping. 
+
+2. Decrease ,8 +- 1),8 (with 1) &lt; 1) and perform one 
+
+TEM iteration. 
+
+3. As long as the performance on held-out data im­
+
+proves (non-negligible) continue TEM iterations 
+
+at this value of ,8, otherwise go to step 2 
+
+4. Perform stopping on ,8, i.e., stop when decreasing 
+
+,8 does not yield further improvements. 
+
+4 
+
+Experimental Results 
+
+In the experimental evaluation, we focus on two tasks: 
+
+(i) perplexity minimization for a document-specific un­
+
+igram model and noun-adjective pairs, and (ii) auto­
+
+mated indexing of documents. The evaluation of LSA 
+
+
+
+
+
+
+294 
+
+Hofmann 
+
+Table 1: Average precision results and relative improvement w.r.t. the baseline method cos+tf for the 4 standard 
+
+test collections. Compared are LSI, PLSI, as well as results obtained by combining PLSI models (PLSI'). 
+
+An asterix for LSI indicates that no performance gain could be achieved over the baseline, the result at 256 
+
+dimensions with &gt;. = 2/3 is reported in this case. 
+
+MED 
+
+CRAN 
+
+CACM 
+
+CISI 
+
+prec. 
+
+1mpr. 
+
+pre c. 
+
+1mpr. 
+
+prec. 
+
+1mpr. 
+
+prec. 
+
+1mpr. 
+
+cos+tf 
+
+44.3 
+
+-
+
+29.9 
+
+-
+
+17.9 
+
+-
+
+12.7 
+
+-
+
+LSI 
+
+51.7 
+
++16.7 
+
+'28.7 
+
+-4.0 
+
+'16.0 
+
+-11.6 
+
+12.8 
+
++0.8 
+
+PLSI 
+
+63.9 
+
++44.2 
+
+35.1 
+
++17.4 
+
+22.9 
+
++27.9 
+
+18.8 
+
++48.0 
+
+PLSI' 
+
+66.3 
+
++49.7 
+
+37.5 
+
++25.4 
+
+26.8 
+
++49.7 
+
+20.1 
+
++58.3 
+
+and PLSA on the first task will demonstrate the advan­
+
+tages of explicitly minimizing perplexity by TEM, the 
+
+second task will show that the solid statistical founda­
+
+tion of PLSA pays off even in applications which are 
+
+not directly related to perplexity reduction. 
+
+4.1 
+
+Perplexity Evaluation 
+
+In order to compare the predictive performance of 
+
+PLSA and LSA one has to specify how to extract 
+
+probabilities from a LSA decomposition. This problem 
+
+is not trivial, since negative entries prohibit a simple 
+
+re-normalization of the approximating matrix N. We 
+
+have followed the approach of [2] to derive LSA prob­
+
+abilities. 
+
+Two data sets that have been used to evaluate the 
+
+perplexity performance: (i) a standard information re­
+
+trieval test collection MED with 1033 document, (ii) 
+
+a dataset with noun-adjective pairs generated from a 
+
+tagged version of the LOB corpus. In the first case, the 
+
+goal was to predict word occurrences based on (parts 
+
+of) the words in a document. In the second case, nouns 
+
+have to predicted conditioned on an associated adjec­
+
+tive. Figure 5 reports perplexity results for LSA and 
+
+PLSA on the MED (a) and LOB (b) datasets in de­
+
+pendence on the number of dimensions of the (proba­
+
+bilistic) latent semantic space. PLSA outperforms the 
+
+statistical model derived from standard LSA by far. 
+
+On the MED collection PLSA reduces perplexity rela­
+
+tive to the unigram baseline by more than a factor of 
+
+three (3073/936 � 3.3), while LSA achieves less than 
+
+a factor of two in reduction (3073/1647 � 1.9). On the 
+
+less sparse LOB data the PLSA reduction in perplex­
+
+ity is 1316/547 � 2.41 while the reduction achieved by 
+
+LSA is only 1316/632 � 2.08. In order to demonstrate 
+
+the advantages of TEM, we have also trained aspect 
+
+models on the MED data by standard EM with early 
+
+stopping. As can be seen from the curves in Figure 5 
+
+(a), the difference between EM and TEM model fit­
+
+ting is significant. Although both strategies - temper­
+
+ing and early stopping - are successful in controlling 
+
+the model complexity, EM training performs worse, 
+
+since it makes a very inefficient use of the available 
+
+degrees of freedom. Notice, that with both methods 
+
+it is possible to train high-dimensional models with a 
+
+continuous improvement in performance. The num­
+
+ber of latent space dimensions may even exceed the 
+
+rank of the co-occurrence matrix N and the choice of 
+
+the number of dimensions becomes merely an issue of 
+
+possible limitations of computational resources. 
+
+4.2 
+
+Information Retrieval 
+
+One of the key problems in information retrieval is 
+
+automatic indexing which has its main application in 
+
+query-based retrieval. The most popular family of in­
+
+formation retrieval techniques is based on the Vector 
+
+Space Model (VSM) for documents [12]. Here, we have 
+
+utilized a rather straightforward representation based 
+
+on the (untransformed) term frequencies n(d, w) to­
+
+gether with the standard cosine matching function, 
+
+a more detailed experimental analysis can be found 
+
+in [6]. The same representation applies to queries q, 
+
+so that the matching function for the baseline term 
+
+matching method can be written as 
+
+(d ) 
+
+_ 
+
+Lw n(d, w)n(q, w) 
+
+(10) 
+
+s ,q 
+
+-
+
+)21'\' 
+
+)2' 
+
+VLw n(d, w y L,w n(q, w 
+
+In Latent Semantic Indexing (LSI), the original vec­
+
+tor space representation of documents is replaced by a 
+
+representation in the low-dimensional latent space and 
+
+the similarity is computed based on that representa­
+
+tion. Queries or documents which were not part of the 
+
+original collection can be folded in by a simple matrix 
+
+multiplication (cf. [3] for details). In our experiments, 
+
+we have actually considered linear combinations of the 
+
+original similarity score ( 10) (weight &gt;.) and the one 
+
+derived from the latent space representation (weight 
+
+1- &gt;.). 
+
+The same ideas have been applied in Probabilistic La­
+
+tent Semantic Indexing (PLSI) in conjunction with 
+
+the PLSA model. More precisely, the low-dimensional 
+
+representation in the factor space P(zld) and P(zlq) 
+
+
+
+
+--; 
+
+90 
+
+80 
+
+70 
+
+60 
+
+�50 
+
+5 .. � 
+
+c. 40 
+
+30 
+
+20 
+
+:, 
+
+I 
+
+' 
+
+' 
+
+\ 
+
+l �MED 
+
+I 
+
+: 
+
+:I 
+
+·.I 
+
+I 
+
+' 
+
+" 
+
+\ 
+
+\ 
+
+\ 
+
+\ 
+
+\ 
+
+\ 
+
+\ 
+
+\ 
+
+I 
+
+I 
+
+I 
+
+\ i 
+
+\ 
+
+I 
+
+I 
+
+50 
+
+100 
+
+recall[%] 
+
+70,---�--· 
+
+-\ 
+
+I 
+
+\ 
+
+60 I\ 
+
+1:\ 
+
+GRAN 
+
+f.\ 
+
+1': \ 
+
+-�--\ 
+
+\ 
+
+\ 
+
+50 
+
+40 
+
+I 
+
+'. 
+
+·. 
+
+\ 
+
+\·-_ \ 
+
+\.\ 
+
+30 
+
+20 
+
+10 
+
+Probabilistic Latent Semantic Analysis 
+
+295 
+
+so,---�--, 
+
+45 
+
+CIS I 
+
+40 
+
+Figure 6: Precision-recall curves for term matching, LSI, and PLSI* on the 4 test collections. 
+
+have been utilized to evaluate similarities. To achieve 
+
+this, queries have to be folded in, which is done in the 
+
+PLSA by fixing the P(w[z) parameters and calculating 
+
+weights P(z[q) by TEM. 
+
+One advantage of using statistical models vs. SVD 
+
+techniques is that it allows us to systematically com­
+
+bine different models. While this should optimally 
+
+be done according to a Bayesian model combination 
+
+scheme, we have utilized a much simpler approach in 
+
+our experiments which has nevertheless shown excel­
+
+lent performance and robustness. Namely, we have 
+
+simply combined the cosine scores of all models with a 
+
+uniform weight. The resulting method is referred to as 
+
+PLSI*. Empirically we have found the performance to 
+
+be very robust w.r.t. different (non-uniform) weights 
+
+and also w.r.t. the &gt;.-weight used in combination with 
+
+the original cosine score. This is due to the noise re­
+
+ducing benefits of (model) averaging. Notice that LSA 
+
+representations for different J{ form a nested sequence, 
+
+which is not true for the statistical models which are 
+
+expected to capture a larger variety of reasonable de­
+
+compositions. 
+
+We have utilized the following four medium-sized stan­
+
+dard document collection with relevance assessment: 
+
+(i) MED (1033 document abstracts from the National 
+
+Library of Medicine), (ii) CRAN (1400 document ab­
+
+stracts on aeronautics from the Cranfield Institute of 
+
+Technology), (iii) CACM (3204 abstracts from the 
+
+CACM Journal), and (iv) CISI (1460 abstracts in li­
+
+brary science from the Institute for Scientific Informa-
+
+1200 
+
+K=48 
+
+0.6 
+
+0.7 
+
+08 
+
+09 
+
+beta 
+
+70•r------
+
+,.� 
+
+30 
+
+K-:128 
+
+0 6 
+
+0.7 
+
+0.8 
+
+0.9 
+
+beta 
+
+0.6 
+
+0.7 
+
+0.8 
+
+0.9 
+
+,.� 
+
+Figure 7: Perplexity and average precision as a func­
+
+tion of the inverse temperature (3 for an aspect model 
+
+with J{ = 48 (left) and J{ = 128 (right). 
+
+tion). The condensed results in terms of average pre­
+
+cision recall (at the 9 recall levels 10%- 90%) are sum­
+
+marized in Table 1, while the corresponding precision 
+
+recall curves can be found in Figure 6. Here are some 
+
+additional details of the experimental setup: PLSA 
+
+models at f{ = 32, 48, 64, 80, 128 have been trained by 
+
+TEM for each data set with 10% held-out data. For 
+
+PLSI we report the best result obtained by any of these 
+
+models, for LSI we report the best result obtained for 
+
+the optimal dimension (exploring 32-512 dimensions 
+
+at a step size of 8). The combination weight). with the 
+
+
+296 
+
+Hofmann 
+
+cosine baseline score has been coarsely optimized by 
+
+hand, MED, CRAN: &gt;. = 1/2, CACM, CISI:&gt;. = 2/3. 
+
+The experiments consistently validate the advantages 
+
+of PLSI over LSI. Substantial performance gains have 
+
+been achieved for all 4 data sets. Notice that the rela­
+
+tive precision gain compared to the baseline method is 
+
+typically around 100% in the most interesting interme­
+
+diate regime of recall! In particular, PLSI works well 
+
+even in cases where LSI fails completely (these prob­
+
+lems of LSI are in accordance with the original results 
+
+reported in [3]). The benefits of model combination 
+
+are also very substantial. In all cases the (uniformly) 
+
+combined model performed better than the best single 
+
+model. As a sight-effect model averaging also deliber­
+
+ated from selecting the correct model dimensionality. 
+
+These experiments demonstrate that the advantages of 
+
+PLSA over standard LSA are not restricted to appli­
+
+cations with performance criteria directly depending 
+
+on the perplexity. Statistical objective functions like 
+
+the perplexity (log-likelihood) may thus provide a gen­
+
+eral yardstick for analysis methods in text learning and 
+
+information retrieval. To stress this point we ran an 
+
+experiment on the MED data, where both, perplexity 
+
+and average precision, have been monitored simulta­
+
+neously as a function of (3. The resulting curves which 
+
+show a striking correlation are plotted in Figure 7. 
+
+5 
+
+Conclusion 
+
+We have proposed a novel method for unsupervised 
+
+learning, called Probabilistic Latent Semantic Analy­
+
+sis, which is based on a statistical latent class model. 
+
+We have argued that this approach is more principled 
+
+than standard Latent Semantic Analysis, since it pos­
+
+sesses a sound statistical foundation. Tempered Expec­
+
+tation Maximization has been presented as a powerful 
+
+fitting procedure. We have experimentally verified the 
+
+claimed advantages achieving substantial performance 
+
+gains. Probabilistic Latent Semantic Analysis has thus 
+
+to be considered as a promising novel unsupervised 
+
+learning method with a wide range of applications in 
+
+text learning and information retrieval. 
+
+Acknowledgments 
+
+The author would like to thank Jan Puzicha, Andrew 
+
+McCallum, Mike Jordan, Joachim Buhmann, Tali 
+
+Tishby, Nelson Morgan, Jerry Feldman, Dan Gildea, 
+
+Andrew Ng, Sebastian Thrun, and Tom Mitchell for 
+
+stimulating discussions and helpful hints. This work 
+
+has been supported by a DAAD fellowship. 
+
+References 
+
+[1] J .R. Bellegarda. Exploiting both local and global 
+
+constraints for multi-span statistical language 
+
+modeling. 
+
+In Proceedings of ICASSP'gs, vol­
+
+ume 2, pages 677-80, 1998. 
+
+[2] N. Coccaro and D. J urafsky. Towards better inte­
+
+gration of semantic predictors in statistical lan­
+
+guage modeling. In Proceedings of ICSLP-98, 
+
+1998. to appear. 
+
+[3] S. Deerwester, S. T. Dumais, G. W. Furnas, Lan­
+
+dauer. T. K., and R. Harshman. Indexing by la­
+
+tent semantic analysis. Journal of the American 
+
+Society for Information Science, 41, 1990. 
+
+[4] A.P. Dempster, N.M. Laird, and D.B. Rubin. 
+
+Maximum likelihood from incomplete data via the 
+
+EM algorithm. J. Royal Statist. Soc. B, 39:1-38, 
+
+1977. 
+
+[5] P.W. Foltz and S. T. Dumais. An analysis of in­
+
+formation filtering methods. Communications of 
+
+the ACM, 35(12):51-60, 1992. 
+
+[6] T. Hofmann. Probabilistic latent semantic index­
+
+ing. In Proceedings of SIGIR '99, 1999. 
+
+[7] T. Hofmann, J. Puzicha, and M. I. Jordan. Unsu­
+
+pervised learning from dyadic data. In Advances 
+
+in Neural Information Processing Systems, vol­
+
+ume 11. MIT Press, 1999. 
+
+[8] T.K. Landauer and S.T. Dumais. 
+
+A solution 
+
+to Plato's problem: The latent semantic anal­
+
+ysis theory of acquisition, induction, and rep­
+
+resentation of knowledge. Psychological Review, 
+
+104(2):211-240, 1997. 
+
+[9] R.M. Neal and G .E. Hinton. A view of the EM al­
+
+gorithm that justifies incremental and other vari­
+
+ants. In M.I. Jordan, editor, Learning in Graph­
+
+ical Models, pages 355-368. Kluwer Academic 
+
+Publishers, 1998. 
+
+[10] F.C.N. Pereira, N.Z. Tishby, and L. Lee. Distribu­
+
+tional clustering of english words. In Proceedings 
+
+of the ACL, pages 183-190, 1993. 
+
+[11] K. Rose, E. Gurewitz, and G. Fox. A determin­
+
+istic annealing approach to clustering. Pattern 
+
+Recognition Letters, 11(11):589-594, 1990. 
+
+[12] G. Salton and M. J. McGill. Introduction to Mod­
+
+ern Information Retrieval. McGraw-Hill, 1983. 
+
+[13] L. Saul and F. Pereira. Aggregate and mixed­
+
+order Markov models for statistical language pro­
+
+cessing. In Proceedings of the 2nd International 
+
+Conference on Empirical Methods in Natural Lan­
+
+guage Processing, 1997. 
+

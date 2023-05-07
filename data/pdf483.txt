@@ -1,0 +1,1230 @@
+
+Derivation of Baum-Welch Algorithm for Hidden Markov Models
+
+Stephen Tu
+
+1
+
+Introduction
+
+This short document goes through the derivation of the Baum-Welch algorithm for learning model parameters of a
+
+hidden markov model (HMM). For more generality, we treat the multiple observations case. Note that Baum-Welch is
+
+simply an instantiation of the more general Expectation-Maximization (EM) algorithm.
+
+2
+
+Setup
+
+Let us consider discrete (categorical) HMMs of length T (each observation sequence is T observations long). Let the
+
+space of observations be X = {1, 2, ..., N}, and let the space of underlying states be Z = {1, 2, ..., M}. An HMM
+
+θ = (π, A, B) is parameterized by the initial state matrix π, the state transition matrix A, and the emission matrix B;
+
+πi = P(z1 = i), Aij = P(zt+1 = j|zt = 1), and Bi(j) = P(xt = j|zt = i). See [1] for a more detailed treatment of
+
+HMMs.
+
+We study the problem of learning the parameterization of θ from a dataset of D observations. Let X =
+
+�
+
+X(1), ..., X(D)�
+
+,
+
+where each X(i) = (x(i)
+
+1 , x(i)
+
+2 , ..., x(i)
+
+T ). We assume each observation is drawn iid. The learning problem is non-
+
+trivial because we are not given the latent variables Z(i) for each X(i), otherwise we could directly compute θ∗ =
+
+argmaxθ P(X, Z; θ). Without Z, the naive solution would be to directly compute θ∗ = argmaxθ
+
+�
+
+z∈Z P(X, z; θ).
+
+This is not tractable, since there are DT M different values of z to try.
+
+3
+
+Baum-Welch
+
+Baum-Welch is an iterative procedure for estimating θ∗ from only X. It works by maximizing a proxy to the log-
+
+likelihood, and updating the current model to be closer to the optimal model. Each iteration of Baum-Welch is guar-
+
+anteed to increase the log-likelihood of the data. But of course, convergence to the optimal solution is not guaranteed.
+
+Baum-Welch can be described simply as repeating the following steps until convergence:
+
+1. Compute Q(θ, θs) = �
+
+z∈Z
+
+log [P(X, z; θ)] P(z|X; θs).
+
+2. Set θs+1 = argmax
+
+θ
+
+Q(θ, θs).
+
+Without justifying why this works, the rest of this document will focus on deriving the necessary update steps to run
+
+this algorithm. First, noting that P(z, X) = P(X)P(z|X), we can write
+
+argmax
+
+θ
+
+�
+
+z∈Z
+
+log [P(X, z; θ)] P(z|X; θs) = argmax
+
+θ
+
+�
+
+z∈Z
+
+log [P(X, z; θ)] P(z, X; θs) = argmax
+
+θ
+
+ˆQ(θ, θs)
+
+since P(X) is not affected by choice of θ. Now P(z, X; θ) is easy to write down
+
+P(z, X; θ) =
+
+D
+
+�
+
+d=1
+
+�
+
+πz(d)
+
+1 Bz(d)
+
+1 (x(d)
+
+1 )
+
+T
+
+�
+
+t=2
+
+Az(d)
+
+t−1z(d)
+
+t Bz(d)
+
+t (x(d)
+
+t )
+
+�
+
+1
+
+
+Taking the log gives us
+
+log P(z, X; θ) =
+
+D
+
+�
+
+d=1
+
+�
+
+log πz(d)
+
+1
+
++
+
+T
+
+�
+
+t=2
+
+log Az(d)
+
+t−1z(d)
+
+t
+
++
+
+T
+
+�
+
+t=1
+
+log Bz(d)
+
+t (x(d)
+
+t )
+
+�
+
+Plugging this into ˆQ(θ, θs), we get
+
+ˆQ(θ, θs) =
+
+�
+
+z∈Z
+
+D
+
+�
+
+d=1
+
+log πz(d)
+
+1 P(z, X; θs)+
+
+�
+
+z∈Z
+
+D
+
+�
+
+d=1
+
+T
+
+�
+
+t=2
+
+log Az(d)
+
+t−1z(d)
+
+t P(z, X; θs)+
+
+�
+
+z∈Z
+
+D
+
+�
+
+d=1
+
+T
+
+�
+
+t=1
+
+log Bz(d)
+
+t (x(d)
+
+t )P(z, X; θs)
+
+This is a nice form which we can optimize analytically with Lagrange multipliers. We need Lagrange multipliers
+
+because we have equality constraints which come from requiring that π, Ai· and Bi(·) form valid probability distribu-
+
+tions. Let ˆL(θ, θs) be the Lagrangian
+
+ˆL(θ, θs) = ˆQ(θ, θs) − λπ
+
+� M
+
+�
+
+i=1
+
+πi − 1
+
+�
+
+−
+
+M
+
+�
+
+i=1
+
+λAi
+
+
+
+
+
+M
+
+�
+
+j=1
+
+Aij − 1
+
+
+
+ −
+
+M
+
+�
+
+i=1
+
+λBi
+
+
+
+
+
+N
+
+�
+
+j=1
+
+Bi(j) − 1
+
+
+
+
+
+First let us focus on the πi’s
+
+∂ ˆL(θ, θs)
+
+∂πi
+
+=
+
+∂
+
+∂πi
+
+��
+
+z∈Z
+
+D
+
+�
+
+d=1
+
+log πz(d)
+
+1 P(z, X; θs)
+
+�
+
+− λπ = 0
+
+=
+
+∂
+
+∂πi
+
+
+
+
+
+M
+
+�
+
+j=1
+
+D
+
+�
+
+d=1
+
+log πjP(z(d)
+
+1
+
+= j, X; θs)
+
+
+
+ − λπ = 0
+
+=
+
+D
+
+�
+
+d=1
+
+P(z(d)
+
+1
+
+= i, X; θs)
+
+πi
+
+− λπ = 0
+
+∂ ˆL(θ, θs)
+
+∂λπ
+
+= −
+
+� M
+
+�
+
+i=1
+
+πi − 1
+
+�
+
+= 0
+
+The second step is simply the result of marginalizing out, for each d, all z(d)
+
+t̸=1 and z(d′̸=d)
+
+t
+
+for all t. We use this style of
+
+trick extensive throughout the remainder of the document. Some algebra yields
+
+πi =
+
+D
+
+�
+
+d=1
+
+P(z(d)
+
+1
+
+= i, X; θs)
+
+M
+
+�
+
+j=1
+
+D
+
+�
+
+d=1
+
+P(z(d)
+
+1
+
+= j, X; θs)
+
+=
+
+D
+
+�
+
+d=1
+
+P(z(d)
+
+1
+
+= i, X; θs)
+
+D
+
+�
+
+d=1
+
+M
+
+�
+
+j=1
+
+P(z(d)
+
+1
+
+= j, X; θs)
+
+=
+
+D
+
+�
+
+d=1
+
+P(z(d)
+
+1
+
+= i, X; θs)
+
+D
+
+�
+
+d=1
+
+P(X; θs)
+
+=
+
+D
+
+�
+
+d=1
+
+P(z(d)
+
+1
+
+= i, X; θs)
+
+DP(X; θs)
+
+=
+
+D
+
+�
+
+d=1
+
+P(X; θs)P(z(d)
+
+1
+
+= i|X; θs)
+
+DP(X; θs)
+
+= 1
+
+D
+
+D
+
+�
+
+d=1
+
+P(z(d)
+
+1
+
+= i|X; θs)
+
+= 1
+
+D
+
+D
+
+�
+
+d=1
+
+P(z(d)
+
+1
+
+= i|X(d); θs)
+
+2
+
+
+We now follow a similar process for the Aij’s.
+
+∂ ˆL(θ, θs)
+
+∂Aij
+
+=
+
+∂
+
+∂Aij
+
+��
+
+z∈Z
+
+D
+
+�
+
+d=1
+
+T
+
+�
+
+t=2
+
+log Az(d)
+
+t−1z(d)
+
+t P(z, X; θs)
+
+�
+
+− λAi = 0
+
+=
+
+∂
+
+∂Aij
+
+
+
+
+
+M
+
+�
+
+j=1
+
+M
+
+�
+
+k=1
+
+D
+
+�
+
+d=1
+
+T
+
+�
+
+t=2
+
+log AjkP(z(d)
+
+t−1 = j, z(d)
+
+t
+
+= k, X; θs)
+
+
+
+ − λAi = 0
+
+=
+
+D
+
+�
+
+d=1
+
+T
+
+�
+
+t=2
+
+P(z(d)
+
+t−1 = i, z(d)
+
+t
+
+= j, X; θs)
+
+Aij
+
+− λAi = 0
+
+∂ ˆL(θ, θs)
+
+∂λAi
+
+= −
+
+
+
+
+
+M
+
+�
+
+j=1
+
+Aij − 1
+
+
+
+ = 0
+
+This yields
+
+Aij =
+
+D
+
+�
+
+d=1
+
+T�
+
+t=2
+
+P(z(d)
+
+t−1 = i, z(d)
+
+t
+
+= j, X; θs)
+
+M
+
+�
+
+j=1
+
+D
+
+�
+
+d=1
+
+T�
+
+t=2
+
+P(z(d)
+
+t−1 = i, z(d)
+
+t
+
+= j, X; θs)
+
+=
+
+D
+
+�
+
+d=1
+
+T�
+
+t=2
+
+P(z(d)
+
+t−1 = i, z(d)
+
+t
+
+= j, X; θs)
+
+D
+
+�
+
+d=1
+
+T�
+
+t=2
+
+P(z(d)
+
+t−1 = i, X; θs)
+
+=
+
+D
+
+�
+
+d=1
+
+T�
+
+t=2
+
+P(X; θs)P(z(d)
+
+t−1 = i, z(d)
+
+t
+
+= j|X; θs)
+
+D
+
+�
+
+d=1
+
+T�
+
+t=2
+
+P(X; θs)P(z(d)
+
+t−1 = i|X; θs)
+
+=
+
+D
+
+�
+
+d=1
+
+T�
+
+t=2
+
+P(z(d)
+
+t−1 = i, z(d)
+
+t
+
+= j|X(d); θs)
+
+D
+
+�
+
+d=1
+
+T�
+
+t=2
+
+P(z(d)
+
+t−1 = i|X(d); θs)
+
+The ﬁnal thing is the Bi(j)’s, which are slightly trickier. Let I(x) denote an indicator function which is 1 if x is true,
+
+0 otherwise.
+
+∂ ˆL(θ, θs)
+
+∂Bi(j)
+
+=
+
+∂
+
+∂Bi(j)
+
+��
+
+z∈Z
+
+D
+
+�
+
+d=1
+
+T
+
+�
+
+t=1
+
+log Bz(d)
+
+t (x(d)
+
+t )P(z, X; θs)
+
+�
+
+− λBi = 0
+
+=
+
+∂
+
+∂Bi(j)
+
+� N
+
+�
+
+i=1
+
+D
+
+�
+
+d=1
+
+T
+
+�
+
+t=1
+
+log Bi(x(d)
+
+t )P(z(d)
+
+t
+
+= i, X; θs)
+
+�
+
+− λBi = 0
+
+=
+
+D
+
+�
+
+d=1
+
+T
+
+�
+
+t=1
+
+P(z(d)
+
+t
+
+= i, X; θs)I(x(d)
+
+t
+
+= j)
+
+Bi(j)
+
+− λBi = 0
+
+∂ ˆL(θ, θs)
+
+∂λBi
+
+= −
+
+
+
+
+
+N
+
+�
+
+j=1
+
+Bi(j) − 1
+
+
+
+ = 0
+
+3
+
+
+This should come as no surprise by now
+
+Bi(j) =
+
+D
+
+�
+
+d=1
+
+T�
+
+t=1
+
+P(z(d)
+
+t
+
+= i, X; θs)I(x(d)
+
+t
+
+= j)
+
+N
+
+�
+
+j=1
+
+D
+
+�
+
+d=1
+
+T�
+
+t=1
+
+P(z(d)
+
+t
+
+= i, X; θs)I(x(d)
+
+t
+
+= j)
+
+=
+
+D
+
+�
+
+d=1
+
+T�
+
+t=1
+
+P(z(d)
+
+t
+
+= i, X; θs)I(x(d)
+
+t
+
+= j)
+
+D
+
+�
+
+d=1
+
+T�
+
+t=1
+
+P(z(d)
+
+t
+
+= i, X; θs)
+
+=
+
+D
+
+�
+
+d=1
+
+T�
+
+t=1
+
+P(z(d)
+
+t
+
+= i|X(d); θs)I(x(d)
+
+t
+
+= j)
+
+D
+
+�
+
+d=1
+
+T�
+
+t=1
+
+P(z(d)
+
+t
+
+= i|X(d); θs)
+
+To summarize, the update steps are
+
+π(s+1)
+
+i
+
+= 1
+
+D
+
+D
+
+�
+
+d=1
+
+P(z(d)
+
+1
+
+= i|X(d); θs)
+
+A(s+1)
+
+ij
+
+=
+
+D
+
+�
+
+d=1
+
+T�
+
+t=2
+
+P(z(d)
+
+t−1 = i, z(d)
+
+t
+
+= j|X(d); θs)
+
+D
+
+�
+
+d=1
+
+T�
+
+t=2
+
+P(z(d)
+
+t−1 = i|X(d); θs)
+
+B(s+1)
+
+i
+
+(j) =
+
+D
+
+�
+
+d=1
+
+T�
+
+t=1
+
+P(z(d)
+
+t
+
+= i|X(d); θs)I(x(d)
+
+t
+
+= j)
+
+D
+
+�
+
+d=1
+
+T�
+
+t=1
+
+P(z(d)
+
+t
+
+= i|X(d); θs)
+
+Note that P(zt|X; θ) and P(zt−1, zt|X; θ) are both quantities which can be computed efﬁciently for HMMs by the
+
+forward-backwards algorithm. Once again, see [1] for more details.
+
+References
+
+[1] Christopher M. Bishop. Pattern Recognition and Machine Learning (Information Science and Statistics). 2006.
+
+4
+

@@ -1,0 +1,2592 @@
+
+
+
+
+
+
+
+
+
+
+
+Lecture 5: Language Modelling in Information
+
+Retrieval and Classiﬁcation
+
+Information Retrieval
+
+Computer Science Tripos Part II
+
+Helen Yannakoudakis1
+
+Natural Language and Information Processing (NLIP) Group
+
+helen.yannakoudakis@cl.cam.ac.uk
+
+2018
+
+1Based on slides from Simone Teufel and Ronan Cummins
+
+1
+
+
+
+
+Recap: Ranked retrieval in the vector space model
+
+
+
+
+
+Represent the query as a weighted tf–idf vector.
+
+
+
+Represent each document as a weighted tf–idf vector.
+
+
+
+Compute the cosine similarity between the query vector and
+
+each document vector.
+
+
+
+Rank documents with respect to the query.
+
+
+
+Return the top K (e.g., K = 10) to the user.
+
+2
+
+
+
+
+Upcoming today
+
+
+
+
+
+Query-likelihood method in IR
+
+
+
+Document Language Modelling
+
+
+
+Smoothing
+
+
+
+Classiﬁcation
+
+3
+
+
+
+
+Overview
+
+
+
+
+
+1 Query Likelihood
+
+
+
+2 Estimating Document Models
+
+
+
+3 Smoothing
+
+
+
+4 Naive Bayes Classiﬁcation
+
+
+
+
+Language Model
+
+
+
+
+
+A model for how humans generate language.
+
+
+
+Places a probability distribution over any sequence of words.
+
+
+
+By construction, it also provides a model for generating text
+
+according to its distribution.
+
+
+
+Used in many language-orientated tasks, e.g.,
+
+
+
+Machine translation:
+
+P(high winds tonite) &gt; P(large winds tonite)
+
+
+
+Spelling correction:
+
+P(about 15 minutes) &gt; P(about 15 minuets)
+
+
+
+Speech recognition:
+
+P(I saw a van) &gt;&gt; P(eyes awe of an)
+
+4
+
+
+
+
+Unigram Language Model
+
+
+
+How do we build probabilities over sequences of terms?
+
+P(t1t2t3t4) = P(t1)P(t2|t1)P(t3|t1t2)P(t4|t1t2t3)
+
+5
+
+
+
+
+Unigram Language Model
+
+
+
+How do we build probabilities over sequences of terms?
+
+P(t1t2t3t4) = P(t1)P(t2|t1)P(t3|t1t2)P(t4|t1t2t3)
+
+A unigram language model throws away all conditioning context,
+
+and estimates each term independently. As a result:
+
+Puni(t1t2t3t4) = P(t1)P(t2)P(t3)P(t4)
+
+5
+
+
+
+
+What is a document language model?
+
+
+
+
+
+A model for how an author generates a document on a
+
+particular topic.
+
+
+
+The document itself is just one sample from the model (i.e.,
+
+ask the author to write the document again and he/she will
+
+invariably write something similar, but not exactly the same).
+
+
+
+A probabilistic generative model for documents.
+
+6
+
+
+
+
+Two Unigram Document Language Models
+
+
+
+
+
+∑
+
+t∈V
+
+P(t|Md) = 1
+
+7
+
+
+
+
+Query Likelihood Method (I)
+
+
+
+
+
+Users often pose queries by thinking of words that are likely to
+
+be in relevant documents.
+
+
+
+The query likelihood approach uses this idea as a principle for
+
+ranking documents.
+
+
+
+We construct from each document d in the collection a
+
+language model Md.
+
+
+
+Given a query string q, we rank documents by the likelihood
+
+of their document models Md generating q: P(q|Md)
+
+8
+
+
+
+
+Query Likelihood Method (II)
+
+
+
+P(d|q) = P(q|d)P(d)
+
+P(q)
+
+9
+
+
+
+
+Query Likelihood Method (II)
+
+
+
+P(d|q) = P(q|d)P(d)
+
+P(q)
+
+P(d|q) ∝ P(q|d)P(d)
+
+9
+
+
+
+
+Query Likelihood Method (II)
+
+
+
+P(d|q) = P(q|d)P(d)
+
+P(q)
+
+P(d|q) ∝ P(q|d)P(d)
+
+where if we have a uniform prior over P(d) then
+
+P(d|q) ∝ P(q|d)
+
+Note: P(d) is uniform if we have no reason a priori to favour one document over
+
+another. Useful priors (based on aspects such as authority, length, novelty, freshness,
+
+popularity, click-through rate) could easily be incorporated.
+
+9
+
+
+
+
+An Example (I)
+
+
+
+
+
+P(frog said that toad likes frog|M1) =
+
+10
+
+
+
+
+An Example (I)
+
+
+
+
+
+P(frog said that toad likes frog|M1) =
+
+(0.01 × 0.03 × 0.04 × 0.01 × 0.02 × 0.01)
+
+10
+
+
+
+
+An Example (I)
+
+
+
+
+
+P(frog said that toad likes frog|M1) =
+
+(0.01 × 0.03 × 0.04 × 0.01 × 0.02 × 0.01)
+
+P(frog said that toad likes frog|M2) =
+
+10
+
+
+
+
+An Example (I)
+
+
+
+
+
+P(frog said that toad likes frog|M1) =
+
+(0.01 × 0.03 × 0.04 × 0.01 × 0.02 × 0.01)
+
+P(frog said that toad likes frog|M2) =
+
+(0.0002 × 0.03 × 0.04 × 0.0001 × 0.04 × 0.0002)
+
+10
+
+
+
+
+An Example (II)
+
+
+
+
+
+P(q|M1) &gt; P(q|M2)
+
+11
+
+
+
+
+Overview
+
+
+
+
+
+1 Query Likelihood
+
+
+
+2 Estimating Document Models
+
+
+
+3 Smoothing
+
+
+
+4 Naive Bayes Classiﬁcation
+
+
+
+
+Documents as samples
+
+
+
+
+
+We now know how to rank document models in a theoretically
+
+principled manner.
+
+
+
+But how do we estimate the document model for each
+
+document?
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+12
+
+
+
+
+Documents as samples
+
+
+
+
+
+We now know how to rank document models in a theoretically
+
+principled manner.
+
+
+
+But how do we estimate the document model for each
+
+document?
+
+Example document
+
+
+
+
+
+
+
+
+
+
+
+
+
+click go the shears boys click click click
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+12
+
+
+
+
+Documents as samples
+
+
+
+
+
+We now know how to rank document models in a theoretically
+
+principled manner.
+
+
+
+But how do we estimate the document model for each
+
+document?
+
+Example document
+
+
+
+
+
+
+
+
+
+
+
+
+
+click go the shears boys click click click
+
+Maximum likelihood estimate (MLE)
+
+
+
+
+
+
+
+
+
+
+
+
+
+Estimating the probability as the relative frequency of t in d: tft,d
+
+|d|
+
+for the unigram model (|d|: length of the document)
+
+
+
+
+
+
+
+
+
+
+
+
+
+12
+
+
+
+
+Documents as samples
+
+
+
+
+
+We now know how to rank document models in a theoretically
+
+principled manner.
+
+
+
+But how do we estimate the document model for each
+
+document?
+
+Example document
+
+
+
+
+
+
+
+
+
+
+
+
+
+click go the shears boys click click click
+
+Maximum likelihood estimate (MLE)
+
+
+
+
+
+
+
+
+
+
+
+
+
+Estimating the probability as the relative frequency of t in d: tft,d
+
+|d|
+
+for the unigram model (|d|: length of the document)
+
+Maximum likelihood estimates
+
+
+
+
+
+
+
+
+
+
+
+
+
+click= 4
+
+8, go= 1
+
+8, the= 1
+
+8, shears=1
+
+8, boys= 1
+
+8
+
+12
+
+
+
+
+Zero probability problem (over-ﬁtting)
+
+
+
+
+
+But when using maximum likelihood estimates, documents
+
+that do not contain all query terms will receive a score of zero.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+13
+
+
+
+
+Zero probability problem (over-ﬁtting)
+
+
+
+
+
+But when using maximum likelihood estimates, documents
+
+that do not contain all query terms will receive a score of zero.
+
+Maximum likelihood estimates
+
+
+
+
+
+
+
+
+
+
+
+
+
+click=0.5, go=0.125, the=0.125, shears=0.125, boys=0.125
+
+
+
+
+
+
+
+
+
+
+
+
+
+13
+
+
+
+
+Zero probability problem (over-ﬁtting)
+
+
+
+
+
+But when using maximum likelihood estimates, documents
+
+that do not contain all query terms will receive a score of zero.
+
+Maximum likelihood estimates
+
+
+
+
+
+
+
+
+
+
+
+
+
+click=0.5, go=0.125, the=0.125, shears=0.125, boys=0.125
+
+Sample query
+
+
+
+
+
+
+
+
+
+
+
+
+
+P(shears boys hair|Md) = 0.125 × 0.125 × 0 = 0 (hair is an
+
+unseen word)
+
+What if the query is long?
+
+13
+
+
+
+
+Problem in calculation of estimation
+
+
+
+
+
+With MLE, only seen terms receive a probability estimate.
+
+
+
+The total probability attributed to the seen terms is 1.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+14
+
+
+
+
+Problem in calculation of estimation
+
+
+
+
+
+With MLE, only seen terms receive a probability estimate.
+
+
+
+The total probability attributed to the seen terms is 1.
+
+
+
+Remember that the document model is a generative
+
+explanation.
+
+
+
+The document itself is just one sample from the model. If a
+
+person was to rewrite the document, he/she may include hair
+
+or indeed some other words.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+14
+
+
+
+
+Problem in calculation of estimation
+
+
+
+
+
+With MLE, only seen terms receive a probability estimate.
+
+
+
+The total probability attributed to the seen terms is 1.
+
+
+
+Remember that the document model is a generative
+
+explanation.
+
+
+
+The document itself is just one sample from the model. If a
+
+person was to rewrite the document, he/she may include hair
+
+or indeed some other words.
+
+
+
+The estimated probabilities of seen terms is too big!
+
+
+
+MLE overestimates the probability of seen terms.
+
+
+
+
+
+
+
+
+
+
+
+
+
+14
+
+
+
+
+Problem in calculation of estimation
+
+
+
+
+
+With MLE, only seen terms receive a probability estimate.
+
+
+
+The total probability attributed to the seen terms is 1.
+
+
+
+Remember that the document model is a generative
+
+explanation.
+
+
+
+The document itself is just one sample from the model. If a
+
+person was to rewrite the document, he/she may include hair
+
+or indeed some other words.
+
+
+
+The estimated probabilities of seen terms is too big!
+
+
+
+MLE overestimates the probability of seen terms.
+
+Solution: smoothing
+
+
+
+
+
+
+
+
+
+
+
+
+
+Take some portion away from the MLE overestimate, and
+
+re-distribute it to the unseen terms.
+
+14
+
+
+
+
+Solution: smoothing
+
+
+
+Discount non-zero probabilities and to give some probability mass
+
+to unseen words:
+
+Maximum likelihood estimates
+
+
+
+
+
+
+
+
+
+
+
+
+
+click=0.5, go=0.125, the=0.125, shears=0.125, boys=0.125
+
+
+
+
+
+
+
+
+
+
+
+
+
+15
+
+
+
+
+Solution: smoothing
+
+
+
+Discount non-zero probabilities and to give some probability mass
+
+to unseen words:
+
+Maximum likelihood estimates
+
+
+
+
+
+
+
+
+
+
+
+
+
+click=0.5, go=0.125, the=0.125, shears=0.125, boys=0.125
+
+Some type of smoothing
+
+
+
+
+
+
+
+
+
+
+
+
+
+click=0.4, go=0.1, the=0.1, shears=0.1, boys=0.1, hair=0.01,
+
+man=0.01, the=0.001, bacon=0.0001, .....
+
+15
+
+
+
+
+Overview
+
+
+
+
+
+1 Query Likelihood
+
+
+
+2 Estimating Document Models
+
+
+
+3 Smoothing
+
+
+
+4 Naive Bayes Classiﬁcation
+
+
+
+
+How to smooth
+
+
+
+ML estimates:
+
+ˆP(t|Md) = tft,d
+
+|d|
+
+16
+
+
+
+
+How to smooth
+
+
+
+ML estimates:
+
+ˆP(t|Md) = tft,d
+
+|d|
+
+Linear Smoothing:
+
+ˆP(t|Md) = λtft,d
+
+|d| + (1 − λ) ˆP(t|Mc)
+
+Mc is a language model built from the entire document collection.
+
+ˆP(t|Mc) = cft
+
+|c| is the estimated probability of seeing t in general
+
+(i.e., cft is the frequency of t in the entire document collection of
+
+|c| tokens).
+
+λ is a smoothing parameter between 0 and 1.
+
+16
+
+
+
+
+How to smooth
+
+
+
+Linear Smoothing:
+
+ˆP(t|Md) = λtft,d
+
+|d| + (1 − λ)cft
+
+|c|
+
+
+
+High λ: more conjunctive search (i.e., where we retrieve
+
+documents containing all query terms).
+
+
+
+Low λ: more disjunctive search (suitable for long queries).
+
+
+
+Correctly setting λ is important to the good performance of
+
+the model (collection-speciﬁc tuning).
+
+
+
+Note: every document has the same amount of smoothing.
+
+17
+
+
+
+
+How to smooth
+
+
+
+Linear Smoothing:
+
+ˆP(t|Md) = λtft,d
+
+|d| + (1 − λ)cft
+
+|c|
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+18
+
+
+
+
+How to smooth
+
+
+
+Linear Smoothing:
+
+ˆP(t|Md) = λtft,d
+
+|d| + (1 − λ)cft
+
+|c|
+
+Dirichlet Smoothing has been found to be more eﬀective in IR
+
+where λ =
+
+|d|
+
+α+|d|
+
+
+
+Dynamic smoothing that changes based on the document length.
+
+
+
+
+
+
+
+
+
+
+
+
+
+18
+
+
+
+
+How to smooth
+
+
+
+Linear Smoothing:
+
+ˆP(t|Md) = λtft,d
+
+|d| + (1 − λ)cft
+
+|c|
+
+Dirichlet Smoothing has been found to be more eﬀective in IR
+
+where λ =
+
+|d|
+
+α+|d|
+
+
+
+Dynamic smoothing that changes based on the document length.
+
+Plugging this in yields:
+
+ˆP(t|Md) =
+
+|d|
+
+α + |d|
+
+tft,d
+
+|d| +
+
+α
+
+α + |d|
+
+cft
+
+|c|
+
+where α can be interpreted as the background mass (total number
+
+of pseudo counts of words introduced).
+
+Bayesian Intuition
+
+
+
+
+
+
+
+
+
+
+
+
+
+We should have more trust (belief) in ML estimates that are
+
+derived from longer documents – see the
+
+|d|
+
+α+|d| factor.
+
+18
+
+
+
+
+Putting this all together
+
+
+
+Rank documents according to:
+
+P(q|d) =
+
+∏
+
+t∈q
+
+(
+
+|d|
+
+α + |d|
+
+tft,d
+
+|d| +
+
+α
+
+α + |d|
+
+cft
+
+|c|)
+
+or
+
+19
+
+
+
+
+Putting this all together
+
+
+
+Rank documents according to:
+
+P(q|d) =
+
+∏
+
+t∈q
+
+(
+
+|d|
+
+α + |d|
+
+tft,d
+
+|d| +
+
+α
+
+α + |d|
+
+cft
+
+|c|)
+
+or
+
+log P(q|d) =
+
+∑
+
+t∈q
+
+log(
+
+|d|
+
+α + |d|
+
+tft,d
+
+|d| +
+
+α
+
+α + |d|
+
+cft
+
+|c|)
+
+19
+
+
+
+
+Putting this all together
+
+
+
+Rank documents according to:
+
+P(q|d) =
+
+∏
+
+t∈q
+
+(
+
+|d|
+
+α + |d|
+
+tft,d
+
+|d| +
+
+α
+
+α + |d|
+
+cft
+
+|c|)
+
+or
+
+log P(q|d) =
+
+∑
+
+t∈q
+
+log(
+
+|d|
+
+α + |d|
+
+tft,d
+
+|d| +
+
+α
+
+α + |d|
+
+cft
+
+|c|)
+
+In practice, we use logs – why?
+
+19
+
+
+
+
+Putting this all together
+
+
+
+Rank documents according to:
+
+P(q|d) =
+
+∏
+
+t∈q
+
+(
+
+|d|
+
+α + |d|
+
+tft,d
+
+|d| +
+
+α
+
+α + |d|
+
+cft
+
+|c|)
+
+or
+
+log P(q|d) =
+
+∑
+
+t∈q
+
+log(
+
+|d|
+
+α + |d|
+
+tft,d
+
+|d| +
+
+α
+
+α + |d|
+
+cft
+
+|c|)
+
+In practice, we use logs – why?
+
+Multiplying lots of small probabilities can result in ﬂoating point
+
+underﬂow [log(xy) = log(x) + log(y)].
+
+19
+
+
+
+
+Pros and Cons
+
+
+
+
+
+It is principled, intuitive, simple, and extendable.
+
+
+
+Aspects of tf and idf are incorporated quite naturally.
+
+
+
+It is computationally eﬃcient for large scale corpora.
+
+
+
+More complex language models (markov models) can be
+
+adopted and document priors can be added.
+
+
+
+But more complex models usually involve storing more
+
+parameters (and doing more computation).
+
+
+
+
+
+
+
+20
+
+
+
+
+Pros and Cons
+
+
+
+
+
+It is principled, intuitive, simple, and extendable.
+
+
+
+Aspects of tf and idf are incorporated quite naturally.
+
+
+
+It is computationally eﬃcient for large scale corpora.
+
+
+
+More complex language models (markov models) can be
+
+adopted and document priors can be added.
+
+
+
+But more complex models usually involve storing more
+
+parameters (and doing more computation).
+
+
+
+Both documents and queries are modelled as simple strings of
+
+symbols.
+
+
+
+No formal treatment of relevance.
+
+
+
+Therefore model does not handle relevance feedback
+
+automatically (lecture 7).
+
+20
+
+
+
+
+Extensions
+
+
+
+
+
+Relevance-based language models (very much related to
+
+Naive-Bayes classiﬁcation) incorporate the idea of relevance
+
+and are useful for capturing feedback.
+
+
+
+Treating the query as being drawn from a query model (useful
+
+for long queries).
+
+
+
+Markov-chain models for document modelling.
+
+
+
+Use diﬀerent generative distributions (e.g., replacing the
+
+multinomial with neural models).
+
+Very useful resource:
+
+http://times.cs.uiuc.edu/czhai/pub/slmir-now.pdf
+
+21
+
+
+
+
+Overview
+
+
+
+
+
+1 Query Likelihood
+
+
+
+2 Estimating Document Models
+
+
+
+3 Smoothing
+
+
+
+4 Naive Bayes Classiﬁcation
+
+
+
+
+Terminology
+
+
+
+
+
+Features: measurable properties of the data.
+
+
+
+Classes: labels associated with the data.
+
+
+
+Sentiment classiﬁcation: automatically classify text based on
+
+the sentiment it contains (e.g., movie reviews).
+
+
+
+Features: the words the text contains, parts of speech,
+
+grammatical constructions etc.
+
+
+
+Classes: positive or negative sentiment (binary classiﬁcation).
+
+
+
+Classiﬁcation is the function that maps input features to a
+
+class.
+
+22
+
+
+
+
+Examples of how search engines use classiﬁcation
+
+
+
+
+
+Query classiﬁcation (types of queries)
+
+
+
+Spelling correction
+
+
+
+Document/webpage classiﬁcation
+
+
+
+Automatic detection of spam pages (spam vs. non-spam)
+
+
+
+Topic classiﬁcation (relevant to topic vs. not)
+
+
+
+Language identiﬁcation (classes: English vs. French etc.)
+
+
+
+User classiﬁcation (personalised search)
+
+23
+
+
+
+
+The Naive Bayes classiﬁer
+
+
+
+
+
+The Naive Bayes classiﬁer is a probabilistic classiﬁer.
+
+
+
+We compute the probability of a document d being in a class
+
+c as follows:
+
+P(c|d) = P(c) P(d|c)
+
+P(d)
+
+P(c|d) ∝ P(c) P(d|c)
+
+P(d) is constant during a given classiﬁcation and won’t aﬀect
+
+the result.
+
+24
+
+
+
+
+The Naive Bayes classiﬁer
+
+
+
+P(c|d) ∝ P(c) P(d|c)
+
+P(c|d) ∝ P(c)
+
+∏
+
+1≤k≤|d|
+
+P(tk|c)
+
+
+
+P(tk|c) is the conditional probability of term tk occurring in a
+
+document of class c (conditional independence assumption).
+
+
+
+|d| is the length of the document (number of tokens).
+
+
+
+P(c) is the prior probability of c.
+
+
+
+If a document’s terms do not provide clear evidence for one
+
+class vs. another, we choose the c with highest P(c).
+
+25
+
+
+
+
+Maximum a posteriori class
+
+
+
+
+
+Our goal in Naive Bayes classiﬁcation is to ﬁnd the “best”
+
+class.
+
+
+
+The best class is the most likely or maximum a posteriori
+
+(MAP) class cmap:
+
+cmap = arg max
+
+c∈C
+
+ˆP(c|d) = arg max
+
+c∈C
+
+ˆP(c)
+
+∏
+
+1≤k≤|d|
+
+ˆP(tk|c)
+
+26
+
+
+
+
+Taking the log
+
+
+
+
+
+Multiplying lots of small probabilities can result in ﬂoating
+
+point underﬂow.
+
+
+
+Since log is a monotonic function, the class with the highest
+
+score does not change.
+
+
+
+So what we usually compute in practice is:
+
+cmap = arg max
+
+c∈C
+
+[log ˆP(c) +
+
+∑
+
+1≤k≤|d|
+
+log ˆP(tk|c)]
+
+27
+
+
+
+
+Naive Bayes classiﬁer: Interpretation
+
+
+
+
+
+Classiﬁcation rule:
+
+cmap = arg max
+
+c∈C
+
+[log ˆP(c) +
+
+∑
+
+1≤k≤|d|
+
+log ˆP(tk|c)]
+
+
+
+Simple interpretation:
+
+
+
+Each conditional parameter log ˆP(tk|c) is a weight that
+
+indicates how good an indicator term tk is for class c.
+
+
+
+The prior log ˆP(c) is a weight that indicates how likely we are
+
+to see class c.
+
+
+
+The sum of log prior and term weights is then a measure of
+
+how much evidence there is for the document being in the
+
+class.
+
+
+
+We select the class with the most evidence.
+
+28
+
+
+
+
+Parameter estimation take 1: Maximum likelihood
+
+
+
+
+
+Estimate parameters ˆP(c) and ˆP(tk|c) from training data –
+
+how?
+
+
+
+
+
+
+
+
+
+
+
+29
+
+
+
+
+Parameter estimation take 1: Maximum likelihood
+
+
+
+
+
+Estimate parameters ˆP(c) and ˆP(tk|c) from training data –
+
+how?
+
+
+
+Prior:
+
+ˆP(c) = Nc
+
+N
+
+
+
+Nc: number of docs in class c; N: total number of docs
+
+
+
+Conditional probabilities:
+
+ˆP(t|c) =
+
+Tct
+
+∑
+
+t′∈V
+
+Tct′
+
+
+
+Tct is the number of times t occurs in training documents
+
+that belong to class c (includes multiple occurrences).
+
+
+
+We’ve made a Naive Bayes independence assumption here:
+
+ˆP(tk1|c) = ˆP(tk2|c), independent of positions k1, k2.
+
+29
+
+
+
+
+The problem with maximum likelihood estimates: Zeros
+
+
+
+C=China
+
+X1=Beijing
+
+X2=and
+
+X3=Taipei
+
+X4=join
+
+X5=WTO
+
+P(China|d)
+
+∝
+
+P(China) · P(Beijing|China) · P(and|China)
+
+· P(Taipei|China) · P(join|China) · P(WTO|China)
+
+
+
+If WTO never occurs in class China in the training set:
+
+ˆP(WTO|China) =
+
+TChina,WTO
+
+∑
+
+t′∈V
+
+TChina,t′ =
+
+0
+
+∑
+
+t′∈V
+
+TChina,t′ = 0
+
+30
+
+
+
+
+The problem with maximum likelihood estimates: Zeros
+
+
+
+C=China
+
+X1=Beijing
+
+X2=and
+
+X3=Taipei
+
+X4=join
+
+X5=WTO
+
+P(China|d)
+
+∝
+
+P(China) · P(Beijing|China) · P(and|China)
+
+· P(Taipei|China) · P(join|China) · P(WTO|China)
+
+
+
+If WTO never occurs in class China in the training set:
+
+ˆP(WTO|China) =
+
+TChina,WTO
+
+∑
+
+t′∈V
+
+TChina,t′ =
+
+0
+
+∑
+
+t′∈V
+
+TChina,t′ = 0
+
+30
+
+
+
+
+The problem with maximum likelihood estimates: Zeros
+
+
+
+
+
+If there are no occurrences of WTO in documents in class
+
+China . . .
+
+
+
+. . . we will get P(China|d) = 0 for any document that
+
+contains WTO!
+
+31
+
+
+
+
+To avoid zeros: Add-one smoothing
+
+
+
+
+
+Before:
+
+ˆP(t|c) =
+
+Tct
+
+∑
+
+t′∈V
+
+Tct′
+
+
+
+Now: Add one to each count to avoid zeros:
+
+ˆP(t|c) =
+
+Tct + 1
+
+∑
+
+t′∈V
+
+(Tct′ + 1) =
+
+Tct + 1
+
+( ∑
+
+t′∈V
+
+Tct′) + |V |
+
+where V is the vocabulary of all distinct words, no matter
+
+which class c a term t occurred with.
+
+32
+
+
+
+
+Example
+
+
+
+docID
+
+words in document
+
+in c = China?
+
+training set
+
+1
+
+Chinese Beijing Chinese
+
+yes
+
+2
+
+Chinese Chinese Shanghai
+
+yes
+
+3
+
+Chinese Macao
+
+yes
+
+4
+
+Tokyo Japan Chinese
+
+no
+
+test set
+
+5
+
+Chinese Chinese Chinese Tokyo Japan
+
+?
+
+
+
+Estimate parameters of Naive Bayes classiﬁer using the training set.
+
+
+
+Classify test document.
+
+|textc| = 8 (no of tokens in class China)
+
+|textc| = 3 (no of tokens in other class)
+
+|V | = 6 (vocabulary size)
+
+33
+
+
+
+
+Example: Parameter estimates
+
+
+
+Priors: ˆP(c) = 3/4 and ˆP(c) = 1/4
+
+Conditional probabilities:
+
+ˆP(Chinese|c)
+
+=
+
+(5 + 1)/(8 + 6) = 6/14 = 3/7
+
+ˆP(Tokyo|c) = ˆP(Japan|c)
+
+=
+
+(0 + 1)/(8 + 6) = 1/14
+
+ˆP(Chinese|c)
+
+=
+
+(1 + 1)/(3 + 6) = 2/9
+
+ˆP(Tokyo|c) = ˆP(Japan|c)
+
+=
+
+(1 + 1)/(3 + 6) = 2/9
+
+The denominators are (8 + 6) and (3 + 6) because the lengths of
+
+textc and textc are 8 and 3, respectively, and because the
+
+vocabulary consists of 6 terms.
+
+34
+
+
+
+
+Example: Classiﬁcation
+
+
+
+ˆP(c|d5)
+
+∝
+
+3/4 · (3/7)3 · 1/14 · 1/14 ≈ 0.0003
+
+ˆP(c|d5)
+
+∝
+
+1/4 · (2/9)3 · 2/9 · 2/9 ≈ 0.0001
+
+Thus, the classiﬁer assigns the test document to c = China.
+
+The reason for this classiﬁcation decision is that the three
+
+occurrences of the positive indicator Chinese in d5 outweigh the
+
+occurrences of the two negative indicators Japan and Tokyo.
+
+35
+
+
+
+
+Naive Bayes is not so naive
+
+
+
+
+
+Multinomial model violates two independence assumptions
+
+and yet...
+
+
+
+Naive Bayes has won some competitions (e.g., KDD-CUP 97;
+
+prediction of most likely donors for a charity)
+
+
+
+More robust to non-relevant features than some more complex
+
+learning methods
+
+
+
+More robust to concept drift (changing of deﬁnition of class
+
+over time) than some more complex learning methods
+
+
+
+Better than methods like Decision Trees when we have many
+
+equally important features
+
+
+
+A good dependable baseline for text classiﬁcation (but not the
+
+best)
+
+
+
+Optimal if independence assumptions hold (never true for
+
+text, but true for some domains)
+
+
+
+Very fast; low storage requirements
+
+36
+
+
+
+
+Time complexity of Naive Bayes
+
+
+
+mode
+
+time complexity
+
+training
+
+Θ(|D|Lave + |C||V |)
+
+testing
+
+Θ(La + |C|Ma) = Θ(|C|Ma)
+
+
+
+Lave: average length of a training doc; La: length of the test
+
+doc; Ma: number of distinct terms in the test doc; D: training
+
+set; V : vocabulary; C: set of classes
+
+
+
+Θ(|D|Lave) is the time it takes to compute all counts. Note
+
+that |D|Lave is T, the size of our collection.
+
+
+
+Θ(|C||V |) is the time it takes to compute the conditional
+
+probabilities from the counts.
+
+
+
+Generally: |C||V | &lt; |D|Lave
+
+
+
+Test time is also linear (in the length of the test document).
+
+
+
+Thus: Naive Bayes is linear in the size of the training set
+
+(training) and the test document (testing). This is optimal.
+
+37
+
+
+
+
+Not covered
+
+
+
+
+
+Evaluation of text classiﬁcation.
+
+38
+
+
+
+
+Summary
+
+
+
+
+
+Query-likelihood as a general principle for ranking documents
+
+in an unsupervised manner
+
+
+
+Treat queries as strings
+
+
+
+Rank documents according to their models
+
+
+
+Document language models
+
+
+
+Know the diﬀerence between the document and the document
+
+model
+
+
+
+Multinomial distribution is simple but eﬀective
+
+
+
+Smoothing
+
+
+
+Reasons for, and importance of, smoothing
+
+
+
+Dirichlet (Bayesian) smoothing is very eﬀective
+
+
+
+Classiﬁcation
+
+
+
+Text classiﬁcation is supervised learning
+
+
+
+Naive Bayes: simple baseline text classiﬁer
+
+39
+
+
+
+
+Reading
+
+
+
+
+
+Manning, Raghavan, Sch¨utze: Introduction to Information
+
+Retrieval (MRS), chapter 12: Language models for
+
+information retrieval
+
+
+
+MRS chapters 13.1-13.4 for text classiﬁcation
+
+40
+

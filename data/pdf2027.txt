@@ -1,0 +1,1004 @@
+
+EM and HMM
+
+Leon Gu
+
+CSD, CMU
+
+
+The EM Algorithm
+
+Suppose that we have observed some data y =
+
+�
+
+(y1, y2, . . . yn)T �
+
+, we
+
+want to ﬁt a likelihood (or posterior) model by maximizing log-likelihood
+
+(or posterior)
+
+ℓ(θ; y) = log p(y | θ).
+
+Suppose that we don’t know the explicit form of p(y|θ), instead we know
+
+there are some unobserved (hidden) variable x, and we can write down
+
+p(y|θ) as an integration of the joint probability of y and x, so
+
+ℓ(θ; y) = log
+
+�
+
+x
+
+p(y, x | θ).
+
+Directly maximizing ℓ(θ; y) of this form is diﬃcult because the log term
+
+“ log � ” can not be further reduced. Instead of examining through all
+
+possible x and maximizing their sum, we are going to use an iterative,
+
+greedy searching technique called Expectation-Maximization to maximize
+
+the log-likelihood.
+
+
+Step One: Find a lower-bound of ℓ(θ; y)
+
+First we introduce a density function q(x) called “averaging distribution”.
+
+A lower-bound of the log-likelihood is given by,
+
+ℓ(θ; y)
+
+=
+
+log p(y|θ)
+
+=
+
+log �
+
+x
+
+p (y, x|θ)
+
+=
+
+log �
+
+x
+
+q(x) p(y,x|θ)
+
+q(x)
+
+≥
+
+�
+
+x
+
+q(x) log p(x,y|θ)
+
+q(x)
+
+=
+
+Eq(x) [log p(y, x|θ)] + Entropy [q(x)]
+
+=
+
+L(q, θ; y)
+
+(1)
+
+The ≥ follows from Jensen’s inequality (log-concavity). More explicitly
+
+we can decouple ℓ(θ; y) as the sum of three terms:
+
+ℓ(θ; y) = Eq(x) [log p(y, x|θ)]+KL [q(x) ∥ p(x|y, θ)]+Entropy [q(x)] (2)
+
+The expectation term Eq(x) [log p(y, x|θ)] is called
+
+the-expected-complete-log-likelihood (or Q-function). The equation
+
+says that the sum of the Q-function and the entropy of averaging
+
+distribution provides a lower-bound of the log-likelihood.
+
+
+Step Two: Maximize the bound over θ and q(x) iteratively
+
+Look at the bound L(q, θ; y). The equality is reached only at
+
+q(x) = p(x|y, θ), and the entropy term is independent of θ. So we have
+
+E-step:
+
+qt = arg max
+
+q
+
+L(q, θt−1; y) = p(x|y, θt−1)
+
+M-step:
+
+θt = arg max
+
+θ
+
+L(qt, θ; y) = arg max
+
+θ
+
+Eqt(x) [log p(y, x|θ)]
+
+or equivalently we have ,
+
+One Step EM Update:
+
+θt = arg max
+
+θ
+
+Ep(x|y,θt−1) [log p(y, x|θ)]
+
+(3)
+
+If the complete-data-likelihood log p(y, x|θ) is factorizable, optimizing the
+
+Q-function could be much easier than optimizing the log-likelihood.
+
+
+EM for Exponential Family
+
+Now we look at one example of EM which will provide more insights
+
+about the algorithm. Again, let y denote the observed data and x denote
+
+the hidden variable. Suppose that the joint probability p(y, x|θ) falls into
+
+exponential families, we can write it down as,
+
+p(y, x|θ) = exp {⟨g(θ), T(y, x)⟩ + d(θ) + s(y, x)}
+
+
+MLE (Use Complete Data)
+
+If the MLE estimate of θ exists, then it must be some function of the
+
+suﬃcient statistics T(y, x).
+
+θMLE
+
+=
+
+argmax
+
+θ∈Ω
+
+{⟨g(θ), T(y, x)⟩ + d(θ)}
+
+(4)
+
+=
+
+f(T(y, x))
+
+(5)
+
+
+EM (Use Partial Data)
+
+According to its deﬁnition the Q-function Eq(x) [log p(y, x|θ)] is,
+
+Q(θ
+
+′, θ)
+
+=
+
+Ep(x|y,θ′) [log p(y, x|θ)]
+
+(6)
+
+=
+
+Ep(x|y,θ′) [⟨g(θ), T(y, x)⟩ + d(θ) + s(y, x)]
+
+(7)
+
+=
+
+�
+
+g(θ), Ep(x|y,θ′) [T(y, x)]
+
+�
+
++ d(θ) + Constant
+
+(8)
+
+Let T(y, x) = Ep(x|y,θ′) [T(y, x)], the EM updating is then given by the
+
+recursion
+
+θ
+
+′′
+
+EM
+
+=
+
+argmax
+
+θ∈Ω
+
+Q(θ
+
+′, θ)
+
+(9)
+
+=
+
+argmax
+
+θ∈Ω
+
+�
+
+g(θ), T(y, x)
+
+�
+
++ d(θ)
+
+(10)
+
+=
+
+f(T(y, x))
+
+(11)
+
+We conclude that when the complete data density is from exponential
+
+families, in the M step the EM estimate of the parameters take the
+
+exactly same form as the MLE estimate. The only diﬀerence is the
+
+suﬃcient statistics T(y, x) are replaced by the expected suﬃcient
+
+statistics T(y, x).
+
+
+Hidden Markov Model
+
+q1
+
+q2
+
+q3
+
+. . .
+
+qt−1
+
+qt
+
+y1
+
+y2
+
+y3
+
+. . .
+
+yt−1
+
+yt
+
+Suppose that we have observed a sequence of data {y1, y2, . . . yT } (grey
+
+nodes), each of which is associated with a hidden state {q1, q2, . . . qT }.
+
+
+Basic Settings
+
+In Hidden Markov Model we make a few assumptions about the data:
+
+1. Discrete state space assumption: the values of qt are discrete,
+
+qt ∈ {S1, . . . , SM};
+
+2. Markov assumptions:
+
+2.1 Given the state at time t, the state at time t + 1 is
+
+independent to all previous states, that is, qt+1⊥qi|qt, ∀i &lt; t.
+
+2.2 Given the state at time t, the corresponding observation yt is
+
+independent to all other states, yt⊥qi|qt, ∀i ̸= t.
+
+Then the behavior of a HMM is fully determined by three probabilities
+
+1. the transition probability p(qt+1|qt) - the probability of qt+1 given its
+
+previous state qt. Since the states are discrete, we can describe the
+
+transition probability by a M × M matrix which is called transition
+
+matrix. The ij-th element of the matrix denotes the probability of
+
+the state transiting from the i-th state to the j-th state.
+
+2. the emission probability p(yt|qt) - the probability of the observation
+
+qt given its hidden state qt.
+
+3. the initial state distribution π(q0).
+
+
+We are interested in the following problems:
+
+1. (Inference) compute the probability of hidden states given
+
+observations, more speciﬁcally,
+
+1.1 the smoothing problem: compute p(qt|y0 ∼ yT ) (t &lt; T);
+
+1.2 the ﬁltering problem: compute p(qt|y0, ∼ yt) (t = T)
+
+1.3 the prediction problem: compute p(qt|y0 ∼ yT ) (t &gt; T).
+
+1.4 ﬁnd the most probable sequence of states {q0 ∼ qt} that
+
+maximizes p(q0 ∼ qt|y0 ∼ yt)
+
+2. (Learning) decide the parameters of the models p(qt+1|qt) and
+
+π(q0).
+
+
+The Forward-backward Algorithm (or α-β Algorithm)
+
+Let us look at the the smoothing problem (t &lt; T),
+
+p (qt|y0 ∼ yT ) = p(qt, y0 ∼ yT )
+
+p (y0 ∼ yT )
+
+p (qt, y0 ∼ yT ) = p (y0 ∼ yT |qt) p (qt)
+
+= p (y0 ∼ yt, qt) p (yt+1 ∼ yT |qt)
+
+= α(qt)β(qt)
+
+Note that we simplify notations by deﬁning
+
+α(qt) = p (y0 ∼ yt, qt)
+
+β(qt) = p (yt+1 ∼ yT |qt)
+
+
+Notice that both α(qt) and β(qt) can be computed iteratively
+
+α(qt) = p (y0 ∼ yt, qt)
+
+=
+
+�
+
+qt−1
+
+p (y0 ∼ yt, qt, qt−1)
+
+=
+
+�
+
+qt−1
+
+p (y0 ∼ yt−1, qt−1) p (yt, qt|y0 ∼ yt−1, qt−1)
+
+=
+
+�
+
+qt−1
+
+p (y0 ∼ yt−1, qt−1) p (qt|qt−1) p (yt|qt)
+
+=
+
+�
+
+qt−1
+
+α(qt−1)p (qt|qt−1) p (yt|qt)
+
+
+β(qt) = p (yt+1 ∼ yT |qt)
+
+=
+
+�
+
+qt+1
+
+p (yt+1 ∼ yT , qt+1|qt)
+
+=
+
+�
+
+qt+1
+
+p (yt+1 ∼ yT |qt+1, qt) p (qt+1|qt)
+
+=
+
+�
+
+qt+1
+
+p (yt+2 ∼ yT |qt+1) p (yt+1|qt+1) p (qt+1|qt)
+
+=
+
+�
+
+qt+1
+
+β(qt+1)p (yt+1|qt+1) p (qt+1|qt)
+
+
+Also notice that we can compute α(q0) and β(qT −1) by
+
+α(q0) = p (y0, q0)
+
+= p(q0)p(y0|q0)
+
+β(qT −1) = p (yT |qT −1)
+
+=
+
+�
+
+qT
+
+p (yT |qT ) p (qT |qT −1)
+
+As a summary, the algorithm consists of two phases:
+
+forward phase:
+
+α(qt) = p (yt|qt)
+
+�
+
+qt−1
+
+p (qt|qt−1) α(qt−1);
+
+backward phase:
+
+β(qt) =
+
+�
+
+qt−1
+
+p (yt+1|qt+1) p (qt+1|qt) β(qt−1);
+
+and the probability p (qt|y0 ∼ yT ) is given by
+
+p (qt|y0 ∼ yT ) = p(qt, y0 ∼ yT )
+
+p (y0 ∼ yT )
+
+∝ α(qt)β(qt).
+
+
+The γ Algorithm
+
+The backward step in the alpha-beta algorithm requests all the
+
+observations after the time t: {yi|i=t+1,...,T }. In practice we usually hope
+
+to throw the data away when we ﬁlter back. That motivates the
+
+γ-algorithm.
+
+γ (qt) = p (qt|y0 ∼ yT ) =
+
+�
+
+qt+1
+
+p (qt, qt+1|y0 ∼ yT )
+
+=
+
+�
+
+qt+1
+
+p (qt+1|y0 ∼ yT ) p (qt|qt+1, y0 ∼ yT )
+
+=
+
+�
+
+qt+1
+
+γ (qt+1) p (qt|qt+1, y0 ∼ yt)
+
+=
+
+�
+
+qt+1
+
+γ (qt+1) p (qt, qt+1, y0 ∼ yt)
+
+p (qt+1, y0 ∼ yt)
+
+=
+
+�
+
+qt+1
+
+γ (qt+1) p (qt+1|qt) p (qt, y0 ∼ yt)
+
+p (qt+1, y0 ∼ yt)
+
+=
+
+�
+
+qt+1
+
+γ (qt+1)
+
+p (qt+1|qt) α (qt)
+
+�
+
+qt
+
+p (qt+1|qt) α (qt)
+
+
+The Max-Product Algorithm (or the Viterbi algorithm)
+
+Now we look at the fourth inference problem: ﬁnding the most probable
+
+sequence of states {q0 ∼ qt} that maximizes the posterior
+
+p(q0 ∼ qt|y0 ∼ yt). This problem can be solved by the so-called
+
+“max-product” algorithm.
+
+max
+
+q0∼qt p(q0 ∼ qt|y0 ∼ yt)
+
+= max
+
+q0∼qt p(q0 ∼ qt, y0 ∼ yt)
+
+= max
+
+q0∼qt
+
+�
+
+p(q0)p(y0|q0)
+
+t�
+
+i=1
+
+p(qi|qi−1)p(yi|qi)
+
+�
+
+= max
+
+qt
+
+�
+
+max
+
+q0∼qt−1
+
+�
+
+p(q0)p(y0|q0)
+
+t�
+
+i=1
+
+p(qi|qi−1)p(yi|qi)
+
+��
+
+= max
+
+qt
+
+�
+
+p(yt|qt) max
+
+q0∼qt−1
+
+�
+
+p(q0)p(y0|q0)
+
+t−1
+
+�
+
+i=1
+
+p(qi|qi−1)p(yi|qi)p(qt|qt−1)
+
+��
+
+= max
+
+qt
+
+�
+
+p(yt|qt) max
+
+qt−1
+
+�
+
+p(yt−1|qt−1)p(qt|qt−1) . . . max
+
+q0
+
+{p(q0)p(y0|q0)p(q1|q0)}
+
+�
+
+
+Now look at the inner optimization problems:
+
+1. max
+
+q0
+
+{p(q0)p(y0|q0)p(q1|q0)}. For each possible value of q1 (there
+
+are M of them), we ﬁnd an optimal q0 that maximizes
+
+p(q0)p(y0|q0)p(q1|q0) and save the results;
+
+2. max
+
+q1
+
+�
+
+p(y1|q1)p(q2|q1) max
+
+q0
+
+{p(q0)p(y0|q0)p(q1|q0)}
+
+�
+
+. For each
+
+possible value of q2, we can ﬁnd the optimal q1 that maximizes
+
+p(y1|q1)p(q2|q1) max
+
+q0
+
+{p(q0)p(y0|q0)p(q1|q0)}. Notice that we don’t
+
+need to search for q0, because we have already computed the
+
+optimal q0 for each q1.
+
+3. Iterate until qt.
+
+The computational cost of this algorithm is linear to t.
+
+
+Parameters Learning
+
+Let us parameterize qt as a M-dimensional 0/1 vector, qi
+
+t = 1 indicates
+
+the state takes i-th value. The transition probability is deﬁned by:
+
+a(qt, qt+1) =
+
+M
+
+�
+
+i,j=1
+
+[ai,j]qi
+
+tqj
+
+t+1
+
+and the initial distribution is deﬁned by:
+
+π (q0) =
+
+M
+
+�
+
+i=1
+
+[πi]qi
+
+0
+
+Similarly, we parameterize the observation yt as a N−dimensional vector.
+
+Assuming that p(yt|qt) is multinomial, we have (η: observation matrix)
+
+p (yt|qt, η) =
+
+M,N
+
+�
+
+i,j=1
+
+[ηij]qi
+
+tyj
+
+t where ηij = p
+
+�
+
+yj
+
+t = 1|qi
+
+t = 1, η
+
+�
+
+
+The complete-data-log-likelihood is given by
+
+log p (q, y)
+
+=
+
+M
+
+�
+
+i=1
+
+qi
+
+0 log πi +
+
+T�
+
+t=0
+
+M
+
+�
+
+i,j=1
+
+qi
+
+tqj
+
+t+1 log aij +
+
+T�
+
+t=0
+
+M,N
+
+�
+
+i,j=1
+
+qi
+
+tyj
+
+t log ηij
+
+=
+
+M
+
+�
+
+i=1
+
+�
+
+qi
+
+0
+
+�
+
+log πi +
+
+M
+
+�
+
+i,j=1
+
+� T�
+
+t=0
+
+qi
+
+tqj
+
+t+1
+
+�
+
+log aij +
+
+M,N
+
+�
+
+i,j=1
+
+� T�
+
+t=0
+
+qi
+
+tyj
+
+t
+
+�
+
+log ηij
+
+From the expression we see that the suﬃcient statistics for π, a, η are:
+
+qi
+
+0;
+
+mij =
+
+T
+
+�
+
+t=0
+
+qi
+
+tqj
+
+t+1;
+
+nij =
+
+T
+
+�
+
+t=0
+
+qi
+
+tyj
+
+t
+
+And they are subjective to the constraints:
+
+M
+
+�
+
+i=1
+
+πi = 1;
+
+M
+
+�
+
+j=1
+
+aij = 1;
+
+N
+
+�
+
+j=1
+
+ηij = 1
+
+
+Applying Lagrange multiplier method, we obtain the MLE estimates of
+
+π, a and η,
+
+ˆπi = qi
+
+0;
+
+ˆaij =
+
+mij
+
+M
+
+�
+
+k=1
+
+mik
+
+;
+
+ˆηij =
+
+nij
+
+N
+
+�
+
+k=1
+
+nik
+
+;
+
+We see the EM estimates just simply replaces the suﬃcient statistics
+
+qi
+
+0, mij, nij by their expectation averaged over p(q|y, θold). This is known
+
+as the Baum-Welch Algorithm.
+

@@ -1,0 +1,3739 @@
+
+Document Language Models, Query Models, and
+
+Risk Minimization for Information Retrieval
+
+John Lafferty
+
+School of Computer Science
+
+Carnegie Mellon University
+
+Pittsburgh, PA 15213
+
+Chengxiang Zhai
+
+School of Computer Science
+
+Carnegie Mellon University
+
+Pittsburgh, PA 15213
+
+ABSTRACT
+
+We present a framework for information retrieval that com-
+
+bines document models and query models using a proba-
+
+bilistic ranking function based on Bayesian decision theory.
+
+The framework suggests an operational retrieval model that
+
+extends recent developments in the language modeling ap-
+
+proach to information retrieval. A language model for each
+
+document is estimated, as well as a language model for each
+
+query, and the retrieval problem is cast in terms of risk min-
+
+imization. The query language model can be exploited to
+
+model user preferences, the context of a query, synonomy
+
+and word senses. While recent work has incorporated word
+
+translation models for this purpose, we introduce a new
+
+method using Markov chains deﬁned on a set of documents
+
+to estimate the query models. The Markov chain method
+
+has connections to algorithms from link analysis and social
+
+networks.
+
+The new approach is evaluated on TREC col-
+
+lections and compared to the basic language modeling ap-
+
+proach and vector space models together with query expan-
+
+sion using Rocchio. Signiﬁcant improvements are obtained
+
+over standard query expansion methods for strong baseline
+
+TF-IDF systems, with the greatest improvements attained
+
+for short queries on Web data.
+
+1.
+
+INTRODUCTION
+
+The language modeling approach to information retrieval
+
+has recently been proposed as a new alternative to tradi-
+
+tional vector space models and other probabilistic models.
+
+In the use of language modeling by Ponte and Croft [17],
+
+a unigram language model is estimated for each document,
+
+and the likelihood of the query according to this model is
+
+used to score the document for ranking. Miller et al. [15]
+
+smooth the document language model with a background
+
+model using hidden Markov model techniques, and demon-
+
+strate good performance on TREC benchmarks. Berger and
+
+Laﬀerty [1] use methods from statistical machine transla-
+
+tion to incorporate synonomy into the document language
+
+Permission to make digital or hard copies of all or part of this work for
+
+personal or classroom use is granted without fee provided that copies are
+
+not made or distributed for proﬁt or commercial advantage and that copies
+
+bear this notice and the full citation on the ﬁrst page. To copy otherwise, to
+
+republish, to post on servers or to redistribute to lists, requires prior speciﬁc
+
+permission and/or a fee.
+
+SIGIR’01, September 9-12, 2001, New Orleans, Louisiana, USA
+
+Copyright 2001 ACM 1-58113-331-6/01/0009 ...$5.00.
+
+model, achieving eﬀects similar to query expansion in more
+
+standard approaches to IR. The relative simplicity and eﬀec-
+
+tiveness of the language modeling approach, together with
+
+the fact that it leverages statistical methods that have been
+
+developed in speech recognition and other areas, makes it an
+
+attractive framework in which to develop new text retrieval
+
+methodology.
+
+In this paper we motivate the language modeling approach
+
+from a general probabilistic retrieval framework based on
+
+risk minimization. This framework not only covers the clas-
+
+sical probabilistic retrieval models as special cases, but also
+
+suggests an extension of the existing language modeling ap-
+
+proach to retrieval that involves estimating both document
+
+language models and query language models and compar-
+
+ing the models using the Kullback-Leibler divergence.
+
+In
+
+the case where the query language model is concentrated on
+
+the actual query terms, this reduces to the ranking method
+
+employed by Ponte and Croft [17] and others. We also intro-
+
+duce a novel method for estimating an expanded query lan-
+
+guage model, which may assign probability to words that are
+
+not in the original query. The essence of the new method is a
+
+Markov chain word translation model that can be computed
+
+based on a set of documents. The Markov chain method is
+
+a very general method for expanding either a query model
+
+or a document model. As a translation model, it addresses
+
+several basic shortcomings of the translation models used
+
+by Berger and Laﬀerty [1], as described in Section 4. The
+
+query models explored in this paper are quite simple, but in
+
+general, the role of the query model is to incorporate knowl-
+
+edge of the user and the context of an information need into
+
+the retrieval model.
+
+The paper is organized as follows. In Section 2 we dis-
+
+cuss the language modeling approach to IR, and brieﬂy re-
+
+view previous work in this direction. In Section 3 we present
+
+the risk minimization retrieval framework and our extension
+
+to the language modeling approach that incorporates both
+
+query and document language models. Section 4 presents
+
+the idea of using Markov chains on a documents and words
+
+to expand document and query models, and gives several
+
+examples. This technique requires various collection statis-
+
+tics to be calculated, and we explain in Section 5 how these
+
+can be calculated at index time.
+
+A series of experiments
+
+to evaluate these methods is presented in Section 6, where
+
+we attempt to compare directly to state-of-the art ranking
+
+functions and weighting schemes. Conclusions and the con-
+
+tributions of this work are summarized in Section 8.
+
+ACM SIGIR Forum
+
+251
+
+Vol. 51 No. 2, July 2017
+
+
+2.
+
+THE LANGUAGE MODELING
+
+APPROACH
+
+In the language modeling approach to information re-
+
+trieval, a multinomial model p(w | d) over terms is estimated
+
+for each document d in the collection C to be indexed and
+
+searched.
+
+This model is used to assign a likelihood to a
+
+user’s query q = (q1, q2, . . . , qm). In the simplest case, each
+
+query term is assumed to be independent of the other query
+
+terms, so that the query likelihood is given by p(q | d)
+
+=
+
+Qm
+
+i=1 p(qi | d). After the speciﬁcation of a document prior
+
+p(d), the a posteriori probability of a document is given by
+
+p(d | q) ∝ p(q | d) p(d)
+
+and is used to rank the documents in the collection C.
+
+Just as in the use of language models for speech recog-
+
+nition, language models for information retrieval must be
+
+“smoothed,” so that non-zero probability can be assigned to
+
+query terms that do not appear in a given document. One of
+
+the simplest ways in which a document language model can
+
+be smoothed is by linear interpolation with a background
+
+collection model p(w | C):
+
+p λ(w | d) = λ p(w | d) + (1 − λ) p(w | C)
+
+(1)
+
+Miller et al. [15] view this smoothed model as coming from a
+
+simple 2-state hidden Markov model, and train the param-
+
+eter λ using maximum likelihood estimation.
+
+One of the
+
+main eﬀects of this type of smoothing is robust estimation
+
+of common, content-free words that are typically treated as
+
+“stop words” in many IR systems.
+
+A potentially more signiﬁcant and eﬀective kind of smooth-
+
+ing is what may be referred to as semantic smoothing, where
+
+synonyms and word sense information is incorporated into
+
+the models. With proper semantic smoothing, a document
+
+that contains the term w = automobile may be retrieved
+
+to answer a query that includes the term q = car, even if
+
+this query term is not present in the document.
+
+Seman-
+
+tic smoothing eﬀects are achieved in more standard ap-
+
+proaches to IR using query expansion and relevance and
+
+pseudo-relevance feedback techniques. The development of
+
+a well-motivated framework for semantic smoothing is one
+
+of the important unresolved problems in the language mod-
+
+eling approach.
+
+In order to incorporate a kind of semantic smoothing into
+
+the language modeling approach, Berger and Laﬀerty [1]
+
+estimate translation models t(q | w) for mapping a document
+
+term w to a query term q. Using translation models, the
+
+document-to-query model becomes
+
+p(q | d) =
+
+m
+
+Y
+
+i=1
+
+X
+
+w
+
+t(qi | w) p(w | d)
+
+Berger and Laﬀerty [1] report signiﬁcant improvements over
+
+the baseline language modeling approach through the use of
+
+translation models.
+
+One of the primary motivations of the present paper is to
+
+address what we view as several diﬃculties with the transla-
+
+tion model approach to semantic smoothing in the language
+
+modeling framework. First, the translation models t(q | w)
+
+must be estimated from training data. As the models are
+
+highly lexical, it is unlikely that a suﬃciently large collection
+
+of relevance judgments will be available to estimate them on
+
+actual user data. Because of this, Berger and Laﬀerty gen-
+
+erate an artiﬁcial collection of “synthetic” data for training.
+
+Second, the application of translation models to ranking is
+
+ineﬃcient, as the model involves a sum over all terms in the
+
+document. Third, the translation probabilities are context-
+
+independent, and are therefore unable to directly incorpo-
+
+rate word-sense information and context into the language
+
+models.
+
+In the following section we present a formal retrieval frame-
+
+work based on risk minimization and derive an extension of
+
+the language modeling approach just described, which may
+
+ultimately be better suited to semantic smoothing to model
+
+the user’s information need. In Section 4 we then present
+
+a technique for expanding document and query models that
+
+addresses some of the shortcomings of the translation mod-
+
+els as used in [1].
+
+3.
+
+A RISK MINIMIZATION RETRIEVAL
+
+FRAMEWORK
+
+In an interactive retrieval system, the basic action of the
+
+system can be regarded as presenting a document or a se-
+
+quence of documents to the user. Intuitively, the choice of
+
+which documents to present should be based on some no-
+
+tion of utility. In this section we formalize this intuition by
+
+presenting a framework for the retrieval process based on
+
+Bayesian decision theory.
+
+We view a query as being the output of some probabilistic
+
+process associated with the user U, and similarly, we view
+
+a document as being the output of some probabilistic pro-
+
+cess associated with an author or document source S. A
+
+query (document) is the result of choosing a model, and
+
+then generating the query (document) using that model. A
+
+set of documents is the result of generating each document
+
+independently, possibly from a diﬀerent model.
+
+(The in-
+
+dependence assumption is not essential, and is made here
+
+only to simplify the presentation.) The query model could,
+
+in principle, encode detailed knowledge about a user’s infor-
+
+mation need and the context in which they make their query.
+
+Similarly, the document model could encode complex infor-
+
+mation about a document and its source or author.
+
+More formally, let θQ denote the parameters of a query
+
+model, and let θD denote the parameters of a document
+
+model.
+
+A user U generates a query by ﬁrst selecting θQ,
+
+according to a distribution p(θQ | U). Using this model, a
+
+query q is then generated with probability p(q | θQ). Simi-
+
+larly, the source selects a document model θD according to a
+
+distribution p(θD | S), and then uses this model to generate
+
+a document d according to p(d | θD). Thus, we have Markov
+
+chains U → θQ → q and S → θD → d.
+
+If C = {d1, d2, . . . , dk} is a collection of documents ob-
+
+tained from source S, we denote by θi the model that gener-
+
+ates document di. Assume now that for each document di,
+
+there is a hidden binary relevance variable Ri that depends
+
+on θQ and θi according to p(Ri | θQ, θi), which is interpreted
+
+as representing the true relevance status of di with respect
+
+to q (1 for relevant and 0 for non-relevant). The random
+
+variable Ri is observed when we have the user’s relevance
+
+judgment on di, and is unobserved otherwise. In the fol-
+
+lowing presentation, we will assume that Ri is not observed.
+
+ACM SIGIR Forum
+
+252
+
+Vol. 51 No. 2, July 2017
+
+
+Doc generation
+
+Query generation
+
+Model selection
+
+Model selection
+
+U
+
+q
+
+S
+
+R
+
+θQ
+
+d
+
+θD
+
+p(q | θQ)
+
+p(d | θD)
+
+p(θQ | U)
+
+p(θD | S)
+
+p(R | θQ, θD)
+
+Figure 1: Generative models for queries, documents,
+
+and relevance.
+
+Note that because the query model θQ can encode detailed
+
+knowledge about the user U, the distribution of this rele-
+
+vance variable is in general user-speciﬁc.
+
+A possible action of the system corresponds to a list of
+
+documents to return to the user who has issued query q. In
+
+the general framework of Bayesian decision theory, to each
+
+such action a there is associated a loss L(a, θ), which in
+
+general depends upon all of the parameters of our model,
+
+θ ≡ (θQ, {θi}k
+
+i=1, {Ri}k
+
+i=1). In this framework, the expected
+
+risk of action a is given by
+
+R(a | U, q, S, C)
+
+=
+
+Z
+
+Θ
+
+L(a, θ) p(θ | U, q, S, C) dθ
+
+where the posterior distribution is given by
+
+p(θ | U, q, S, C)
+
+∝
+
+p(θQ | q, U)
+
+k
+
+Y
+
+i=1
+
+p(θi | di, S) p(Ri | θQ, θi)
+
+The Bayesian decision rule is then to present the document
+
+list a∗ having the least expected risk:
+
+a∗ = arg min
+
+a
+
+R(a | U, q, S, C)
+
+Now, if we assume that a possible action is to return a
+
+single document a = di, and that the loss function only
+
+depends on θQ, θi, and Ri, the risk can be simpliﬁed to
+
+R(di; q)
+
+def
+
+= R(a = di | U, q, S, C) =
+
+(2)
+
+X
+
+R∈{0,1}
+
+Z
+
+ΘQ
+
+Z
+
+ΘD
+
+L(θQ, θD, R) ×
+
+p(θQ | q, U) p(θD | di, S) p(R | θQ, θD) dθD dθQ
+
+Clearly, if the whole collection C is presented by making
+
+k sequential decisions, the result will be a list of documents
+
+ranked in ascending order of R(di, q). Equation 2 is our
+
+basic retrieval formula based on risk minimization.
+
+Note that the independence assumption on the loss func-
+
+tion does not usually hold in practice. Indeed, if we want
+
+to account for the similarity or dissimilarity between the
+
+documents in the returned list (consider, for example, the
+
+maximum marginal relevance ranking criterion proposed in
+
+[6]), such a loss function will not be appropriate. Here we
+
+make this assumption mainly for mathematical convenience.
+
+We have deliberately left the loss function unspeciﬁed in
+
+order to achieve generality. We will be able to show that
+
+many existing operational retrieval models are special cases
+
+of the risk minimization framework when a speciﬁc loss func-
+
+tion is used. A complete speciﬁcation of the loss function
+
+will generally force us to make explicit the assumed ranking
+
+criterion and notion of relevance.
+
+3.1
+
+Relevance-based Loss Functions
+
+We now consider the special case where the loss function
+
+L depends only on the relevance variable R; in this case we
+
+can simplify the risk formula and obtain a general ranking
+
+criterion based on the “probability of relevance.”
+
+Let L be deﬁned
+
+L(θQ, θD, R)
+
+=
+
+(
+
+c0
+
+if R = 0
+
+c1
+
+if R = 1
+
+where, c0 and c1 are two cost constants. Then we have
+
+R(d; q)
+
+=
+
+c0 p(R = 0 | q, d) + c1 p(R = 1 | q, d)
+
+=
+
+c0 + (c1 − c0) p(R = 1 | q, d)
+
+This means that the risk minimization ranking criterion is
+
+now equivalent to ranking based on p(R = 1 | q, d), i.e., the
+
+probability of relevance given q and d. This is the basis of
+
+all the classical probabilistic retrieval models. For example,
+
+the derivation of the binary independent model based on
+
+p(R = 1 | q, d) can be found in [18].
+
+Interestingly, the model implicitly used in the language
+
+modeling approach can also be derived based on the proba-
+
+bility of relevance p(R = 1 | q, d). See [14] for details of this
+
+derivation. This shows that both the classical probabilistic
+
+retrieval model and the language modeling approach to re-
+
+trieval are special cases of the risk minimization framework.
+
+3.2
+
+Distance-based Loss Functions
+
+We now consider another special case, where the loss func-
+
+tion L is assumed to depend only on θQ and θD; thus, given
+
+θQ and θD, it does not depend on R. We will see that this al-
+
+lows us to derive a general probabilistic distance/similarity
+
+retrieval model.
+
+Formally, let L be proportional to a distance or similarity
+
+measure ∆ between θQ and θD, i.e.,
+
+L(θQ, θD, R) = c∆(θQ, θD)
+
+where c is a cost constant. Intuitively, if the models θ, θ′ are
+
+closer/similar, then ∆(θ, θ′) should be small. With this loss
+
+function, we have
+
+R(d; q) ∝
+
+Z
+
+θQ
+
+Z
+
+θD
+
+∆(θQ, θD) p(θQ | q, U) p(θD | d, S)dθD dθQ
+
+This means that the risk minimization ranking criterion
+
+is now equivalent to ranking based on the expected model
+
+distance.
+
+Rather than explicitly computing this distance,
+
+we can approximate it by its value at the posterior mode:
+
+R(d; q)
+
+∝
+
+∆(
+
+bθq,
+
+bθd) p(θd | d, S)p(θq | q, U)
+
+∝
+
+∆(
+
+bθq,
+
+bθd) p(θd | d, S)
+
+where
+
+bθq
+
+=
+
+arg max
+
+θQ
+
+p(θQ | q, U)
+
+bθd
+
+=
+
+arg max
+
+θD
+
+p(θD | d, S)
+
+Note that the factor p(
+
+bθd | d, S) includes prior information
+
+about the document, and in general must be included when
+
+ACM SIGIR Forum
+
+253
+
+Vol. 51 No. 2, July 2017
+
+
+comparing the risk for diﬀerent documents.
+
+This is criti-
+
+cal when incorporating query-independent link analysis, or
+
+other extrinsic knowledge about a document. But, if we fur-
+
+ther assume that p(
+
+bθd | d, S) is the same for all d, so does
+
+not aﬀect ranking, we will have the following very general
+
+distance-based (or equivalently, similarity-based) probabilis-
+
+tic model:
+
+R(d; q)
+
+∝
+
+∆(
+
+bθd,
+
+bθq)
+
+We can view the vector space model as a special case of
+
+this general similarity model, where
+
+bθq and
+
+bθd are simply
+
+term vector parameters estimated heuristically and the dis-
+
+tance function is the cosine or inner product measure.
+
+We now consider a speciﬁc similarity model as an inter-
+
+esting special case, where θQ and θD are the parameters of
+
+unigram language models (i.e., p(· | θ) is a distribution over
+
+a ﬁxed word vocabulary), and the similarity measure is the
+
+Kullback-Leibler divergence
+
+∆(θQ, θD)
+
+=
+
+X
+
+w
+
+p(w | θQ) log p(w | θQ)
+
+
+
+p(w | θD)
+
+In this case
+
+R(d; q)
+
+∝
+
+−
+
+X
+
+w
+
+p(w |
+
+bθq) log p(w |
+
+bθd) + cq
+
+(3)
+
+where cq is a constant that doesn’t depend on the document,
+
+and so doesn’t aﬀect the retrieval performance.
+
+According to this risk formula, the retrieval problem is
+
+essentially that of estimating
+
+bθq and
+
+bθd. If
+
+bθq is just the
+
+empirical distribution of the query q = q1q2...qm; that is,
+
+p(w |
+
+bθq) = − 1
+
+
+
+m
+
+m
+
+X
+
+i=1
+
+δ(w, qi)
+
+where, δ is the indicator function, then we obtain
+
+R(d; q)
+
+∝
+
+− 1
+
+
+
+m
+
+m
+
+X
+
+i=1
+
+log p(qi |
+
+bθd) + cq
+
+This is precisely the log-likelihood criterion that has been in
+
+used in all work on the language modeling approach to date.
+
+In the remainder of this paper we will develop new query
+
+expansion methods to estimate a model
+
+bθq, and demonstrate
+
+that this model performs signiﬁcantly better than using the
+
+empirical distribution for
+
+bθq when we use (3) as the risk.
+
+4.
+
+MARKOV CHAINS FOR EXPANDING
+
+LANGUAGE MODELS
+
+In this section we describe a Markov chain method for
+
+expanding language models for queries and documents, to
+
+be used in the formal framework just described. We begin by
+
+motivating the method in the context of translation models.
+
+We then explain the basic method and provide examples. In
+
+Section 7 we discuss the relationship between the Markov
+
+chain method and other techniques such as link analysis.
+
+4.1
+
+Markov chains on words and documents
+
+As noted in Section 2, the translation models of Berger
+
+and Laﬀerty [1] can signiﬁcantly improve retrieval perfor-
+
+mance, but must be estimated from training data.
+
+Since
+
+the parameters are highly lexical, an enormous amount of
+
+w0
+
+w1
+
+w2
+
+❆
+
+❆
+
+❆
+
+❆
+
+❆
+
+❆ ✁
+
+✁
+
+✁
+
+✁
+
+✁
+
+✁✕
+
+❆
+
+❆
+
+❆
+
+❆
+
+❆
+
+❆ ✁
+
+✁
+
+✁
+
+✁
+
+✁
+
+✁✕
+
+d0
+
+d1
+
+p(d0 | w0)
+
+p(d1 | w1)
+
+p(w1 | d0)
+
+p(w2 | d1)
+
+Figure 2:
+
+The Markov chain alternates between
+
+words and documents.
+
+For a given document, a
+
+word is selected according to the document language
+
+model. For a given word, a document is selected ac-
+
+cording to the posterior probability.
+
+training data would be required to estimate them. Because
+
+the translation models are context-independent their ability
+
+to handle word sense ambiguity is limited. Moreover, the use
+
+of translation models for documents incurs a severe price in
+
+the time to score documents.
+
+The Markov chain method
+
+helps to overcome these limitations of the translation model
+
+paradigm.
+
+Our goal is to estimate a query model
+
+bθq. For this pur-
+
+pose, we will estimate a probability t(q | w) that a word w
+
+“translates” to the query term q. Imagine a user looking
+
+to formulate a query for an information need, and suppose,
+
+fancifully, that the user has an index available for the text
+
+collection to be searched. The user “surfs” the index in the
+
+following random manner. First, a word w0 is chosen. Next,
+
+the index is consulted, and a document d0 containing that
+
+word is chosen. This choice will be inﬂuenced by the number
+
+of times the word appears in d0, and might be also aﬀected
+
+by extrinsic data about the document, such as information
+
+about its author. From that document, a new word w1 is
+
+sampled, a new document containing w1 is chosen, and the
+
+process continues in this manner. After each step, there is
+
+some chance the user will stop browsing, as the topics of the
+
+documents drift further from the information need.
+
+We now describe the random walk more precisely. The
+
+walk begins by choosing a word w0 with probability p(w0 | U).
+
+At the i-th step, the user has selected word wi. The user
+
+continues the random walk with probability α, generating a
+
+new document and word. With probability 1 − α, the walk
+
+stops with word wi. If the walk continues, then a document
+
+di is sampled from the inverse list for wi, according to the
+
+posterior probability
+
+p(di | wi)
+
+=
+
+p(wi | di) p(di)
+
+
+
+P
+
+d p(wi | d) p(d)
+
+(4)
+
+where p(· | d) is the document language model, and where
+
+p(d) is a prior distribution on documents. For example, with
+
+hypertext, p(d) might be the distribution calculated using
+
+the “PageRank” scheme [4]. Having chosen a document di,
+
+a new word wi+1 is sampled from it according to p(· | di).
+
+4.2
+
+Matrix formulation
+
+The algorithm can be cleanly described and related to
+
+other techniques using matrix notation. Let N be the num-
+
+ber of terms in the word vocabulary, and M the number of
+
+documents in the collection. Let A be the N ×M stochastic
+
+matrix with entries Aw,d = p(d | w), where the probability
+
+ACM SIGIR Forum
+
+254
+
+Vol. 51 No. 2, July 2017
+
+
+is calculated as in equation (4). Also, let B be the M × N
+
+stochastic matrix with entries Bd,w = p(w | d) given by the
+
+document language models. Finally, let C be the N × N
+
+stochastic matrix C = A B.
+
+The probability that the chain stops after k steps with
+
+word wk = q is given by
+
+(1 − α) αk Ck
+
+w,q
+
+where Ck
+
+w,q is the (w, q)-entry of the matrix Ck. Therefore,
+
+the overall probability of generating a word q is given by
+
+t α(q | w)
+
+=
+
+(1 − α)
+
+�
+
+I + α C + · · · αk Ck + · · ·
+
+�
+
+w,q
+
+=
+
+(1 − α) (I − α C)−1
+
+w,q
+
+Note that the matrix inverse (I − α C)−1 exists since, as a
+
+stochastic matrix, α−1 &gt; 1 cannot be an eigenvalue of C.
+
+We deﬁne this to be the translation probability of mapping
+
+w to q.
+
+In the same way, we can calculate the probability that the
+
+user stops with document d as
+
+t α(d | w)
+
+=
+
+(1 − α)
+
+h�
+
+I + α C + · · · αk Ck + · · ·
+
+�
+
+A
+
+i
+
+w,d
+
+=
+
+(1 − α)
+
+�
+
+(I − α C)−1 A
+
+�
+
+w,d
+
+While the matrices A and B are sparse, so that the matrix
+
+product C = A B can be computed eﬃciently, Ck quickly
+
+becomes dense as k increases, and the powers cannot be
+
+computed eﬃciently. However, as k increases, the “topic”
+
+wanders from the initial term w0, as the probability quickly
+
+spreads out over all terms. Thus, intuitively, the ﬁrst few
+
+steps of the chain are most important for retrieval purposes.
+
+4.3
+
+Expanding query and document models
+
+Suppose that q = (q1, q2, . . . , qm) is a query that we wish
+
+to expand.
+
+In our framework, this means that we esti-
+
+mate a language model p(w |
+
+bθq). Using the Markov chain
+
+method, this is done by calculating the posterior probability
+
+of words, according to the translation model for generating
+
+the query and a prior distribution on initial terms selected
+
+by the user. Thus, assuming the query terms are generated
+
+independently,
+
+p(w |
+
+bθq)
+
+∝
+
+m
+
+X
+
+i=1
+
+t α(qi | w) p(w | U)
+
+A document d can be expanded using the Markov chain in
+
+a similar way:
+
+p(w |
+
+bθd)
+
+∝
+
+t α(d | w) p(w | U)
+
+To understand how this method should be expected to work,
+
+it helps to consider running the chain for only one step. The
+
+probability of generating a query term qi starting from an
+
+initial word w is equal to p(w | U)
+
+P
+
+d p(qi | d) p(d | w) in
+
+this case. The eﬀect of the probability p(d | w) is similar to
+
+IDF in traditional retrieval methods, since this probability
+
+will be high if the word w appears in only a few documents.
+
+In particular, function words will typically appear in a very
+
+large number of documents, so p(d | w) will tend to be very
+
+small for such words. At the other end of the spectrum, if
+
+w appears only in the document d, this probability will be
+
+one. Words with very high p(d | w) tend to be rare and spe-
+
+cialized, and not suﬃciently general to be useful to improve
+
+the language models. However, the prior p(w | U) acts to
+
+select the more useful and frequent words having high IDF.
+
+At the same time, this prior gives a probabilistic mechanism
+
+for incorporating stop-word lists, or other extrinsic knowl-
+
+edge about the retrieval and query generation process. Thus,
+
+even the one-step chain captures many of the desirable fea-
+
+tures of term weighting schemes in a probabilistic model.
+
+4.4
+
+Incorporating feedback
+
+Because the Markov chain translation probabilities t(q | w)
+
+generate the query, the resulting expansion model p(w | q)
+
+is fairly general. If query terms have multiple senses, a mix-
+
+ture of these senses may be present in the expanded model
+
+(See Figure 3). For semantic smoothing, a more context-
+
+dependent model that takes into account the relationship
+
+between query terms may be desirable. One way to accom-
+
+plish this is through a pseudo-feedback mechanism. Suppose
+
+that a set of documents D(q) is known (or assumed) to be
+
+relevant to a query q. We can condition the Markov chain to
+
+pass through this set. For example, in the one-step version
+
+of the random walk, we compute
+
+p(w | q, D(q)) ∝ p(w)
+
+X
+
+d∈D(q)
+
+p(d | w) p(q | d)
+
+In this way the expanded language model may be more “se-
+
+mantically coherent,” capturing the topic implicit in the set
+
+of documents D(q) rather than representing words related
+
+to the query terms qi in general.
+
+An example of this is
+
+shown in Figure 3. In Section 6 we report on experiments
+
+on TREC data that clearly demonstrate how this method
+
+can improve retrieval performance.
+
+5.
+
+INDEXING SCHEMES
+
+Calculation of the Markov chain probabilities on inverted
+
+indices manipulates document language models p(w | d) and
+
+their posterior probabilities p(d | w). Computing these prob-
+
+abilities at retrieval time can be very expensive, but can be
+
+made more eﬃcient by calculation of various statistics at
+
+index time, as discussed brieﬂy in this section. This sheds
+
+further light on the role of document priors.
+
+Standard indexing schemes store, for each index term w,
+
+a list of document indices in which the term appears, d1�→
+
+d2 �→ . . . �→ dn(w). For information retrieval based on lan-
+
+guage modeling, we require in addition the number of times
+
+the term appears in the document, and thus store a list
+
+(d1, c(w, d1)) �→ (d2, c(w, d2)) �→ · · · �→ (dn(w), c(w, dn(w))).
+
+To normalize the language probabilities, at index time we
+
+compute the total document count c(d) =
+
+P
+
+w c(w, d), and
+
+store this in a document array, together with a document
+
+prior p(d).
+
+In our implementation, we make two passes through the
+
+corpus. In the ﬁrst pass a term vocabulary, document vo-
+
+cabulary, and document counts c(d) are tabulated. In the
+
+second pass, the inverted lists and word marginals p(w) are
+
+computed.
+
+Both the word-document and document-word
+
+lists are compressed using the γ-method [20].
+
+To normalize the posterior probabilities, we must calcu-
+
+late
+
+P
+
+d p(w | d) p(d). Using the maximum likelihood lan-
+
+ACM SIGIR Forum
+
+255
+
+Vol. 51 No. 2, July 2017
+
+
+
+
+
+
+w
+
+
+
+p(w | q)
+
+
+
+
+
+
+
+virus
+
+
+
+0.275
+
+
+
+
+
+ebola
+
+
+
+0.197
+
+
+
+
+
+hoax
+
+
+
+0.051
+
+
+
+
+
+viruses
+
+
+
+0.034
+
+
+
+
+
+outbreak
+
+
+
+0.034
+
+
+
+
+
+fever
+
+
+
+0.033
+
+
+
+
+
+disease
+
+
+
+0.024
+
+
+
+
+
+haemorrhagic
+
+
+
+0.023
+
+
+
+
+
+gabon
+
+
+
+0.022
+
+
+
+
+
+infected
+
+
+
+0.019
+
+
+
+
+
+aids
+
+
+
+0.016
+
+
+
+
+
+security
+
+
+
+0.014
+
+
+
+
+
+monkeys
+
+
+
+0.013
+
+
+
+
+
+hiv
+
+
+
+0.011
+
+
+
+
+
+zaire
+
+
+
+0.011
+
+
+
+
+
+q = ebola virus (Web)
+
+
+
+
+
+w
+
+
+
+p(w | q)
+
+
+
+
+
+
+
+star
+
+
+
+0.361
+
+
+
+
+
+wars
+
+
+
+0.217
+
+
+
+
+
+rpg
+
+
+
+0.058
+
+
+
+
+
+trek
+
+
+
+0.033
+
+
+
+
+
+starwars
+
+
+
+0.032
+
+
+
+
+
+movie
+
+
+
+0.023
+
+
+
+
+
+episode
+
+
+
+0.020
+
+
+
+
+
+movies
+
+
+
+0.015
+
+
+
+
+
+war
+
+
+
+0.014
+
+
+
+
+
+character
+
+
+
+0.013
+
+
+
+
+
+tv
+
+
+
+0.013
+
+
+
+
+
+film
+
+
+
+0.012
+
+
+
+
+
+fan
+
+
+
+0.012
+
+
+
+
+
+reviews
+
+
+
+0.012
+
+
+
+
+
+jedi
+
+
+
+0.008
+
+
+
+
+
+q = star wars (Web)
+
+
+
+
+
+w
+
+
+
+p(w | q)
+
+
+
+
+
+
+
+star
+
+
+
+0.192
+
+
+
+
+
+wars
+
+
+
+0.137
+
+
+
+
+
+soviet
+
+
+
+0.025
+
+
+
+
+
+weapons
+
+
+
+0.023
+
+
+
+
+
+photo
+
+
+
+0.020
+
+
+
+
+
+army
+
+
+
+0.020
+
+
+
+
+
+armed
+
+
+
+0.020
+
+
+
+
+
+film
+
+
+
+0.018
+
+
+
+
+
+show
+
+
+
+0.018
+
+
+
+
+
+nations
+
+
+
+0.017
+
+
+
+
+
+strategic
+
+
+
+0.017
+
+
+
+
+
+tv
+
+
+
+0.017
+
+
+
+
+
+sunday
+
+
+
+0.016
+
+
+
+
+
+bush
+
+
+
+0.014
+
+
+
+
+
+series
+
+
+
+0.013
+
+
+
+
+
+q = star wars (TREC)
+
+
+
+
+
+w
+
+
+
+p(w | q)
+
+
+
+
+
+
+
+star
+
+
+
+0.170
+
+
+
+
+
+wars
+
+
+
+0.161
+
+
+
+
+
+senate
+
+
+
+0.069
+
+
+
+
+
+strategic
+
+
+
+0.050
+
+
+
+
+
+spending
+
+
+
+0.045
+
+
+
+
+
+initiative
+
+
+
+0.039
+
+
+
+
+
+funding
+
+
+
+0.036
+
+
+
+
+
+vote
+
+
+
+0.036
+
+
+
+
+
+missile
+
+
+
+0.033
+
+
+
+
+
+billion
+
+
+
+0.033
+
+
+
+
+
+weapons
+
+
+
+0.031
+
+
+
+
+
+cheney
+
+
+
+0.030
+
+
+
+
+
+space
+
+
+
+0.028
+
+
+
+
+
+voted
+
+
+
+0.021
+
+
+
+
+
+missiles
+
+
+
+0.020
+
+
+
+
+
+q = star wars (TREC)
+
+with feedback
+
+Figure 3: Sample query model probabilities using the Markov chain method. As seen in the third table, the
+
+probabilities can be fairly general and include a mixture of topics. Using the feedback approach, conditioning
+
+the chain on a document set obtained in a ﬁrst pass, the query probabilities become more specialized, as seen
+
+in the fourth table.
+
+guage model, this is given by p(w)
+
+=
+
+P
+
+d
+
+c(w,d)
+
+
+
+c(d) p(d).
+
+The choice of prior aﬀects the indexing. With a uniform
+
+document prior p(d) =
+
+1
+
+
+
+|C|, where |C| is the number of doc-
+
+uments, we store
+
+p(w) =
+
+1
+
+
+
+|C|
+
+X
+
+d
+
+c(w, d)
+
+
+
+c(d)
+
+If one chooses a (rather unmotivated) prior where a docu-
+
+ment’s probability is proportional to its total count c(d) (so
+
+a user browses by favoring long documents), then this leads
+
+to p(w)
+
+=
+
+c(w)
+
+
+
+P
+
+w c(w), which is simply the corpus unigram
+
+model.
+
+Note that in our framework the prior information about a
+
+document enters in two places—in the Markov chain anal-
+
+ysis of translation models, and in calculating the risk. We
+
+expect that signiﬁcant improvements in query models can be
+
+obtained by basing the document prior on link-analysis or
+
+higher-level knowledge about the document collection; this
+
+remains an interesting topic for further research.
+
+6.
+
+EXPERIMENTAL RESULTS
+
+We evaluated the query model estimation methods de-
+
+scribed in the previous sections using three diﬀerent TREC
+
+testing collections: the AP collection on disk 1 (topics 1–50),
+
+the TREC8 ad hoc task collection (topics 401–450 on disks
+
+4&amp;5 – CR), and the TREC8 web track collection (topics
+
+401–450 on Web data). These data sets are representative
+
+of diﬀerent aspects of TREC. The ﬁrst is one of the ear-
+
+liest collections used in TREC and has relatively complete
+
+relevance judgments.
+
+The last two were selected because
+
+they represent relatively large collections and several pub-
+
+lished results on them are available. The Web data was also
+
+selected because of its unique document style.
+
+When selecting queries, we set up our evaluation as an
+
+approximation of real world retrieval. Since queries are typ-
+
+ically short, we only used the titles of each TREC topic
+
+description. The titles have an average length of 2.5 words,
+
+and typically contain one to four words each. The document
+
+collections were pre-indexed using the approach described in
+
+Section 5. All documents and queries were tokenized using
+
+the Porter stemmer. However, no stopword list was used, in
+
+order to test the robustness of our modeling techniques.
+
+6.1
+
+Effect of the query model
+
+The query model obtained using the Markov chain for
+
+expansion is expected to perform better than the simple
+
+language model predicting the query, as in the Ponte-Croft
+
+work. In order to test this, we compared the retrieval per-
+
+formance of the original maximum likelihood query model
+
+with that of the query translation model on all three col-
+
+lections. The results are shown in Table 1. The ﬁgures for
+
+each model use the best choice of the document smoothing
+
+parameter λ in equation (1), as determined by a simple line
+
+search. In addition to non-interpolated average precision,
+
+which we consider to be the main performance measure, we
+
+include recall at 1,000 documents and initial precision, i.e.,
+
+interpolated precision at 0% recall.
+
+Compared with the simple query model, the basic query
+
+translation model improves average precision and recall sig-
+
+niﬁcantly and consistently across all three collections. How-
+
+ever, using the Markov chain with a seed set of 50 doc-
+
+uments, similar to pseudo-feedback, as described in Sec-
+
+tion 4.4, gives a much greater improvement. For these ex-
+
+periments we use α = 1
+
+
+
+2 and run the Markov chain for only
+
+two steps. The precision-recall curves are shown in Figure 4
+
+for all six runs. In Figure 5, we compare the precision/recall
+
+of the basic query model and the expanded model at diﬀer-
+
+ent settings of the document smoothing parameter λ. The
+
+ﬁgures clearly show that the query translation model is bet-
+
+ter than the simple query model for all settings of λ, and
+
+that the improvement is fairly insensitive to the choice of
+
+this parameter.
+
+6.2
+
+Query translation models vs. TF-IDF
+
+The eﬀect of query expansion using the Markov chain
+
+translation model should be compared with query expan-
+
+sion in more traditional retrieval models, such as the vec-
+
+tor space model. For this purpose, we implemented a vec-
+
+tor space model where the similarity is computed using the
+
+dot product and the TF formula is the well-known Okapi
+
+TF [19]. While the Okapi TF is designed to be used in the
+
+ACM SIGIR Forum
+
+256
+
+Vol. 51 No. 2, July 2017
+
+
+
+
+
+
+Collection
+
+
+
+Simple LM
+
+
+
+Query Model
+
+
+
+Improv.
+
+
+
+QM w/ Pseudo
+
+
+
+Improv.
+
+
+
+
+
+
+
+AP89
+
+
+
+AvgPr
+
+
+
+0.188
+
+
+
+0.201
+
+
+
++7%
+
+
+
+0.232
+
+
+
++23%
+
+
+
+
+
+
+
+
+
+InitPr
+
+
+
+0.515
+
+
+
+0.500
+
+
+
+−3%
+
+
+
+0.534
+
+
+
++4%
+
+
+
+
+
+
+
+
+
+Recall
+
+
+
+1510/3261
+
+
+
+1745/3261
+
+
+
++16%
+
+
+
+2019/3261
+
+
+
++34%
+
+
+
+
+
+
+
+TREC8
+
+
+
+AvgPr
+
+
+
+0.241
+
+
+
+0.266
+
+
+
++10%
+
+
+
+0.294
+
+
+
++22%
+
+
+
+
+
+
+
+
+
+InitPr
+
+
+
+0.620
+
+
+
+0.723
+
+
+
++17%
+
+
+
+0.676
+
+
+
++9%
+
+
+
+
+
+
+
+
+
+Recall
+
+
+
+2791/4728
+
+
+
+2913/4728
+
+
+
++4%
+
+
+
+3368/4728
+
+
+
++21%
+
+
+
+
+
+
+
+WEB
+
+
+
+AvgPr
+
+
+
+0.244
+
+
+
+0.275
+
+
+
++13%
+
+
+
+0.304
+
+
+
++25%
+
+
+
+
+
+
+
+
+
+InitPr
+
+
+
+0.607
+
+
+
+0.664
+
+
+
++9%
+
+
+
+0.663
+
+
+
++9%
+
+
+
+
+
+
+
+
+
+Recall
+
+
+
+1760/2279
+
+
+
+1848/2279
+
+
+
++5%
+
+
+
+1910/2279
+
+
+
++9%
+
+
+
+
+
+Table 1: Comparison of the basic language modeling method with expanded query models. Column three
+
+gives the performance using the Markov chain query translation model; column 5 shows the eﬀect of including
+
+an initial document set (pseudo-feedback) to condition the Markov chain.
+
+
+
+
+
+Collection
+
+
+
+TF-IDF+Rocchio
+
+
+
+Query Model
+
+
+
+Improv.
+
+
+
+QM w/ Pseudo
+
+
+
+Improv.
+
+
+
+
+
+
+
+AP89
+
+
+
+AvgPr
+
+
+
+0.230
+
+
+
+0.201
+
+
+
+−13%
+
+
+
+0.232
+
+
+
++1%
+
+
+
+
+
+
+
+
+
+InitPr
+
+
+
+0.492
+
+
+
+0.500
+
+
+
++2%
+
+
+
+0.534
+
+
+
++9%
+
+
+
+
+
+
+
+
+
+Recall
+
+
+
+2082/3261
+
+
+
+1745/3261
+
+
+
+−16%
+
+
+
+2019/3261
+
+
+
+−3%
+
+
+
+
+
+
+
+TREC8
+
+
+
+AvgPr
+
+
+
+0.256
+
+
+
+0.266
+
+
+
++4%
+
+
+
+0.294
+
+
+
++15%
+
+
+
+
+
+
+
+
+
+InitPr
+
+
+
+0.637
+
+
+
+0.723
+
+
+
++14%
+
+
+
+0.676
+
+
+
++6%
+
+
+
+
+
+
+
+
+
+Recall
+
+
+
+3154/4728
+
+
+
+2913/4728
+
+
+
+−8%
+
+
+
+3368/4728
+
+
+
++7%
+
+
+
+
+
+
+
+WEB
+
+
+
+AvgPr
+
+
+
+0.226
+
+
+
+0.275
+
+
+
++22%
+
+
+
+0.304
+
+
+
++35%
+
+
+
+
+
+
+
+
+
+InitPr
+
+
+
+0.559
+
+
+
+0.664
+
+
+
++19%
+
+
+
+0.663
+
+
+
++19%
+
+
+
+
+
+
+
+
+
+Recall
+
+
+
+1729/2279
+
+
+
+1848/2279
+
+
+
++7%
+
+
+
+1910/2279
+
+
+
++10%
+
+
+
+
+
+Table 2: Comparison of TF-IDF with Rocchio to Markov chain query expansion in the language modeling
+
+framework.
+
+0
+
+0.1
+
+0.2
+
+0.3
+
+0.4
+
+0.5
+
+0.6
+
+0.7
+
+0.8
+
+0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1
+
+prec
+
+recall
+
+Effect of Query Translation: PR Curves
+
+ap-non-expand
+
+ap-expand
+
+trec8-non-expand
+
+trec8-expand
+
+web-non-expand
+
+web-expand
+
+Figure 4: Precision-recall curves for all three collec-
+
+tions, comparing the simple language model to the
+
+query translation model.
+
+BM25 retrieval function, in practice, we have found that
+
+using it in the vector space model also tends to give very
+
+good performance. For query expansion, we implemented
+
+a simpliﬁed Rocchio, where we add only positive terms to
+
+the query, controlled by three parameters: (1) the number
+
+of documents for blind feedback, (2) the number of terms to
+
+add, and (3) the relative coeﬃcient of the added terms. We
+
+varied these parameters among several values and chose the
+
+best performing parameters for comparison.
+
+It is interesting to see that the relative performance of
+
+the query translation model and the TF-IDF model varies
+
+from collection to collection. Constraining the Markov chain
+
+to use a selected set of documents, obtained during a ﬁrst
+
+retrieval pass, as described in Section 4, generally gives the
+
+best performance. However, on AP89, the performance of
+
+Rocchio and the query translation model are virtually the
+
+same. The greatest gain from the query translation model
+
+comes on the Web data, where the query models achieve a
+
+35% improvement over Rocchio. We note that, although we
+
+use only the title queries, which are very short, our results
+
+on both the TREC8 and Web data using query models are
+
+quite comparable to the oﬃcial TREC submissions, which
+
+use the full queries.
+
+7.
+
+RELATED WORK
+
+There is a large and rich literature on probabilistic models
+
+in information retrieval, and it would not be possible to sur-
+
+vey it here. The work presented in this paper is most closely
+
+related to recent developments in the language modeling ap-
+
+proach [17, 11, 15, 1]. Important precursors to the language
+
+modeling approach include [3, 18, 8, 10, 21].
+
+The frame-
+
+work based on risk minimization that we have introduced
+
+is very natural and general. We are not aware of any di-
+
+rectly comparable framework in the IR literature, although
+
+several early papers discuss indexing schemes designed to
+
+optimize utility measures [16, 7, 2]. The approach that we
+
+present diﬀers signiﬁcantly from this work in that the cen-
+
+tral components are probabilistic models of documents and
+
+queries, combined using an explicit loss function according
+
+to Bayesian decision theory. The formal model is meant to
+
+explicitly represent the uncertainty inherent in our model of
+
+ACM SIGIR Forum
+
+257
+
+Vol. 51 No. 2, July 2017
+
+
+0.1
+
+0.15
+
+0.2
+
+0.25
+
+0.3
+
+0.35
+
+0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1
+
+prec
+
+lambda
+
+Effect of Query Translation: Precision on Lambda
+
+ap-non-expand
+
+ap-expand
+
+web-non-expand
+
+web-expand
+
+trec8-non-expand
+
+trec8-expand
+
+0.3
+
+0.4
+
+0.5
+
+0.6
+
+0.7
+
+0.8
+
+0.9
+
+1
+
+0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1
+
+recall
+
+lambda
+
+Effect of Query Translation: Recall on Lambda
+
+ap-non-expand
+
+ap-expand
+
+web-non-expand
+
+web-expand
+
+trec8-non-expand
+
+trec8-expand
+
+Figure 5: Eﬀect of λ, the document smoothing pa-
+
+rameter for linear interpolation.
+
+The results indi-
+
+cate that the improvement of the query translation
+
+model over the simple query model is fairly insensi-
+
+tive to the choice of λ.
+
+the user and collection, and is an attractive way in which
+
+to think about query and document language models. An
+
+interesting direction for future work will be to go beyond
+
+the use of a single document and query model (as in MAP
+
+estimation).
+
+The practical implementation of our new query expansion
+
+technique involves using only a small number of steps of a
+
+Markov chain on inverted indices. However, to compare this
+
+technique to previous work, it is best to imagine using the
+
+full matrix analysis, which involves computing the matrix
+
+inverse (I − αC)−1, as described in Section 4. When viewed
+
+in this way, there are interesting connections between the
+
+Markov chain approach to building query models, link anal-
+
+ysis methods, theory of social networks, and latent semantic
+
+indexing.
+
+Methods based on latent semantic analysis (LSA) [9] work
+
+with the singular value decomposition of the word-document
+
+matrix
+
+b
+
+A having entries
+
+b
+
+Aw,d = c(w, d).
+
+Let
+
+bB denote
+
+0
+
+0.1
+
+0.2
+
+0.3
+
+0.4
+
+0.5
+
+0.6
+
+0.7
+
+0.8
+
+0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1
+
+prec
+
+recall
+
+Query Translation vs. Rocchio: TREC8
+
+trec8-trans-fb
+
+trec8-Rocchio
+
+0
+
+0.1
+
+0.2
+
+0.3
+
+0.4
+
+0.5
+
+0.6
+
+0.7
+
+0.8
+
+0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1
+
+prec
+
+recall
+
+Query Translation vs. Rocchio: Web
+
+web-trans-fb
+
+web-Rocchio
+
+Figure 6: Precision-recall curves comparing TF-IDF
+
+with Rocchio to the query translation models. The
+
+curves for the two methods on AP89 are nearly the
+
+same, and so are not shown.
+
+the transpose
+
+b
+
+A⊤, so that
+
+bBd,w = c(w, d). LSA computes
+
+projections onto eigenspaces of the matrices
+
+b
+
+A
+
+bB and
+
+bB
+
+b
+
+A,
+
+building a low-dimensional subspace to represent terms and
+
+documents.
+
+In our method, we work with the closely re-
+
+lated matrices A and B. The matrix B is obtained from
+
+bB by normalizing the rows. However, the matrix of poste-
+
+rior probabilities A is obtained from
+
+b
+
+A by normalizing the
+
+rows only in the case of the rather unnatural document prior
+
+p(d) ∝ c(d). But the essential diﬀerence is that our method
+
+interprets the matrix (I − αAB)−1 probabilistically, rather
+
+than using a vector space approach that projects onto sub-
+
+spaces generated by the top eigenvectors of
+
+b
+
+A
+
+bB.
+
+There is a closer connection to methods from link and
+
+citation analysis. For example, Kleinberg’s “hubs and au-
+
+thorities” technique [13] uses an initial document set D(q)
+
+for a query, deﬁnes the matrix
+
+bB encoding all outgoing links
+
+from D, and the matrix
+
+b
+
+A encoding all incoming links to D.
+
+The “hub score” of a document is then deﬁned in terms of
+
+the principal eigenvector of the matrix
+
+b
+
+A
+
+bB (ignoring some
+
+ACM SIGIR Forum
+
+258
+
+Vol. 51 No. 2, July 2017
+
+
+details involving normalization).
+
+To cast this in terms of
+
+our query expansion method, forward links are replaced by
+
+document word indices, with language model probabilities
+
+p(w | d) = Bd,w, and incoming links are replaced by inverted
+
+ﬁle indices, with posterior probabilities p(d | w) = Aw,d.
+
+Use of the principal eigenvector of the matrix AB could
+
+give an excellent method for query expansion.
+
+Instead, we have chosen to use the Markov chain leading
+
+to the matrix (I − αAB)−1, which we believe gives greater
+
+ﬂexibility, as well as numerical stability through smooth-
+
+ing.
+
+Intuitively, the ﬁrst iterations of the walk are most
+
+important, and they are emphasized using the parameter α.
+
+The use of this matrix is related to research on social net-
+
+works carried out nearly 50 years ago; an excellent discussion
+
+of these methods is given by Kleinberg [13].
+
+To estimate
+
+the “standing” of an individual in a social network, Katz
+
+[12] uses a matrix C where Ci,j is the strength of an “en-
+
+dorsement” of individual j by individual i, and deﬁnes the
+
+standing of an individual j as the j-th column of the ma-
+
+trix (I − αC)−1 − I. Very similar measures are deﬁned by
+
+Hubbel [5].
+
+8.
+
+SUMMARY AND CONCLUSIONS
+
+We have presented a new framework for information re-
+
+trieval based on Bayesian decision theory. In this framework
+
+we assume a probabilistic model for the parameters of doc-
+
+ument and query language models, and cast the retrieval
+
+problem in terms of risk minimization. The framework is
+
+very general and expressive, and by choosing speciﬁc models
+
+and loss functions it is possible to recover many previously
+
+developed frameworks. In particular, previous approaches
+
+based on language modeling and query-likelihood ranking
+
+are obtained as a natural special case.
+
+In this paper we
+
+focus on the use of Kullback-Leibler divergence as loss func-
+
+tion, and the estimation of query language models. We in-
+
+troduce a novel method for estimating query models that
+
+uses Markov chains on the inverted indices of a document
+
+collection. This random walk has a natural interpretation
+
+in terms of document language models, and results in prac-
+
+tical and eﬀective translation models and query language
+
+models. Experiments on standard TREC methods indicate
+
+the usefulness of both the framework and the Markov chain
+
+method, as we obtain signiﬁcant improvements over stan-
+
+dard query expansion methods for strong baseline TF-IDF
+
+methods, with the greatest improvements attained for short
+
+queries on Web data.
+
+ACKNOWLEDGEMENTS
+
+We thank Jamie Callan, Bruce Croft, Imre Kondor, Victor
+
+Lavrenko, Guy Lebanon, and Roni Rosenfeld for valuable
+
+discussions related to this work. This research was spon-
+
+sored in part by the Advanced Research and Development
+
+Activity in Information Technology (ARDA) under its Sta-
+
+tistical Language Modeling for Information Retrieval Re-
+
+search Program.
+
+REFERENCES
+
+[1] A. Berger and J. Laﬀerty. Information retrieval as statis-
+
+tical translation. In Proceedings of the 1999 ACM SIGIR
+
+Conference on Research and Development in Information
+
+Retrieval, pages 222–229, 1999.
+
+[2] A. Bookstein and D. Swanson. A decision theoretic foun-
+
+dation for indexing. Journal for the American Society for
+
+Information Science, pages 45–50, 1975.
+
+[3] A. Bookstein and D. Swanson. Probabilistic models for au-
+
+tomatic indexing. Journal for the American Society for In-
+
+formation Science, 25(5):312–318, 1976.
+
+[4] S. Brin and L. Page. Anatomy of a large-scale hypertextual
+
+web search engine. In Proceedings of the 7th International
+
+World Wide Web Conference, 1998.
+
+[5] H. Hubbell C.˙An input-output approach to clique identiﬁ-
+
+cation. Sociometry, 28:377–399, 1965.
+
+[6] J. G. Carbonell, Y. Geng, and J. Goldstein. Automated
+
+query-relevant summarization and diversity-based reranking.
+
+In IJCAI-97 Workshop on AI and Digital Libraries, 1997.
+
+[7] W. S. Cooper and M. E. Maron. Foundations of probabilistic
+
+and utility-theoretic indexing. Journal of the Association for
+
+Computing Machinery, 25(1):67–80, 1978.
+
+[8] W. B. Croft and D.J. Harper. Using probabilistic models of
+
+document retrieval without relevance information. Journal
+
+of Documentation, 35:285–295, 1979.
+
+[9] S. Deerwester, S. Dumais, T. Landauer, G. Furnas, and
+
+R. Harshman. Indexing by latent semantic analysis. Journal
+
+of American Society for Information Science, 41:391–407,
+
+1990.
+
+[10] N. Fuhr. Probabilistic models in information retrieval. The
+
+Computer Journal, 35(3):243–255, 1992.
+
+[11] D. Hiemstra and W. Kraaij. Twenty-one at TREC-7: Ad-hoc
+
+and cross-language track. In Proc. of Seventh Text REtrieval
+
+Conference (TREC-7), 1998.
+
+[12] L. Katz. A new status index derived from sociometric anal-
+
+ysis. Psychometrika, 18:39–43, 1953.
+
+[13] J. Kleinberg. Authoritative sources in a hyperlinked environ-
+
+ment. Journal of the Association for Computing Machinery,
+
+46, 1999.
+
+[14] J. Laﬀerty and C. Zhai. Probabilistic IR models based on
+
+query and document generation. In Proceedings of the Work-
+
+shop on Language Modeling and Information Retrieval,
+
+Carnegie Mellon University, May 31–June 1, 2001.
+
+[15] D. H. Miller, T. Leek, and R. Schwartz. A hidden Markov
+
+model information retrieval system. In Proceedings of the
+
+1999 ACM SIGIR Conference on Research and Development
+
+in Information Retrieval, pages 214–221, 1999.
+
+[16] F. Mosteller and D. Wallace. Inference and disputed author-
+
+ship: The Federalist. Addison Wesley, 1964.
+
+[17] J. Ponte and W. B. Croft. A language modeling approach
+
+to information retrieval. In Proceedings of the ACM SIGIR,
+
+pages 275–281, 1998.
+
+[18] S. Robertson and K. Sparck Jones. Relevance weighting of
+
+search terms. Journal of the American Society for Informa-
+
+tion Science, 27:129–146, 1976.
+
+[19] S. E. Robertson, S. Walker, S. Jones, M. M.Hancock-
+
+Beaulieu, and M. Gatford. Okapi at TREC-3. In D. K. Har-
+
+man, editor, The Third Text REtrieval Conference (TREC-
+
+3), 1995.
+
+[20] I. Witten, A. Moﬀat, and T. Bell. Managing Gigabytes:
+
+Compressing and Indexing Documents and Images. Morgan
+
+Kaufmann, 1999.
+
+[21] S. K. M. Wong and Y. Y. Yao. A probability distribution
+
+model for information retrieval. Information Processing and
+
+Management, 25(1):39–53, 1989.
+
+ACM SIGIR Forum
+
+259
+
+Vol. 51 No. 2, July 2017
+

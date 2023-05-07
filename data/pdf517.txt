@@ -1,0 +1,988 @@
+
+Allen B. Riddell
+
+About
+
+Blog
+
+Projects &amp; Publications
+
+
+
+A Simple Topic Model (Mixture of Unigrams)
+
+Sun 22 July 2012
+
+This is an extended version of the appendix to my paper exploring trends in German Studies in the US between 1928 and
+
+2006. In that paper I used a topic model (Latent Dirichlet Allocation). This tutorial is intended to help readers in the
+
+humanities and social sciences start to understand how LDA works. It is, however, an extremely poor substitute for an
+
+introductory class in Bayesian statistics.
+
+Topic models typically start with two banal assumptions. The first is that in a large collection of texts there exist a number of
+
+groups (or sources) of texts. In the case of academic journal articles, these groups might be associated with different journals,
+
+authors, research subfields, or publication periods (e.g., the 1950s and 1980s). The second assumption is that texts from
+
+different sources tend to use different vocabulary. If we are presented with an article selected from one of two different
+
+academic journals, one dealing with literature and another with archeology, and we are told only that the word “plot” appears
+
+frequently in the article, we would be wise to guess the article comes from the literary studies journal.
+
+A major obstacle to understanding the remaining details about how topic models work is that their description relies on the
+
+abstract language of probability. Existing introductions to Latent Dirichlet Allocation (LDA) tend to be pitched either at an
+
+audience already fluent in statistics or at an audience with minimal background.  This being the case, I want to address an
+
+audience that has some background in probability and statistics, perhaps at the level of the introductory texts of Hoff (2009),
+
+Lee (2004), or Kruschke (2010).
+
+Mixture of Unigrams
+
+Before starting, I must make clear these are not the details of LDA. Instead, I will cover a close relative, what has been called
+
+the mixture of unigrams. Understanding this model makes understanding the details of LDA easier. And the mixture of
+
+unigrams model shares enough of the essential features of LDA that I feel comfortable calling it a topic model. (Its principal
+
+shortcoming vis-à-vis LDA is that it does not model very well the polysemy pervasive in human language.)
+
+To keep things concrete, I will consider a corpus of twenty academic journal articles drawn from a larger collection German
+
+Studies journal articles. To keep things simple, I will pretend these articles make use of a vocabulary of only eight words. (The
+
+articles have been selected so that, were their titles known, they would fall easily into two groups.) The corpus is given below. I
+
+will show how a probabilistic model of the texts, starting from the assumption that there are a fixed number of groups, can infer
+
+(1) which documents belong to which group and (2) what words are most strongly associated with each group.
+
+article#
+
+literary
+
+literature
+
+authors
+
+century
+
+texts
+
+writers
+
+economic
+
+critique
+
+1
+
+0
+
+0
+
+0
+
+4
+
+0
+
+0
+
+2
+
+5
+
+2
+
+0
+
+0
+
+0
+
+0
+
+0
+
+0
+
+6
+
+11
+
+3
+
+0
+
+0
+
+0
+
+3
+
+0
+
+0
+
+8
+
+0
+
+4
+
+0
+
+0
+
+0
+
+2
+
+1
+
+0
+
+6
+
+16
+
+5
+
+0
+
+1
+
+0
+
+5
+
+1
+
+0
+
+3
+
+13
+
+6
+
+0
+
+0
+
+0
+
+0
+
+0
+
+0
+
+5
+
+6
+
+7
+
+10
+
+3
+
+0
+
+4
+
+0
+
+1
+
+0
+
+0
+
+8
+
+13
+
+1
+
+7
+
+0
+
+0
+
+5
+
+0
+
+0
+
+9
+
+7
+
+3
+
+0
+
+4
+
+1
+
+8
+
+0
+
+0
+
+10
+
+20
+
+14
+
+3
+
+0
+
+0
+
+0
+
+0
+
+0
+
+1
+
+2
+
+
+11
+
+5
+
+6
+
+5
+
+0
+
+0
+
+10
+
+0
+
+0
+
+12
+
+9
+
+7
+
+0
+
+2
+
+0
+
+1
+
+0
+
+0
+
+13
+
+3
+
+5
+
+3
+
+0
+
+0
+
+6
+
+0
+
+0
+
+14
+
+8
+
+13
+
+3
+
+1
+
+1
+
+3
+
+0
+
+0
+
+15
+
+9
+
+3
+
+4
+
+0
+
+0
+
+6
+
+0
+
+0
+
+16
+
+11
+
+7
+
+4
+
+0
+
+1
+
+6
+
+0
+
+0
+
+17
+
+2
+
+3
+
+0
+
+1
+
+1
+
+1
+
+0
+
+0
+
+18
+
+5
+
+2
+
+13
+
+0
+
+0
+
+5
+
+0
+
+0
+
+19
+
+7
+
+3
+
+6
+
+1
+
+0
+
+11
+
+0
+
+0
+
+20
+
+5
+
+9
+
+8
+
+2
+
+0
+
+4
+
+0
+
+0
+
+article#
+
+literary
+
+literature
+
+authors
+
+century
+
+texts
+
+writers
+
+economic
+
+critique
+
+Let us assume that there are two groups (\(K=2\)). We know that there are twenty articles (\(N=20\)) and that each article
+
+consists of \(n_i\) words (\(n_1 = 11, n_2 = 17, \ldots, n_{20} = 28\)) drawn from a vocabulary of eight unique words (\(V=8\)).
+
+Before considering the word frequencies in the corpus, we first specify our prior beliefs in keeping with the ideas outlined in
+
+the opening paragraph. There are three assumptions to consider. First, if we knew which group (or topic) a document came
+
+from, then we would anticipate that words from that document are those likely to be found in other documents associated with
+
+the group. Second, since we do not have any information about the documents in advance, we will say that it is equally likely
+
+that a document comes from topic one or topic two. Finally, since we have no information about what vocabulary is associated
+
+with what topic, we will say that each word is equally likely to appear in documents associated with either topic. We can write
+
+this with symbols as
+
+$$\begin{aligned} w_{ij}|z_i &amp;\overset{i.i.d.} \sim Multinomial(1,\phi_{z_i}) \, j=1,\ldots, n_i \\\\ z_{1:N} &amp;\overset{ind}{\sim}
+
+Multinomial(1, \theta) \\\\ \theta &amp;\sim Dirichlet(\alpha_{1:K}) \\\\ \phi_{1:K} &amp;\overset{i.i.d.}{\sim} Dirichlet(\beta_{1:V})\\\\
+
+\end{aligned}$$
+
+where \(w_{ij}\) is the \(j\)th word of document \(i\). \(z_i\) indicates the topic that document \(i\) is associated with (here either 1
+
+or 2). \(\alpha_{1:K} = (1, 1)\) and \(\beta_{1:V} = (1,1,1,1,1,1,1,1)\) are the parameters for the two Dirichlet distributions which
+
+express the prior beliefs described. (Note that \(Dirichlet(1,1)\) is equivalent to a \(Beta(1,1)\) distribution). The following table
+
+gives a summary of notation,
+
+$$\begin{aligned} w_{ij} &amp; \text{jth word of document i}\\\\ z_i &amp; \text{topic of document i} \\\\ n_i &amp; \text{number of words in
+
+document i} \\\\ \alpha &amp; \text{parameter for document-topic Dirichlet} \\\\ \beta &amp; \text{parameter for topic-word Dirichlet} \\\\ N
+
+&amp; \text{number of documents} \\\\ V &amp; \text{number of unique words (vocabulary)} \\\\ \end{aligned}$$
+
+How should our beliefs change once we see the articles’ words? There are three inferential “moves” that, when combined,
+
+move us towards an answer. Making each move in succession will eventually yield an updated representation of our beliefs.
+
+These moves are easy to explain in English and the details only require familiarity with the Multinomial distribution and its
+
+conjugate prior, the Dirichlet distribution—the pair being the multivariate analog of the Binomial distribution and its conjugate
+
+prior, the Beta distribution. The first inferential move begins with an assumption. We assume that we know which documents
+
+are associated with which topics and update our beliefs about how words are associated with each topic. (Remarkably, it will
+
+not matter what topic assignments we start with.) Imagine that we have guessed the following topic assignments: the first ten
+
+articles are from topic one, the remaining ten are from topic two, \(z = (1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,2)\). Now, if these
+
+really were the true topic assignments, how would we adjust our beliefs about topic one? Glancing at the table, I can say at
+
+least that the word “literary” should be more strongly associated with topic two than with topic one since it occurs in all of the
+
+ten articles (100%) assigned to topic two whereas it occurs in only four of ten articles (30%) assigned to topic one. In symbols,
+
+this reads
+
+$$\begin{aligned} p(\phi_{1:K}|z_{1:N},w) &amp;\propto p(w|\phi_{1:K},z_{1:N}) p(\phi_{1:K})\\\\ &amp;=\prod_{i=1}^N \prod_{j=1}^{n_i}
+
+Multinomial(w_{ij}|\phi_{z_i}) \times \prod_{k=1}^K Dirichlet(\phi_k|\beta_{1:V}) \\\\ &amp;\propto \prod_{i=1}^N \prod_{v=1}^V
+
+\phi_{z_i,v}^{f_{i,v}} \times \prod_{k=1}^K \prod_{v=1}^V \phi_{k,v}^{\beta_v - 1}\\\\ &amp;=\prod_{k=1}^K \prod_{v=1}^V
+
+\phi_{k,v}^{e_{k,v}} \times \prod_{k=1}^K \prod_{v=1}^V \phi_{k,v}^{\beta_v - 1}\\\\ &amp;=\prod_{k=1}^K \prod_{v=1}^V
+
+\phi_{k,v}^{\beta_v + e_{k,v} - 1} \\\\ p(\phi_{1:K}|z_{1:N},w) &amp;= \prod_{k=1}^K Dirichlet(\phi_k|\beta_1 + e_{k,1}, \ldots, \beta_V
+
+
++ e_{k,V}) \\\\ \end{aligned}$$
+
+where \(f_{i,v}\) is the number of times word \(v\) appears in document \(i\) and \(e_{k,v}\) is the number of times word \(v\) is
+
+assigned to topic \(k\) across all documents.
+
+The second move swaps the position of our ignorance. Now we guess which documents are associated with which topics,
+
+making the assumption that we know both the makeup of each topic distribution and the overall prevalence of topics in the
+
+corpus. If we continue with our example from the previous paragraph, in which we had guessed that “literary” was more strongly
+
+associated with topic two than topic one, we would likely guess that the seventh article, with ten occurrences of the word
+
+“literary”, is probably associated with topic two rather than topic one (of course we will consider all the words, not just “literary”).
+
+This would change our topic assignment vector to \(z = (1,1,1,1,1,1,2,1,1,1,2,2,2,2,2,2,2,2,2,2)\). We take each article in turn
+
+and guess a new topic assignment (in many cases it will keep its existing assignment). In symbols, this step reads
+
+$$\begin{aligned} p(z_i=k|w,\phi_{1:K},\theta) &amp;\propto p(w|z_i=k,\phi_{1:K}) p(z_i=k|\theta) \\\\ &amp;\propto \lbrace
+
+\prod_{j=1}^{n_i} p(w_{ij}|z_i=k,\phi_{1:K}) \rbrace p(z_i=k|\theta) \\\\ &amp;= \lbrace \prod_{v=1}^V \phi_{k,v}^{f_{i,v}} \rbrace
+
+\theta_k \\\\ p(z_i|w,\phi_{1:K},\theta) &amp;= Multinomial(z_i|1,q^{(i)}) \\\\ \end{aligned}$$
+
+where \(q^{(i)} \propto (\theta_1 \prod_{v=1}^V \phi_1^{f_{i,v}}, \ldots \theta_K \prod_{v=1}^V \phi_K^{f_{i,v}})\). So, considering
+
+all the assignments,
+
+$$\begin{aligned} p(z|w,\phi_{1:K},\theta) &amp;= \prod_{i=1}^{N} Multinomial(z_i|1,q^{(i)}) \\\\ \end{aligned}$$
+
+Finally, we update our guess about the overall prevalence of topics in the corpus—are 80% of articles topic one or are 20%—
+
+assuming that we know the topic assignments (which we have just guessed). The reasoning here is straightforward: if 80% of
+
+the articles are assigned to topic one and 20% to topic two, then the true proportions are likely in the vicinity of 80% and 20%.
+
+In symbols,
+
+$$\begin{aligned} p(\theta|z_{1:N}) &amp;\propto p(z_{1:N}|\theta) p(\theta) \\\\ &amp;=\prod_{i=1}^N p(z_i|\theta) \prod_{k=1}^K
+
+Dirichlet(\theta_k|\alpha) \\\\ &amp;\propto \prod_{k=1}^K \theta_k^{d_k} \prod_{k=1}^K \theta_k^{\alpha-1} \\\\ &amp;= \prod_{k=1}^K
+
+\theta_k^{\alpha + d_k - 1} \\\\ p(\theta|z_{1:N}) &amp;= \prod_{k=1}^K Dirichlet(\theta_k|\alpha_1+d_1, \ldots, \alpha_K+d_K)\\\\
+
+\end{aligned}$$
+
+where \(d_k\) equals the number of documents assigned to topic \(k\).
+
+Making these moves in succession over and over again is an instance of Gibbs sampling and eventually the topic
+
+assignments and the specification of each topic multinomial distribution will converge to a representation reflecting what, given
+
+our prior beliefs and the articles’ word frequencies, our updated beliefs ought to be.  And even if we had never encountered
+
+Gibbs sampling before, it is clear that making these inferential moves in succession leads to more plausible topic
+
+assignments (i.e. those documents containing “literary” end up in their own category). In this case, after 500 iterations (ignoring
+
+the first 100), I have the following assignments, on average:
+
+Docs
+
+Topic 1
+
+Topic 2
+
+Article 1
+
+0.04
+
+0.96
+
+Article 2
+
+0.04
+
+0.96
+
+Article 3
+
+0.04
+
+0.96
+
+Article 4
+
+0.04
+
+0.96
+
+Article 5
+
+0.04
+
+0.96
+
+Article 6
+
+0.04
+
+0.96
+
+Article 7
+
+0.96
+
+0.04
+
+Article 8
+
+0.96
+
+0.04
+
+Article 9
+
+0.96
+
+0.04
+
+Article 10
+
+0.96
+
+0.04
+
+Article 11
+
+0.96
+
+0.04
+
+Article 12
+
+0.96
+
+0.04
+
+3
+
+
+Article 13
+
+0.96
+
+0.04
+
+Article 14
+
+0.96
+
+0.04
+
+Article 15
+
+0.96
+
+0.04
+
+Article 16
+
+0.96
+
+0.04
+
+Article 17
+
+0.96
+
+0.04
+
+Article 18
+
+0.96
+
+0.04
+
+Article 19
+
+0.96
+
+0.04
+
+Article 20
+
+0.96
+
+0.04
+
+Docs
+
+Topic 1
+
+Topic 2
+
+And the following words are the most probable under each topic distribution, on average:
+
+Topic 1
+
+literary
+
+literature
+
+writers
+
+authors
+
+century
+
+Topic 2
+
+critique
+
+economic
+
+century
+
+literature
+
+texts
+
+The model indicates that the articles come from two different sources. This is indeed the case. The first six articles are from
+
+the early years of the journal New German Critique and the remaining fourteen articles focus on German literature. A list of
+
+articles follows.
+
+1. Karl Korsch. “The Crisis of Marxism.” New German Critique. Autumn, 1974
+
+2. Rainer Paris. “Class Structure and Legitimatory Public Sphere: A Hypothesis on the Continued Existence of Class
+
+Relationships and the Problem of Legitimation in Transitional Societies.” New German Critique. Spring, 1975
+
+3. Herbert Marcuse. “The Failure of the New Left?.” New German Critique. Autumn, 1979
+
+4. Paul Piccone. “Karl Korsch o el Nacimiento de una Nueva Epoca.” New German Critique. Autumn, 1975
+
+5. Paul Piccone. “From Tragedy to Farce: The Return of Critical Theory.” New German Critique. Winter, 1976
+
+6. Peter Laska. “A Note on Habermas and the Labor Theory of Value.” New German Critique. Autumn, 1974
+
+7. Leland R. Phelps. “The Emergence of German as a Literary Language.” Monatshefte. Apr. - May, 1960
+
+8. Andreas Kiryakakis. “Dictionary of Literary Biography: Volume 66: German Fiction Writers, 1885-1913 Part I: A-L.”
+
+German Studies Review. May, 1990
+
+9. Marianne Henn. “Benedikte Naubert (1756-1819) and Her Relations to English Culture.” The German Quarterly. Fall,
+
+2006
+
+10. Stephen Brockmann. “German Literature of the 1990s and Beyond: Normalization and the Berlin Republic.”
+
+Monatshefte. Summer, 2006
+
+11. Willa Schmidt. “German Fiction Writers, 1885-1913.” Monatshefte. Spring, 1993
+
+12. Dieter Cunz. “Pennsylvania German Literature (Changing Trends from 1683 to 1942).” The German Quarterly. Mar.,
+
+1945
+
+13. Helga Schreckenberger. “Major Figures of Contemporary Austrian Literature.” The German Quarterly. Spring, 1990
+
+14. Wulf Koepke. “After the Fires: Recent Writing in the Germanies, Austria and Switzerland.” German Studies Review.
+
+May, 1988
+
+15. Carl Steiner. “Bitter Healing: German Women Writers from 1700 to 1830.” German Studies Review. May, 1991
+
+16. Henry J. Schmidt. “Dictionary of Literary Biography. Vol. 56: German Fiction Writers, 1914-1945.” The German
+
+Quarterly. Winter, 1989
+
+17. James Hardin. “Der Weg in die Gegenwart: Geschichte des deutschen Romans.” The German Quarterly. Mar., 1980
+
+18. Lynn M. Kutch. “The Modern Restoration: Re-thinking German Literary History 1930-1960.” German Studies Review.
+
+Oct., 2006
+
+19. Thomas W. Kniesche. “A Companion to Twentieth-Century German Literature.” German Studies Review. Oct., 1993
+
+20. Ingeborg M. Goessl. “Austrian Fiction Writers: 1875-1913.” Monatshefte. Spring, 1991
+
+Starting only with the assumption that there were two topics and the two simple beliefs laid out in the opening paragraph, this
+
+topic model recovers two distinct groups of documents and their characteristic words.
+
+
+How many topics?
+
+Assuming that there were two groups of articles made the inference above considerably easier. What if we are uncertain
+
+about the number of topics? One model incorporating this uncertainty is a Dirichlet process mixture model. Just as the (finite)
+
+mixture of unigrams model leads into LDA, the Dirichlet process mixture model is one way to approach the non-parametric
+
+variant of LDA, which makes use of the Hierarchical Dirichlet Process (Teh et al. 2006).
+
+With a Dirichlet process mixture each observation gets its own parameter. Contrast this with the model above where each
+
+observation was associated with one of \(K\) topics. The clustering property of the Dirichlet process means that many of the
+
+parameters will be the same; we will end up with a small number of distinct parameters. In symbols the model reads,
+
+$$\begin{aligned} w_{ij}|\phi_i &amp;\overset{i.i.d.}{\sim} Multinomial(1,\phi_i) (\text{for}\, j = 1, \ldots, n_i) \\\\ \phi_i &amp;\sim G\\\\ G
+
+&amp;\sim DP(\alpha G_0)\\\\ G_0 &amp;\sim Dirichlet(\beta_{1:V})\\\\ \end{aligned}$$
+
+(More comprehensive introduces to Dirichlet Process mixtures include Ranganathan (2006), Yu (2009)). In order to use Gibbs
+
+sampling, all we need is the conditional representation of the DP. In symbols,
+
+$$\begin{aligned} p(\phi_i|\phi_{-i}) = \frac{\alpha}{\alpha+N-1} G_0(\phi_i) + \frac{1}{\alpha+N-1} \sum_{j \ne i} \delta_{\phi_j}
+
+(\phi_i) \\\\ \end{aligned}$$
+
+This is all we need to write down the posterior for \(\phi_i\) given everything else,
+
+$$\begin{aligned} p(\phi_i|w,\phi_{-i}) &amp;\propto p(w|\phi) p(\phi_i|\phi_{-i})\\\\ &amp;\propto p(w_{i\cdot}|\phi_i) p(\phi_i|\phi_{-i})\\\\ &amp;=
+
+\prod_{v=1}^{V} \phi_{i,v}^{f_{i,v}} \lbrace \frac{\alpha}{\alpha+N-1} G_0(\phi_i) + \frac{1}{\alpha+N-1} \sum_{j \ne i}
+
+\delta_{\phi_j}(\phi_i) \rbrace \\\\ &amp;= \frac{\alpha}{\alpha+N-1} G_0(\phi_i)\prod_{v=1}^{V} \phi_{i,v}^{f_{i,v}} + \frac{1}{\alpha+N-
+
+1} \sum_{j \ne i} \delta_{\phi_j}(\phi_i) \prod_{v=1}^{V} \phi_{j,v}^{f_{i,v}} \\\\ p(\phi_i|w,\phi_{-i}) &amp;= q_{i0} p(\phi_i|w_{i\cdot}) +
+
+\sum_{j \ne i} q_{ij} \delta_{\phi_j}(\phi_i) \\\\ \end{aligned}$$
+
+where \(f_{i,v}\) is the number of times word \(v\) appears in document \(i\) and \(w_{i\cdot}\) is shorthand for \(w_{i1}, \ldots,
+
+w_{in_j}\). \(p(\phi_i|w_{i\cdot})\) is the familiar posterior distribution, \(\frac{p(w_{i\cdot}|\phi_i)G_0(\phi_i)}{\int
+
+p(w_{i\cdot}|\phi)G_0(\phi) d\phi}\), which we get by multiplying by a carefully selected value equal to one, i.e. \(\frac{\int
+
+p(w_{i\cdot}|\phi)G_0(\phi) d\phi}{\int p(w_{i\cdot}|\phi)G_0(\phi) d\phi}\). And the remaining values are
+
+$$\begin{aligned} q_{i0} &amp;= c \alpha \int p(w_{i\cdot}|\phi)G_0(\phi) d\phi = c \alpha \int \prod_{v=1}{V} \phi_v^{f_{i,v}}
+
+\frac{\Gamma(\beta_1 + \ldots + \beta_V)}{\prod \Gamma(\beta_v)} \prod_{v=1}{V} \phi_v^{\beta_v-1} d\phi \\\\ &amp;= c \alpha
+
+\frac{\Gamma(\beta_1 + \ldots + \beta_V)}{\prod \Gamma(\beta_v)} \frac{\prod \Gamma(\beta_v + f_{i,v})}{\Gamma(\beta_1 +
+
+\ldots + \beta_V + n_i)}\\\\ q_{ij} &amp;= c \prod_{v=1}^{V} \phi_{j,v}^{f_{i,v}} \, , j\ne i\\\\ \end{aligned}$$
+
+where \(c\) is a value that guarantees \(\sum_{j\ne i} q_{ij}\) equals one. The posterior is a mixture of distributions we know how
+
+to sample from. The case is similar to sampling from a 20%-80% mixture of two normal distributions: first select which
+
+distribution to sample from, with probability .2 and .8 respectively, and then draw from the appropriate distribution. Here we
+
+select an index with probability proportional to \((q_{i0}, q_{i1}, q_{i{(i-1)}}, q_{i{(i+1)}}, q_{iN})\). If we draw an index of \(0\) we
+
+sample from the prior \(G_0\) to obtain the parameter \(\phi_i\), otherwise we set \(\phi_i = \phi_j\), where \(j\) was the index
+
+drawn (better sampling schemes are available, see Neal (2000) and Yu (2009)).
+
+After 3,000 iterations, the most frequent number of clusters is three. The first six articles fall into their own group and the two
+
+remaining clusters are spread over the remaining fourteen articles.
+
+References
+
+Blei, David M., Andrew Y. Ng, and Michael I. Jordan. 2003. “Latent Dirichlet Allocation.” Journal of Machine Learning
+
+Research 3: 993–1022. http://jmlr.csail.mit.edu/papers/v3/blei03a.html.
+
+Carpenter, Bob. 2010. “Integrating Out Multinomial Parameters in Latent Dirichlet Allocation and Naive Bayes for Collapsed
+
+Gibbs Sampling.” http://lingpipe.files.wordpress.com/2010/07/lda3.pdf.
+
+Casella, George, and Edward I. George. 1992. “Explaining the Gibbs Sampler.” The American Statistician 46: 167–174.
+
+doi:10.2307/2685208. http://www.jstor.org/stable/2685208.
+
+Chen, Edwin. 2011. “Introduction to Latent Dirichlet Allocation.” http://blog.echen.me/2011/08/22/introduction-to-latent-dirichlet-
+
+allocation/.
+
+Heinrich, Gregor. 2009. “Parameter estimation for text analysis.” http://www.arbylon.net/publications/text-est2.pdf.
+
+Hoff, Peter D. 2009. A First Course in Bayesian Statistical Methods. Springer.
+
+Jockers, Matthew L. 2011. “The LDA Buffet is Now Open; or, Latent Dirichlet Allocation for English Majors.”
+
+
+http://www.matthewjockers.net/2011/09/29/the-lda-buffet-is-now-open-or-latent-dirichlet-allocation-for-english-majors/.
+
+Kruschke, John K. 2010. Doing Bayesian Data Analysis: A Tutorial With R and BUGS. Burlington, MA: Academic Press.
+
+Lee, Peter M. 2004. Bayesian Statistics: An Introduction. London: Wiley.
+
+Neal, Radford M. 2000. “Markov Chain Sampling Methods for Dirichlet Process Mixture Models.” Journal of Computational
+
+and Graphical Statistics 9: 249–265. http://www.cs.toronto.edu/\~radford/mixmc.abstract.html.
+
+Ranganathan, Ananth. 2006. “The Dirichlet Process Mixture (DPM) Model.”
+
+http://biocomp.bioen.uiuc.edu/journal_club_web/dirichlet.pdf.
+
+Resnik, Philip, and Eric Hardisty. 2010. “Gibbs Sampling for the Uninitiated.”
+
+http://drum.lib.umd.edu/bitstream/1903/10058/3/gsfu.pdf.
+
+Teh, Yee Whye, Michael I. Jordan, Matthew J. Beal, and David M. Blei. 2006. “Hierarchical Dirichlet Processes.” Journal of
+
+the American Statistical Association 101: 1566–1581.
+
+Underwood, Ted. 2012. “Topic modeling made just simple enough.” https://tedunderwood.wordpress.com/2012/04/07/topic-
+
+modeling-made-just-simple-enough/.
+
+Weingart, Scott. 2011. “Topic Modeling and Network Analysis.” http://www.scottbot.net/HIAL/?p=221.
+
+Yu, Xiaodong. 2009. “Gibbs Sampling for DP Mixtures: Technical Details.” http://xiaodong-yu.blogspot.com/2009/09/gibbs-
+
+sampling-for-dp-mixtures.html.
+
+Code
+
+The code used in this post is available.
+
+Thanks
+
+Thanks to Scott Weingart for his comments on a draft of this post.
+
+Footnotes
+
+1. Both these assumptions are inaccurate. Each article in a collection is different and every book in a library is unique—
+
+even books that are “copies” in the sense of being the same edition or from the same printing are visibly different under
+
+a microscope (although usually one need not go that far). There are no shared “sources” of texts. And every printed word
+
+is similarly unique, often visibly so if different fonts have been used; this challenges the idea of a fixed vocabulary. At their
+
+best, models are useful fictions. �
+
+2. Those without significant background in probability might consider the introductions by Weingart (2011), Jockers (2011),
+
+Underwood (2012), or Chen (2011). Those with some fluency should consult Heinrich (2009), Carpenter (2010) or the
+
+original paper (Blei, Ng, and Jordan 2003). �
+
+3. For an introduction to Gibbs sampling see chapter 6 of Hoff (2009). Other introductions include Resnik and Hardisty
+
+(2010) and Casella and George (1992). �
+

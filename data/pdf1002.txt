@@ -1,0 +1,2331 @@
+
+c⃝ 2015 Yinan Zhang
+
+
+
+brought to you by 
+
+CORE
+
+View metadata, citation and similar papers at core.ac.uk
+
+provided by Illinois Digital Environment for Access to Learning and Scholarship Repository
+
+
+INFORMATION RETRIEVAL AS CARD PLAYING: A FORMAL
+
+MODEL FOR OPTIMIZING INTERACTIVE RETRIEVAL INTERFACE
+
+BY
+
+YINAN ZHANG
+
+THESIS
+
+Submitted in partial fulﬁllment of the requirements
+
+for the degree of Master of Science in Computer Science
+
+in the Graduate College of the
+
+University of Illinois at Urbana-Champaign, 2015
+
+Urbana, Illinois
+
+Adviser:
+
+Professor Chengxiang Zhai
+
+
+Abstract
+
+We propose a novel formal model for optimizing interactive information re-
+
+trieval interfaces. To model interactive retrieval in a general way, we frame
+
+the task of an interactive retrieval system as to choose a sequence of inter-
+
+face cards to present to the user. At each interaction lap, the system’s goal
+
+is to choose an interface card that can maximize the expected gain of rel-
+
+evant information for the user while minimizing the eﬀort of the user with
+
+consideration of the user’s action model and any desired constraints on the
+
+interface card. We show that such a formal interface card model can not only
+
+cover the Probability Ranking Principle for Interactive Information Retrieval
+
+as a special case by making multiple simpliﬁcation assumptions, but also be
+
+used to derive a novel formal interface model for adaptively optimizing nav-
+
+igational interfaces in a retrieval system. Experimental results show that
+
+the proposed model and algorithms are eﬀective in automatically generating
+
+adaptive navigational interfaces, which outperform the baseline pre-designed
+
+static interfaces.
+
+ii
+
+
+To my parents, for their love and support.
+
+iii
+
+
+Table of Contents
+
+Chapter 1
+
+Introduction . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+1
+
+Chapter 2
+
+Related Work . . . . . . . . . . . . . . . . . . . . . . . . .
+
+4
+
+Chapter 3
+
+Interface Card Model . . . . . . . . . . . . . . . . . . . . .
+
+6
+
+Chapter 4
+
+Plain Card . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+12
+
+Chapter 5
+
+Navigational Card
+
+. . . . . . . . . . . . . . . . . . . . . .
+
+15
+
+5.1
+
+Analytical Experiments . . . . . . . . . . . . . . . . . . . . . .
+
+21
+
+5.2
+
+User Study Experiments . . . . . . . . . . . . . . . . . . . . .
+
+24
+
+Chapter 6
+
+Conclusions and Future Work . . . . . . . . . . . . . . . .
+
+29
+
+References . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+31
+
+iv
+
+
+Chapter 1
+
+Introduction
+
+Developing formal models for information retrieval (IR) has always been
+
+an important fundamental challenge. For example, the Probability Rank-
+
+ing Principle (PRP) [1] proposed more than three decades ago has laid out
+
+a solid foundation and provided a theoretical justiﬁcation for framing the
+
+retrieval task as a ranking problem, leading to the development of many
+
+eﬀective retrieval functions for ranking documents that are used in current
+
+search engines (e.g., [2, 3, 4, 5, 6, 7, 8]). Despite the great success of PRP,
+
+however, it is also known that it is based on two problematic assumptions,
+
+i.e., sequential browsing and independent relevance (utility) of documents,
+
+which are generally not true in practice. As a result, e.g., the traditional
+
+retrieval models developed based on PRP cannot handle redundancy among
+
+documents directly (and must rely on post-processing of search results), an
+
+immediate consequence of the independence assumption of document rele-
+
+vance. Sequential browsing implies limitations on the interface also, and in
+
+particular ignores the actions that a user can take when interacting with an
+
+interface displaying search results (e.g., faceted browsing).
+
+Recognizing these limitations and attempting to generalize the PRP for
+
+interactive IR, Fuhr[9] has recently proposed a novel formal framework for
+
+optimizing interactive retrieval and derived a PRP for interactive information
+
+retrieval (IIR-PRP) where a user’s eﬀort and beneﬁt are captured when op-
+
+timizing the ranking of documents. This work eﬀectively addressed the inde-
+
+pendence assumption made in the PRP and provides a theoretical foundation
+
+for optimizing ranking of documents when a user is assumed to interactively
+
+browse a list of search results. Unfortunately, it has not eﬀectively addressed
+
+the sequential browsing, which remains an assumption made for optimizing
+
+ranking in interactive retrieval. In this paper, we relax this assumption and
+
+propose a more general formal model than IIR-PRP for optimizing interac-
+
+tive retrieval.
+
+1
+
+
+The sequential browsing assumption touches a much larger problem of how
+
+to model a user’s reactions to a retrieval result interface, which further de-
+
+pends on what the interface looks like, raising the interesting question “how
+
+can we formally model the problem of interface design for an interactive IR
+
+system?” Interestingly, in contrast with a large body of work on formal meth-
+
+ods for optimizing ranking, there has been little work on formal methods for
+
+optimizing the interface of a system, despite that the dynamic and interactive
+
+nature of information seeking process has long been recognized and studied
+
+from information science perspective (see, e.g., [10, 11]). While optimizing
+
+ranking is clearly very important for optimizing a retrieval system, when we
+
+consider optimizing an interactive retrieval system, we must also optimize
+
+the interface part of the system so as to optimize the whole system, which is
+
+the goal of our study.
+
+The study of interface optimization is especially important in the current
+
+era of ever faster technology advancement, leading to the emergence of smart
+
+phones and various kinds of wearable devices with very small screens, which
+
+generally require a diﬀerent interface than the popular interface designed
+
+for desktops. For example, while showing a document list on a relatively
+
+large screen is popular and appropriate, it may not be appropriate to do so
+
+on a very small screen where an interface with navigational tags might be
+
+more useful as it enables a user to more eﬃciently navigate into the relevant
+
+information. Even if we consider the current interface of a Web search engine
+
+such as Google or Bing on a large screen, which typically shows a list of
+
+ﬁxed number of snippets, there are still many interesting questions related
+
+to optimization of the interface. For example, how many snippets should we
+
+display on each page? The commonly used number, 10, is not necessarily
+
+always the best choice. Also, what about shortening some snippets to make
+
+room for more results or vice versa?
+
+These questions have been tackled by Human-Computer Interaction (HCI)
+
+researchers with many empirical ﬁndings. Unfortunately, it is still unclear
+
+how we can leverage these ﬁndings to build an intelligent IR system that can
+
+automatically optimize its interaction interface adaptively both to the screen
+
+size and a user’s information need.
+
+In this paper, we study the novel problem of automatic interface optimiza-
+
+tion formally, and propose a new general formal model, called the Interface
+
+Card model for optimizing interactive retrieval. The basic idea behind this
+
+2
+
+
+model is to view an interactive retrieval process as a process of the retrieval
+
+system playing a cooperative card game 1 with the user in the following way:
+
+at each interaction lap, facing a current retrieval context, the system would
+
+choose an optimal “interface card” to present to the user. The user can then
+
+perform any action from a set of possible actions associated with the inter-
+
+face card presented. Depending on the user’s action on the interface card
+
+(e.g.,selecting a particular facet value), the system would then transition to
+
+a new context, and have to choose another (generally new) interface card to
+
+show to the user. The game would continue in such a way until the user
+
+decides to stop (either due to satisfaction of the information need or aban-
+
+doning a search). At each interaction lap, the system’s goal is to choose an
+
+interface card that can maximize the expected gain of relevant information
+
+for the user while minimizing the eﬀort of the user with consideration of a
+
+user action model and any desired constraints on the interface card.
+
+We show that such a general formal interface card model can not only cover
+
+IIR-PRP as a special case by making multiple simpliﬁcation assumptions,
+
+including the sequential browsing assumption, but also be used to derive a
+
+novel formal interface model for adaptively optimizing navigational interfaces
+
+in a retrieval system by assuming that an interface card is composed of one
+
+or more information blocks to support interactive navigation, and a user’s
+
+action is mainly to click on navigational buttons. The derived model enables,
+
+for the ﬁrst time, automatic generation of an optimal navigational interface
+
+that can be adaptive to screen sizes and user interactions.
+
+Experimental results show that the proposed model and algorithms are
+
+eﬀective in automatically generating adaptive navigational interfaces, which
+
+outperform the baseline pre-designed static interfaces.
+
+1http://en.wikipedia.org/wiki/Card game
+
+3
+
+
+Chapter 2
+
+Related Work
+
+The majority work on formal models for IR has been based on the Prob-
+
+ability Ranking Principle (PRP) [1] and all attempt to optimize a ranking
+
+function deﬁned on a query-document pair; they include all kinds of tradi-
+
+tional retrieval models such as vector space models [2], classic probabilistic
+
+models [3], language models [4, 5, 12], divergence from randomness [6], infer-
+
+ence networks [7], and axiomatic approaches [8], and recent extensions in the
+
+direction of learning to rank [13, 14]. These models generally do not model
+
+user interactions, thus provide no guidance for user interface design.
+
+The PRP for interactive IR (IIR-PRP) [9] generalizes the PRP to optimize
+
+ranking in an interactive IR setting, where a number of important concepts
+
+for modeling user interaction from the perspective of decision making were
+
+introduced, including situation, eﬀort and beneﬁt, and an optimal ordering
+
+principle is derived for ranking items when a user is assumed to sequentially
+
+browse the list. Our model shares a similar high-level goal with the IIR-PRP
+
+in that both attempt to establish a formal model for interactive retrieval, but
+
+it is more general than the IIR-PRP, which can be shown as a special case
+
+of our model under a set of simpliﬁcation assumptions. Moreover, due to its
+
+generality, our model does not make the sequential browsing assumption and
+
+can be directly used to optimize the interaction interface; as a result, our
+
+model can suggest interfaces that would dynamically adapt to the assumed
+
+screen sizes, which cannot be achieved in any existing work on formal models.
+
+The dynamic and interactive nature of information seeking process has long
+
+been recognized and studied from information science perspective (see, e.g.,
+
+[10, 11]). Our work can be regarded as an attempt to formalize some of the
+
+theoretical arguments in these literature with an operational mathematical
+
+model that can be used for building an intelligent IR system with an adaptive
+
+interface for navigation.
+
+Our model of dynamic information need is related to the ostensive model
+
+4
+
+
+(OM) [15], which provides a framework for modeling the evolution of infor-
+
+mation needs over time.
+
+Our model is suﬃciently general to allow us to
+
+reﬁne it with the ostensive model or any other model of evolving information
+
+needs. Our proposed framework enables any such model to be adopted for
+
+optimizing navigational interface.
+
+The model we derived for optimizing navigational interface uses an objec-
+
+tive function to maximize the diﬀerence between a user’s beneﬁt and cost
+
+for ﬁnding a relevant information item. Such a decision criterion is related
+
+to some recent work that have explored economic models for IR (e.g., [16]).
+
+Furthermore, optimizing the ranking of documents in consideration of user
+
+actions has also been studied in the context of feedback to optimize the
+
+session-level utility [17] and using a POMDP framework in [18], where a
+
+dual-agent POMDP was proposed to model both user actions and system
+
+actions. However, none of these studies has proposed a model to optimize
+
+navigational interface, a primary goal of this paper.
+
+Optimizing search engine interface has been extensively studied (see, e.g.,
+
+the survey in the book [19]), including designing and evaluating faceted
+
+browsing systems and coming up with various ad hoc ways to optimize such
+
+systems (e.g. [20] and [21]). However, no existing work can optimize a nav-
+
+igational interface with an explicitly deﬁned objective function, which our
+
+model attempts to achieve.
+
+5
+
+
+Chapter 3
+
+Interface Card Model
+
+In general, any interaction between a user and an interactive information
+
+retrieval system can be partitioned into a series of interaction laps, in each
+
+of which the user issues an action and the system then reacts to the user’s
+
+action by selecting an optimized interface instance to show to the user. For
+
+example, in a traditional search engine, the ﬁrst interaction lap consists of the
+
+user issuing a query and the search engine responding with 10 most relevant
+
+items as the ﬁrst result page. After this interaction lap, the user may issue
+
+a second action by either clicking an item or “next page,” and the interface
+
+reacts by displaying a second interface instance optimized for the perceived
+
+user action.
+
+The interaction laps may be deﬁned in various levels of granularity and the
+
+set of user actions would change accordingly. The previous example can be
+
+regarded as modeling interaction at the page level. If, however, the 10 search
+
+results could not simultaneously ﬁt into the screen of the interface as in the
+
+case of searching with a smart phone, then the interaction can be modeled at
+
+a ﬁner granularity - the current screen shown to the user, and the user actions
+
+would additionally include scrolling up/down, to which the interface reacts
+
+by “sliding” the screen up/down by one position. In this scenario, when the
+
+user scrolls down, the interface in theory could have a chance to decide again
+
+according to the user’s action about the item to be shown next, which may
+
+be diﬀerent from the one originally ranked at this position. Such “drilling
+
+down” of the interaction granularity could continue, if we consider a user’s
+
+every eye movement as an action and the interface may dynamically change
+
+the displayed content accordingly, assuming the availability of an eye-tracker
+
+device 1.
+
+1In theory, we could go even deeper: imagine that we might some day have sensors
+
+installed for everyone to track every neuron excitement in their brain and consider that
+
+as an interaction unit.
+
+6
+
+
+How do we model an arbitrary interactive retrieval system formally at any
+
+given interaction granularity level? To address this question, we propose to
+
+view any user-interface interaction as a card game, in which the “interface
+
+player” determines the optimal card to play in each lap, and propose a novel
+
+interface card model to formally model the interactive retrieval task. Unlike
+
+a real card game where players maximize their own beneﬁts, however, the
+
+interface card model assumes a cooperative game in which the “interface
+
+player” always maximizes the user’s beneﬁt by taking into consideration the
+
+user’s current action, the interaction history, the reward and cost of the user’s
+
+next possible actions and any constraints posed onto the card the “interface
+
+player” plays at the current lap. We now formally introduce the model by ﬁrst
+
+deﬁning all these components and then the core mathematical optimization
+
+problem.
+
+Deﬁnition 3.1 (Lap). A lap is the interaction unit between the user and
+
+the interface in which the user issues an action and the interface then reacts
+
+by generating an optimized interface instance: t = 1, 2, . . .
+
+The laps serve as the timestamps for the user-system interactions and will
+
+always be shown as superscripts.
+
+Deﬁnition 3.2 (Card). A card is an interface instance generated by the
+
+interface system in reaction to the user action in each lap t: qt.
+
+The notion of card generalizes a wide range of interface instances including
+
+a result page or a screen of a partial result page in a search engine, a question
+
+in a conversational retrieval interface the system uses to clarify the user’s
+
+information need, etc.
+
+Deﬁnition 3.3 (Constraint). The constraint is a possible set of restrictions
+
+a card needs to satisfy in a lap, and for simplicity is assumed to have the
+
+form of a single constraint function: f t
+
+c(qt) ≤ 0.
+
+The constraint is typically related to the design and restrictions of the
+
+interface.
+
+For instance, a result page of a traditional search engine may
+
+display at most 10 items at a time. If screens are considered as a ﬁner unit
+
+for the interaction, when the user scrolls down, all the items on the next
+
+screen except the bottom one are constraint to be the ones sliding from the
+
+previous screen. In more complicated interface designs like faceted browsing
+
+7
+
+
+interfaces, there might be panels of facet values and items regulating how
+
+much space they could respectively occupy.
+
+Note that the constraint in many cases could not be captured within a
+
+single constraint function. The notion of the single constraint function is
+
+only meant for simplicity purpose, and more complicated forms of constraint
+
+do not change the model in any fundamental way.
+
+Deﬁnition 3.4 (Action). An action is a move the user chooses to take
+
+next from a set of possible moves that may depend on the current card:
+
+at+1 ∈ A(qt).
+
+Note that the interaction is initiated either by the user or the system,
+
+and we allow both situations in this model. Most of the time, the user is
+
+the initiator, and the interaction starts with a1 (followed by the interface
+
+playing the ﬁrst card q1, then the user issuing the second action a2, etc.).
+
+For example, when a user queries a search engine, a1 would be the very ﬁrst
+
+query the user enters. Alternatively, if the search engine attempts to display
+
+a possibly personalized search homepage to each user and at each time, then
+
+we could deﬁne a1 to be the user’s action of entering the website. In both
+
+these cases, the ﬁrst card the interface plays is designated to be the ﬁrst
+
+interface instance that needs to be optimized according to the user’s action.
+
+Typically, we are not interested in the set of possible actions for the very ﬁrst
+
+user action a1 because a1 is always regarded as given to the model and there
+
+isn’t any uncertainty in it.
+
+There are occasionally situations where the interface system is the initiator
+
+of the interaction, e.g. if a smart phone is set to alert the user whenever
+
+some interesting news events happen by popping up a screen of news event
+
+snippets to the user that is optimized according to the user’s interest. In
+
+such a scenario, we just set q1 to be this ﬁrst screen and set a1 to be a “null”
+
+action.
+
+For the sake of simplicity, from now on we always assume that the action set
+
+A(qt) is either ﬁnite or countably inﬁnite, so that we could use the summation
+
+sign “�” for summing over all possible actions in a particular lap. In cases
+
+where the action set is not countable (e.g. if a touch-screen smart phone
+
+measures how much force the user uses when touching the screen), we may
+
+simply replace the “�” signs with the “
+
+�
+
+” sign in all places that sum over
+
+actions in a lap; the core model is not aﬀected in any fundamental way.
+
+8
+
+
+Deﬁnition 3.5 (Context). The context is all the information the interface
+
+system has accumulated till a particular lap about the user for estimating
+
+the user’s choice on the next card: ct. Such information includes (a) a priori
+
+information about the user, i, if any, (b) interactions in all previous laps, if
+
+any, between the user and the interface (i.e. all previous actions issued by
+
+the user and all previous cards played by the interface), and (c) the action
+
+the user just issued in this lap. The context is typically expressed as a vector
+
+starting with c1 = (i, a1) and iteratively updated by ct+1 = (ct, qt, at+1).
+
+Typically, the a priori information about the user may capture any prior
+
+belief about the user, e.g. any available personalization information.
+
+Deﬁnition 3.6 (Action Model). The action model speciﬁes the system’s
+
+estimated probability distribution of the user deciding on which action to
+
+issue in the next lap given the current card and under the current context:
+
+p(at+1|ct, qt), at+1 ∈ A(qt).
+
+Here we are essentially assuming a probabilistic model for user action,
+
+which provides a general solid framework for most of the real world scenarios.
+
+Deﬁnition 3.7 (Reward). The reward is the system’s estimated expected
+
+beneﬁt the user would obtain for issuing a particular action given the current
+
+card and under the current context: r(at+1|ct, qt), at+1 ∈ A(qt).
+
+The reward may capture the short-term beneﬁt to the user from a relevant
+
+item, as well as any long-term beneﬁt, e.g., if the action serves to navigate the
+
+user to a new information subspace (as in the case of answering a clariﬁcation
+
+question from a conversational retrieval system or clicking a facet value in a
+
+faceted browsing system). In theory, the reward may depend on future laps
+
+(if the system decides to perform the estimation computation in such a way),
+
+but here we simplify the notation and only put ct and qt into r(at+1|ct, qt),
+
+and hide any possible dependency of the reward on future laps in the reward
+
+function r.
+
+Deﬁnition 3.8 (Cost). The cost is the system’s estimated expected eﬀort
+
+the user spends for issuing a particular action given the current card and
+
+under the current context: s(at+1|ct, qt), at+1 ∈ A(qt).
+
+For example, the cost function typically captures any possible eﬀort the
+
+user needs to take for scanning through a result page of a search engine, for
+
+9
+
+
+the decision-making process to determine whether to click or skip a particular
+
+item, etc.
+
+Deﬁnition 3.9 (Surplus). The surplus is the diﬀerence between the reward
+
+and the cost to the user for issuing a particular action given the current card
+
+and under the current context: u(at+1|ct, qt) = r(at+1|ct, qt) − s(at+1|ct, qt),
+
+at+1 ∈ A(qt).
+
+Here we borrow the concept of surplus from economics studies to desig-
+
+nate the net beneﬁt to the user for issuing an action. Note that the user,
+
+from their point of view, would typically tend to choose actions leading to
+
+higher surplus, and there have been well established economics theories, e.g.
+
+the discrete choice model [22], for modeling such behaviours. In this study,
+
+however, we do not go deeper in such directions and stop at the level of the
+
+action model in formalizing the user’s behavior from the interface system’s
+
+point of view.
+
+With all the major components deﬁned, we now formally introduce the
+
+key mathematical optimization problem.
+
+Deﬁnition 3.10 (Interface Card Optimization). In each lap t, the interface
+
+system should play a card qt that maximizes the expected surplus given the
+
+current context and under the current constraint, where the expectation is
+
+taken with respect to the user action model:
+
+maximize
+
+qt
+
+E(ut|ct, qt)
+
+=
+
+�
+
+at+1∈A(qt)
+
+p(at+1|ct, qt) u(at+1|ct, qt)
+
+subject to
+
+f t
+
+c(qt) ≤ 0
+
+(3.1)
+
+where ut def
+
+= u(at+1).
+
+As a remark, a possible source of confusion is that there are in total two
+
+levels of expectation in this formalism: the inner one being encapsulated
+
+within the notion of surplus that deals with the uncertainty in the reward and
+
+cost for a particular action (recall that the reward and cost are both deﬁned as
+
+expectations), and the outer one deﬁned at the optimization level that deals
+
+with the uncertainty in the user’s decision on which action to issue. Such
+
+an encapsulation generally holds in reality and also lays down a convenient
+
+10
+
+
+formalism framework for multiple ways of instantiating the interface card
+
+model as we will further discuss in the following sections.
+
+Note that the proposed interface card model is very general and does not
+
+make the “sequential browsing” assumption that is underlying all other ex-
+
+isting theoretical IR models. Rather, we only adopts a “sequential inter-
+
+action” scheme, i.e., the interaction laps between the user and the inter-
+
+face system take place sequentially, a much broader notion than “sequen-
+
+tial browsing”. The reason is that “sequential browsing” is positional - it
+
+assumes that the user follows a strict sequential order when scanning the
+
+positions on a list. In contrast, “sequential interaction” is temporal - it only
+
+assumes that the interaction ﬂows in a sequential manner, and if we think
+
+more deeply, as interaction always ﬂows in the same direction as time passes,
+
+the “sequential interaction” notion is essentially just stating that time passes
+
+uni-directionally, which is universally and always true. In such a sense, we
+
+are eﬀectively adopting the broadest possible “assumption” underlying any
+
+human-computer interaction process. We will show in the following section
+
+that we can make simpliﬁcation assumptions to reduce our “sequential inter-
+
+action” scheme to the traditional “sequential browsing” scheme, and derive
+
+the Probability Ranking Principle for Interactive Information Retrieval (IIR-
+
+PRP) proposed in [9].
+
+11
+
+
+Chapter 4
+
+Plain Card
+
+As our ﬁrst instantiation of the interface card model, we will show that the
+
+interface card model can cover the IIR-PRP model as a special case under a
+
+set of simpliﬁcation assumptions including particularly the sequential brows-
+
+ing assumption. Consider the problem setting of a generalized interactive
+
+information retrieval (IIR) system as introduced in [9], where the system’s
+
+task is to present a sequential list of binary choices to the user, and the sys-
+
+tem needs to determine the optimal order of the list so as to maximize the
+
+user’s expected beneﬁt. Such a problem formulation generalizes a wide range
+
+of IIR tasks. (Please refer to [9] for more in-depth explanations.)
+
+In order to instantiate the IIR-PRP model, we ﬁrst need to incorporate
+
+the “sequential browsing” assumption into our model, and we do so by re-
+
+ducing “sequential interaction” to “sequential browsing” using the following
+
+pair of assumptions, which is essentially stating the “sequential browsing”
+
+assumption in the language of our model:
+
+Assumption 4.1 (Plain Card). Each card is deﬁned to be a choice in the
+
+ranked list. The choices are sequentially denoted by et, t = 1, 2, . . ., and we
+
+deﬁne qt = et.
+
+Assumption 4.2 (Binary Action). There are two possible user actions in
+
+each lap: A(et) = {at+1
+
+0
+
+, at+1
+
+1
+
+}, where at+1
+
+0
+
+and at+1
+
+1
+
+respectively represent
+
+the actions of accepting et and rejecting et (to examine the next choice et+1).
+
+The interface card optimization problem is now equivalent to determining
+
+which choice to place on each position of the list, thus we are implicitly
+
+considering the interaction at the level of user’s eye movement (though it
+
+is very easy to add user actions at higher-levels of interaction granularity).
+
+Now for simplicity purpose, imagine that there is a single inﬁnitely long list
+
+and the interface system is always accompanied with an eye-tracking device
+
+that could sense the user’s eye movement and automatically scroll the page
+
+12
+
+
+whenever it detects that the user intends to skip to the next choice; in such
+
+a way we get rid of the necessity of both the scrolling action and the action
+
+of clicking “next page.”
+
+Since a card is simply assumed to be a choice on the list, there is no
+
+interesting constraint deﬁned on the interface.
+
+Further, we adopt the independence assumption in [9] and assume that
+
+the probability of the user accepting a choice is independent of the choices
+
+they have rejected, so that the action model does not depend on any previous
+
+cards or user actions until an accept action takes place. We also follow [9] to
+
+focus on the optimization problem before the user’s ﬁrst accept action (the
+
+optimization problem afterwards is regarded as a new round of optimization),
+
+so the context is always eﬀectively collapsed to only include the a priori
+
+information about the user, i (if any).
+
+Thus, we will omit the notion of
+
+context in the following writing, and deﬁne the shorthand notation p(et) for
+
+specifying the action model: p(et) = p(at+1
+
+0
+
+|et) = 1−p(at+1
+
+1
+
+|et). (Please refer
+
+to [9] for the notion of “situations” to understand the details and rationales
+
+of these assumptions.)
+
+Assumption 4.3 (Rejection reward). The reward for a reject action is the
+
+expected surplus in the next lap:
+
+r(at+1
+
+1
+
+|et) = E(ut+1|et+1)
+
+(4.1)
+
+Note that in cases where we have a last choice in the list, the reward for
+
+rejecting it could be deﬁned to be 0.
+
+We explicitly model the dependency of the reward in the current lap on
+
+the future laps, so in order to optimize the ﬁrst card, we would need to
+
+simultaneously optimize all the following cards (i.e. all choices in the list).
+
+We deﬁne another shorthand notation r(et) for the reward of accepting
+
+choice et: r(et) = r(at+1
+
+0
+
+|et). In [9], this reward is further decomposed into
+
+the expectation of two cases - (a) the accept action is right and (b) the accept
+
+action is wrong; we do not go further along this direction, as the main line
+
+of derivation would not be aﬀected in any fundamental way.
+
+Assumption 4.4 (Decision cost). The costs for the accept and reject actions
+
+are the same in a particular lap, which equal the amount of eﬀort the user
+
+spends in examining the current choice for deciding whether they should
+
+13
+
+
+accept or reject it:
+
+s(at+1
+
+0
+
+|et) = s(at+1
+
+1
+
+|et) = s(et)
+
+(4.2)
+
+Now, with all the necessary assumptions introduced, we plug Equation
+
+(4.1) and (4.2) into Equation (3.1), extract the common decision cost out of
+
+the summation, and come to:
+
+E(ut|et) = −s(et) + p(et)r(et) + (1 − p(et))E(ut+1|et+1)
+
+(4.3)
+
+We recursively apply Equation (4.3) starting from the ﬁrst lap and obtain:
+
+E(u1|e) =
+
+∞
+
+�
+
+t=1
+
+�t−1
+
+�
+
+j=1
+
+(1 − p(ej))
+
+�
+
+(−s(et) + p(et) r(et))
+
+(4.4)
+
+where e denotes the vector of all choices on the list. (The summation could
+
+alternatively be deﬁned as a ﬁnite one if we assume a ﬁnite list but the
+
+derivation stays the same.)
+
+Since the surplus captures all long-term beneﬁts (via its reward part), u1 in
+
+Equation (4.4) captures the surplus of the entire list. Note that we explicitly
+
+wrote out the dependency of u1 on all future cards (i.e. all following choices)
+
+by expanding “E(u1|e1)” to “E(u1|e)” for the purpose of clarity.
+
+Then, from Equation (4.4), we simply follow the approach used in [9] and
+
+consider optimizing the order of each consecutive choice pair. In a way anal-
+
+ogous to the derivation in the work [9], we can then derive the same ranking
+
+strategy as the IIR-PRP: assuming that the values of p(et) are all greater
+
+than 0, E(u1|e) is maximized when the choices are ranked in decreasing
+
+order of:
+
+ρ(et)
+
+def
+
+= r(et) − s(et)
+
+p(et)
+
+(4.5)
+
+We have thus mathematically demonstrated that the interface card model
+
+is a generalization of the IIR-PRP model. As a remark, although we stated
+
+earlier that we would typically need an eye-tracking device if we want the
+
+interface system to interact with the user at the granularity level of eye
+
+movement, it turns out that there’s no need for the eye-tracking device under
+
+the set of assumptions in this example: the ranking could be pre-generated
+
+from the “ρ” values of the choices and never needs to dynamically change
+
+according to the user’s eye movement.
+
+14
+
+
+Chapter 5
+
+Navigational Card
+
+We now come to the second instantiation example of the interface card model,
+
+where we demonstrate that without assuming “sequential browsing” and
+
+given the availability of a richer set of navigational elements, the interface
+
+card model can result in very powerful optimization results that could not
+
+be achieved by any existing formal method.
+
+Speciﬁcally, we go back to the classic IR setting where the user is looking for
+
+some items with the help of the search engine, but we consider a new popular
+
+set of real world scenarios where we have some navigational element to show
+
+on the interface in addition to the items themselves, which we collectively
+
+refer to as tags. For example, when we are searching for books in an online
+
+library catalog, we may use subject headings to quickly narrow down the set
+
+of books we are looking for. In a news browsing website, as another example,
+
+the news keywords could serve as navigational tags following which the user
+
+is able to identify an interesting news article much faster than they could
+
+if they are only given an article list, even a well optimized one. In general,
+
+these navigational tags themselves are not what the user is looking for, but
+
+they are linked to (possibly overlapping) subsets of the items into which the
+
+user could quickly zoom by selecting their corresponding tags on the interface
+
+whenever they are shown.
+
+One key challenge in this setting is that, since the user is now faced with
+
+both a list of tags and a list of items, there is no longer a single list of choices
+
+which is assumed by [9], and the sequential browsing assumption no longer
+
+holds. As a result, many interesting questions regarding how to optimally
+
+generate a navigational interface in such cases cannot be answered in a the-
+
+oretically rigorous way: for example, (a) how many tags and items should
+
+we show to the user in each interface instance, and how do we optimally
+
+partition the interface into the tag panel and the item panel? (b) should we
+
+allocate a larger proportion of the screen space to tags in smaller screens, and
+
+15
+
+
+if so, how do we make such adjustment optimally? (c) along the interaction
+
+process, do we ﬁrst show tags to the user and then switch to the items when
+
+the system becomes more certain about the user’s information need, and if
+
+so, what would be the optimal time for the switch?
+
+We address all these questions in a novel principled approach by estab-
+
+lishing another instantiation of the interface card model that only assumes
+
+a “sequential interaction” scheme without going further towards “sequential
+
+browsing”. We ﬁrst lay down a set of assumptions and notations and then
+
+demonstrate the eﬀectiveness of our approach.
+
+Deﬁnition 5.1 (Block). A block b is a display unit on a card representing ei-
+
+ther a tag or an item that could be selected by the user. A block representing
+
+a tag / item is referred to as a tag / item block.
+
+Assumption 5.1 (Navigational Card). Each card qt is deﬁned to be a set
+
+of blocks together with their presentation strategy.
+
+The presentation strategy of the blocks on the card is a generalized notion
+
+that typically incorporates any ordering and/or panel layout of the blocks.
+
+Note that the user may or may not follow any order in examining the blocks,
+
+as is assumed by the traditional sequential browsing scheme.
+
+Assumption 5.2 (Selection Action). In each lap t, the user is allowed to
+
+either select a block on the card qt or select “next card”: A(qt) = qt ∪{at+1
+
+N },
+
+where at+1
+
+N
+
+denotes the “next card” action.
+
+For convenience, from now on, we will directly use qt to designate the set of
+
+blocks on qt and use e to represent items (which we used to represent choices
+
+in the previous section). The “next card” action is a generalization of many
+
+real world user actions to skip everything shown in the current interaction
+
+lap and see more options, e.g. clicking “next page”, scrolling down, shifting
+
+eye focus one position down, etc.
+
+Deﬁnition 5.2 (Preference). The preference is the system’s estimated prob-
+
+ability distribution characterizing the user’s interest in each item e.
+
+The
+
+system relies on the context to progressively update the preference along the
+
+interaction process and we designate the preference at lap t by p(e|ct).
+
+Deﬁnition 5.3 (Item Action Model). The item action model for item e is
+
+the user’s action model on the current card given their interest in item e:
+
+p(at+1|e, qt), at+1 ∈ A(qt).
+
+16
+
+
+In practice, the item action model serves as the main linkage between our
+
+interface model and the item-tag relationships. The intuition is that a user
+
+interested in a particular item would generally be more likely to select a
+
+tag related to the item. Of course, if the item block corresponding to the
+
+item itself is displayed on the card, the user would almost always select the
+
+item block rather than any tag block. But if neither the item block nor any
+
+related tag block is displayed, the user would most likely issue the “next
+
+card” action. We will come back to this in more detail later.
+
+The original action model could now be written as the expected item action
+
+model, where the expectation is taken with respect to the preference:
+
+p(at+1|ct, qt) =
+
+�
+
+e
+
+p(e|ct, qt) p(at+1|e, ct, qt)
+
+=
+
+�
+
+e
+
+p(e|ct) p(at+1|e, qt)
+
+(5.1)
+
+where we assume that (a) the preference is independent of the next card and
+
+(b) the item action model is independent of the context, both of which are
+
+very reasonable in general.
+
+The rationale underlying such a decomposition of the original action model
+
+into two probabilistic models, the preference and the item action model, is
+
+two folds. Firstly, by dividing the action model at the item level, we allow for
+
+ﬁner tuning of user modeling eﬀorts in practice. Secondly, the decomposition
+
+naturally leads to a principled way of updating the preference via Bayes’
+
+theorem:
+
+p(e|ct+1) = p(e|ct, qt, at+1) = p(e|ct) p(at+1|e, qt)
+
+p(at+1|ct, qt)
+
+(5.2)
+
+where p(at+1|ct, qt) comes from Equation (5.1) and we adopted the two as-
+
+sumptions we made in deriving Equation (5.1).
+
+To make the optimization problem more tractable, we make the follow-
+
+ing assumption about the reward function to prevent the optimization from
+
+depending on future laps:
+
+Assumption 5.3 (Information Gain Reward). The reward of an action is
+
+the information gain in the preference distribution estimated in the next lap
+
+17
+
+
+over the current lap:
+
+r(at+1|ct, qt) = Info - Gain (p(e|ct+1), p(e|ct))
+
+= H(p(e|ct)) − H(p(e|ct+1))
+
+(5.3)
+
+where p(e|ct+1) comes from (5.2) and H is the information or entropy func-
+
+tion: H(p) = − �
+
+p p log p.
+
+Intuitively, at a high level, the interactive retrieval process resembles an
+
+encoding of the user preference: the lower the entropy of the preference, the
+
+more the system knows about the user’s information need, and the easier it
+
+would be for the system to help the user ﬁnd some interesting items. There-
+
+fore, the amount of reduction in the entropy of the preference becomes a
+
+natural choice for approximating the reward. We could have explicitly writ-
+
+ten out the dependency of the reward on future laps, just as what we did in
+
+the previous section, but it would make the computation overly complicated
+
+and intractable, so we decide to take the approximation.
+
+Now, we come to address the problem that the user may not always follow
+
+the sequential browsing scheme while examining a card due to the fact that
+
+the card may often be more complicated than a simple list. Ideally, we want
+
+a “browsing model” to characterize the browsing behavior of users, which
+
+may be obtained through user studies or estimated based interaction logs,
+
+but as an initial step along such a direction, we choose to focus on interfaces
+
+with a relatively small capacity with respect to humans’ attention, and we
+
+make the following two assumptions:
+
+Assumption 5.4 (Capacity Constraint). The only constraint on the blocks
+
+shown on the card is that the total space the blocks occupy does not exceed
+
+the capacity of the card:
+
+f t
+
+c(qt) =
+
+�
+
+b∈qt
+
+w(b) − 1
+
+(5.4)
+
+where w(b) is the space block b occupies relative to the capacity of the card.
+
+Assumption 5.5 (Uniform Cost). The cost is assumed to be uniform across
+
+any action the user issues on the card:
+
+s(at+1|ct, qt) = s, ∀ at+1 ∈ A(qt)
+
+(5.5)
+
+18
+
+
+The key implication behind the capacity constraint is that, since it serves
+
+as the only constraint on the cards, we do not further impose any requirement
+
+on the cards regarding (a) what proportion of the card should be allocate to
+
+tag blocks and item blocks, (b) how many tag blocks and item blocks should
+
+be shown on the card, and (c) whether the card should be completely devoted
+
+to tag blocks or item blocks. Essentially, there is no presentation strategy
+
+- we are setting a completely “ﬂexible” interface layout which our interface
+
+card model could freely optimize. (Note that we implicitly hypothesized that
+
+the blocks are all of regular shapes, so that as long as the amount of space
+
+left on the card is no less than the space occupied by a block, the block could
+
+always be packed into the card.)
+
+Meanwhile, the uniform cost assumption has another key implication: we
+
+assume the user could browse the blocks on the card in any order, and due
+
+to the relatively small capacity of the card, we could reasonably assume it
+
+always takes the user a constant, very small amount of attention to browse
+
+the blocks and make a decision on what action to issue next no matter what
+
+order the user follows in browsing the blocks. In such a way we are eﬀectively
+
+relaxing the sequential browsing assumption.
+
+With all the necessary assumptions and deﬁnitions laid down, we plug
+
+Equation (5.3), (5.4) and (5.5) into Equation (3.1).
+
+It is easily observed
+
+that two terms could be extracted out of the summation: (a) the entropy of
+
+the current preference, H(p(e|ct)), and (b) the constant cost, s, and since
+
+these two terms do not involve qt, we could simply remove them from the
+
+objective function without aﬀecting the optimization result. Eventually, the
+
+ﬁnal optimization problem for our navigational card becomes:
+
+minimize
+
+qt
+
+�
+
+at+1∈A(qt)
+
+p(at+1|ct, qt) H(p(e|ct+1))
+
+subject to
+
+�
+
+b∈qt
+
+w(b) − 1 ≤ 0
+
+(5.6)
+
+where p(at+1|ct, qt) and p(e|ct+1) respectively come from Equation (5.1) and
+
+(5.2).
+
+Now, we continue with analytical and real user experiments to demonstrate
+
+that Equation (5.6) leads to very interesting and powerful interface optimiza-
+
+tion results not achievable by any other existing method in principled ways.
+
+Before we go into real computations, we ﬁrst need to have (a) an initial
+
+19
+
+
+preference model as the starting point for the series of context update along
+
+the interaction, and (b) a working item action model in each lap. Since this
+
+study is not meant to be a user modeling study, from now on we simply
+
+assume a ﬂat initial preference distribution:
+
+Assumption 5.6 (Uniform Initial Preference). The user’s preference is uni-
+
+form across a set of n items, i.e. p(ei|c1) = 1/n, ∀ i = 1, 2, . . . , n.
+
+In reality, the system usually have more information regarding the user’s
+
+interest. For example, the a priori information may suggest to the system
+
+that the user is generally more interested in some particular categories of
+
+items. Additionally, in cases where the system is a search engine and the
+
+user’s query is regarded as their ﬁrst action, the system may have estimates
+
+of the probability of relevance for each item, so that the probability of the
+
+user’s interest in each item along the ranked list returned by the system
+
+should be decreasing. The assumption of uniform initial preference we make
+
+here is only for the sake of computational convenience; it is solely meant to
+
+reduce some distracting details not relevant to the core model.
+
+Deﬁnition 5.4 (Item-Tag Map). An item-tag map is a weighted bipartite
+
+network composed of (a) item nodes and tag nodes which respectively cor-
+
+respond to the set of all items and tags, (b) weighted edges between item
+
+and tag nodes if the item and tag they represent are related, with the edge
+
+weight representing the strength of their relationship. A uniform item-tag
+
+map is an item-tag map in which all edges are of unit weight, i.e. all item-tag
+
+relationships are of equal strength. For nomenclature purpose, we say that a
+
+tag covers an item if the tag and the item are related, i.e. if there’s an edge
+
+linking their corresponding tag and item nodes in the item-tag map.
+
+Deﬁnition 5.5 (Simple Item Action Model). Under the simple item action
+
+model, given the user’s interest in item e and the set of blocks shown on card
+
+qt, the user would issue an action based on the following three rules:
+
+1. If the item block corresponding to e, be, appears on the card, the user
+
+will always select it, i.e. if be ∈ qt, then p(be|e, qt) = 1; p(b|e, qt) =
+
+0, ∀ b ̸= be; and p(at+1
+
+N |e, qt) = 0.
+
+2. Otherwise, if the card contains at least one tag block covering e, then
+
+the user will either (a) select one of the tag blocks, or (b) select
+
+20
+
+
+“next card”, with probabilities proportional to the corresponding edge
+
+weight(s) in the item-tag map and a predeﬁned parameter ε, respec-
+
+tively, i.e.
+
+p(b|e, qt) =
+
+v(e, b)
+
+�
+
+b′∈qt v(e, b′) + ε
+
+p(at+1
+
+N |e, qt) =
+
+ε
+
+�
+
+b′∈qt v(e, b′) + ε
+
+(5.7)
+
+where v(e, b) denotes the weight of the edge between the nodes in the
+
+item-tag map representing e and b.
+
+3. Otherwise, the user will always select “next card”, i.e. p(at+1
+
+N |e, qt) = 1
+
+and p(b|e, qt) = 0, ∀ b ∈ qt.
+
+The simple uniform item action model denotes the simple item action model
+
+on top of a uniform item-tag map, and the perfect uniform item action model
+
+is the simple uniform item action model with ε set to 0.
+
+Note that we implicitly assumed in the second rule that, in cases of “com-
+
+peting” blocks, i.e. cases where multiple blocks covering item e appear on
+
+the card, the relative tendencies of the user selecting these blocks is kept
+
+constant, and equal the relative weights of their corresponding edges in the
+
+item-tag map. Such a simpliﬁcation may not always hold in reality, since the
+
+relative tendencies of block selections might depend on the user, the lap, and
+
+other blocks appearing on the card. However, a static relative block selection
+
+tendency is in general a valid approximation, and it could greatly simplify
+
+the computation.
+
+Also note that the user might sometimes accidentally miss a related tag and
+
+mistakenly select “next card”, which could be captured using the ε parame-
+
+ter, though we assume that the user would never miss the items themselves
+
+that they are interested in.
+
+5.1
+
+Analytical Experiments
+
+We apply our result for optimizing navigational cards in some very simple
+
+example scenarios to analytically demonstrate the eﬀectiveness of the inter-
+
+face card model in generating optimal interactive interfaces. Note that it
+
+might be possible to develop alternative ad hoc approaches that could result
+
+21
+
+
+in the very same analytical solutions we derive here, but our approach adopts
+
+a principled way that is solidly rooted in a theoretical IR model, which no
+
+existing approaches could achieve.
+
+In this section, we mainly focus on mathematically deriving the optimal
+
+conditions for the blocks on the card, and in particular the tag blocks (since
+
+the cases for item blocks are generally simpler); we leave the demonstration of
+
+our model’s eﬀectiveness in automatically generating optimal interface layout
+
+to the user study experiment. To make the presentation cleaner, we omit the
+
+lap and context notions in all places; we assume that all the discussion here
+
+is about the optimization in the initial lap, and we adopt the uniform initial
+
+preference assumption. We also adopt the perfect uniform item action model
+
+for the sake of mathematical convenience. Furthermore, in order to better
+
+focus on the most crucial line in the calculation without worrying about any
+
+trivial technical details, we assume a “perfect world” of tag navigation:
+
+Assumption 5.1.1 (Complete Tag Set). There always exists some tag that
+
+precisely covers any given item subset.
+
+As a consequence, we could entirely focus on deriving the conditions for the
+
+optimal tag(s) we should pick onto the card without worrying about whether
+
+such tag(s) actually exist or not in reality.
+
+5.1.1
+
+One Tag Per Card
+
+In this example, we assume that the card only has space for a single tag
+
+block, or formally:
+
+Assumption 5.1.1.1 (One Tag Per Card). w(b) = 1, ∀ b.
+
+The optimization question now becomes: what is the optimal number of
+
+items the picked tag should cover? Under the perfect user assumption, if the
+
+user is interested in some item covered by the picked tag, then the user will
+
+select the tag; otherwise, the user will select “next card”. In the ﬁrst case,
+
+the preference is updated (via Equation (5.2)) to narrow down towards the
+
+subset of items covered by the picked tag, and in the second case, the pref-
+
+erence narrows down towards the subset of items not covered by the picked
+
+tag. Suppose the picked tag covers x items, x ∈ {1, 2, . . . , n}, then we plug
+
+the entropy values of the two updated preferences into Equation (5.6) and
+
+22
+
+
+after some straightforward algebraic simpliﬁcation, the optimization problem
+
+becomes:
+
+minimize
+
+x
+
+1
+
+n (x log x + (n − x) log (n − x))
+
+(5.8)
+
+We deﬁne Equation (5.8) as a function f of x and extend its domain to
+
+real numbers in [1, n]. By taking the derivative of f, we easily conclude that
+
+f reaches minimum when x = n/2. Therefore, selecting a tag block covering
+
+around half of the items leads to an optimal card. This result shows the model
+
+tends to create a balanced partition of the item preference distribution, which
+
+coincides with our intuition.
+
+5.1.2
+
+Two Tags Per Card
+
+In this example, we “expand” the card and assume it has space for two tag
+
+blocks, i.e.:
+
+Assumption 5.1.2.1 (Two Tags Per Card). w(b) = 1/2, ∀ b.
+
+Now, the optimization problem becomes two-folds: (a) how many items
+
+should each of the two picked tags cover? and (b) how many items should
+
+the two tags’ coverages overlap?
+
+To answer these two questions, let the
+
+number of items covered by the two tags respectively be x and y, x, y ∈
+
+{1, 2, . . . , n}, and let the number of common items covered by the two tags
+
+be t, t ∈ {0, 1, . . . , n} satisfying t ≤ x, t ≤ y, x + y − t ≤ n. Note that
+
+a crucial diﬀerence from the last example is that, if the user is interested
+
+in some item in the two tags’ overlap, then the user may select either one
+
+of them with equal probabilities (given the perfect user assumption), which
+
+should be carefully taken into consideration in calculating the action model
+
+and the updated preferences. After some tedious algebraic simpliﬁcations
+
+(which we omit here due to space limitations), the optimization problem in
+
+Equation (5.6) eventually comes to:
+
+minimize
+
+x,y,t
+
+1
+
+n
+
+�
+
+t log 2 + (x − t
+
+2) log (x − t
+
+2)
+
++ (y − t
+
+2) log (y − t
+
+2)
+
++ (n − x − y + t) log (n − x − y + t)
+
+�
+
+(5.9)
+
+23
+
+
+Again, we deﬁne Equation (5.9) to be a function f of x, y and t, and relax
+
+the integer constraint of f. By taking the partial derivatives of f, without
+
+going much into the technical details, we conclude that the ﬁnal minimization
+
+solution for f is:
+
+x = y = n
+
+3, t = 0
+
+(5.10)
+
+There are two implications from this result: (a) it reassures that the model
+
+would favor a balanced partition of the preference distribution, and (b) it
+
+additionally suggests that the model would minimize the partitions’ overlap,
+
+coinciding again with intuition.
+
+5.2
+
+User Study Experiments
+
+To further demonstrate the eﬀectiveness of our interface card model, we
+
+built real prototype interface systems based on the navigational card model
+
+to show that our model could lead to automatic interface layout adjustment,
+
+which no existing method could achieve in a principled way, and we validate
+
+the superiority of our automatic interface layout results by comparing them
+
+with baseline pre-designed static interfaces in user studies.
+
+We selected four real world applications with readily available item-tag
+
+relation information (shown in parentheses): New York Times news browser
+
+(news articles - news keywrds), Walmart e-commerce search engine (products
+
+- facet values), library search engine (books - subjects), and Wikipedia search
+
+engine (articles - categories). We only report our experiments on the New
+
+York Times news browser here due to limited space, but we note that very
+
+similar observations were obtained from all four applications.
+
+The prototype interface was built on top of the set of most popular news
+
+articles and their associated keywords returned from the New York Times
+
+Most Popular API 1, and we developed two interfaces with diﬀerent size, a
+
+medium sized one and a very small one. We assumed in our implementation
+
+that the user would follow the simple uniform item action model, and we
+
+heuristically set ε = 0.5.
+
+Though the optimization problem in Equation (5.6) was shown to have
+
+closed form solutions in our two analytical experiments, it is generally dif-
+
+1http://developer.nytimes.com/
+
+24
+
+
+ﬁcult to solve for real world scenarios. We implemented a straightforward
+
+randomized algorithm to tackle the problem, which on a high level, heuris-
+
+tically generates multiple candidate cards at each lap, and picks the one
+
+minimizing Equation (5.6). To obtain each candidate card, the algorithm
+
+makes use of the general natures of an optimal card as we observed in the
+
+analytical experiments: (a) creating balanced partitions, and (b) creating
+
+partitions of minimal overlaps. Since algorithmic designs are not the focus
+
+of this paper, we omit the details of our algorithm due to space limitations.
+
+Nevertheless, we point out that the algorithm is very eﬃcient - its time com-
+
+plexity is linear with respect to the input size, i.e. the total number of blocks
+
+in all items.
+
+Sample Cards
+
+In Figure 5.1, the left and top-right screens respectively illustrate an initial
+
+interface layout on a medium sized and a very small screen automatically
+
+determined by the interface card model, where we see that the algorithm
+
+intelligently decided to include only tag blocks on the small screen, but in-
+
+clude both tag blocks and item blocks on the medium sized screen. Such
+
+a decision makes sense since unless we are relatively sure about what item
+
+the user is looking for (which unlikely happens in the initial interaction lap),
+
+it would likely be a waste of screen space if speciﬁc items are displayed; in
+
+contrast, tags are potentially more useful. The bottom-right screen in Figure
+
+5.1 shows an automatic layout adjustment in response to the user’s action of
+
+picking the “New York City” tag in the top-right screen. Despite its limited
+
+capacity, the screen is entirely ﬁlled with an item block because the estimated
+
+user preference is narrowed down to only one or two items and the system
+
+determined that directly showing an item is more beneﬁcial. These results
+
+show that our model can eﬀectively achieve automatic layout adjustment
+
+according to both the screen size and the user interaction.
+
+User Studies
+
+We built two baseline interfaces for comparison purpose. One baseline is for
+
+the medium screen size, where we put a separate static tag panel alongside the
+
+main item panel; for the very small screen, we have either a tag panel or an
+
+25
+
+
+
+
+Figure 5.1: Screen shots of example cards.
+
+26
+
+
+item panel on the screen at each time, and put a switch button to allow users
+
+to switch between the two panels. These two baselines represent popular
+
+layouts seen on many mobile interfaces with medium and small screen sizes2.
+
+We conducted real user experiments on Amazon Mechanical Turk (AMT) 3
+
+to compare the two baselines with our interfaces (on both medium and small
+
+screens) for a task of navigating into the most interesting article that was
+
+pre-identiﬁed by the user. We also varied the size of the item set to see its
+
+impact. The results in Table 5.1 show that our interface outperforms the
+
+Table 5.1: Signiﬁcance levels of comparison results.
+
+Card size Item set size Valid sample size
+
+P-value
+
+Small
+
+20
+
+19
+
+0.004753
+
+Small
+
+50
+
+23
+
+0.0003546
+
+Medium
+
+20
+
+18
+
+0.09183
+
+Medium
+
+50
+
+20
+
+0.01097
+
+baseline interface in all the cases as measured by the number of interaction
+
+laps for users to reach their target article, though with varying signiﬁcance
+
+levels.
+
+The p-values for each comparison test were obtained from a one-
+
+side Wilcoxon sign-ranked test. (Values less than 0.05 are highlighted.) It
+
+is clearly observed that the superiority of our interface over the baseline
+
+interface is higher when the screen is smaller, and is also higher in larger
+
+item set.
+
+We also asked the users survey questions for their opinions on the two
+
+types of interfaces to obtain some qualitative comparisons, and a majority
+
+of the users indicated that our interface was both quicker and easier to use.
+
+For example, one user wrote: “the interface seemed to intuitively know what
+
+article I wanted from just selecting two keywords.” Many users noted that
+
+the baseline interface felt familiar and thus was straightforward to use, but
+
+they also pointed out that it did not take much eﬀort to lean how to use
+
+our interface: “at ﬁrst I was unsure of how I would ﬁnd my target article but
+
+followed my instincts and found it right away.” The diﬀerence in navigational
+
+eﬃciency between the two interfaces was more exaggerated in the very small
+
+screen, even in the search space of 20 articles. Since the baseline interface
+
+layout does not automatically switch between the keywords and the articles,
+
+2http://itunes.apple.com/app/amazon-mobile/id297606951
+
+3http://www.mturk.com/
+
+27
+
+
+a lot of users were not able to take full advantage of the keywords and simply
+
+ended up being scrolling through the entire article list: “it seemed like I had
+
+to search longer and scroll through almost every article to ﬁnd the one I
+
+wanted.”
+
+In the medium sized screen, even though the baseline interface
+
+shows both the tag panel and the article panel, quite a few users noticed the
+
+ability of our interface to dynamically change the layout and applauded it:
+
+“I liked that the interface gave such large amount of results when you clicked
+
+on a tag.”
+
+28
+
+
+Chapter 6
+
+Conclusions and Future Work
+
+We proposed a novel general formal model for optimizing interactive infor-
+
+mation retrieval interfaces by viewing the interactive retrieval process as a
+
+process of a system playing a cooperative card game with a user with the
+
+goal of minimizing the user’s eﬀort and maximizing the user’s gain of relevant
+
+information. At each interaction lap, the system would choose an optimal
+
+interface card (i.e., an interface instance) to present to the user based on the
+
+current context, a model of the user’s possible actions on the interface, and
+
+a model of the user’s gain and eﬀort. The user can then choose an action to
+
+take on the prompted interface, which would lead to a new context for the
+
+system to choose the next optimal interface card.
+
+We showed that this general interface card model can cover the PRP for
+
+Interactive IR as a special case under a set of simpliﬁcation assumptions,
+
+particularly sequential browsing (thus also easily cover the PRP as a special
+
+case). We further derived a novel model for optimizing navigational interfaces
+
+adaptively to both the screen size and the user’s information need. Experi-
+
+mental results with real users show that the proposed model can eﬀectively
+
+optimize a navigational interface and is signiﬁcantly better than baseline
+
+static interfaces that are heuristically customized for diﬀerent screen sizes.
+
+The interface card model is very general and can model interactions at any
+
+meaningful granularity as long as we can deﬁne meaningful interface cards
+
+and user actions; thus we can model both “micro” interactions at the level of
+
+actions such as scrolling up/down inside a page, and “macro” interactions at
+
+the level of page navigation. The new model opens up many interesting new
+
+directions in optimizing the whole interactive retrieval system through incor-
+
+porating machine learning and HCI study results. Speciﬁcally, the proposed
+
+formal framework naturally ﬁts a wide variety of state-of-the-art machine
+
+learning techniques, and can easily adopt learning to rank methods [13, 14]
+
+and models such as the ostensive model [15] for evolving information needs to
+
+29
+
+
+further improve the estimate of user preferences. With abundant interaction
+
+log data that can be recorded automatically, such learning techniques would
+
+provide more accurate estimate of multiple components in the framework.
+
+Also, ﬁndings from HCI research could be directly incorporated into the con-
+
+straint part in our optimization problem, providing our model guidance in
+
+certain domains that currently could not be formalized in a straightforward
+
+way, e.g. learnability concerns, error tolerance, etc. With the general trend
+
+in IR pushing researchers to focus more on the interface part and formal-
+
+ize interactive IR, we hope this paper can stimulate alternative and more
+
+advanced formalisms for interactive IR to be developed in the coming years
+
+(e.g., those in line of economic models for IR [16] and POMDP [18]).
+
+30
+
+
+References
+
+[1] S. E. Robertson, “The probability ranking principle in IR,” Journal of
+
+Documentation, vol. 33, no. 4, pp. 294–304, 1977. [Online]. Available:
+
+http://dx.doi.org/10.1108/eb026647
+
+[2] G. Salton, A. Wong, and C. S. Yang, “A vector space model for auto-
+
+matic indexing,” Commun. ACM, vol. 18, no. 11, pp. 613–620, 1975.
+
+[3] S. Robertson and K. Sparck, “Relevance weighting of search terms,”
+
+Journal of American Society for Information Science, vol. 27, pp. 129–
+
+146, 1976.
+
+[4] J. M. Ponte and W. B. Croft, “A language modeling approach to infor-
+
+mation retrieval,” in SIGIR 1998, 1998, pp. 275–281.
+
+[5] D. Hiemstra and W. Kraaij, “Twenty-one at trec7:
+
+Ad-hoc and
+
+cross-language track,” in Text REtrieval Conference, 1998. [Online].
+
+Available:
+
+citeseer.ist.psu.edu/article/hiemstra99twentyone.html pp.
+
+174–185.
+
+[6] G. Amati and C. J. V. Rijsbergen, “Probabilistic models of information
+
+retrieval based on measuring the divergence from randomness,” ACM
+
+Trans. Inf. Syst., vol. 20, no. 4, pp. 357–389, 2002.
+
+[7] H. Turtle and W. B. Croft, “Evaluation of an inference network-based
+
+retrieval model,” ACM Trans. Inf. Syst., vol. 9, no. 3, pp. 187–222, 1991.
+
+[8] H. Fang and C. Zhai, “An exploration of axiomatic approaches to infor-
+
+mation retrieval,” in SIGIR 2005, 2005, pp. 480–487.
+
+[9] N. Fuhr, “A probability ranking principle for interactive information
+
+retrieval,” Inf. Retr., vol. 11, no. 3, pp. 251–265, 2008. [Online].
+
+Available: http://dx.doi.org/10.1007/s10791-008-9045-0
+
+[10] N. Belkin, R. Oddy, and H. Brooks, “Ask for information retrieval: Part
+
+i. background and theory,” The Journal of Documentation, vol. 38, no. 2,
+
+pp. 61–71, 1982.
+
+[11] P. Ingwersen, “Cognitive perspectives of information retrieval,” The
+
+Journal of Documentation, vol. 52, no. 1, pp. 3–50, 1996.
+
+31
+
+
+[12] C. Zhai, “Statistical language models for information retrieval: A critical
+
+review,” Foundations and Trends in Information Retrieval, 2008.
+
+[13] N. Fuhr,
+
+“Optimal polynomial retrieval functions based on the
+
+probability ranking principle,” ACM Trans. Inf. Syst., vol. 7, no. 3, pp.
+
+183–204, 1989. [Online]. Available: http://doi.acm.org/10.1145/65943.
+
+65944
+
+[14] T. Liu, “Learning to rank for information retrieval,” Foundations and
+
+Trends in Information Retrieval, vol. 3, no. 3, pp. 225–331, 2009.
+
+[Online]. Available: http://dx.doi.org/10.1561/1500000016
+
+[15] I. Campbell and K. van Rijsbergen, “The ostensive model of developing
+
+information needs,” in Proceedings of the COLIS 2, 1996, p. 251268.
+
+[16] L. Azzopardi, “Modelling interaction with economic models of search,”
+
+in SIGIR 2014, 2014. [Online]. Available: http://doi.acm.org/10.1145/
+
+2600428.2609574 pp. 3–12.
+
+[17] X. Jin, M. Sloan, and J. Wang, “Interactive exploratory search for multi
+
+page search results,” in Proceedings of WWW 2013, 2013. [Online].
+
+Available:
+
+http://dl.acm.org/citation.cfm?id=2488388.2488446
+
+pp.
+
+655–666.
+
+[18] J. Luo, S. Zhang, and H. Yang, “Win-win search: dual-agent stochastic
+
+game in session search,” in SIGIR 2014, 2014. [Online]. Available:
+
+http://doi.acm.org/10.1145/2600428.2609629 pp. 587–596.
+
+[19] M. A. Hearst, Search User Interfaces, 1st ed.
+
+New York, NY, USA:
+
+Cambridge University Press, 2009.
+
+[20] S. Basu Roy,
+
+H. Wang,
+
+G. Das,
+
+U. Nambiar,
+
+and M. Moha-
+
+nia, “Minimum-eﬀort driven dynamic faceted search in structured
+
+databases,” in Proceedings of CIKM 2008.
+
+ACM, 2008, pp. 13–22.
+
+[21] A. Kashyap, V. Hristidis, and M. Petropoulos, “FACeTOR: cost-driven
+
+exploration of faceted query results,” in Proceedings of CIKM 2010.
+
+ACM, 2010, pp. 719–728.
+
+[22] D. McFadden and K. Train, “Mixed MNL models for discrete response,”
+
+Journal of applied Econometrics, vol. 15, no. 5, pp. 447–470, 2000.
+
+32
+

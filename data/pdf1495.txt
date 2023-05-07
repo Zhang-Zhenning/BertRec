@@ -1,0 +1,1075 @@
+
+NLP Lunch Tutorial: Smoothing
+
+Bill MacCartney
+
+21 April 2005
+
+
+Preface
+
+• Everything is from this great paper by Stanley F. Chen and Joshua
+
+Goodman (1998), “An Empirical Study of Smoothing Techniques
+
+for Language Modeling”, which I read yesterday.
+
+• Everything is presented in the context of n-gram language models,
+
+but smoothing is needed in many problem contexts, and most of
+
+the smoothing methods we’ll look at generalize without diﬃculty.
+
+1
+
+
+The Plan
+
+• Motivation
+
+– the problem
+
+– an example
+
+• All the smoothing methods
+
+– formula after formula
+
+– intuitions for each
+
+• So which one is the best?
+
+– (answer: modiﬁed Kneser-Ney)
+
+• Excel “demo” for absolute discounting and Good-Turing?
+
+2
+
+
+Probabilistic modeling
+
+• You have some kind of probabilistic model, which is a distribution
+
+p(e) over an event space E.
+
+• You want to estimate the parameters of your model distribution p
+
+from data.
+
+• In principle, you might to like to use maximum likelihood (ML)
+
+estimates, so that your model is
+
+pML(x) =
+
+c(x)
+
+�
+
+e c(e)
+
+But...
+
+3
+
+
+Problem: data sparsity
+
+• But, you have insuﬃcient data: there are many events x such that
+
+c(x) = 0, so that the ML estimate is pML(x) = 0.
+
+• In problem settings where the event space E is unbounded (e.g.
+
+most NLP problems), this is generally undesirable.
+
+• Ex: a language model which gives probability 0 to unseen words.
+
+• Just because an event has never been observed in training data does
+
+not mean it cannot occur in test data.
+
+• So if c(x) = 0, what should p(x) be?
+
+• If data sparsity isn’t a problem for you, your model is too simple!
+
+4
+
+
+“Whenever data sparsity is an issue, smoothing can help performance,
+
+and data sparsity is almost always an issue in statistical modeling. In the
+
+extreme case where there is so much training data that all parameters
+
+can be accurately trained without smoothing, one can almost always
+
+expand the model, such as by moving to a higher n-gram model, to
+
+achieve improved performance.
+
+With more parameters data sparsity
+
+becomes an issue again, but with proper smoothing the models are
+
+usually more accurate than the original models. Thus, no matter how
+
+much data one has, smoothing can almost always help performace, and
+
+for a relatively small eﬀort.”
+
+Chen &amp; Goodman (1998)
+
+5
+
+
+Example: bigram model
+
+JOHN READ MOBY DICK
+
+MARY READ A DIFFERENT BOOK
+
+SHE READ A BOOK BY CHER
+
+p(wi|wi−1)
+
+=
+
+c(wi−1wi)
+
+�
+
+wi c(wi−1wi)
+
+p(s)
+
+=
+
+l+1
+
+�
+
+i=1
+
+p(wi|wi−1)
+
+6
+
+
+JOHN READ MOBY DICK
+
+MARY READ A DIFFERENT BOOK
+
+SHE READ A BOOK BY CHER
+
+p(JOHN READ A BOOK)
+
+=
+
+p(JOHN|•)
+
+p(READ|JOHN)
+
+p(A|READ)
+
+p(BOOK|A)
+
+p(•|BOOK)
+
+=
+
+c(• JOHN)
+
+�
+
+w c(• w)
+
+c(JOHN READ)
+
+�
+
+w c(JOHN w)
+
+c(READ A)
+
+�
+
+w c(READ w)
+
+c(A BOOK)
+
+�
+
+w c(A w)
+
+c(BOOK •)
+
+�
+
+w c(BOOK w)
+
+=
+
+1
+
+3
+
+1
+
+1
+
+2
+
+3
+
+1
+
+2
+
+1
+
+2
+
+≈
+
+0.06
+
+7
+
+
+JOHN READ MOBY DICK
+
+MARY READ A DIFFERENT BOOK
+
+SHE READ A BOOK BY CHER
+
+p(CHER READ A BOOK)
+
+=
+
+p(CHER|•)
+
+p(READ|CHER)
+
+p(A|READ)
+
+p(BOOK|A)
+
+p(•|BOOK)
+
+=
+
+c(• CHER)
+
+�
+
+w c(• w)
+
+c(CHER READ)
+
+�
+
+w c(CHER w)
+
+c(READ A)
+
+�
+
+w c(READ w)
+
+c(A BOOK)
+
+�
+
+w c(A w)
+
+c(BOOK •)
+
+�
+
+w c(BOOK w)
+
+=
+
+0
+
+3
+
+0
+
+1
+
+2
+
+3
+
+1
+
+2
+
+1
+
+2
+
+=
+
+0
+
+8
+
+
+Add-one smoothing
+
+p(wi|wi−1) =
+
+1 + c(wi−1wi)
+
+�
+
+wi[1 + c(wi−1wi)] =
+
+1 + c(wi−1wi)
+
+|V | + �
+
+wi c(wi−1wi)
+
+• Originally due to Laplace.
+
+• Typically, we assume V = {w : c(w) &gt; 0} ∪ {UNK}
+
+• Add-one smoothing is generally a horrible choice.
+
+9
+
+
+JOHN READ MOBY DICK
+
+MARY READ A DIFFERENT BOOK
+
+SHE READ A BOOK BY CHER
+
+p(JOHN READ A BOOK)
+
+=
+
+1+1
+
+11+3
+
+1+1
+
+11+1
+
+1+2
+
+11+3
+
+1+1
+
+11+2
+
+1+1
+
+11+2
+
+≈
+
+0.0001
+
+p(CHER READ A BOOK)
+
+=
+
+1+0
+
+11+3
+
+1+0
+
+11+1
+
+1+2
+
+11+3
+
+1+1
+
+11+2
+
+1+1
+
+11+2
+
+≈
+
+0.00003
+
+10
+
+
+Smoothing methods
+
+• Additive smoothing
+
+• Good-Turing estimate
+
+• Jelinek-Mercer smoothing (interpolation)
+
+• Katz smoothing (backoﬀ)
+
+• Witten-Bell smoothing
+
+• Absolute discounting
+
+• Kneser-Ney smoothing
+
+11
+
+
+Additive smoothing
+
+padd(wi|wi−1
+
+i−n+1) =
+
+δ + c(wi
+
+i−n+1)
+
+δ|V | + �
+
+wi c(wi
+
+i−n+1)
+
+• Idea: pretend we’ve seen each n-gram δ times more than we have.
+
+• Typically, 0 &lt; δ ≤ 1.
+
+• Lidstone and Jeﬀreys advocate δ = 1.
+
+• Gale &amp; Church (1994) argue that this method performs poorly.
+
+12
+
+
+Good-Turing estimation
+
+• Idea: reallocate the probability mass of n-grams that occur r + 1
+
+times in the training data to the n-grams that occur r times.
+
+• In particular, reallocate the probability mass of n-grams that were
+
+seen once to the n-grams that were never seen.
+
+• For each count r, we compute an adjusted count r∗:
+
+r∗ = (r + 1)nr+1
+
+nr
+
+where nr is the number of n-grams seen exactly r times.
+
+• Then we have:
+
+pGT(x : c(x) = r) = r∗
+
+N
+
+where N = �∞
+
+r=0 r∗nr = �∞
+
+r=1 rnr.
+
+13
+
+
+Good-Turing problems
+
+• Problem: what if nr+1 = 0? This is common for high r: there are
+
+“holes” in the counts of counts.
+
+• Problem: even if we’re not just below a hole, for high r, the nr are
+
+quite noisy.
+
+• Really, we should think of r∗ as:
+
+r∗ = (r + 1)E[nr+1]
+
+E[nr]
+
+• But how do we estimate that expectation? (The original formula
+
+amounts to using the ML estimate.)
+
+• Good-Turing thus requires elaboration to be useful. It forms a foun-
+
+dation on which other smoothing methods build.
+
+14
+
+
+Jelinek-Mercer smoothing (interpolation)
+
+• Observation:
+
+If c(BURNISH THE) = 0 and c(BURNISH THOU) = 0,
+
+then under both additive smoothing and Good-Turing:
+
+p(THE|BURNISH) = p(THOU|BURNISH)
+
+• This seems wrong: we should have
+
+p(THE|BURNISH) &gt; p(THOU|BURNISH)
+
+because THE is much more common than THOU
+
+• Solution: interpolate between bigram and unigram models.
+
+15
+
+
+Jelinek-Mercer smoothing (interpolation)
+
+• Unigram ML model:
+
+pML(wi) =
+
+c(wi)
+
+�
+
+wi c(wi)
+
+• Bigram interpolated model:
+
+pinterp(wi|wi−1) = λpML(wi|wi−1) + (1 − λ)pML(wi)
+
+16
+
+
+Jelinek-Mercer smoothing (interpolation)
+
+• Recursive formulation: nth-order smoothed model is deﬁned recur-
+
+sively as a linear interpolation between the nth-order ML model and
+
+the (n − 1)th-order smoothed model.
+
+pinterp(wi|wi−1
+
+i−n+1) =
+
+λwi−1
+
+i−n+1
+
+pML(wi|wi−1
+
+i−n+1) + (1 − λwi−1
+
+i−n+1
+
+)pinterp(wi|wi−1
+
+i−n+2)
+
+• Can ground recursion with:
+
+– 1st-order model: ML (or otherwise smoothed) unigram model
+
+– 0th-order model: uniform model
+
+punif(wi) = 1
+
+|V |
+
+17
+
+
+Jelinek-Mercer smoothing (interpolation)
+
+• The λwi−1
+
+i−n+1
+
+can be estimated using EM on held-out data (held-out
+
+interpolation) or in cross-validation fashion (deleted interpolation).
+
+• The optimal λwi−1
+
+i−n+1
+
+depend on context: high-frequency contexts
+
+should get high λs.
+
+• But, can’t tune all λs separately: need to bucket them.
+
+• Bucket by �
+
+wi c(wi
+
+i−n+1): total count in higher-order model.
+
+18
+
+
+Katz smoothing: bigrams
+
+• As in Good-Turing, we compute adjusted counts.
+
+• Bigrams with nonzero count r are discounted according to discount
+
+ratio dr, which is approximately r∗
+
+r , the discount predicted by Good-
+
+Turing. (Details below.)
+
+• Count mass subtracted from nonzero counts is redistributed among
+
+the zero-count bigrams according to next lower-order distribution
+
+(i.e. the unigram model).
+
+19
+
+
+Katz smoothing: bigrams
+
+• Katz adjusted counts:
+
+ckatz(wi
+
+i−1) =
+
+�
+
+drr
+
+if r &gt; 0
+
+α(wi−1)pML(wi)
+
+if r = 0
+
+• α(wi−1) is chosen so that �
+
+wi ckatz(wi
+
+i−1) = �
+
+wi c(wi
+
+i−1):
+
+α(wi−1) =
+
+1 − �
+
+wi:c(wi
+
+i−1)&gt;0 pkatz(wi|wi−1)
+
+1 − �
+
+wi:c(wi
+
+i−1)&gt;0 pML(wi)
+
+• Compute pkatz(wi|wi−1) from corrected count by normalizing:
+
+pkatz(wi|wi−1) =
+
+ckatz(wi
+
+i−1)
+
+�
+
+wi ckatz(wi
+
+i−1)
+
+20
+
+
+Katz smoothing
+
+• What about dr? Large counts are taken to be reliable, so dr = 1 for
+
+r &gt; k, where Katz suggests k = 5. For r ≤ k...
+
+• We want discounts to be proportional to Good-Turing discounts:
+
+1 − dr = µ(1 − r∗
+
+r )
+
+• We want the total count mass saved to equal the count mass which
+
+Good-Turing assigns to zero counts:
+
+k
+
+�
+
+r=1
+
+nr(1 − dr)r = n1
+
+• The unique solution is:
+
+dr =
+
+r∗
+
+r − (k+1)nk+1
+
+n1
+
+1 − (k+1)nk+1
+
+n1
+
+21
+
+
+Katz smoothing
+
+• Katz smoothing for higher-order n-grams is deﬁned analogously.
+
+• Like Jelinek-Mercer, can be given a recursive formulation: the Katz
+
+n-gram model is deﬁned in terms of the Katz (n − 1)-gram model.
+
+22
+
+
+Witten-Bell smoothing
+
+• An instance of Jelinek-Mercer smoothing:
+
+pWB(wi|wi−1
+
+i−n+1) =
+
+λwi−1
+
+i−n+1
+
+pML(wi|wi−1
+
+i−n+1) + (1 − λwi−1
+
+i−n+1
+
+)pWB(wi|wi−1
+
+i−n+2)
+
+• Motivation: interpret λwi−1
+
+i−n+1
+
+as the probability of using the higher-
+
+order model.
+
+• We should use higher-order model if n-gram wi
+
+i−n+1 was seen in
+
+training data, and back oﬀ to lower-order model otherwise.
+
+• So 1 − λwi−1
+
+i−n+1
+
+should be the probability that a word not seen after
+
+wi−1
+
+i−n+1 in training data occurs after that history in test data.
+
+• Estimate this by the number of unique words that follow the history
+
+wi−1
+
+i−n+1 in the training data.
+
+23
+
+
+Witten-Bell smoothing
+
+• To compute the λs, we’ll need the number of unique words that
+
+follow the history wi−1
+
+i−n+1:
+
+N1+(wi−1
+
+i−n+1 •) = |{wi : c(wi−1
+
+i−n+1wi) &gt; 0}|
+
+• Set λs such that
+
+1 − λwi−1
+
+i−n+1
+
+=
+
+N1+(wi−1
+
+i−n+1 •)
+
+N1+(wi−1
+
+i−n+1 •) + �
+
+wi c(wi
+
+i−n+1)
+
+24
+
+
+Absolute discounting
+
+• Like Jelinek-Mercer, involves interpolation of higher- and lower-order
+
+models.
+
+• But instead of multiplying the higher-order pML by a λ, we subtract
+
+a ﬁxed discount δ ∈ [0, 1] from each nonzero count:
+
+pabs(wi|wi−1
+
+i−n+1) =
+
+max{c(wi
+
+i−n+1) − δ, 0}
+
+�
+
+wi c(wi
+
+i−n+1)
+
++ (1 − λwi−1
+
+i−n+1
+
+)pabs(wi|wi−1
+
+i−n+2)
+
+• To make it sum to 1:
+
+1 − λwi−1
+
+i−n+1
+
+=
+
+δ
+
+�
+
+wi c(wi
+
+i−n+1)N1+(wi−1
+
+i−n+1 •)
+
+• Choose δ using held-out estimation.
+
+25
+
+
+Kneser-Ney smoothing
+
+• An extension of absolute discounting with a clever way of construct-
+
+ing the lower-order (backoﬀ) model.
+
+• Idea: the lower-order model is signﬁcant only when count is small
+
+or zero in the higher-order model, and so should be optimized for
+
+that purpose.
+
+• Example:
+
+suppose “San Francisco” is common, but “Francisco”
+
+occurs only after “San”.
+
+• “Francisco” will get a high unigram probability, and so absolute
+
+discounting will give a high probability to “Francisco” appearing
+
+after novel bigram histories.
+
+• Better to give “Francisco” a low unigram probability, because the
+
+only time it occurs is after “San”, in which case the bigram model
+
+ﬁts well.
+
+26
+
+
+Kneser-Ney smoothing
+
+• Let the count assigned to each unigram be the number of diﬀerent
+
+words that it follows. Deﬁne:
+
+N1+(• wi) = |{wi−1 : c(wi−1wi) &gt; 0}|
+
+N1+(• •) =
+
+�
+
+wi
+
+N1+(• wi)
+
+• Let lower-order distribution be:
+
+pKN(wi) = N1+(• wi)
+
+N1+(• •)
+
+• Put it all together:
+
+pKN(wi|wi−1
+
+i−n+1) =
+
+max{c(wi
+
+i−n+1) − δ, 0}
+
+�
+
+wi c(wi
+
+i−n+1)
+
++
+
+δ
+
+�
+
+wi c(wi
+
+i−n+1)N1+(wi−1
+
+i−n+1 •)pKN(wi|wi−1
+
+i−n+2)
+
+27
+
+
+Interpolation vs. backoﬀ
+
+• Both interpolation (Jelinek-Mercer) and backoﬀ (Katz) involve com-
+
+bining information from higher- and lower-order models.
+
+• Key diﬀerence: in determining the probability of n-grams with nonzero
+
+counts, interpolated models use information from lower-order mod-
+
+els while backoﬀ models do not.
+
+• (In both backoﬀ and interpolated models, lower-order models are
+
+used in determining the probability of n-grams with zero counts.)
+
+• It turns out that it’s not hard to create a backoﬀ version of an
+
+interpolated algorithm, and vice-versa. (Kneser-Ney was originally
+
+backoﬀ; Chen &amp; Goodman made interpolated version.)
+
+28
+
+
+Modiﬁed Kneser-Ney
+
+• Chen and Goodman introduced modiﬁed Kneser-Ney:
+
+– Interpolation is used instead of backoﬀ.
+
+– Uses a separate discount for one- and two-counts instead of a
+
+single discount for all counts.
+
+– Estimates discounts on held-out data instead of using a formula
+
+based on training counts.
+
+• Experiments show all three modiﬁcations improve performance.
+
+• Modiﬁed Kneser-Ney consistently had best performance.
+
+29
+
+
+Conclusions
+
+• The factor with the largest inﬂuence is the use of a modiﬁed backoﬀ
+
+distribution as in Kneser-Ney smoothing.
+
+• Jelinek-Mercer performs better on small training sets; Katz performs
+
+better on large training sets.
+
+• Katz smoothing performs well on n-grams with large counts; Kneser-
+
+Ney is best for small counts.
+
+• Absolute discounting is superior to linear discounting.
+
+• Interpolated models are superior to backoﬀ models for low (nonzero)
+
+counts.
+
+• Adding free parameters to an algorithm and optimizing these pa-
+
+rameters on held-out data can improve performance.
+
+Adapted from Chen &amp; Goodman (1998)
+
+30
+
+
+END
+
+31
+
+
+•
+
+32
+

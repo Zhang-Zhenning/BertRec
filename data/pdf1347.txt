@@ -1,0 +1,1614 @@
+
+CS447: Natural Language Processing
+
+http://courses.engr.illinois.edu/cs447 
+
+Julia Hockenmaier
+
+juliahmr@illinois.edu
+
+3324 Siebel Center
+
+Lecture 4:  
+
+Smoothing
+
+
+CS447: Natural Language Processing (J. Hockenmaier)
+
+Last lecture’s key concepts
+
+Basic probability review:
+
+joint probability, conditional probability 
+
+Probability models
+
+Independence assumptions
+
+Parameter estimation: relative frequency estimation 
+
+(aka maximum likelihood estimation)
+
+Language models
+
+N-gram language models: 
+
+unigram, bigram, trigram…
+
+�2
+
+
+CS447: Natural Language Processing (J. Hockenmaier)
+
+N-gram language models
+
+A language model is a distribution P(W)  
+
+over the (inﬁnite) set of strings in a language L   
+
+To deﬁne a distribution over this inﬁnite set,  
+
+we have to make independence assumptions. 
+
+N-gram language models assume that each word wi 
+
+depends only on the n−1 preceding words: 
+
+Pn-gram(w1 … wT)   := ∏i=1..T P(wi | wi−1, …, wi−(n−1)) 
+
+Punigram(w1 … wT)  := ∏i=1..T P(wi)
+
+Pbigram(w1 … wT)   := ∏i=1..T  P(wi | wi−1)
+
+Ptrigram(w1 … wT)   := ∏i=1..T  P(wi | wi−1, wi−2)
+
+�3
+
+
+CS447: Natural Language Processing (J. Hockenmaier)
+
+Quick note re. notation
+
+Consider the sentence W = “John loves Mary” 
+
+For a trigram model we could write:
+
+ P(w3 = Mary | w1 w2 = “John loves” )
+
+This notation implies that we treat the preceding bigram w1w2 
+
+as one single conditioning variable P( X | Y ) 
+
+Instead, we typically write:
+
+ P(w3 = Mary | w2 = loves, w1 = John)
+
+Although this is less readable (John loves → loves, John),
+
+this notation gives us more ﬂexibility, since it implies that we 
+
+treat the preceding bigram w1w2 as two conditioning variables 
+
+P( X | Y, Z )
+
+�4
+
+
+CS447: Natural Language Processing (J. Hockenmaier)
+
+Parameter estimation (training)
+
+Parameters: the actual probabilities (numbers)
+
+ P(wi = ‘the’ | wi-1 = ‘on’) = 0.0123 
+
+We need (a large amount of) text as training data  
+
+to estimate the parameters of a language model. 
+
+The most basic estimation technique: 
+
+relative frequency estimation (= counts)
+
+ P(wi = ‘the’ | wi-1 = ‘on’) =  C(‘on the’) / C(‘on’) 
+
+This assigns all probability mass to events  
+
+in the training corpus.
+
+Also called Maximum Likelihood Estimation (MLE) 
+
+�5
+
+
+CS447: Natural Language Processing (J. Hockenmaier)
+
+Recall the Shakespeare example: 
+
+Only 30,000 word types occurred. 
+
+Any word that does not occur in the training data 
+
+has zero probability!
+
+Only 0.04% of all possible bigrams occurred. 
+
+Any bigram that does not occur in the training data 
+
+has zero probability! 
+
+Testing: unseen events will occur
+
+�6
+
+
+CS447: Natural Language Processing (J. Hockenmaier)
+
+Zipf’s law: the long tail
+
+ 1
+
+ 10
+
+ 100
+
+ 1000
+
+ 10000
+
+ 100000
+
+ 1
+
+ 10
+
+ 100
+
+ 1000
+
+ 10000
+
+ 100000
+
+Frequency (log)
+
+Number of words (log) 
+
+How many words occur N times?
+
+Word frequency (log-scale)
+
+In natural language:
+
+-A small number of events (e.g. words) occur with high frequency
+
+-A large number of events occur with very low frequency
+
+�7
+
+
+
+
+
+
+
+A few words  
+
+are very frequent
+
+English words, sorted by frequency (log-scale)
+
+w1 = the, w2 = to, …., w5346 = computer, ...
+
+
+
+
+
+
+
+Most words  
+
+are very rare
+
+How many words occur once, twice, 100 times, 1000 times? 
+
+
+
+the r-th most 
+
+common word wr  
+
+has P(wr) ∝ 1/r
+
+
+CS447: Natural Language Processing (J. Hockenmaier)
+
+So…. 
+
+… we can’t actually evaluate our MLE models on 
+
+unseen test data (or system output)…
+
+… because both are likely to contain words/n-grams 
+
+that these models assign zero probability to.
+
+We need language models that assign some 
+
+probability mass to unseen words and n-grams. 
+
+�8
+
+
+CS447: Natural Language Processing (J. Hockenmaier)
+
+How can we design language models*  
+
+that can deal with previously unseen events? 
+
+*actually, probabilistic models in general
+
+Today’s lecture
+
+�9
+
+
+
+ 
+
+ 
+
+P(seen)
+
+= 1.0
+
+
+
+
+
+
+
+???
+
+P(seen)
+
+&lt; 1.0
+
+P(unseen)
+
+&gt; 0.0
+
+MLE model
+
+Smoothed model
+
+
+CS447: Natural Language Processing (J. Hockenmaier)
+
+Dealing with unseen events
+
+Relative frequency estimation assigns all probability 
+
+mass to events in the training corpus 
+
+But we need to reserve some probability mass to 
+
+events that don’t occur in the training data
+
+Unseen events = new words, new bigrams 
+
+Important questions:
+
+What possible events are there? 
+
+How much probability mass should they get?
+
+�10
+
+
+CS447: Natural Language Processing (J. Hockenmaier)
+
+What unseen events may occur?
+
+Simple distributions: 
+
+P(X = x)  
+
+(e.g. unigram models)  
+
+Possibility: 
+
+The outcome x has not occurred during training  
+
+(i.e. is unknown):
+
+-We need to reserve mass in P( X ) for x
+
+ 
+
+Questions: 
+
+-What outcomes x are possible? 
+
+-How much mass should they get?
+
+�11
+
+
+CS447: Natural Language Processing (J. Hockenmaier)
+
+What unseen events may occur?
+
+Simple conditional distributions:
+
+P( X = x | Y = y) 
+
+(e.g. bigram models) 
+
+Case 1: The outcome x has been seen,  
+
+but not in the context of Y = y: 
+
+-We need to reserve mass in P( X | Y=y ) for X = x 
+
+Case 2: The conditioning variable y has not been seen: 
+
+-We have no P( X | Y = y ) distribution.
+
+-We need to drop the conditioning variable Y = y  
+
+and use P( X ) instead.
+
+�12
+
+
+CS447: Natural Language Processing (J. Hockenmaier)
+
+What unseen events may occur?
+
+Complex conditional distributions  
+
+(with multiple conditioning variables) 
+
+P( X = x | Y = y, Z = z) 
+
+(e.g. trigram models)
+
+ 
+
+Case 1: The outcome X = x was seen, but not in the 
+
+context of (Y=y, Z=z):
+
+-We need to reserve mass in P( X | Y = y, Z = z)  
+
+Case 2: The joint conditioning event (Y=y, Z=z) hasn’t 
+
+been seen:
+
+- We have no P( X | Y=y, Z=z) distribution.
+
+- But we can drop z and use P( X | Y=y) instead. 
+
+�13
+
+
+CS447: Natural Language Processing (J. Hockenmaier)
+
+Examples
+
+Training data: The wolf is an endangered species 
+
+Test data:       The wallaby is endangered 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+-Case 1: P(wallaby), P(wallaby | the), P( wallaby | the, &lt;s&gt;):  
+
+What is the probability of an unknown word (in any context)? 
+
+-Case 2: P(endangered | is)  
+
+What is the probability of a known word in a known context,  
+
+if that word hasn’t been seen in that context?
+
+-Case 3: P(is | wallaby) P(is | wallaby, the) P(endangered | is, wallaby):  
+
+What is the probability of a known word in an unseen context?
+
+�14
+
+Unigram
+
+Bigram
+
+Trigram
+
+P(the)
+
+P(the | &lt;s&gt;)
+
+P(the | &lt;s&gt;)
+
+× P(wallaby)
+
+× P( wallaby | the)
+
+× P( wallaby | the, &lt;s&gt;)
+
+× P(is)
+
+× P(is | wallaby)
+
+× P(is | wallaby, the)
+
+× P(endangered)
+
+× P(endangered | is)
+
+× P(endangered | is, wallaby)
+
+
+CS447: Natural Language Processing (J. Hockenmaier)
+
+Smoothing: 
+
+Reserving mass in  
+
+P( X ) for unseen events
+
+�15
+
+
+CS447: Natural Language Processing (J. Hockenmaier)
+
+Dealing with unknown words: 
+
+The simple solution
+
+Training:
+
+-Assume a ﬁxed vocabulary  
+
+(e.g. all words that occur at least twice (or n times) in the 
+
+corpus)
+
+-Replace all other words by a token &lt;UNK&gt;
+
+-Estimate the model on this corpus.
+
+Testing:
+
+-Replace all unknown words by &lt;UNK&gt;
+
+-Run the model. 
+
+This requires a large training corpus to work well.
+
+�16
+
+
+CS447: Natural Language Processing (J. Hockenmaier)
+
+Use a different estimation technique:
+
+-Add-1(Laplace) Smoothing
+
+-Good-Turing Discounting
+
+Idea: Replace MLE estimate
+
+ 
+
+Combine a complex model with a simpler model:
+
+-Linear Interpolation
+
+-Modiﬁed Kneser-Ney smoothing
+
+Idea: use bigram probabilities of wi  
+
+to calculate trigram probabilities of wi  
+
+Dealing with unknown events
+
+P(w) = C(w)
+
+N
+
+P(wi|wi�n...wi�1)
+
+P(wi|wi�1)
+
+�17
+
+
+CS447: Natural Language Processing (J. Hockenmaier)
+
+MLE
+
+P(wi) =
+
+C(wi)
+
+�jC(wj) = C(wi)
+
+N
+
+Add One
+
+P(wi) =
+
+C(wi)+1
+
+�j(C(wj)+1) = C(wi)+1
+
+N+V
+
+Assume every (seen or unseen) event  
+
+occurred once more than it did in the training data. 
+
+Example: unigram probabilities 
+
+Estimated from a corpus with N tokens and a 
+
+vocabulary (number of word types) of size V.
+
+Add-1 (Laplace) smoothing
+
+�18
+
+MLE
+
+P(wi) =
+
+C(wi)
+
+�jC(wj) = C(wi)
+
+N
+
+Add One
+
+P(wi) =
+
+C(wi)+1
+
+�j(C(wj)+1) = C(wi)+1
+
+N+V
+
+
+CS447: Natural Language Processing (J. Hockenmaier)
+
+Bigram counts
+
+
+
+Original:
+
+
+
+Smoothed:
+
+�19
+
+
+CS447: Natural Language Processing (J. Hockenmaier)
+
+Bigram probabilities
+
+Smoothed:
+
+
+
+Original:
+
+
+
+Problem:  
+
+Add-one moves too much probability mass  
+
+from seen to unseen events!
+
+�20
+
+
+CS447: Natural Language Processing (J. Hockenmaier)
+
+We can “reconstitute” pseudo-counts c* for our 
+
+training set of size N from our estimate: 
+
+Unigrams: 
+
+ 
+
+ 
+
+ 
+
+ 
+
+Bigrams:
+
+Reconstituting the counts
+
+c⇥
+
+i
+
+=
+
+P(wi)·N
+
+=
+
+C(wi)+1
+
+N +V
+
+·N
+
+=
+
+(C(wi)+1)·
+
+N
+
+N +V
+
+�21
+
+
+
+P(wi): probability that the next word is wi.  
+
+N: number of word tokens we generate
+
+
+
+
+
+Plug in the model definition of P(wi) 
+
+V: size of vocabulary
+
+
+
+
+
+Rearrange  
+
+(to see dependence on N and V)
+
+
+
+
+
+P(wi–1wi): probability of bigram “wi–1wi”.  
+
+C(wi–1): frequency of wi–1 (in training data)
+
+
+
+
+
+Plug in the model definition of P(wi | wi–1) 
+
+
+
+c⇤(wi|wi�1) = P(wi|wi�1)·C(wi�1)
+
+= C(wi�1wi)+1
+
+C(wi�1)+V ·C(wi�1)
+
+
+CS447: Natural Language Processing (J. Hockenmaier)
+
+Reconstituted Bigram counts
+
+
+
+Original:
+
+Reconstituted:
+
+
+
+�22
+
+
+CS447: Natural Language Processing (J. Hockenmaier)
+
+Summary: Add-One smoothing
+
+P(wi|wi�1 = the) =
+
+C(the wi)+1
+
+25, 545+30, 000
+
+Advantage:
+
+Very simple to implement 
+
+Disadvantage:
+
+Takes away too much probability mass from seen events.
+
+Assigns too much total probability mass to unseen events. 
+
+The Shakespeare example 
+
+(V = 30,000 word types;  ‘the’ occurs 25,545 times) 
+
+Bigram probabilities for ‘the …’:
+
+�23
+
+
+CS447: Natural Language Processing (J. Hockenmaier)
+
+Add-K smoothing
+
+Variant of Add-One smoothing: 
+
+For any k &gt; 0  (typically, k &lt; 1) 
+
+ 
+
+ 
+
+ 
+
+This is still too simplistic to work well.
+
+�24
+
+Add K
+
+P(wi) = C(wi)+k
+
+N +kV
+
+
+CS447: Natural Language Processing (J. Hockenmaier)
+
+
+
+
+
+f = 1
+
+f &gt; 1
+
+Good-Turing smoothing
+
+Basic idea: Use total frequency of events that occur only once 
+
+to estimate how much mass to shift to unseen events
+
+- “occur only once” (in training data):  frequency f = 1 
+
+- “unseen” (in training data): frequency f = 0 (didn’t occur)
+
+�25
+
+
+
+
+
+f = 0
+
+f = 1
+
+f &gt; 1
+
+
+
+Relative Frequency Estimate
+
+Good Turing Estimate
+
+
+CS447: Natural Language Processing (J. Hockenmaier)
+
+
+
+MLE
+
+
+
+f = 1
+
+f &gt; 1
+
+
+
+P(seen)
+
++
+
+P(unseen)
+
+=
+
+1
+
+MLE
+
+N
+
+N
+
++
+
+0
+
+=
+
+1
+
+Good Turing
+
+2·N2 +...+m·Nm
+
+�m
+
+i=1 i·Ni
+
++
+
+1·N1
+
+�m
+
+i=1 i·Ni
+
+=
+
+�m
+
+i=1 i·Ni
+
+�m
+
+i=1 i·Ni
+
+P(seen)
+
++
+
+P(unseen)
+
+=
+
+1
+
+MLE
+
+N
+
+N
+
++
+
+0
+
+=
+
+1
+
+Good Turing
+
+2·N2 +...+m·Nm
+
+�m
+
+i=1 i·Ni
+
++
+
+1·N1
+
+�m
+
+i=1 i·Ni
+
+=
+
+�m
+
+i=1 i·Ni
+
+�m
+
+i=1 i·Ni
+
+Good-Turing smoothing
+
+Nc: number of event types that occur c times (can be counted)
+
+N1: number of event types that occur once
+
+N = 1N1+…+ mNm: total number of observed event tokens
+
+�26
+
+
+
+GT
+
+
+
+f=0
+
+f = 1
+
+f &gt; 1
+
+
+
+
+
+P(seen)
+
++
+
+P(unseen)
+
+=
+
+1
+
+MLE
+
+N
+
+N
+
++
+
+0
+
+=
+
+1
+
+Good Turing
+
+2·N2 +...+m·Nm
+
+�m
+
+i=1 i·Ni
+
++
+
+1·N1
+
+�m
+
+i=1 i·Ni
+
+=
+
+�m
+
+i=1 i·Ni
+
+�m
+
+i=1 i·Ni
+
+
+
+
+CS447: Natural Language Processing (J. Hockenmaier)
+
+Good-Turing Smoothing
+
+General principle: 
+
+Reassign the probability mass of all events that occur  
+
+k times in the training data to all events that occur k–1 times.
+
+Nk events occur k times, with a total frequency of k⋅Nk 
+
+The probability mass of all words that appear k–1 times becomes: 
+
+�27
+
+There are Nk-1 words w that occur k–1 times in the training data.
+
+Good-Turing replaces the original count ck–1 of w with a new count c*k–1:
+
+c⇤
+
+k�1 = k ·Nk
+
+Nk�1
+
+Â
+
+w:C(w)=k�1
+
+PGT(w) =
+
+Â
+
+w0:C(w0)=k
+
+PMLE(w0) =
+
+Â
+
+w0:C(w0)=k
+
+k
+
+N
+
+= k ·Nk
+
+N
+
+Â
+
+w:C(w)=k�1
+
+PGT(w) =
+
+Â
+
+w0:C(w0)=k
+
+PMLE(w0) =
+
+Â
+
+w0:C(w0)=k
+
+k
+
+N
+
+= k ·Nk
+
+N
+
+Â
+
+w:C(w)=k�1
+
+PGT(w) =
+
+Â
+
+w0:C(w0)=k
+
+PMLE(w0) =
+
+Â
+
+w0:C(w0)=k
+
+k
+
+N
+
+= k ·Nk
+
+N
+
+Â
+
+w:C(w)=k�1
+
+PGT(w) =
+
+Â
+
+w0:C(w0)=k
+
+PMLE(w0) =
+
+Â
+
+w0:C(w0)=k
+
+k
+
+N
+
+= k ·Nk
+
+N
+
+
+CS447: Natural Language Processing (J. Hockenmaier)
+
+Good-Turing smoothing
+
+The Maximum Likelihood estimate of the probability 
+
+of a word w that occurs k–1 times PMLE(w) =  C(w)/N
+
+�28
+
+The Good-Turing estimate of the probability 
+
+of a word w that occurs k–1 times: PGT(w) = c*k–1 / N:
+
+PGT(w) = c⇤
+
+k�1
+
+N
+
+=
+
+✓
+
+k·Nk
+
+Nk�1
+
+◆
+
+N
+
+=
+
+k ·Nk
+
+N ·Nk�1
+
+PMLE(w) = ck�1
+
+N
+
+= k �1
+
+N
+
+
+CS447: Natural Language Processing (J. Hockenmaier)
+
+Problem 1:  
+
+What happens to the most frequent event? 
+
+Problem 2:  
+
+We don’t observe events for every k. 
+
+Variant: Simple Good-Turing
+
+Replace Nn with a ﬁtted function f(n): 
+
+ 
+
+Requires parameter tuning (on held-out data):  
+
+Set a,b so that f(n) ≅Nn for known values. 
+
+Use cn* only for small n 
+
+Problems with Good-Turing
+
+f(n) = a + b log(n)
+
+�29
+
+
+CS447: Natural Language Processing (J. Hockenmaier)
+
+Smoothing: 
+
+Reserving mass in  
+
+P(X |Y) for unseen events
+
+�30
+
+
+CS447: Natural Language Processing (J. Hockenmaier)
+
+We don’t see “Bob was reading”, but we see “__ was reading”. 
+
+We estimate P(reading |’Bob was’) = 0 but P(reading | ‘was’) &gt; 0  
+
+Use (n –1)-gram probabilities to smooth n-gram probabilities: 
+
+
+
+Linear Interpolation (1)
+
+�31
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+P( wi |wi−2wi−1 =’Bob was’)
+
+P( wi |wi−1 =’was’)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+P( wi |wi−2wi−1 = ’Bob was’)
+
+1−λ
+
+˜PLI(wi|wi�nwi�n+1... wi�2wi�1)
+
+|
+
+{z
+
+}
+
+smoothed n-gram
+
+=
+
+l ˆP(wi|wi�nwi�n+1... wi�2wi�1)
+
+|
+
+{z
+
+}
+
+unsmoothed n-gram
+
++(1�l) ˜PLI(wi|wi�n+1... wi�2wi�1)
+
+|
+
+{z
+
+}
+
+smoothed (n-1)-gram
+
+λ
+
+
+CS447: Natural Language Processing (J. Hockenmaier)
+
+What happens to P(w | …)? 
+
+The smoothed probability Psmoothed-trigram(wi | wi−2 wi−1)  
+
+is a linear combination of Punsmoothed-trigram(wi | wi−2 wi−1)  
+
+and Pbigram(wi | wi−1):
+
+�32
+
+λ
+
+0
+
+1
+
+0
+
+1
+
+0
+
+1
+
+punsmoothed-trigram
+
+pbigram
+
+
+
+
+
+
+
+psmoothed-trigram
+
+λ
+
+0
+
+1
+
+0
+
+1
+
+0
+
+1
+
+punsmoothed-trigram
+
+pbig
+
+
+
+
+
+
+
+psmoothed-trigram
+
+
+CS447: Natural Language Processing (J. Hockenmaier)
+
+We’ve never seen “Bob was reading”,  
+
+but we might have seen “__ was reading”,
+
+and we’ve certainly seen “__ reading” (or &lt;UNK&gt;) 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+Psmoothed(wi = reading | wi−1 = was, wi−2 = Bob) =  
+
+λ3 Punsmoothed-trigram(wi = reading | wi−1 = was, wi−2 = Bob)  
+
++ λ2 Punsmoothed-bigram(wi = reading | wi−1 = was) 
+
++ λ1 Punsmoothed-unigram(wi = reading) 
+
+Linear Interpolation (2)
+
+�33
+
+˜P(wi|wi�1,wi�2) =l3 · ˆP(wi|wi�1,wi�2)
+
++l2 · ˆP(wi|wi�1)
+
++l1 · ˆP(wi)
+
+for l1 +l2 +l3 = 1
+
+
+CS447: Natural Language Processing (J. Hockenmaier)
+
+Interpolation: Setting the λs
+
+Method A:  Held-out estimation
+
+Divide data into training and held-out data. 
+
+Estimate models on training data.
+
+Use held-out data (and some optimization 
+
+technique) to ﬁnd the λ that gives best model 
+
+performance. 
+
+Often: λ is a learned function of the frequencies of 
+
+wi–n…wi–1  
+
+Method B:
+
+ λ is some (deterministic) function of the frequencies 
+
+of wi–n...wi–1 
+
+�34
+
+
+CS447: Natural Language Processing (J. Hockenmaier)
+
+Subtract a constant factor D &lt;1 from each nonzero n-gram count, 
+
+and interpolate with PAD(wi | wi–1): 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+If S seen word types occur after wi-2 wi-1 in the training data, this 
+
+reserves the probability mass P(U) = (S ×D)/C(wi-2wi-1) to be computed 
+
+according to P(wi | wi–1). Set: 
+
+ 
+
+ 
+
+N.B.: with N1, N2 the number of n-grams that occur once or twice, D = N1/(N1+2N2) works 
+
+well in practice
+
+Absolute discounting
+
+�35
+
+(1�l)
+
+=
+
+P(U) =
+
+S·D
+
+C(wi�2wi�1)
+
+
+
+PAD(wi|wi�1,wi�2)
+
+=
+
+max(C(wi�2wi�1wi)�D,0)
+
+C(wi�2wi�1)
+
++(1�l)PAD(wi|wi�1)
+
+
+
+
+
+
+
+non-zero if trigram 
+
+wi-2wi-1wi is seen
+
+
+CS447: Natural Language Processing (J. Hockenmaier)
+
+Kneser-Ney smoothing
+
+Observation: “San Francisco” is frequent,  
+
+but “Francisco” only occurs after “San”. 
+
+Solution: the unigram probability P(w) should not depend on the 
+
+frequency of w, but on the number of contexts in which w appears
+
+ 
+
+N+1(●w): number of contexts in which w appears 
+
+              = number of word types w’  which precede w 
+
+N+1(●●) = ∑ w’ N+1(●w’) 
+
+Kneser-Ney smoothing: Use absolute discounting,  
+
+but use P(w) = N+1(●w)/N+1(●●) 
+
+Modiﬁed Kneser-Ney smoothing: Use different D for bigrams and trigrams  
+
+(Chen &amp; Goodman ’98)
+
+�36
+
+
+CS447: Natural Language Processing (J. Hockenmaier)
+
+To recap….
+
+�37
+
+
+CS447: Natural Language Processing (J. Hockenmaier)
+
+Today’s key concepts
+
+Dealing with unknown words
+
+Dealing with unseen events
+
+Good-Turing smoothing
+
+Linear Interpolation
+
+Absolute Discounting
+
+Kneser-Ney smoothing
+
+Today’s reading: 
+
+Jurafsky and Martin, Chapter 4, sections 1-4
+
+�38
+

@@ -1,0 +1,535 @@
+
+
+
+Machine Learning Method for Natural 
+
+Language Processing 
+
+Lecture 2: Language Models
+
+Dan Goldwasser 
+
+CS 590NLP 
+
+Purdue University
+
+dgoldwas@purdue.edu
+
+
+
+
+
+
+
+ZZZ
+
+Colorless green ideas sleep furiously 
+
+
+And now to something completely different!
+
+
+
+
+Today
+
+First	step	in	statistical	NLP
+
+• Let’s	start	with	something	simple
+
+• Context	sensitive	spelling	correction
+
+– Many	words	look	and	sound	similar,	confusing	
+
+even	native	speakers
+
+– Not	a	spelling	mistake,	but	not	the	intended	word
+
+– Depends	on	the	context	in	which	it	is	used
+
+“affect - effect”, “their – they're”  “towed-toad”
+
+
+NLP	Error	Correction	Example
+
+“I don’t know {whether,weather} to laugh or cry”
+
+• What	is	the	decision	problem?
+
+– Function	:	sentence è {whether, weather}
+
+• Can	you	write	a	program	to	decide?
+
+• How	can	you	apply	ML	techniques	to	solve	it?
+
+– Can	you	learn	a	classifier?
+
+– What	are	positive	and	negative	examples?
+
+•
+
+Is	there	a	simpler	way?
+
+– Assumption:		Most	text	written	is	correct	
+
+4
+
+Example	based	on	Dan	Roth	slides
+
+
+Statistical	Language	Modeling
+
+• Intuition:	by	looking	at	large	quantities	of	text	we	can	
+
+find	statistical	regularities
+
+– Distinguish	between	correct	and	incorrect	sentences
+
+• Language	models	define	a	probability	distribution	over	
+
+strings	(e.g.,	sentences)	in	a	language.
+
+• We	can	use	language	models	to	score	and	rank	
+
+sentences
+
+“I don’t know {whether,weather} to laugh or cry”
+
+P(“I	don’t..	weather	to	laugh..”)	&gt;&lt; P(“I	don’t..	whether	to	laugh..”)
+
+
+Language	Modeling
+
+• We	have	a	finite	vocabulary
+
+– V = {the, a, Alice, Bob, likes, sleeps, apples} U {STOP}
+
+• Based	on	this	vocabulary	we	can	generate	an	infinite	
+
+number	of	strings:
+
+– the STOP
+
+– a Stop
+
+– the Apples sleeps STOP
+
+– Alice likes Bob STOP
+
+Some	of	these	strings	make	more	sentence	than	others!
+
+
+Language	Modeling
+
+• Let’s	assume	we	have	a	set	of	“real”	strings
+
+– For	example,	English	sentences	samples
+
+• We	want	to	learn	a	probability	distribution	over	strings
+
+• For	example:
+
+– p(the	STOP)		=	0.0000001
+
+– p(the	Apples	sleeps	STOP)	=0.000000001
+
+– p(Alice	likes	Bob	STOP)	=	0.00001
+
+
+
+“reasonable”	strings	are	more	likely	than	unreasonable
+
+
+Language	Modeling
+
+• A	good	way	for	doing	that:
+
+– Collect	a	very	large	corpora	of		reasonable	sentences	
+
+• All	of	English	Wikipedia.	
+
+• All	the	web!
+
+– Use	this	data	to	estimate	a	probability	distribution	directly
+
+• Assume	we	have	N	sentences
+
+– For	any	sentence	x1,…,xn ,	we	will	denote	c(x1,…,xn )	the	
+
+number	of	times	this	sentence	is	observed	in	the	data
+
+• Simple	Estimate:	
+
+
+
+What	is	a	potential	problem	with	this	approach?
+
+
+Language	Modeling
+
+•
+
+We	will	need	an	unreasonable	amount	of	data	if	we	
+
+want	reasonable	estimates	of	sentences
+
+– Instead,	we	notice	that	the	probability	of	a	sentence	can	be	
+
+viewed	as	a	product	of	the	probabilities	of	its	words
+
+• E.g.,	Mr.	Smith	goes	to	Washington
+
+– Can	we	use	that	to	get	simpler	estimates?
+
+• p(Mr.)	p(Smith)	p(goes)	p(to)	p(Washington)	
+
+– We	will	need	to	make	some	simplifying	assumptions!
+
+
+
+
+Independence	
+
+Two random variables X and Y are independent if
+
+P(X , Y ) = P(X )P(Y )
+
+P(X |Y )
+
+=
+
+P(X , Y )
+
+P(Y )
+
+P(X )P(Y )
+
+=
+
+P(Y )
+
+=
+
+P(X )
+
+(X , Y
+
+independent)
+
+If X and Y are independent, then P(X | Y) = P(X)
+
+
+Language	Modeling	with	N-grams
+
+• A	language	model	over	a	given	vocabulary	V	assigns	
+
+probabilities	to	strings	drawn	from	V*
+
+• An	n-gram	model	assume	each	word	depends	only	
+
+on	the	previous	n-1	words:
+
+
+
+
+
+Unigram m odel
+
+B igram m odel
+
+Trigram m odel
+
+P (w1)P (w2)...P(wi)
+
+P (w1)P (w2|w1)...P(wi|wi-1)
+
+P (w1)P (w2|w1)...P(wi|wi-2 wi-1)
+
+
+Model	Estimation
+
+• The	last	remaining	issue	– how	can	we	estimate	the	
+
+models	parameters	p(wi|wi-2,wi-1)
+
+• Simple	solution	– counting!
+
+– Also	known	as	Maximum	likelihood	estimate
+
+How	many	parameters	does	the	model	need	to	estimate?
+
+
+
+p(wi|wi-2,wi-1	)	=
+
+
+Model	Estimation
+
+• How	many	parameters	does	the	model	need	to	
+
+estimate?
+
+– Let’s	assume	a	trigram	model,	defined	over	vocabulary	V
+
+– The	number	of	parameters	is	|V|3
+
+– Let’s	assume:	|V|	=	20K				&lt;	|VShakespeare|
+
+– We’ll	have	to	estimate	8	x	1012	parameters
+
+• How	many	will	we	need	to	estimate	for	a	unigram	
+
+model?
+
+– Why	not	just	do	that?
+
+
+Generating	from	a	distribution
+
+• You	can	sample	text	from	language	models
+
+
+
+
+Generating	Shakespeare	
+
+
+
+
+The Shakespeare corpus consists of N=884,647 word
+
+tokens and a vocabulary of V=29,066 word types
+
+Shakespeare produced 300,000 bigram types out of V2= 844 million 
+
+possible bigram types. 99.96% of the possible bigrams were never 
+
+seen
+
+Generating	Shakespeare	
+
+Only 0.04% of all possible bigrams occurred. Any bigram that 
+
+does not occur in the training data has zero probability!
+
+
+
+Only 30,000 word types occurred.
+
+Any word that does not occur in the training data has zero probability!
+
+Simple Solution: Smoothing (Add-1, Laplacian) 
+
+A general tradeoff in ML, we will meet it again!
+
+
+Evaluating	Language	Models
+
+• Assuming	that	we	have	a	language	model,	how	can	
+
+we	tell	if	it’s	good?
+
+• Option	1:	try	to	generate	Shakespeare..
+
+– This	is	know	as	Qualitative	evaluation
+
+• Option	2:	Quantitative	evaluation
+
+– Option	2.1:	See	how	well	you	do	on	Spelling	correction
+
+• This	is	known	as	Extrinsic Evaluation
+
+– Option	2.2:	Find	an	independent	measure	for	LM	quality
+
+• This	is	known	as	Intrinsic Evaluation
+
+
+Perplexity
+
+• Assume	we	have	a	language	model
+
+• Sample	new	(test)	data	for	evaluation:	s1,…,sm
+
+• We	will	look	at	the	probability	of	the	test	data	under	
+
+out	model:	
+
+• Or,	for	convenience	the	log	of	that	probability:
+
+• Perplexity	is	defined	as:
+
+(M is the number of instances in the test data)
+
+
+
+
+
+
+
+Perplexity = 2-l
+
+
+Perplexity	
+
+• Given	a	vocabulary	V	of	size	|V|	=	N
+
+• We	have	a	very	“bad”	model:	
+
+p(w|wi-2, wi-1) = 1/N
+
+• What	is	the	perplexity	of	this	model?
+
+èThe	perplexity	is	N
+
+
+
+
+
+
+
+
+
+Simple	Intuition:		Given	the	context	what	is	the	effective	
+
+“branching	factor”	for	the	current	word. è Lower	is	better!
+
+Perplexity = 2-l
+
+
+Evaluating	Language	Models
+
+• Which	one	is	better	– unigram,	bigram,	trigram?
+
+– Can	perplexity	tell	us	that?
+
+• Goodman	2001:	|V|	=50,000
+
+– Trigram model:	Perplexity	=74
+
+– Bigram model:	Perplexity	=	137
+
+– Unigram model:	Perplexity	=	955
+
+• Is	a	trigram	model	always	better?	(i.e.,	lower	perplex)
+
+
+Back-off	and	Interpolation	
+
+• A	trigram	model	could	overfit to	the	training	data
+
+– We	will	not	have	reliable	estimates	for	many	parameters!
+
+• Option	1:	 Smoothing	
+
+– We	briefly	looked	at	Laplacian smoothing,	many	others
+
+• Option	2: Back-off
+
+– Instead	of	accounting	for	unseen	trigrams,	back-off	to	a	
+
+simpler	model	when	needed
+
+• Estimate	P(z|x,y)	è C(z,x,y)	=	0	è use	P(z|y)	è...		è P(z)
+
+• A	little	bit	more	complicated..	(make	sure	we	still	have	a	distribution)
+
+• Option	3: combine	all	the	models!	(interpolate)
+
+
+Linear	Interpolation
+
+• Linear	Interpolation	of	several	models:
+
+– Unigram:
+
+– Bigram:
+
+– Trigram:
+
+– Our	combined	estimate:	
+
+
+
+
+
+
+
+
+
+
+
+
+Linear	Interpolation
+
+• The	new	estimate	defines	a	distribution
+
+• Similarly,	we	can	show	that	p(w|u,v)	is	greater	than	0
+
+
+
+
+Linear	Interpolation
+
+• How	can	we	set	the	values	for	λ’s ?
+
+• Use	a	held	out	validation	corpus
+
+– Do	not	use	it	for	training!
+
+• Choose	λ that	maximize	the	probability	of	that	
+
+dataset
+
+– Estimate	the	language	models	over	training data
+
+– Search	over	different	values	of	λ,	and	look	for	
+
+optimal	values	over	the	validation set
+
+
+Using	Language	Models
+
+• You	now	have	a	pretty	useful	statistical	tool
+
+– Context	Sensitive	Spelling	correction
+
+• Build	a	language	model	from	a	HUGE corpus	
+
+• Keep	a	list	of	confusing	words
+
+• Check	which	candidate	has	the	highest	probability	
+
+– What	is	the	annotation	effort	required	for	this	task?
+
+• There	are	many	other	uses	for	language	models
+
+– you	are	a	spammer,	who	got	paid	to	write	very	
+
+positive	reviews	on	yelp	for	the	worst	bar	in	Purdue
+
+– How	can	you	use	language	models?
+
+
+History	(or	limitations	of	LM)
+
+• Chomsky	(syntactic	Structures	1957)	
+
+presented	a	problem	with	statistical	LM:
+
+(1) Colorless green ideas sleep furiously.
+
+(2) Furiously sleep ideas green colorless.
+
+
+
+Both are nonsensical sentences, but (1) is grammatical and (2) is not
+
+Assume we build a model for grammatical 
+
+English.   
+
+Compare P((1)) to P((2))
+
+
+Questions?
+

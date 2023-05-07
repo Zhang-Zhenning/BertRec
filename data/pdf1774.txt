@@ -1,0 +1,486 @@
+
+
+
+
+
+STAT 510 
+
+Applied Time Series Analysis
+
+ 
+
+ 
+
+ 
+
+ 
+
+Home
+
+5
+
+5.2
+
+5.2 Smoothing Time Series
+
+
+
+
+
+Search this site...
+
+
+
+
+
+
+
+Search
+
+
+
+
+Smoothing is usually done to help us better see patterns, trends for example, in time series. Generally smooth out the
+
+irregular roughness to see a clearer signal. For seasonal data, we might smooth out the seasonality so that we can identify the
+
+trend. Smoothing doesn’t provide us with a model, but it can be a good first step in describing various components of the
+
+series.
+
+The term filter is sometimes used to describe a smoothing procedure. For instance, if the smoothed value for a particular
+
+time is calculated as a linear combination of observations for surrounding times, it might be said that we’ve applied a linear
+
+filter to the data (not the same as saying the result is a straight line, by the way).
+
+Moving Averages
+
+The traditional use of the term moving average is that at each point in time we determine (possibly weighted) averages of
+
+observed values that surround a particular time.
+
+For instance, at time \(t\), a "centered moving average of length 3" with equal weights would be the average of values at
+
+times \(t-1, t\), and \(t+1\).
+
+To take away seasonality from a series so we can better see trend, we would use a moving average with a length = seasonal
+
+span. Thus in the smoothed series, each smoothed value has been averaged across all seasons. This might be done by
+
+looking at a “one-sided” moving average in which you average all values for the previous year’s worth of data or a centered
+
+moving average in which you use values both before and after the current time.
+
+For quarterly data, for example, we could define a smoothed value for time \(t\) as \(\left( x _ { t } + x _ { t - 1 } + x _ { t -
+
+2 } + x _ { t - 3 } \right) / 4\), the average of this time and the previous 3 quarters. In R code this will be a one-sided filter.
+
+A centered moving average creates a bit of a difficulty when we have an even number of time periods in the seasonal span
+
+(as we usually do).
+
+To smooth away seasonality in quarterly data, in order to identify trend, the usual convention is to use the moving average
+
+smoothed at time \(t\) is
+
+\( \dfrac{1}{8}x_{t-2}+\dfrac{1}{4}x_{t-1}+\dfrac{1}{4}x_t +\dfrac{1}{4}x_{t+1}+\dfrac{1}{8}x_{t+2}\)
+
+To smooth away seasonality in monthly data, in order to identify trend, the usual convention is to use the moving average
+
+smoothed at time \(t\) is
+
+\( \dfrac{1}{24}x_{t-6}+\dfrac{1}{12}x_{t-5}+\dfrac{1}{12}x_{t-4} +\dots + \dfrac{1}{12}x_{t+4}+\frac{1}
+
+{12}x_{t+5}+\dfrac{1}{24}x_{t+6}\)
+
+That is, we apply weight 1/24 to values at times \(t-6\) and \(t+6\) and weight 1/12 to all values at all times between \(t-5\)
+
+and \(t+5\).
+
+In the R filter command, we’ll specify a two-sided filter when we want to use values that come both before and after the
+
+time for which we’re smoothing.
+
+A monthly smoother might apply a weight of 1/13 to all values from times \(t-6\) to \(t+6\).
+
+The code the authors use on page 72 takes advantage of a rep command that repeats a value a certain number of times.
+
+They don’t use the “filter” parameter within the filter command.
+
+Note!
+
+On page 71 of our book, the authors apply equal weights across a centered seasonal moving average. That’s okay too. For
+
+instance, a quarterly smoother might be smoothed at time t is
+
+\( \dfrac{1}{5}x_{t-2}+\dfrac{1}{5}x_{t-1}+\dfrac{1}{5}x_t +\dfrac{1}{5}x_{t+1}+\dfrac{1}{5}x_{t+2}\)
+
+
+
+
+
+Example 5-3: Quarterly Beer Production in Australia
+
+In both Lesson 1 and Lesson 4, we looked at a series of quarterly beer production in Australia. The following R code
+
+creates a smoothed series that lets us see the trend pattern, and plots this trend pattern on the same graph as the time series.
+
+The second command creates and stores the smoothed series in the object called trendpattern.
+
+Note!
+
+Within the filter command, the parameter named filter gives the coefficients for our smoothing and sides = 2 causes a
+
+centered smooth to be calculated.
+
+
+
+
+
+
+Here’s the result:
+
+
+
+We might subtract the trend pattern from the data values to get a better look at seasonality. Here’s how that would be done:
+
+The result follows:
+
+
+
+Another possibility for smoothing series to see trend is the one-sided filter
+
+With this, the smoothed value is the average of the past year.
+
+
+
+
+
+beerprod = scan("beerprod.dat")
+
+trendpattern = filter (beerprod, filter = c(1/8, 1/4, 1/4, 1/4, 1/8), sides=2)
+
+plot (beerprod, type= "b", main = "moving average annual trend")
+
+lines (trendpattern)
+
+
+
+
+
+seasonals = beerprod - trendpattern
+
+plot (seasonals, type = "b", main = "Seasonal pattern for beer production")
+
+
+
+
+
+trendpattern2 = filter (beerprod, filter = c(1/4, 1/4, 1/4, 1/4), sides=1)
+
+
+
+
+
+Example 5-4: U.S. Monthly Unemployment
+
+
+
+
+
+
+Example 5-4: U.S. Monthly Unemployment
+
+In the homework for week 4 you looked at a monthly series of U.S. Unemployment for 1948-1978. Here’s a smoothing
+
+done to look at the trend.
+
+Only the smoothed trend is plotted. The second command identifies the calendar time characteristics of the series. That
+
+makes the plot have a more meaningful axis. The plot follows.
+
+
+
+Non-Seasonal Series
+
+For non-seasonal series, you aren’t bound to smooth over any particular span. For smoothing you should experiment with
+
+moving averages of different spans. Those spans of time could be relatively short. The objective is to knock off the rough
+
+edges to see what trend or pattern might be there.
+
+Other Smoothing Methods (Section 2.3)
+
+Section 2.3 describes several sophisticated and useful alternatives to moving average smoothing. The details may seem
+
+sketchy, but that's okay because we don’t want to get bogged down in lots of details for those methods. Of the alternative
+
+methods described in Section 2.3, lowess (locally weighted regression) may be the most widely used.
+
+Example Continued
+
+The following plot is the smoothed trend line for the U.S. Unemployment series, found using a lowess smoother in which a
+
+substantial amount (2/3) contributed to each smoothed estimate.
+
+The commands used were
+
+
+
+
+
+
+
+trendunemploy = filter(unemploy, filter = c(1/24,1/12,1/12,1/12,1/12,1/12,1/12,1/12,1/12,1/12,1/12,1/12,1/24)
+
+, sides = 2)
+
+trendunemploy = ts(trendunemploy, start = c(1948,1), freq = 12)
+
+plot (trendunemploy, main="Trend in U.S. Unemployment, 1948-1978", xlab = "Year")
+
+Note!
+
+This smoothed the series more aggressively than the moving average.
+
+
+
+
+
+unemploy = ts(unemploy, start = c(1948,1), freq=12)
+
+plot(lowess(unemploy, f = 2/3), main ="Lowess smoothing of U.S. Unemployment Trend")
+
+
+
+
+
+
+
+
+Single Exponential Smoothing
+
+The basic forecasting equation for single exponential smoothing is often given as
+
+\( \widehat{x}_{t+1} = \alpha x_t + (1-\alpha)\widehat{x}_t \text{                 (1)}\)
+
+We forecast the value of x at time \(t\)+1 to be a weighted combination of the observed value at time \(t\) and the
+
+forecasted value at time \(t\). Although the method is called a smoothing method, it’s principally used for short run
+
+forecasting.
+
+The value of \(\alpha\) is called the smoothing constant. For whatever reason, \(\alpha\) = 0.2 is a popular default choice
+
+of programs. This puts a weight of .2 on the most recent observation and a weight of 1 − .2 = .8 on the most recent
+
+forecast. With a relatively small value of \(\alpha\), the smoothing will be relatively more extensive. With a relatively large
+
+value of \(\alpha\), the smoothing is relatively less extensive as more weight will be put on the observed value.
+
+This is simple one-step ahead forecasting method that at first glance seems not to require a model for the data. In fact, this
+
+method is equivalent to the use of an ARIMA(0,1,1) model with no constant.
+
+The optimal procedure is to fit an ARIMA (0,1,1) model to the observed dataset and use the results to determine the value
+
+of \(\alpha\). This is “optimal” in the sense of creating the best \(\alpha\) for the data already observed.
+
+Although the goal is smoothing and one step ahead forecasting, the equivalence to the ARIMA(0,1,1) model does bring up a
+
+good point. We shouldn't blindly apply exponential smoothing because the underlying process might not be well modeled by
+
+an ARIMA(0,1,1).
+
+ARIMA(0,1,1) and Exponential Smoothing Equivalence
+
+Consider an ARIMA(0,1,1) with mean \(\mu\) = 0 for the first differences, x  - x  :
+
+The model is \(x_t-x_{t-1}=w_t + \theta_1 w_{t-1}\).
+
+Equivalently, \(x_t=x_{t-1}+w_t + \theta_1 w_{t-1}\).
+
+To forecast at time \(t+1\), we consider \(x_{t+1}=x_t+w_{t+1} +\theta_1 w_t\).
+
+Because \(w_{t+1} = x_{t+1}-\widehat{x}_{t+1},\)
+
+\begin{align} \widehat{x}_{t+1} &amp; =  x_t + \theta_1 w_t \\ &amp; =  x_t + \theta_1(x_t-\widehat{x}_t)\\ &amp; =  (1 + \theta_1)x_t
+
+- \theta_1\widehat{x}_t\end{align}.
+
+If we let \(\alpha\) = (1+ \(\theta_1\)) and thus -(\(\theta_1\)) = 1−\(\alpha\), we see the equivalence to equation (1) above.
+
+Why the Method is Called Exponential Smoothing
+
+Starting with \(\widehat{x}_{t+1} = \alpha x_{t} + (1-\alpha)\widehat{x}_t\), we can substitute for \(\widehat{x}_t\).
+
+t
+
+t-1
+
+
+
+
+
+
+Starting with \(\widehat{x}_{t+1} = \alpha x_{t} + (1-\alpha)\widehat{x}_t\), we can substitute for \(\widehat{x}_t\).
+
+This yields the following:
+
+\begin{align} \widehat{x}_{t+1} &amp; =  \alpha x_t + (1-\alpha)[\alpha x_{t-1}+(1-\alpha)\widehat{x}_{t-1}]\\ &amp; =  \alpha
+
+x_t + \alpha(1-\alpha)x_{t-1} + (1-\alpha)^2\widehat{x}_{t-1}\end{align}
+
+Continue in this fashion by successively substituting for the forecasted value on the right side of the equation. This leads to:
+
+\begin{align} &amp;\widehat{x}_{t+1} = \alpha x_t + \alpha(1-\alpha)x_{t-1} + \alpha(1-\alpha)^2 x_{t-2} + \dots\\ &amp;+
+
+\alpha(1-\alpha)^j x_{t-j} + \dots + \alpha(1-\alpha)^{t-1}x_1 \text{(2)}\end{align}
+
+Equation 2 shows that the forecasted value is a weighted average of all past values of the series, with exponentially
+
+changing weights as we move back in the series.
+
+Optimal Exponential Smoothing in R
+
+Basically, we just fit an ARIMA(0,1,1) to the data and determine the \(\alpha\) coefficient. We can examine the fit of the
+
+smooth by comparing the predicted values to the actual series. Exponential smoothing tends to be used more as a
+
+forecasting tool than a true smoother, so we’re looking to see if we have a good fit.
+
+
+
+
+
+Example 5-5
+
+n = 100 monthly observations of the logarithm of an oil price index in the United States. The data series is:
+
+
+
+An ARIMA(0,1,1) fit in R gave an MA(1) coefficient = 0.3877. Thus \(\alpha\) = (1+ \(\theta_1\)) = 1.3877 and 1- \
+
+(\alpha\) = -0.3877. The exponential smoothing forecasting equation is
+
+\(\widehat{x}_{t+1} = 1.3877x_t - 0.3877\widehat{x}_t\)
+
+At time 100, the observed value of the series is x
+
+ = 0.86601. The predicted value for the series at that time is
+
+\(\widehat{x}_{100}= 0.856789\)
+
+Thus the forecast for time 101 is
+
+\(\widehat{x}_{101} = 1.3877x_{100} - 0.3877\widehat{x}_{100} = 1.3877(0.86601)-0.3877(0.856789) = 0.8696\)
+
+Following is how well the smoother fits the series. It’s a good fit. That’s a good sign for forecasting, the main purpose for
+
+this “smoother.”
+
+
+
+100
+
+
+« Previous
+
+Lesson
+
+ Lesson 1: Time Series Basics
+
+ Lesson 2: MA Models, Partial Autocorrelation, Notational Conventions
+
+ Lesson 3: Identifying and Estimating ARIMA models; Using ARIMA models to forecast future values
+
+ Lesson 4: Seasonal Models
+
+ Lesson 5: Smoothing and Decomposition Methods and More Practice with ARIMA models
+
+
+
+
+
+
+
+Here are the commands used to generate the output for this example:
+
+
+
+
+
+oilindex = ts(scan("oildata.dat"))
+
+plot (oilindex, type = "b", main = "Log of Oil Index Series")
+
+expsmoothfit = sarima(oilindex, 0,1,1, no.constant=T) #Force the constant to 0 with the no.constant option
+
+expsmoothfit # to see the arima result.  expsmoothfit is a list in R and we can access parts of a list with t
+
+he $ notation
+
+predicteds = oilindex - resid(expsmoothfit$fit) # predicted values
+
+plot (oilindex, type="b", main = "Exponential Smoothing of Log of Oil Index")
+
+lines (predicteds)
+
+1.3877*oilindex[100]-0.3877*predicteds[100] # forecast for time 101
+
+
+
+Double Exponential Smoothing
+
+Double exponential smoothing might be used when there's trend (either long run or short run), but no seasonality.
+
+Essentially the method creates a forecast by combining exponentially smoothed estimates of the trend (slope of a straight
+
+line) and the level (basically, the intercept of a straight line).
+
+Two different weights, or smoothing parameters, are used to update these two components at each time.
+
+The smoothed “level” is more or less equivalent to a simple exponential smoothing of the data values and the smoothed
+
+trend is more or less equivalent to a simple exponential smoothing of the first differences.
+
+The procedure is equivalent to fitting an ARIMA(0,2,2) model, with no constant; it can be carried out with an
+
+ARIMA(0,2,2) fit.
+
+\[(1-B)^2 x_t = (1+\theta_1B + \theta_2B^2)w_t.\]
+
+
+ Lesson 6: The Periodogram
+
+ Lesson 8: Regression with ARIMA errors, Cross correlation functions, and Relationships between 2 Time Series
+
+ Lesson 9: Prewhitening; Intervention Analysis
+
+ Lesson 10: Longitudinal Analysis/ Repeated Measures
+
+ Lesson 11: Vector Autoregressive Models/ ARCH Models
+
+ Lesson 12: Spectral Analysis
+
+ Lesson 13: Fractional Differencing and Threshold Models
+
+ Lesson 14: Review
+
+Resources
+
+Introduction to R
+
+Learning Online Orientation
+
+OPEN.ED@PSU
+
+Except where otherwise noted, content on this site is licensed under a CC BY-NC 4.0 license.
+
+     
+
+  | Contact Us | Privacy | Non-discrimination | Equal Opportunity | Accessibility | Copyright
+
+The Pennsylvania State University © 2023
+

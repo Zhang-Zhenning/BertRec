@@ -1,0 +1,668 @@
+
+
+
+Log in
+
+Sign up
+
+
+
+digitgopher
+
+227
+
+1
+
+2
+
+9
+
+
+
+Aslan986
+
+756
+
+2
+
+9
+
+18
+
+
+
+Ron Coleman
+
+246
+
+2
+
+3
+
+What is the difference between EM and Gradient Ascent?
+
+Asked 10 years, 4 months ago
+
+Modified 5 months ago
+
+Viewed 15k times
+
+35
+
+ 
+
+ 
+
+What is the difference between the algorithms EM (Expectation Maximization) and Gradient Ascent (or descent)? Is there any condition under which they are equivalent?
+
+Share
+
+Improve this question
+
+edited Oct 9, 2015 at 0:04
+
+asked Dec 11, 2012 at 10:34
+
+I thought this paper would be very useful: Smooth On-Line Learning Algorithms for Hidden Markov Models
+
+– Lerner Zhang
+
+Mar 28, 2020 at 8:40
+
+@Aslan986 I'm a bit late to the question but I left an answer underneath you may find helpful in your understanding of EM algorithm, if you still have the question anyway.
+
+– Lucas Roberts
+
+May 18, 2020 at 21:42
+
+3 Answers
+
+Sorted by:
+
+23
+
+ 
+
+From:
+
+Abstract:
+
+Page 2
+
+Page 3
+
+This is, the paper provides explicit transformations of the EM algorithm into gradient-ascent, Newton, quasi-Newton.
+
+From wikipedia
+
+Share
+
+Improve this answer
+
+edited Dec 11, 2012 at 12:11
+
+answered Dec 11, 2012 at 10:51
+
+12
+
+This answer seems to hint that EM and gradient descent are basically the same algorithm, with transformations available to switch from one algorithm to the other. This is definitely not true in general, and strongly depends on
+
+the generative model taken into consideration. The paper cited only draws conclusions for Gaussian mixture models (which are relatively simple generative models), and rightly so. In my (admittedly limited) experience, when the
+
+model is highly non-linear and the role of the latent variables is important, EM is the only way to derive sensible update rules.
+
+– blue
+
+Sep 12, 2016 at 21:47
+
+10
+
+ 
+
+ 
+
+No, they are not equivalent. In particular, EM convergence is much slower.
+
+Ask Question
+
+gradient-descent
+
+expectation-maximization
+
+Cite
+
+Follow
+
+
+
+
+
+Highest score (default)
+
+Xu L and Jordan MI (1996). On Convergence Properties of the EM Algorithm for Gaussian Mixtures. Neural Computation 2: 129-151.
+
+We show that the EM step in parameter space is obtained from the gradient via a projection matrix P, and we provide an explicit expression for the matrix.
+
+In particular we show that the EM step can be obtained by pre-multiplying the gradient by a positive denite matrix. We provide an explicit expression for the matrix ...
+
+That is, the EM algorithm can be viewed as a variable metric gradient ascent algorithm ...
+
+There are other methods for finding maximum likelihood estimates, such as gradient descent, conjugate gradient or variations of the Gauss–Newton method. Unlike EM, such methods typically require the evaluation of first
+
+and/or second derivatives of the likelihood function.
+
+Cite
+
+Follow
+
+
+
+
+
+
+Elvis
+
+12.3k
+
+38
+
+56
+
+If you are interested in an optimization point-of-view on EM, in this paper you will see that EM algorithm is a special case of wider class of algorithms (proximal point algorithms).
+
+Share
+
+Improve this answer
+
+edited Dec 11, 2012 at 11:43
+
+answered Dec 11, 2012 at 11:36
+
+3
+
+Or for a similar sort of idea, Hinton and Neal (1998)
+
+– conjugateprior
+
+Dec 11, 2012 at 23:33
+
+4
+
+"EM convergence is much slower"; this is not well defined, and certainly not generally true. EM algorithms are an entire class of algorithms. For many problems, a certain EM algorithm is the state of the art.
+
+– Cliff AB
+
+Jun 30, 2016 at 23:15
+
+1
+
+@CliffAB please don‘t hesitate to elaborate on this, I would love to read your arguments — as I read this answer from 4 years, I realize that I wouldn’t answer this today. Since then I discovered that in many cases, the EM is a
+
+gradient ascent with a 'learning rate' parameter depending on the current point... (I may edit this answer in a while to point results of the sort)
+
+– Elvis
+
+Jul 1, 2016 at 6:01 
+
+"Slower convergence" could be defined in term of convergence rate. The convergence rate of a gradient ascent will depend on the 'learning rate', which is not easy to chose, making gradient ascent difficult in many cases. However
+
+I still have a gut feeling that while EM can be in some cases the only feasible algorithm (the derivatives of the likelihood or the likelihood itself being hard to compute), its convergence rate is poor, as compared to a Newton like
+
+method.
+
+– Elvis
+
+Jul 1, 2016 at 6:01
+
+1
+
+@Elvis I added another answer beneath which you might find interesting based on your comment
+
+– Lucas Roberts
+
+May 16, 2020 at 18:47
+
+Show 3 more comments
+
+7
+
+ 
+
+ 
+
+I wanted to follow up (even though this is some years later) on the OP's second question:
+
+Is there any condition under which they are equivalent?
+
+In fact there is a condition under which they're equivalent.
+
+The first order EM algorithm is gradient descent on the marginal likelihood function.
+
+To parse the implications of this statement you need the precise definitions and the derivation, which is pretty straightforward so I'll sketch it here:
+
+The statement above is literally, ∇θQn(θ|θt)|θ=θt = ∇θl(θ). Define,
+
+Qn(θ|θt) =
+
+1
+
+n
+
+n
+
+∑
+
+i=1 ∫zkθt(z|yi)logfθ(yi,z)dz .
+
+Here z is the unobserved or "latent" variable, kθt(z|yi) its conditional distribution, yi are observed data, and θt is the parameter value at iteration t, θ is the parameter you are optimizing for in the EM algorithm. Further
+
+l(θ) =
+
+1
+
+n
+
+n
+
+∑
+
+i=1log ∫zfθ(yi,z)dz
+
+Now consider,
+
+∇θQn(θ|θt) =
+
+1
+
+n
+
+n
+
+∑
+
+i=1 ∫zkθt(z|yi)∇θlogfθ(yi,z)dz .
+
+The right-hand side of the equation is:
+
+1
+
+n
+
+n
+
+∑
+
+i=1 ∫zkθt(z|yi)∇θlogfθ(yi,z)dz =
+
+1
+
+n
+
+n
+
+∑
+
+i=1 ∫zkθt(z|yi)
+
+∇θfθ(yi,z)dz
+
+fθ(yi,z)
+
+.
+
+Next write out the definition of the conditional distribution,
+
+1
+
+n
+
+n
+
+∑
+
+i=1 ∫zkθt(z|yi)
+
+∇θfθ(yi,z)dz
+
+fθ(yi,z)
+
+=
+
+1
+
+n
+
+n
+
+∑
+
+i=1 ∫z
+
+fθ(yi,z)
+
+fθ(yi)
+
+∇θfθ(yi,z)dz
+
+fθ(yi,z)
+
+.
+
+Now you cancel the fθ(yi,z) terms
+
+1
+
+n
+
+n
+
+∑
+
+i=1 ∫z
+
+∇θfθ(yi,z)dz
+
+fθ(yi)
+
+.
+
+Now switch the order of the integral and derivative to obtain
+
+1
+
+n
+
+n
+
+∑
+
+i=1
+
+∇θfθ(yi)
+
+fθ(yi)
+
+=
+
+1
+
+n
+
+n
+
+∑
+
+i=1 ∇θlogfθ(yi) ,
+
+and it is easy to see that this is the same as
+
+∇θl(θ),
+
+which shows the claim:
+
+The first order EM algorithm is gradient descent on the marginal likelihood function.
+
+Of course this makes the usual assumptions about interchange of derivative and integral, so if those assumptions are not valid, then the claim will not be valid. Those types of cases occur most frequently when a parameter is on the
+
+boundary of the support of the distribution and the derivative w.r.t. the parameter becomes a Dirac delta function which does not allow interchange of derivative and integral.
+
+The claim is made at the bottom of page 82 of the following paper:
+
+Share
+
+Improve this answer
+
+edited Nov 8, 2022 at 0:58
+
+Cite
+
+Follow
+
+
+
+{
+
+}
+
+(
+
+)
+
+{
+
+}
+
+{
+
+}
+
+{
+
+}
+
+{
+
+}
+
+{
+
+}
+
+{
+
+}
+
+{
+
+}
+
+{
+
+}
+
+Statistical guarantees for the EM algorithm: From population to sample-based analysis Sivaraman Balakrishnan, Martin J. Wainwright, Bin Yu Ann. Statist. 45(1): 77-120 (February 2017). DOI: 10.1214/16-AOS1435.
+
+Cite
+
+Follow
+
+
+CROSS VALIDATED
+
+Tour
+
+Help
+
+Chat
+
+Contact
+
+Feedback
+
+COMPANY
+
+Stack Overflow
+
+Teams
+
+Advertising
+
+Collectives
+
+Talent
+
+About
+
+Press
+
+Legal
+
+Privacy Policy
+
+Terms of Service
+
+Cookie Settings
+
+Cookie Policy
+
+STACK EXCHANGE NETWORK
+
+Technology
+
+Culture &amp; recreation
+
+Life &amp; arts
+
+Science
+
+Professional
+
+Business
+
+API
+
+Data
+
+Blog
+
+Facebook
+
+Twitter
+
+LinkedIn
+
+Instagram
+
+
+
+Lucas Roberts
+
+4,099
+
+1
+
+19
+
+48
+
+answered May 16, 2020 at 18:44
+
+Your Answer
+
+By clicking “Post Your Answer”, you agree to our terms of service, privacy policy and cookie policy
+
+Not the answer you're looking for? Browse other questions tagged gradient-descent
+
+expectation-maximization  or ask your own question.
+
+Linked
+
+1
+
+Can expectation maximization be used to optimize a quadratic function?
+
+17
+
+Why Expectation Maximization is important for mixture models?
+
+6
+
+If we have auto differentiate tool, do we also need EM algorithm?
+
+4
+
+Advantages and disadvantages of EM algorithm vs trust region methods for nonlinear optimization
+
+2
+
+Why use EM algorithm instead of just plain old ML for mixture model?
+
+3
+
+Benefits of Expectation Maximization for Mixture Models
+
+Related
+
+3
+
+What, exactly, does the "coordinate gradient descent algorithm" do?
+
+73
+
+What's the difference between momentum based gradient descent and Nesterov's accelerated gradient descent?
+
+2
+
+difference in learning rate between classic gradient descent and batch gradient descent
+
+3
+
+Why typically minimizing a cost instead of maximizing a reward?
+
+4
+
+Comaprsion between Natural Gradient Descent and Stochastic Gradient Descent
+
+1
+
+Bypassing inverse matrix calculation and the comparison of Gradient Descent and Newton Descent
+
+1
+
+gradient ascent vs gradient descent update rule
+
+Hot Network Questions
+
+
+
+How is white allowed to castle 0-0-0 in this position?
+
+
+
+“Parabolic”, suborbital and ballistic trajectories all follow elliptic paths. Is there a generic term for these trajectories?
+
+
+
+Manhwa where an orphaned woman is reincarnated into a story as a saintess candidate who is mistreated by others
+
+
+
+Is there a weapon that has the heavy property and the finesse property (or could this be obtained)?
+
+
+
+English version of Russian proverb "The hedgehogs got pricked, cried, but continued to eat the cactus"
+
+more hot questions
+
+ Question feed
+
+
+
+Post Your Answer
+
+Featured on Meta
+
+
+
+New blog post from our CEO Prashanth: Community is the future of AI
+
+
+
+Improving the copy in the close modal and post notices - 2023 edition
+
+
+Site design / logo © 2023 Stack Exchange Inc; user contributions licensed under CC BY-SA. rev 2023.4.21.43403
+
+Your privacy
+
+By clicking “Accept all cookies”, you agree Stack Exchange can store cookies on your device and disclose information in accordance with our Cookie Policy.
+
+ 
+
+Accept all cookies
+
+Necessary cookies only
+
+Customize settings
+

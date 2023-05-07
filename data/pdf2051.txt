@@ -1,0 +1,2033 @@
+
+Generative Mixture of Networks
+
+Ershad Banijamali
+
+SBANIJAM@UWATERLOO.CA
+
+School of Computer Science, University of Waterloo
+
+Ali Ghodsi
+
+AGHODSIB@UWATERLOO.CA
+
+Department of Statistics and Actuarial Science, University of Waterloo
+
+Pascal Poupart
+
+PPOUPART@UWATERLOO.CA
+
+School of Computer Science, University of Waterloo
+
+Abstract
+
+A generative model based on training deep ar-
+
+chitectures is proposed. The model consists of
+
+K networks that are trained together to learn the
+
+underlying distribution of a given data set. The
+
+process starts with dividing the input data into
+
+K clusters and feeding each of them into a sepa-
+
+rate network. After few iterations of training net-
+
+works separately, we use an EM-like algorithm to
+
+train the networks together and update the clus-
+
+ters of the data. We call this model Mixture of
+
+Networks. The provided model is a platform that
+
+can be used for any deep structure and be trained
+
+by any conventional objective function for dis-
+
+tribution modeling. As the components of the
+
+model are neural networks, it has high capabil-
+
+ity in characterizing complicated data distribu-
+
+tions as well as clustering data. We apply the al-
+
+gorithm on MNIST hand-written digits and Yale
+
+face datasets. We also demonstrate the clustering
+
+ability of the model using some real-world and
+
+toy examples.
+
+1. Introduction
+
+Deep architectures have shown excellent performance in
+
+various tasks of learning including, but not limited to, clas-
+
+siﬁcation and regression, dimension reduction, object de-
+
+tection, and voice recognition. In this work, we focus on
+
+another task, which is building a generative model. Gen-
+
+erative models are used to characterize the underlying dis-
+
+tribution of the data and then randomly generate samples
+
+according to their estimation of the distribution. Recently,
+
+use of deep architectures in the area of generative models
+
+is very popular among researchers.
+
+1.1. Related Works
+
+A fundamental work on deep generative models has been
+
+done by Hinton et al.
+
+(2006), where they introduced a
+
+fast algorithm for unsupervised training of deep belief net-
+
+works (DBNs), which are deep graphical models. In a re-
+
+cent work by Salakhutdinov (2015), a comprehensive re-
+
+view over this model is presented. Built upon this model,
+
+Lee et al. (2009) presented a similar network with convo-
+
+lutional layers. They introduced probabilistic max-pooling
+
+technique and constructed a translation-invariant model. In
+
+(Ranzato et al., 2011), another generative model based on
+
+DBNs was presented, which was used for image feature ex-
+
+traction. Unsupervised deep representation learning tech-
+
+niques have been used in (Bengio et al., 2013) to build
+
+a generative model that can exploit high-level features to
+
+generate high-quality samples.
+
+Two important and recent classes of deep generative mod-
+
+els are generative adversarial networks (GANs) (Good-
+
+fellow et al., 2014) and variational auto-encoders (VAE)
+
+(Kingma &amp; Welling, 2014). GANs are trained based on
+
+solving a minimax problem to generate samples that are not
+
+distinguishable from the samples in the training sets. Based
+
+on the variational inference concept, VAEs are designed for
+
+fast training and having explicit expression for posterior
+
+probability of the latent variable. Many recent advance-
+
+ments in the area of deep generative models are based on
+
+these two models (Radford et al., 2016; Chen et al., 2016;
+
+Denton et al., 2015; Sønderby et al., 2016).
+
+Different types of neural networks have been used to work
+
+as a generative model for different applications. In (Gregor
+
+et al., 2015), inspired by a human vision system, Recur-
+
+rent Neural Networks (RNNs) are trained for generating
+
+images. (Dai et al., 2014) proposed a method for training
+
+arXiv:1702.03307v1  [cs.LG]  10 Feb 2017
+
+
+Generative Mixture of Networks
+
+Convolutional Neural Networks (CNNs) for this purpose.
+
+In (Dosovitskiy et al., 2015), authors trained a deep neural
+
+network in a supervised way to be able to generate images
+
+of different objects given their names, locations, and angles
+
+of view.
+
+In almost all of these works, the probability distribution of
+
+the output of the networks do not have a well-structured
+
+form. So, we have limited ability to extend these models
+
+and build a mixture model based on them. In mixture of ex-
+
+pert models (Xu et al., 1995; Waterhouse et al., 1996), we
+
+have networks as the component of a mixture of discremi-
+
+native models, where we assume some speciﬁc probability
+
+distribution on the output of the networks (i.e. Gaussian).
+
+However, such assumption for generative models, where
+
+the output of the network is very high-dimensional, is not
+
+practical.
+
+1.2. Contribution
+
+In this work, we introduce an algorithm for training mixture
+
+of generative models, which consists of deep networks as
+
+its components. Instead of using the whole training dataset
+
+to train one single network, our model is based on train-
+
+ing multiple smaller networks by clusters of data. All the
+
+above-mentioned models can be components of this work
+
+to build a generative mixture model. The proposed method
+
+works under the assumption that components of a mixture
+
+model do not provide a closed form expression for the prob-
+
+ability distribution of their output. We provide an algo-
+
+rithm which is inspired by expectation maximization (EM)
+
+to overcome this challenge.
+
+There are multiple advantages for the proposed algorithm
+
+compared to its predecessors, including:
+
+• The accuracy of the output samples is higher, as each
+
+network is trained only with similar data points.
+
+• After training the model, users can decide the category
+
+of data they want to generate, instead of randomly
+
+generating samples.
+
+• The model, like other mixture models, can be used as
+
+a clustering method.
+
+In the next section, the general idea of mixture models is
+
+shortly overviewed. Then, we describe the steps of the al-
+
+gorithm in detail. At last, the performance of the proposed
+
+algorithm is evaluated, both as a clustering and a generative
+
+model.
+
+2. Background: Mixture Models and EM
+
+Mixture models are used to estimate the probability distri-
+
+bution of a given sample set where the overall distribution
+
+consists of several components. For the case of parametric
+
+mixture model, distribution of components are presumed
+
+to have some parametric form. Let θ denote the param-
+
+eter set of a mixture model that has K components, i.e.
+
+θ = {θ1, θ2, ..., θK}, where θj represents the parameters
+
+of jth component. For example, if the components are as-
+
+sumed to be Gaussian, then θj = {µj, Σj}. A popular
+
+way to estimate θj’s is using the Expectation Maximiza-
+
+tion (EM) algorithm. In the expectation (E) step of the EM
+
+algorithm, the membership probability of each data point
+
+is calculated for all components. In fact, it is the posterior
+
+probability over the mixture components. Let mij be the
+
+probability of being a member of the jth component given
+
+the ith data point, xi, i.e.:
+
+mij = P(j|xi, θj)
+
+(1)
+
+In the Maximization (M) step of the EM, the parameters of
+
+each component are updated using the membership proba-
+
+bilities. Each point contributes to updating the component
+
+parameters based on its component membership probabil-
+
+ity. To optimize the parameters, the E-step and M-step are
+
+consecutively taken until the algorithm converges to a local
+
+optimum or the maximum number of iterations is reached.
+
+3. Mixture of Networks
+
+Inspired by the mixture models, we propose a combined
+
+generative and clustering algorithm. The learning process
+
+is completely unsupervised.
+
+Components of our model
+
+are constructed by networks. Neural networks have shown
+
+strong capabilities in estimating the distribution of compli-
+
+cated datasets. In fact, there is no constraint on the form
+
+of the distribution for components, e.g. Gaussian, Poisson,
+
+etc. Therefore, there is no parameter θj for the components
+
+to describe the distribution explicitly. Instead, the parame-
+
+ters of our model are the weights in the networks that intro-
+
+duce an implicit probability distribution at the output of the
+
+networks. We denote the set of weights of the jth network
+
+by wj.
+
+We train multiple networks using the training data set. Sim-
+
+ilar to the EM algorithm, updating the network weights is
+
+based on membership probabilities. This means that we
+
+would like the points with high membership probability to
+
+an speciﬁc network to play signiﬁcant role in further train-
+
+ing that network. Therefore, the effect of different data
+
+points for updating the parameters of each network will be
+
+different. Each network tries to characterize one part of a
+
+multi-modal distribution function of the training data. In
+
+this section, we describe a mechanism that involves two
+
+steps of training and takes this problem into account.
+
+
+Generative Mixture of Networks
+
+3.1. Steps of the training
+
+Step 1: The process starts with clustering the training set
+
+into K partitions using a simple and hard-decision clus-
+
+tering algorithm, e.g.
+
+k-means.
+
+By hard-decision, we
+
+mean the algorithm will assign data point xi to exactly
+
+one cluster with probability one and to the rest of the clus-
+
+ters with probability zero. The knee method (Salvador &amp;
+
+Chan, 2004) can be used to determine the number of clus-
+
+ters.
+
+Suppose X is the training set with N data points
+
+X = {x1, x2, ..., xN} in RD, and X j represents the jth
+
+cluster in this set, X = {X 1; X 2; ...; X K}. The cluster-
+
+ing algorithm will divide the distribution of the training
+
+data into K parts. Each of these parts contains similar data
+
+points and has a smoother behavior compared to the origi-
+
+nal distribution of the whole data set.
+
+Each cluster of the data is used to train one network, i.e. the
+
+jth network is trained by the jth cluster. Therefore, there
+
+will be K networks. The structures of the networks, i.e. the
+
+number of layers and number of neurons in each layer, are
+
+identical. But, as we train networks with different subsets
+
+of the training set, parameters of the networks will be dif-
+
+ferent. The ultimate goal for the networks is to minimize
+
+their deﬁned cost function by adjusting their parameters.
+
+The cost function is a measure of dissimilarity between the
+
+training set and generated sample sets of a network. Let us
+
+denote the cost function for the jth network by Cj. w∗
+
+j is
+
+the optimum value for the jth network’s parameters if and
+
+only if:
+
+w∗
+
+j = arg min
+
+wj Cj(Xj, Y (wj))
+
+(2)
+
+where Y (wj) is the set of samples generated by jth net-
+
+work.
+
+Mini-batch stochastic gradient descent (SGD) is
+
+used for training to ﬁnd a local optimum for wj.
+
+Algorithm 1 Training jth network by hard-decision clus-
+
+ters
+
+- Initialize the network parameter wj randomly
+
+for t = 1 to T1 do
+
+- Divide Xj randomly into b mini batches of size B.
+
+for i = 1 to b do
+
+- Choose the ith mini batch of Xj
+
+- Generate B output samples by the jth network us-
+
+ing random input
+
+- Update the network parameters
+
+wj ← wj − α ∂Cj
+
+∂wj
+
+(3)
+
+end for
+
+end for
+
+Algorithm 1, describes the steps of the training of jth net-
+
+work using the jth cluster. The input of the network is a
+
+p-dimensional vector whose elements are drawn indepen-
+
+dently from a uniform distribution. The parameters of the
+
+networks are initialized randomly. Parameter α in (3) is the
+
+learning rate. The training process is done for T1 epochs
+
+of each cluster. Let ˆwj denote the parameters of network j
+
+after this step of training.
+
+Step 2: After step 1, the output of the networks tend to
+
+be similar to their input datasets, which are clusters of the
+
+training set. Now, we propose an iterative model that works
+
+like the mixture models. It involves a process in which
+
+we further train the networks and cluster the training data
+
+set together. Clustering in this step is soft-decision, i.e.
+
+point i belongs to cluster j with membership probability
+
+mij ∈ [0, 1]. Training the networks is also affected by
+
+these probabilities and different points will contribute dif-
+
+ferently in updating the parameters of the networks. How-
+
+ever, instead of making any assumption on the distribution
+
+of the model’s components, we propose an updating algo-
+
+rithm that is based on the output of trained networks in pre-
+
+vious iterations. This means that if a data point is simi-
+
+lar to the current outputs of one network, then it will have
+
+a high level of contribution in updating the parameters of
+
+that network in the next iteration. Note that in step 2 of
+
+the algorithm, the whole training set is used to train each
+
+network.
+
+To calculate the membership probabilities, we should have
+
+the probability distribution function for each component or
+
+network.
+
+As we did not impose such constraint on our
+
+model, we use kernel similarity between the data points
+
+and the generated samples of each network. In order to
+
+do this measurement, we generate S samples by each of
+
+the networks. Y j = Y ( ˆwj) = {yj
+
+1, yj
+
+2, ..., yj
+
+S} represents
+
+the set of samples generated by jth network. Let ℓij denote
+
+similarity of data point xi to the samples in Y j. Then:
+
+ℓij = p(xi| ˆwj) = 1
+
+S
+
+S
+
+�
+
+r=1
+
+k(xi, yj
+
+r)
+
+(4)
+
+The kernel that we use here is Gaussian.
+
+The membership probability also needs the prior probabil-
+
+ity over each component, which is denoted by πj. The ini-
+
+tial value of πj in step 2 is: πj = |Xj|/N. Here, the mem-
+
+bership probability is interpreted as the probability that net-
+
+work j has produced data point xi, and is given by:
+
+mij =
+
+ℓijπj
+
+�K
+
+k=1 ℓikπk
+
+(5)
+
+Note that we should have �K
+
+r=1 mir = 1. Value of the
+
+prior probabilities after the ﬁrst iteration in this step is up-
+
+dated by: πj = (�N
+
+i=1 mij)/N. Similar to the EM algo-
+
+rithm, we want the effect of point xi in updating parame-
+
+ters of network j ( ˆwj) to be proportional to mij. To do so,
+
+
+Generative Mixture of Networks
+
+we multiply the membership probabilities to the learning
+
+rate of the SGD algorithm. If a membership is high, then
+
+the learning rate will be high and the effect of that point
+
+will be high. If the membership probability is low and near
+
+zero, the learning rate will be near zero and the algorithm
+
+will not update the network parameters based on that point.
+
+Lets call ℓi = {ℓi1, ℓi2, ..., ℓiK} the likelihood vector as-
+
+signed to the ith data point. Suppose that likelihood of all
+
+points for all networks are stored in an N × K matrix L .
+
+Each row of this matrix is corresponding to one point in
+
+the training set. Using the above procedure, this matrix is
+
+updated iteratively (after using each epoch to update all net-
+
+works parameters). The initial value of likelihood matrix is
+
+obtained by generating S samples using each of the trained
+
+networks in the step 1.
+
+In order to accelerate the learning process, we use mini-
+
+batch SGD here, as well. We need to deﬁne mini-batch
+
+membership. The membership of mini-batch bi of size B
+
+for the jth network is deﬁned as mbi,j = P(j| ˆwj, {xr ∈
+
+bi}) and:
+
+mbi,j =
+
+p({xr ∈ bi}| ˆwj)πj
+
+K
+
+�
+
+k=1
+
+p({xr ∈ bi}| ˆwk)πk
+
+=
+
+πj
+
+�
+
+xr∈bi
+
+ℓrj
+
+K
+
+�
+
+k=1
+
+πk
+
+�
+
+xr∈bi
+
+ℓrk
+
+(6)
+
+For training the network j using bi, the learning rate is
+
+multiplied to mbi,j. According to (6), mbi,j contains the
+
+effect of B points together. However, these B points do
+
+not necessarily have similar likelihood vectors.
+
+So, the
+
+multiplication in (6) can mix the effect of important and
+
+non-important points for training an speciﬁc network. To
+
+solve this issue we should somehow put points which are
+
+important for training a network together. A systematic so-
+
+lution is to rearrange the rows of the likelihood matrix L
+
+at each iteration of the step 2, such that the ﬁrst N1 rows
+
+have the maximum likelihood in their ﬁrst columns, the
+
+next N2 rows have the maximum likelihood in their second
+
+columns, and so on. Where Nj = |{xi|ℓij ≥ ℓik , ∀k ̸=
+
+j}| and obviously �K
+
+k=1 Nk = N. The process is similar
+
+to the bootstrap sampling. The corresponding data points
+
+to the rows of L are also rearranged in the same way.
+
+Algorithm 2 summarizes the described procedure in the
+
+step 2. Rearranging data set X in this algorithm refers to
+
+the procedure stated above. Note that dividing the data into
+
+mini-batches is not random in the step 2. The whole pro-
+
+cess of this step is done for T2 epochs or iterations.
+
+After this step, the training process is ﬁnished. Now we
+
+have a hyper-network consists of K small networks with
+
+similar structures but different parameters.
+
+To generate
+
+samples randomly using the hyper-network, one of the net-
+
+works is randomly chosen based on the priors. That is,
+
+the jth network is chosen by probability πj. To generate a
+
+Algorithm 2 Training networks using soft-decision clus-
+
+ters
+
+- Initialize likelihood matrix L based on the clusters in
+
+Step 1
+
+for t = 1 to T2 do
+
+- Rearrange data set X
+
+- Divide X into ⌊ N
+
+B ⌋ mini-batches of size B.
+
+- Compute the mini-batch memberships.
+
+for j = 1 to K do
+
+Choose jth network
+
+for i = 1 to ⌊ N
+
+B ⌋ do
+
+- Choose ith mini-batch of X
+
+- Generate B samples by jth network
+
+- Update the network parameters
+
+ˆwj ← ˆwj − mbi,j × β ∂Cj
+
+∂ ˆwj
+
+(7)
+
+end for
+
+end for
+
+- Update the likelihood matrix L
+
+end for
+
+sample from a speciﬁc cluster, the corresponding network
+
+should be picked manually. Then using a random input, the
+
+selected network generates the desired sample.
+
+A feature that distinguishes this model from the previous
+
+unsupervised generative models is its capability to gener-
+
+ate a speciﬁc type of sample. For example, if the networks
+
+are trained over a set of face images with different expres-
+
+sions, then it can be used to generate a face in a special
+
+category (age, expression, illumination, and etc.), e.g. ”a
+
+laughing old man”, instead of generating samples randomly
+
+and waiting for our desired output. This can have many ap-
+
+plications including automatic visualization of text.
+
+3.2. Maximum Mean Discrepancy as the cost function
+
+The proposed structure in this paper can be trained by any
+
+conventional objective function at the output (for exam-
+
+ple the objective in (Dosovitskiy et al., 2015)). However,
+
+here we use the maximum mean discrepancy (MMD), in-
+
+troduced by Gretton et al. (2006), because of its simplic-
+
+ity and effectiveness. MMD was also used in two recent
+
+works (Dziugaite et al., 2015; Li et al., 2015). Therefore,
+
+the model parameters are learned based on minimizing the
+
+distance between the distribution of the samples generated
+
+by the network and samples from the training set, using
+
+MMD.
+
+Suppose x has distribution p and y has distribution q. Let
+
+F be a class of functions. The squared population MMD is:
+
+MMD2(F, p, q) =
+
+�
+
+sup
+
+f∈F
+
+�
+
+Ex[f(x)] − Ey[f(y)]
+
+��2. (8)
+
+
+Generative Mixture of Networks
+
+If F is a class of functions in the unit ball in a universal
+
+Reproducing Kernel Hilbert-Space (RKHS), then MMD is
+
+zero if and only if p = q (Gretton et al., 2012). In this case,
+
+MMD can also be written in the form of a continuous kernel
+
+in that RKHS.
+
+However, in our applications, the underlying pdf of the
+
+sample sets are unknown. Suppose we have two sample
+
+sets X = {x1, x2, ..., xM} and Y = {y1, y2, ..., yN}.
+
+The unbiased empirical estimation of the squared MMD,
+
+according to (Gretton et al., 2012), for these two sets is
+
+given as:
+
+MMD2(F, X , Y )=
+
+1
+
+M(M−1)
+
+M
+
+�
+
+i=1
+
+M
+
+�
+
+j̸=i
+
+k(xi, xj)
+
++
+
+1
+
+N(N−1)
+
+N
+
+�
+
+i=1
+
+N
+
+�
+
+j̸=i
+
+k(yi, yj)−
+
+2
+
+MN
+
+M
+
+�
+
+i=1
+
+N
+
+�
+
+j=1
+
+k(xi, yj)
+
+(9)
+
+We will use Gaussian kernel here too.
+
+3.3. Making the Algorithm Faster and More Effective
+
+Our results show that the batch membership can be very
+
+small for most of the batches. So, for each step of training
+
+of the networks, we only use the batches that have member-
+
+ship probability more than a threshold (in our experiments
+
+0.001) and do not use the rest of the batches that have neg-
+
+ligible batch memberships. This way, the training process
+
+will be much faster.
+
+In (Ramdas et al., 2015), authors have shown that the power
+
+of kernel-based methods, such as MMD, for two-sample
+
+test problem drops polynomially with increasing dimen-
+
+sions. This suggests that a dimension reduction is helpful
+
+as a data pre-processing step for high-dimension datasets.
+
+Using an autoencoder is a solution here. We train an au-
+
+toencoder separately using the complete training dataset.
+
+The networks in this scenario should be trained using a low-
+
+dimensional version of data. At the output of the genera-
+
+tive networks, the decoder part of the autoencoder is used
+
+to map the data back into the original space. The hard-
+
+decision clustering in the ﬁrst step of our algorithm can be
+
+either performed on the original data or its low-dimensional
+
+version.
+
+4. Experiment Results
+
+To highlight the clustering capability of the proposed algo-
+
+rithm, we ﬁrst apply it on synthetic toy datasets and real-
+
+world datasets. Then, we apply the algorithm on two real-
+
+world datasets: MNIST hand-written digits dataset and the
+
+Yale Face Database. In all of these experiments, the com-
+
+ponents of the model are fully-connected networks with
+
+multiple layers. Input to the networks is a random vector
+
+with elements drawn independently from uniform distribu-
+
+tion in [−1, 1]. The number of layers, number of hidden
+
+units in each layer, and the dimension of random input de-
+
+pend on the dataset. The activation function for all hidden
+
+layers is ReLU and sigmoid for the output layer. All hy-
+
+per parameters of the model are set by validation. For each
+
+dataset, we keep a portion of data points only for validation.
+
+This portion is not used for training. The validation set is
+
+also used to prevent overﬁtting. We continue the training
+
+until the average log-likelihood of the validation set is sat-
+
+urated.
+
+4.1. Performance as a clustering algorithm
+
+4.1.1. TOY DATASETS
+
+In this section, we use three small toy datasets to visual-
+
+ize the clustering performance of the algorithm. We call
+
+these datasets two-moon, moon-circle, and two-circle. The
+
+ﬁrst two datasets have 4000 data points and the last one has
+
+4500 data points. All datasets have two dimensions. The
+
+datasets are ﬁrst divided into two parts using k-means and
+
+then fed to the model. The model has two networks. We
+
+used similar structure for the networks for all datasets. The
+
+networks has 3 hidden layers with 32, 128, and 32 hidden
+
+units. The input to the network is 2-dimensional. For all of
+
+the experiments T1 = 30, T2 = 200, and B = 100.
+
+Fig.
+
+1 shows the results of these experiments.
+
+As we
+
+can see, the algorithm could learn the model parameters to
+
+identify the natural clusters. This shows that the algorithm
+
+can successfully characterize the distribution of data clus-
+
+ters. Conventional mixture models, such as Gaussian mix-
+
+ture model, obviously fail to identify these clusters for two-
+
+moon and moon-circle.
+
+Clustering algorithms based on
+
+similarity matrices, such as spectral clustering, could have
+
+also identiﬁed clusters, but they do not possess the genera-
+
+tive aspect of our model. Besides, these algorithms usually
+
+include an eigen-decomposition step, which is very com-
+
+putationally expensive when it comes to clustering large
+
+datasets.
+
+4.1.2. REAL-WORLD DATASETS
+
+Here, we also evaluate the clustering performance of the
+
+algorithm for some real-world datasets based on cluster-
+
+ing purity (CP). CP is deﬁned for a labeled dataset as
+
+a measure of matching between classes and clusters. If
+
+{C1, C2, ..., CL} are L classes of a dataset X of size N,
+
+then a clustering algorithm, A, which divides X into K
+
+clusters {X1, X2, ..., XK} has CP(A, X) as:
+
+CP(A, X) = 1
+
+N
+
+K
+
+�
+
+j=1
+
+max
+
+i
+
+|Ci ∩ Xj|.
+
+(10)
+
+Note that we specify the ﬁnal clusters by assigning each
+
+point to the cluster with highest membership probability.
+
+
+Generative Mixture of Networks
+
+0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1
+
+0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1
+
+0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1
+
+0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1
+
+(a)
+
+0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1
+
+0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1
+
+(b)
+
+0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1
+
+0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1
+
+0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1
+
+0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1
+
+(c)
+
+Figure 1. (a), (b), and (c) represent three different datasets. The
+
+left ﬁgure shows the initial clustering by k-means and the right
+
+ﬁgure shows the ﬁnal clusters using the proposed method as well
+
+as the contour of membership probability and its isolines.
+
+Table 1 shows the results of clustering for four different
+
+datasets.
+
+1) COIL-20: 32 × 32 images of 20 different
+
+objects from different angels. Dataset has 72 images in
+
+each class. 2) Reuters-10K: Reuters dataset (GLewis &amp; Li,
+
+2004), contains 810000 English news stories in different
+
+categories. We followed the same procedure in (Xie et al.,
+
+2016) to obtain 10000 samples from this set in 4 categories.
+
+3) USPS: This dataset contains 16 × 16 images of hand-
+
+written digits. 4) Isolet: This is from UCI repository and
+
+contains the spoken alphabet letter from different individ-
+
+uals. Other statistics of the datasets are mentioned in the
+
+table. Number of clusters for these experiments are chosen
+
+to be equal to number of classes.
+
+We compared the performance of the algorithm with 4
+
+other algorithms.
+
+k-means, which is used as the initial
+
+clustering for our method as well. The other three algo-
+
+rithms are based on spectral clustering. NCut is the clas-
+
+sic spectral clustering, which assigns cluster labels to the
+
+data points by running k-means on the eigenvectors of the
+
+Laplacian matrix of dataset graph. Local linear approach
+
+for data clustering (LLC) (Wu &amp; Schlkopf, 2006), assigns
+
+cluster labels to each data point based on linear combi-
+
+nation of the kernel similarity between that point and its
+
+neighbors. Finally, local discriminant models and global
+
+integration (LDMGI) (Yang et al., 2010), which introduces
+
+a novel method for the learning Laplacian matrix by em-
+
+ploying manifold structure and local discriminant informa-
+
+tion. LDMGI is designed specially for image clustering.
+
+We run experiments 10 times to obtain the results in the
+
+table. As we can see, the proposed algorithm achieves the
+
+best or near-best results for different datasets.
+
+4.2. Performance as a generative model
+
+4.2.1. MNIST DATASET
+
+Samples of MNIST set are 28 × 28 images of hand-written
+
+digits. The dataset consists of 60000 training samples and
+
+10000 test samples. We use 5000 samples in the training
+
+set for validation and the rest for training networks.
+
+We ﬁrst train an autoencoder, which maps the original data
+
+to a 32-dimension space. Although, the knee method sug-
+
+gested 12 clusters here, we divided the training set into
+
+10 clusters using k-means to see if we can capture each
+
+class by a single network. So, we will have 10 networks
+
+to be trained.
+
+The networks have 4 hidden layers with
+
+64, 256, 256, and 512 units. Input of the networks is 12-
+
+dimensional. Each network is ﬁrst trained by Algorithm 1
+
+using its corresponding cluster for 30 epochs (T1 = 30).
+
+Then using Algorithm 2, the data points membership prob-
+
+abilities and network parameters are updated up to T2 =
+
+200 iterations. Batch size for both steps is 100. We use
+
+Table 1. Comparison of clustering purity (%) for different datasets. The bold numbers show the best results among these algorithms.
+
+d = dimensionality of the original space, n = dataset size, p = dimensionality of the low-dimensional dataset using autoencoder, L = #
+
+of classes
+
+Dataset
+
+d
+
+n
+
+p
+
+L
+
+k-means
+
+NCut
+
+LLC
+
+LDMGI
+
+Mix. of Nets
+
+Networks Structure
+
+COIL-20
+
+1024
+
+1440
+
+32
+
+20
+
+62.3±3.1
+
+68.4±5.3
+
+67.5±5.1
+
+75.3±4.9
+
+77.6±3.1
+
+10-16-256-256-512-32
+
+Reuters-10K
+
+2000
+
+10000
+
+128
+
+4
+
+53.1±2.8
+
+59.3±4.2
+
+57.1±3.9
+
+43.2±3.7
+
+63.1±4.2
+
+12-64-256-512-512-128
+
+USPS
+
+256
+
+9298
+
+32
+
+10
+
+64.9±3.6
+
+73.4±6.3
+
+70.1±3.9
+
+80.5±5.6
+
+78.3±3.7
+
+10-16-256-256-512-32
+
+Isolet
+
+7797
+
+617
+
+32
+
+26
+
+63.7±2.8
+
+65.7±3.4
+
+69.3±2.7
+
+68.8±3.6
+
+71.3±3.0
+
+12-32-256-256-512-32
+
+
+Generative Mixture of Networks
+
+
+
+Figure 2. (a) Top: Samples generated randomly by the hyper-network using the cluster priors. The right most column shows samples
+
+from the training set which are nearest-neighbors of their adjacent images in the low-dimension space. This column is added to show
+
+that the generated samples are not merely a copy of the training samples. Bottom: Examples of digits of different classes that are
+
+mis-clustered by k-means and NCut but mixture of networks clustered them correctly. (b) For each of these 10 sub-images only one
+
+networks has been chosen to generate data. For each sub-image we generate two data points with different shapes (top-left corner and
+
+bottom-right corner) using two different random inputs. By traversing on an straight line in the latent space we obtain the other data
+
+points in the sub-image. As we can see, this shows that the model learns a proper mapping between the latent space and the data space.
+
+(c) Digits is each row are generated using one network. Digits in each of the last two columns are generated by giving identical input to
+
+different networks.
+
+weight decay as regularization to improve the generaliza-
+
+tion of the model.
+
+We repeated the whole process of training ten times. Using
+
+k-means, the initial value of CP on the low dimensional
+
+version of the data is 59.2±3.1. After applying our metho,d
+
+CP goes up to 80.3±4.2, which is close to the state-of-the-
+
+art clustering methods on MNIST according to (Xie et al.,
+
+2016).
+
+Fig. 2, shows the samples generated by our model. An
+
+evaluation measure that is commonly used for generative
+
+models is the average log-likelihood of the test set, also
+
+known as Parzen estimation. We generated 10000 samples
+
+randomly by the model and ﬁt a Gaussian Parzen Window.
+
+We report our model’s average log-likelihood of the test set
+
+for MNIST as 308 ± 2.8. Table 2, shows a comparison be-
+
+tween different methods in terms of average log-likelihood.
+
+However, based on (Theis et al., 2015), this evaluation for
+
+generative models can be misleading, as samples gener-
+
+ated by a naive methods may achieve higher log-likelihood,
+
+even compared to the data used for training the generative
+
+model.
+
+Table 2. Average log-likelihood using Parzen window for Differ-
+
+ent generative models on MNIST dataset DBN: Deep Belief Net-
+
+work, Stacked CAE: Stacked Contractive Auto-Encoder, Deep
+
+GSN: Deep Generative Stochastic Network (Bengio et al., 2014),
+
+GAN: Generative Adversarial Network, GMMN+AE: Generative
+
+Moment Matching Network with Autoencoder, Mixture of Net-
+
+works: Our model.
+
+MODEL
+
+AVERAGE LOG-LIKELIHOOD
+
+DBN
+
+138 ± 2
+
+STACKED CAE
+
+121 ± 1.6
+
+DEEP GSN
+
+214 ± 1.1
+
+GAN
+
+225 ± 2
+
+GMMN+AE
+
+282 ± 2
+
+MIXTURE OF NETWORKS
+
+308 ± 2.8
+
+4.2.2. FACE DATASET
+
+The other training set we used is the Cropped Extended
+
+Yale Face Database B (Lee et al., 2005; Georghiades et al.,
+
+2001). The dataset contains 2414 near frontal images of 38
+
+individuals under different illuminations. The size of each
+
+image is 32 × 32. We use 214 data points for validation
+
+and the rest for training. Using autoencoder dimension is
+
+reduced from 1024 to 128. We employ k-means to partition
+
+the low-dimension data into four clusters. This number is
+
+actually suggested by the knee stability method. Then, Al-
+
+
+Generative Mixture of Networks
+
+
+
+Figure 3. Top: Samples generated by the hyper-network using
+
+cluster priors. The right most column shows samples from the
+
+training set which are nearest-neighbors of their adjacent images
+
+in the low-dimension space. Bottom: Images generated by net-
+
+works corresponding to each cluster. Each row is generated by
+
+one network. We can see the difference in the generated images
+
+which comes from different illuminations. The inputs to the net-
+
+works for generating each of the last two columns are identical
+
+for all networks.
+
+gorithms 1 and 2 are applied to the four networks, consec-
+
+utively. The networks have 4 hidden layers with 32, 128,
+
+256, and 512 units. For this dataset, the random input is 10-
+
+dimensional and T1 = 10 and T2 = 100. The mini batches
+
+in both steps of the algorithm contain 120 samples.
+
+Results of the simulations are demonstrated in Fig. 3. Net-
+
+works produce images in different categories. Categories
+
+of data captured by clusters are based on lighting of the im-
+
+ages (front lighting, sides lighting, and no lighting). We
+
+can also see the smooth changes in the faces when we pick
+
+one network and traverse in the latent space. This shows
+
+that the networks have learned a proper mapping between
+
+the latent space and the real image space.
+
+5. Conclusion and Future work
+
+We proposed an algorithm for developing a generative
+
+model using deep architectures. The algorithm has shown
+
+advantages compared to the previous generative models,
+
+which allows generating and clustering with high accuracy.
+
+The efﬁciency of applying the algorithm on MNIST hand-
+
+written digits and the Yale Face Database has been exam-
+
+ined, and results support our idea.
+
+It will be specially interesting if a small subset of data is
+
+labeled, or when a user has clusters a small portion of data
+
+for us and we want to cluster the rest of the data accord-
+
+ingly. In this situation the accuracy of clustering and, con-
+
+sequently, the generative model will increase signiﬁcantly.
+
+One application of this setting is when a hand-written text
+
+corpus is given to the model. If we label a small portion of
+
+the characters of the corpus and force the algorithm to fol-
+
+low the same rule for clustering the rest of the data, then we
+
+can build networks that can mimic handwriting. A related
+
+work can be found in (Kingma et al., 2014). Another direc-
+
+tion can be employing the Convolutional Neural Networks,
+
+which have shown great performance in vision tasks, in-
+
+stead of fully-connected networks. Then, combining the
+
+result by a natural language processing (NLP) model can
+
+be interesting. We can convert human language (text or
+
+voice) into picture, automatically.
+
+References
+
+Bengio, Yoshua, Mesnil, Gregoire, Dauphin, Yann, and Ri-
+
+fai, Salah. Better mixing via deep representations. In
+
+Proceedings of The 30th International Conference on
+
+Machine Learning, pp. 552–560, 2013.
+
+Bengio, Yoshua, Laufer, Eric, Alain, Guillaume, and
+
+Yosinski, Jason.
+
+Deep generative stochastic networks
+
+trainable by backprop. In Proceedings of The 31st Inter-
+
+national Conference on Machine Learning, pp. 226–234,
+
+2014.
+
+Chen, Xi, Duan, Yan, Houthooft, Rein, Schulman, John,
+
+Sutskever, Ilya, and Abbeel, Pieter.
+
+Infogan: Inter-
+
+pretable representation learning by information maxi-
+
+mizing generative adversarial nets.
+
+In Advances In
+
+Neural Information Processing Systems, pp. 2172–2180,
+
+2016.
+
+Dai, Jifeng, Lu, Yang, and Wu, Ying-Nian.
+
+Genera-
+
+tive modeling of convolutional neural networks. arXiv
+
+preprint arXiv:1412.6296, 2014.
+
+Denton, Emily L, Chintala, Soumith, Fergus, Rob, et al.
+
+Deep generative image models using a laplacian pyramid
+
+of adversarial networks. In Advances in neural informa-
+
+tion processing systems, pp. 1486–1494, 2015.
+
+Dosovitskiy, Alexey, Tobias Springenberg, Jost, and Brox,
+
+Thomas. Learning to generate chairs with convolutional
+
+neural networks. In Proceedings of the IEEE Conference
+
+on Computer Vision and Pattern Recognition, pp. 1538–
+
+1546, 2015.
+
+Dziugaite, Gintare Karolina, Roy, Daniel M, and Ghahra-
+
+mani, Zoubin.
+
+Training generative neural networks
+
+via maximum mean discrepancy optimization.
+
+arXiv
+
+preprint arXiv:1505.03906, 2015.
+
+
+Generative Mixture of Networks
+
+Georghiades, Athinodoros S, Belhumeur, Peter N, and
+
+Kriegman, David J. From few to many: Illumination
+
+cone models for face recognition under variable lighting
+
+and pose. Pattern Analysis and Machine Intelligence,
+
+IEEE Transactions on, 23(6):643–660, 2001.
+
+GLewis, David D, Yang Yiming Rose Tony G and Li, Fan.
+
+A new benchmark collection for text categorization re-
+
+search.
+
+The Journal of Machine Learning Research,
+
+2004.
+
+Goodfellow, Ian, Pouget-Abadie, Jean, Mirza, Mehdi, Xu,
+
+Bing, Warde-Farley, David, Ozair, Sherjil, Courville,
+
+Aaron, and Bengio, Yoshua. Generative adversarial nets.
+
+In Advances in Neural Information Processing Systems,
+
+pp. 2672–2680, 2014.
+
+Gregor, Karol, Danihelka, Ivo, Graves, Alex, Rezende,
+
+Danilo, and Wierstra, Daan.
+
+Draw: A recurrent neu-
+
+ral network for image generation.
+
+In Proceedings of
+
+The 32nd International Conference on Machine Learn-
+
+ing, pp. 1462–1471, 2015.
+
+Gretton, Arthur, Borgwardt, Karsten M, Rasch, Malte,
+
+Sch¨olkopf, Bernhard, and Smola, Alex J.
+
+A kernel
+
+method for the two-sample-problem.
+
+In Advances in
+
+neural information processing systems, pp. 513–520,
+
+2006.
+
+Gretton, Arthur, Borgwardt, Karsten M, Rasch, Malte J,
+
+Sch¨olkopf, Bernhard, and Smola, Alexander. A kernel
+
+two-sample test. The Journal of Machine Learning Re-
+
+search, 13(1):723–773, 2012.
+
+Hinton, Geoffrey E, Osindero, Simon, and Teh, Yee-Whye.
+
+A fast learning algorithm for deep belief nets. Neural
+
+computation, 18(7):1527–1554, 2006.
+
+Kingma, D. P. and Welling, M. Auto-encoding variational
+
+bayes. In ICLR, 2014.
+
+Kingma,
+
+Diederik
+
+P,
+
+Mohamed,
+
+Shakir,
+
+Rezende,
+
+Danilo Jimenez, and Welling, Max.
+
+Semi-supervised
+
+learning with deep generative models. In Advances in
+
+Neural Information Processing Systems, pp. 3581–3589,
+
+2014.
+
+Lee, Honglak, Grosse, Roger, Ranganath, Rajesh, and Ng,
+
+Andrew Y. Convolutional deep belief networks for scal-
+
+able unsupervised learning of hierarchical representa-
+
+tions. In Proceedings of the 26th Annual International
+
+Conference on Machine Learning, pp. 609–616. ACM,
+
+2009.
+
+Lee, Kuang-Chih, Ho, Jeffrey, and Kriegman, David J. Ac-
+
+quiring linear subspaces for face recognition under vari-
+
+able lighting. Pattern Analysis and Machine Intelligence,
+
+IEEE Transactions on, 27(5):684–698, 2005.
+
+Li, Yujia, Swersky, Kevin, and Zemel, Rich. Generative
+
+moment matching networks. In Proceedings of the 32nd
+
+International Conference on Machine Learning (ICML-
+
+15), pp. 1718–1727, 2015.
+
+Radford, Alec, Metz, Luke, and Chintala, Soumith. Unsu-
+
+pervised representation learning with deep convolutional
+
+generative adversarial networks. In ICLR, 2016.
+
+Ramdas,
+
+Aaditya,
+
+Reddi,
+
+Sashank Jakkam,
+
+P´oczos,
+
+Barnab´as, Singh, Aarti, and Wasserman, Larry. On the
+
+decreasing power of kernel and distance based nonpara-
+
+metric hypothesis tests in high dimensions. In Twenty-
+
+Ninth AAAI Conference on Artiﬁcial Intelligence, 2015.
+
+Ranzato,
+
+Marc
+
+Aurelio,
+
+Susskind,
+
+Joshua,
+
+Mnih,
+
+Volodymyr, and Hinton, Geoffrey.
+
+On deep gen-
+
+erative models with applications to recognition.
+
+In
+
+Computer Vision and Pattern Recognition (CVPR), 2011
+
+IEEE Conference on, pp. 2857–2864. IEEE, 2011.
+
+Salakhutdinov, Ruslan. Learning deep generative models.
+
+Annual Review of Statistics and Its Application, 2:361–
+
+385, 2015.
+
+Salvador, Stan and Chan, Philip.
+
+Determining the
+
+number of clusters/segments in hierarchical cluster-
+
+ing/segmentation algorithms. In Tools with Artiﬁcial In-
+
+telligence, 2004. ICTAI 2004. 16th IEEE International
+
+Conference on, pp. 576–584. IEEE, 2004.
+
+Sønderby, Casper Kaae, Raiko, Tapani, Maaløe, Lars,
+
+Sønderby, Søren Kaae, and Winther, Ole. Ladder varia-
+
+tional autoencoders. In Advances In Neural Information
+
+Processing Systems, pp. 3738–3746, 2016.
+
+Theis, Lucas, Oord, A¨aron van den, and Bethge, Matthias.
+
+A note on the evaluation of generative models. arXiv
+
+preprint arXiv:1511.01844, 2015.
+
+Waterhouse, Steve, MacKay, David, Robinson, Tony, et al.
+
+Bayesian methods for mixtures of experts. In Advances
+
+In Neural Information Processing Systems, 1996.
+
+Wu, M. and Schlkopf, B. A local learning approach for
+
+clustering. In in Proc. NIPS, pp. 1529–1536, 2006.
+
+Xie, Junyuan, Girshick, Ross, and Farhadi, Ali. Unsuper-
+
+vised deep embedding for clustering analysis. In Pro-
+
+ceedings of the 33rd International Conference on Ma-
+
+chine Learning, 2016.
+
+Xu, L, Jordan, MI, and Hinton, GE. An alternative model
+
+for mxtures of experts. In Advances In Neural Informa-
+
+tion Processing Systems, pp. 633–640, 1995.
+
+Yang, Y., Xu, D., Nie, F., Yan, S., and Zhuang, Y. Image
+
+clustering using local discriminant models and global in-
+
+tegration. IEEE Transactions on Image Processing, 19:
+
+2761–2773, 2010.
+

@@ -1,0 +1,3896 @@
+
+Negative query generation: bridging the gap
+
+between query likelihood retrieval models and relevance
+
+Yuanhua Lv1 • ChengXiang Zhai2
+
+Received: 16 December 2013 / Accepted: 28 May 2015 / Published online: 6 June 2015
+
+� Springer Science+Business Media New York 2015
+
+Abstract
+
+The language modeling approach to information retrieval has recently attracted
+
+much attention. In the language modeling retrieval models, we can score and rank docu-
+
+ments based on the query likelihood method. From the theoretical perspective, however,
+
+the justiﬁcation of the existing (standard) query likelihood method based on the probability
+
+ranking principle requires an unrealistic assumption about the generation of a ‘‘negative
+
+query’’ from a document, which states that the probability that a user who dislikes a
+
+document would use a query does not depend on the particular document. This assumption
+
+enables ignoring the negative query generation so as to justify using the basic query
+
+likelihood method as a retrieval function. In reality, however, this assumption does not
+
+hold because a user who dislikes a document would more likely avoid using words in the
+
+document when posing a query. This suggests that the standard query likelihood function is
+
+a potentially non-optimal retrieval function. In this paper, we attempt to improve the
+
+standard language modeling retrieval models by bringing back the component of negative
+
+query generation. Speciﬁcally, we propose a general and efﬁcient approach to estimate
+
+document-dependent probabilities of negative query generation based on the principle of
+
+maximum entropy, and derive a more complete query likelihood retrieval function that also
+
+contains the negative query generation component. In addition, we further develop a more
+
+general probabilistic distance retrieval method to naturally incorporate query language
+
+models, which covers the proposed query likelihood with negative query generation as its
+
+special case. The proposed approaches not only bridge the theoretic gap between the
+
+A short version of this work has appeared as a short paper in Proceedings of CIKM’2012 (Lv and Zhai
+
+2012).
+
+&amp; Yuanhua Lv
+
+yuanhual@microsoft.com
+
+ChengXiang Zhai
+
+czhai@illinois.edu
+
+1
+
+Microsoft Research, Redmond, WA 98052, USA
+
+2
+
+Department of Computer Science, University of Illinois at Urbana-Champaign,
+
+Urbana, IL 61801, USA
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+123
+
+Inf Retrieval J (2015) 18:359–378
+
+DOI 10.1007/s10791-015-9257-z
+
+
+standard language modeling retrieval models and the notion of relevance, but also
+
+improves the retrieval effectiveness with (almost) no additional computational cost.
+
+Keywords
+
+Negative query generation � Query likelihood � Language model � Relevance �
+
+Probability ranking principle � Principle of maximum entropy
+
+1 Introduction
+
+The language modeling approach to information retrieval (Ponte and Croft 1998) has
+
+recently enjoyed much success for many different retrieval tasks (Ponte and Croft 1998;
+
+Xu and Croft 1999; Zhai and Lafferty 2001b; Lafferty and Zhai 2001; Xu et al. 2001;
+
+Lavrenko et al. 2002; Si et al. 2002; Zhang et al. 2002; Cronen-Townsend et al. 2002; Liu
+
+and Croft 2002; Zhai et al. 2003; Ogilvie and Callan 2003; Shen et al. 2005; Tan et al.
+
+2006; Balog et al. 2006; Fang and Zhai 2007; Zhai 2008; Lv and Zhai 2009; Tsagkias et al.
+
+2011). In the language modeling approach, we assume that a query is a sample drawn from
+
+a language model: given a query Q and a document D, we compute the likelihood of
+
+‘‘generating’’ query Q with a document language model estimated based on document
+
+D. We can then rank documents based on the likelihood of generating the query, i.e., query
+
+likelihood.
+
+Although the query likelihood retrieval function has performed well empirically, there
+
+was criticism about its theoretical foundation (Robertson and Hiemstra 2001; Sparck-Jones
+
+and Robertson 2001; Sparck-Jones et al. 2003). In particular, Sparck Jones questioned
+
+‘‘where is relevance?’’ (Sparck-Jones and Robertson 2001). Responding to this criticism,
+
+Lafferty and Zhai (2002) showed that the basic query likelihood retrieval method can be
+
+justiﬁed based on the probability ranking principle (Robertson 1977) which is regarded as
+
+the theoretical foundation of retrieval models.
+
+However, from the theoretical perspective, the justiﬁcation of using the basic query
+
+likelihood as a retrieval function based on the probability ranking principle by Lafferty and
+
+Zhai (2002) requires an unrealistic assumption about the generation of a ‘‘negative query’’
+
+from a document, which states that the probability that a user who dislikes a document
+
+would use a query does not depend on the particular document. This assumption enables
+
+ignoring the negative query generation in justifying using the standard query likelihood
+
+method as a retrieval function. With this assumption, the query likelihood can intuitively
+
+be explained as the probability that a user who likes a document would pose the query. In
+
+reality, however, this assumption does not hold because a user who dislikes a document
+
+would more likely avoid using words in the document when posing a query. This suggests
+
+that the basic query likelihood function is a potentially non-optimal retrieval function.
+
+In order to bridge this theoretical gap between the basic query likelihood retrieval
+
+function and the notion of relevance, in this paper, we attempt to bring back the component
+
+of negative query generation.
+
+A main challenge in estimating the negative query generation component is to develop a
+
+general method for any document with respect to any query. Our solution to this problem is
+
+to estimate the probability of negative query generation purely based on document D so as
+
+to make it possible to incorporate the negative query generation component when
+
+retrieving any document. Speciﬁcally, we exploit document D to infer the queries that a
+
+user would use to avoid retrieving D based on the intuition that such queries would not
+
+360
+
+Inf Retrieval J (2015) 18:359–378
+
+123
+
+
+likely have any information overlap with D. We then propose an effective approach to
+
+estimate probabilities of negative query generation based on the principle of maximum
+
+entropy (Jaynes 1957), which leads to a document-dependent negative query generation
+
+component that can be computed efﬁciently. Finally, we derive a more complete query
+
+likelihood retrieval function that also contains the negative query generation component,
+
+which essentially scores a document with respect to a query according to the ratio of the
+
+probability that a user who likes the document would pose the query to the probability that
+
+a user who dislikes the document would pose the query.
+
+Similar to the standard query likelihood, a major deﬁciency of the proposed query
+
+likelihood with negative query generation is that it cannot easily incorporate query lan-
+
+guage models. To solve this problem, we further develop a more general probabilistic
+
+distance retrieval method, inspired by the development of the KL-divergence retrieval
+
+method (Lafferty and Zhai 2001). With this method, we ﬁrst estimate a regular document
+
+language model, a regular query language model, and a ‘‘negative document language
+
+model’’ based on the probabilities of negative query generation, and we then score a
+
+document with respect to a query based on the relative KL-divergence between the query
+
+language model and the corresponding document language model and between the query
+
+language model and the corresponding negative document language model. With this
+
+probabilistic distance retrieval method, feedback can also be naturally cast as to improve
+
+the estimate of the query language model based on the feedback information. Interestingly,
+
+this probabilistic distance retrieval method covers the proposed query likelihood model
+
+with negative query generation as its special case.
+
+Experiment results on several standard test collections show that the proposed query
+
+likelihood retrieval function with negative query generation improves the retrieval effec-
+
+tiveness signiﬁcantly, especially in cases when queries are verbose, with (almost) no
+
+additional computational cost. And the proposed KL-divergence retrieval method with
+
+negative document language model also works more effectively than the standard KL-
+
+divergence retrieval method to handle query language models. Overall, the proposed
+
+approaches not only bridge the theoretic gap between the standard language modeling
+
+retrieval models and the probability ranking principle, but also improve retrieval effec-
+
+tiveness signiﬁcantly.
+
+Due to their effectiveness, efﬁciency, generality, and theoretical soundness, the pro-
+
+posed query likelihood method with negative query generation and KL-divergence
+
+retrieval method with negative document language model can potentially replace the
+
+standard query likelihood method and the standard KL-divergence method respectively in
+
+all retrieval applications.
+
+2 Language modeling retrieval models
+
+We ﬁrst brieﬂy review previous work related to the development and extensions of the
+
+language modeling retrieval models.
+
+The query likelihood retrieval method was ﬁrst introduced by Ponte and Croft (1998)
+
+and also independently explored by Miller et al. (1999) and Hiemstra (2001). In this
+
+method, given a query Q and a document D, we compute the likelihood of ‘‘generating’’
+
+query Q with a model hD estimated based on document D, and then score and rank the
+
+document based on the likelihood of generating the query:
+
+ScoreðD; QÞ ¼ pðQjhDÞ
+
+ð1Þ
+
+Inf Retrieval J (2015) 18:359–378
+
+361
+
+123
+
+
+The query generation can be based on any language model. Different models make dif-
+
+ferent assumptions about term occurrences. So far, using a multinomial distribution (Miller
+
+et al. 1999; Hiemstra 2001; Zhai and Lafferty 2001b) for hD has been most popular and
+
+most successful, which is also adopted in our paper. However, several other choices have
+
+also been explored, including the multiple Bernoulli distribution (Ponte and Croft 1998;
+
+Metzler et al. 2004), the multiple Poisson distribution (Mei et al. 2007), and the Hyper-
+
+geometric distribution (Tsagkias et al. 2011). With the multinomial distribution, the query
+
+likelihood is
+
+pðQjhDÞ ¼
+
+Y
+
+w
+
+pðwjhDÞcðw;QÞ
+
+ð2Þ
+
+where c(w, Q) is the count of term w in query Q.
+
+According to the maximum likelihood estimator, we have the following estimation of
+
+the document language model hD for the multinomial model:
+
+pmlðwjhDÞ ¼ cðw; DÞ
+
+jDj
+
+ð3Þ
+
+where c(w, D) represents the count of term w in document D, and |D| is the document
+
+length. The document language model hD needs to be smoothed to overcome the zero-
+
+probability problem, and an effective method is the Dirichlet prior smoothing (Zhai and
+
+Lafferty 2001b):
+
+pðwjhDÞ ¼
+
+jDj
+
+jDj þ l pmlðwjDÞ þ
+
+l
+
+jDj þ l pðwjCÞ
+
+ð4Þ
+
+here p(w|C) is the collection language model and is estimated as pðwjCÞ ¼
+
+cðw;CÞ
+
+P
+
+w0 cðw0;CÞ,
+
+where c(w, C) indicates the count of term w in the whole collection C, and l is a smoothing
+
+parameter (Dirichlet prior) which is usually set empirically. Smoothing plays two different
+
+roles in the query likelihood retrieval method (Zhai and Lafferty 2001b): one role is to
+
+assign non-zero probabilities to terms that are not observed in the document, and the other
+
+role is to weaken the effect of non-discriminative terms in the query to achieve an ‘‘IDF’’
+
+effect.
+
+Assuming the Dirichlet prior smoothing method, we can rewrite the query likelihood
+
+scoring function as follows (Hiemstra 2000; Zhai and Lafferty 2001b):
+
+pðQjhDÞ ¼
+
+rank log pðQjhDÞ
+
+¼ jQj log
+
+l
+
+jDj þ l þ
+
+X
+
+w2Q\D
+
+cðw; QÞ log 1 þ cðw; DÞ
+
+lpðwjCÞ
+
+�
+
+�
+
+ð5Þ
+
+where |Q| represents query length. It shows that, although the query likelihood method is
+
+motivated in a different way than a traditional model such as the vector-space model, it
+
+tends to boil down to retrieval functions that implement retrieval heuristics (such as TF-
+
+IDF weighting and document length normalization) similar to those implemented in a
+
+traditional model (Hiemstra 2000; Zhai and Lafferty 2001b).
+
+In the past decade, many more complex variants of the query likelihood method have been
+
+proposed for ad hoc retrieval. For example, n-gram (Song and Croft 1999), dependence
+
+language model (Gao et al. 2004), and positional language model (Lv and Zhai 2009) have
+
+been explored to go beyond the bag-of-word assumption; the query likelihood was also
+
+362
+
+Inf Retrieval J (2015) 18:359–378
+
+123
+
+
+extended as a translation model to allow inexact matching of semantically related words
+
+(Berger and Lafferty 1999); a full Bayesian query likelihood was studied to consider
+
+uncertainty of an estimation of hD (Zaragoza et al. 2003); parsimonious language models was
+
+proposed to improve the discrimination of language models (Hiemstra et al. 2004); cluster-
+
+based smoothing methods were evaluated for document-speciﬁc smoothing (Liu and Croft
+
+2004; Wei and Croft 2006; Tao et al. 2006), etc. Although these extensions often outperform
+
+the basic query likelihood, they tend to incur signiﬁcantly more computational cost.
+
+A major deﬁciency of the query likelihood method is that it cannot easily incorporate
+
+query language models, making it hard to exploit relevance or pseudo-relevance feedback
+
+(PRF) in the language modeling approach (Zhai and Lafferty 2001a). To address this
+
+problem, a probabilistic distance model called Kullback–Leibler (KL) divergence retrieval
+
+method was proposed by Lafferty and Zhai (2001) to score a document based on the negative
+
+KL-divergence between the document language model and the query language model. The
+
+KL-divergence method can actually cover the query likelihood retrieval model as a special
+
+case when the query language model is estimated based on only the query. Moreover, the
+
+development of the KL-divergence retrieval model (Lafferty and Zhai 2001), which
+
+explicitly models both document and query language models, has attracted many efforts to
+
+propose effective PRF methods for improving the estimate of query language models, (e.g.,
+
+Lafferty and Zhai 2001; Lavrenko and Croft 2001; Zhai and Lafferty 2001a; Kurland et al.
+
+2005; Diaz and Metzler 2006; Collins-Thompson and Callan 2007; Lv and Zhai 2010).
+
+The query likelihood method and the KL-divergence method have been shown to
+
+perform well for a variety of retrieval tasks, including ad-hoc retrieval (Ponte and Croft
+
+1998; Zhai and Lafferty 2001b; Lafferty and Zhai 2001), cross-lingual information
+
+retrieval (Xu et al. 2001; Lavrenko et al. 2002), distributed information retrieval (Xu and
+
+Croft 1999; Si et al. 2002), structured document retrieval (Ogilvie and Callan 2003),
+
+personalized and context-sensitive search (Shen et al. 2005; Tan et al. 2006), modeling
+
+redundancy (Zhang et al. 2002), predicting query difﬁculty (Cronen-Townsend et al.
+
+2002), expert ﬁnding (Balog et al. 2006; Fang and Zhai 2007), passage retrieval (Liu and
+
+Croft 2002; Lv and Zhai 2009), subtopic retrieval (Zhai et al. 2003), etc.
+
+However, to the best of our knowledge, there has been no related work on the estimation
+
+of negative query generation, except one of our short conference papers (Lv and Zhai
+
+2012). That paper has studied a query likelihood retrieval model with negative query
+
+generation. This paper is a more complete report of the work, and has also signiﬁcantly
+
+extended the previous short paper with an additional contribution to enable query language
+
+models and relevance feedback with the negative query generation component.
+
+3 Negative query generation
+
+To better understand the retrieval foundation of the query likelihood method, Lafferty and
+
+Zhai (2002) provided a general relevance-based derivation of the query likelihood method.
+
+Formally, let random variables D and Q denote a document and a query, respectively. Let
+
+R be a binary random variable that indicates whether D is relevant to Q or not. Following
+
+Sparck-Jones et al. (2000), we will denote by ‘ (‘‘like’’) and �‘ (‘‘not like’’) the value of the
+
+relevance variable. The probability ranking principle (Robertson 1977) provides a justi-
+
+ﬁcation for ranking documents for a query based on the conditional probability of rele-
+
+vance, i.e., pðR ¼ ‘jD; QÞ. This is equivalent to ranking documents based on the odds ratio,
+
+which can be further transformed using Bayes’ Rule:
+
+Inf Retrieval J (2015) 18:359–378
+
+363
+
+123
+
+
+OðR ¼ ‘jQ; DÞ ¼ pðR ¼ ‘jQ; DÞ
+
+pðR ¼ �‘jQ; DÞ / pðQ; DjR ¼ ‘Þ
+
+pðQ; DjR ¼ �‘Þ
+
+ð6Þ
+
+There are two different ways to decompose the joint probability p(Q, D | R), corresponding
+
+to ‘‘document generation’’ and ‘‘query generation’’ respectively. With document genera-
+
+tion pðQ; DjRÞ ¼ pðDjQ; RÞpðQjRÞ, we have
+
+OðR ¼ ‘jQ; DÞ / pðDjQ; R ¼ ‘Þ
+
+pðDjQ; R ¼ �‘Þ
+
+ð7Þ
+
+Most probabilistic retrieval models (Robertson and Sparck-Jones 1976; Sparck-Jones et al.
+
+2000; Fuhr 1992) are based on document generation.1 Fuhr (1992) has provided in-depth
+
+discussions in this direction.
+
+Query generation, pðQ; DjRÞ ¼ pðQjD; RÞpðDjRÞ, is the focus of this paper. With query
+
+generation, we end up with the following ranking formula:
+
+OðR ¼ ‘jQ; DÞ / pðQjD; R ¼ ‘ÞpðR ¼ ‘jDÞ
+
+pðQjD; R ¼ �‘ÞpðR ¼ �‘jDÞ
+
+ð8Þ
+
+in which, the term p(R | D) can be interpreted as a prior of relevance on a document, which
+
+can be used to encode any bias on documents. Without such extra knowledge, we may
+
+assume that this term is the same across all the documents and obtain the following
+
+simpliﬁed ranking formula:
+
+OðR ¼ ‘jQ; DÞ / pðQjD; R ¼ ‘Þ
+
+pðQjD; R ¼ �‘Þ
+
+ð9Þ
+
+There are two components in this model:
+
+•
+
+Positive query generation pðQjD; R ¼ ‘Þ is the probability that a user who likes
+
+document D would pose query Q. One assumption is then made that this probability can
+
+be equivalent to the probability of generating query Q by drawing words from the
+
+document language model hD. With this assumption, the positive query generation
+
+essentially leads to the basic query likelihood pðQjhDÞ. And it has also been proved by
+
+Luk (2008) that the basic query likelihood retrieval function is ‘‘strict rank equivalent’’
+
+to the positive query generation probability.
+
+•
+
+‘‘Negative’’ query generation pðQjD; R ¼ �‘Þ is the probability that a user who dislikes a
+
+document D would use a query Q, or in other words, the probability that a user uses a
+
+query Q to avoid retrieving document D (thus the name, negative query generation). To
+
+give an example, suppose that a user is interested in papers related to IR models, but
+
+dislikes the paper he is reading right now (i.e., D) that is about non-probabilistic
+
+models. Then the user may formulate a query ‘‘probabilistic retrieval models’’ to
+
+attempt to exclude such papers in his/her search. Here ‘‘probabilistic retrieval models’’
+
+is a negative query for D.
+
+When we rank documents based on the query likelihood retrieval function proposed in
+
+(Ponte and Croft 1998), we essentially only use the ﬁrst component, i.e., pðQjD; R ¼ ‘Þ
+
+1 It has been pointed out by Robertson (2005) that this document generation approach by Lafferty and Zhai
+
+(2003) is not theoretically equivalent to the classical probabilistic retrieval model (Robertson and Sparck-
+
+Jones 1976) due to their different event spaces. This issue, however, is out the scope of this work which
+
+focuses on the query generation approach, i.e., the language modeling retrieval model (Ponte and Croft
+
+1998).
+
+364
+
+Inf Retrieval J (2015) 18:359–378
+
+123
+
+
+with the second component, i.e., negative query generation pðQjD; R ¼ �‘Þ ignored. Thus,
+
+in order to justify using the basic query likelihood (i.e., the positive query generation
+
+component) alone as the ranking formula, an implicit assumption has to be made to
+
+exclude this negative query generation component, which states that the probability that a
+
+user who dislikes a document would use a query does not depend on the particular doc-
+
+ument (Lafferty and Zhai 2002), formally
+
+pðQjD; R ¼ �‘Þ ¼ pðQjR ¼ �‘Þ
+
+ð10Þ
+
+This assumption enables ignoring the negative query generation in the derivation of the
+
+basic query likelihood retrieval function, leading to the following scoring formula:
+
+OðR ¼ ‘jQ; DÞ / pðQjD; R ¼ ‘Þ ¼ pðQjhDÞ
+
+ð11Þ
+
+Under this assumption, Lafferty and Zhai (2003) shown that ranking based on the query
+
+likelihood retrieval model is equivalent to ranking based on the probability of relevance.
+
+That is, the classical probabilistic retrieval model (Robertson and Sparck-Jones 1976) and
+
+the basic language modeling approach (Ponte and Croft 1998) are theoretically equivalent
+
+for ranking documents.2
+
+In reality, however, the assumption of the negative query generation, as shown formally
+
+in Formula 10, does not hold because a user who dislikes a document would more likely
+
+avoid using words in the document when posing a query, suggesting that there is a theo-
+
+retical gap between the standard query likelihood and the notion of relevance, and the
+
+standard query likelihood function is a potentially non-optimal retrieval function.
+
+In the following section, we attempt to improve the basic query likelihood function by
+
+estimating, rather than ignoring the component of negative query generation pðQjD; R ¼ �‘Þ.
+
+4 Language modeling retrieval models with negative query generation
+
+4.1 Negative document language models
+
+Given any document D in the collection, what would a user like if he/she does not like D?
+
+We assume that there exists a ‘‘complement’’ document �D, and that if a user does not like
+
+D, the user would like �D.3 That is, when generating query Q, if a user does not like D, the
+
+user would randomly pick words from �D. Formally,
+
+pðwjD; R ¼ �‘Þ ¼ pðwjh �DÞ
+
+ð12Þ
+
+It is usually the case that such a document �D does not really exist in the document collection.
+
+One can regard it as a virtual document that needs to be constructed. The challenge now lies
+
+in how to estimate a language model h �D, which we refer to as the ‘‘negative document
+
+language model’’ of D. Note that the negative document language model in our paper is still a
+
+2 Although Robertson (2005) pointed out that Lafferty and Zhai (2003)’s conclusion may not be a valid
+
+general inference from the original probability ranking principle (Robertson 1977) due to their inconsistent
+
+event spaces, and Aly et al. (2014) further argued that the connection between the standard probability
+
+ranking principle and the language modeling approach may not be established on the level of probabilistic
+
+models, Lafferty and Zhai (2003)’s work, however, still presented a formal and widely-accepted way to
+
+connect the language modeling approach to the notion of ‘‘relevance’’ that could answer the question:
+
+‘‘where is relevance?’’.
+
+3 Note that D is not a binary random variable. D and �D are two separate variables both of which can take as
+
+value any single document, but the value of �D depends on D.
+
+Inf Retrieval J (2015) 18:359–378
+
+365
+
+123
+
+
+document language model, which is completely different from the relevance model pðwjR ¼
+
+‘Þ (Lavrenko and Croft 2001) and the irrelevance model pðwjR ¼ �‘Þ (Wang et al. 2008)
+
+which are query language models that capture the probability of observing a word w relevant
+
+and non-relevant to a particular information need respectively.
+
+Ideally we should use many actual queries by users who do not want to retrieve doc-
+
+ument D to estimate the probability pðwjh �DÞ. For example, if a user sees a document in
+
+search results but does not click on it, we may assume that he/she would dislike the
+
+document. Under this assumption, we can use all the queries from the users who ‘‘dislike’’
+
+the document to approximate �D. However, in practice, only very few search results will be
+
+shown to users, and certainly there are always queries that we would not even have seen.
+
+That is, this estimation strategy will suffer from a serious data sparseness problem. Yet, as
+
+a general retrieval model, we argue that the proposed method must have some way to
+
+estimate h �D for any document with respect to any query.
+
+To this end, one straightforward way is using the background language model p(w|C) to
+
+approximate pðwjh �DÞ, based on the intuition that almost all other documents in the col-
+
+lection are complementary to D:
+
+pðwjh �DÞ ¼ pðwjCÞ
+
+ð13Þ
+
+With this estimate of pðwjh �DÞ, the negative query generation component does not affect the
+
+ranking of documents, because the probability of negative query generation will be con-
+
+stant for all documents: in some sense, this provides a justiﬁcation for making the docu-
+
+ment independency assumption about the negative query generation component in the
+
+standard query likelihood method. However, the content of document D is ignored in this
+
+estimation. The question is whether we can leverage the content of document D to estimate
+
+a document-dependent negative query generation model pðQjh �DÞ.
+
+We are interested in estimating pðwjh �DÞ in a general way based on the content of docu-
+
+ment D so as to make it possible to incorporate a document dependent negative query
+
+generation component when retrieving any document. Our idea is based on the intuition that
+
+if a user wants to avoid retrieving document D, he/she would more likely avoid using words
+
+in the document when posing a query. That is, the user would like a document �D with little
+
+information overlap with D. Given only document D available, the sole constraint of �D is
+
+that, if a word w occurs in D, i.e., cðw; DÞ [ 0, this word should not occur in �D:
+
+cðw; �DÞ ¼
+
+0
+
+if cðw; DÞ [ 0
+
+?
+
+otherwise
+
+�
+
+ð14Þ
+
+This leads to a �D that contains a set of words that do not exist in D, but the frequency
+
+values of these words are unknown.
+
+How to determine the frequency of a word in �D if it does not occur in D? As the
+
+probability distribution of such a word is unknown, according to the principle of maximum
+
+entropy (Jaynes 1957), each word occurring in �D should have the same frequency d [ 0,
+
+which maximizes the information entropy under the only prior data D. That is, �D contains a
+
+set of words that are complementary to D in the universe word space (i.e., the whole word
+
+vocabulary V) with the same frequency d. Formally,
+
+cðw; �DÞ ¼
+
+0
+
+if cðw; DÞ [ 0
+
+d
+
+otherwise
+
+�
+
+ð15Þ
+
+According to the maximum likelihood estimator, we have the following estimation of the
+
+document language model h �D for the multinomial model:
+
+366
+
+Inf Retrieval J (2015) 18:359–378
+
+123
+
+
+pmlðwjh �DÞ ¼ cðw; �DÞ
+
+j �Dj
+
+ð16Þ
+
+where j �Dj is the ‘‘document’’ length of �D, which can be computed by aggregating frequencies
+
+of all words occurring in �D. Because the number of unique words not in �D (i.e., appearing in
+
+D) is usually much smaller than the number of unique words in the whole document collection
+
+C (i.e., |V|), the number of unique words in �D is thus approximately the same as |V|. That is
+
+j �Dj ¼
+
+X
+
+w2V
+
+cðw; �DÞ � djVj
+
+ð17Þ
+
+Due to the existence of zero probabilities, pmlðwjh �DÞ needs smoothing. Following the esti-
+
+mation of regular document language models, we also choose the Dirichlet prior smoothing
+
+method due to its effectiveness in information retrieval (Zhai and Lafferty 2001b). Formally,
+
+pðwjh �DÞ ¼
+
+djVj
+
+djVj þ l pmlðwjh �DÞ þ
+
+l
+
+djVj þ l pðwjCÞ
+
+ð18Þ
+
+where l is the Dirichlet prior. Since the inﬂuence of l can be absorbed into variable d, we
+
+thus set it simply to the same Dirichlet prior value as used for smoothing the regular
+
+document language model (see Eq. 4).
+
+4.2 Query likelihood with negative query generation
+
+Now we can bring back the negative query generation component to the query generation
+
+process based on the probability ranking principle:
+
+OðR ¼ ‘jQ; DÞ ¼
+
+rank log pðQjD; R ¼ ‘Þ
+
+pðQjD; R ¼ �‘Þ
+
+¼ log pðQjD; R ¼ ‘Þ � log pðQjD; R ¼ �‘Þ
+
+¼ log pðQjhDÞ � log pðQjh �DÞ
+
+ð19Þ
+
+where the negative query loglikelihood log pðQjh �DÞ can be further written as
+
+log pðQjh �DÞ
+
+¼
+
+X
+
+w2Q
+
+cðw; QÞ log pðwjh �DÞ
+
+¼
+
+X
+
+w2Q\D
+
+cðw; QÞ log l � pðwjCÞ
+
+djVj þ l
+
+�
+
+�
+
+þ
+
+X
+
+w2Q;w62D
+
+cðw; QÞ log
+
+d
+
+djVj þ l þ l � pðwjCÞ
+
+djVj þ l
+
+�
+
+�
+
+¼
+
+X
+
+w2Q\D
+
+cðw; QÞ log l � pðwjCÞ
+
+djVj þ l
+
+�
+
+�
+
+�
+
+X
+
+w2Q\D
+
+cðw; QÞ log d þ l � pðwjCÞ
+
+djVj þ l
+
+�
+
+�
+
+þ
+
+X
+
+w2Q
+
+cðw; QÞ log d þ l � pðwjCÞ
+
+djVj þ l
+
+�
+
+�
+
+|ﬄﬄﬄﬄﬄﬄﬄﬄﬄﬄﬄﬄﬄﬄﬄﬄﬄﬄﬄﬄﬄﬄﬄﬄﬄﬄﬄﬄ{zﬄﬄﬄﬄﬄﬄﬄﬄﬄﬄﬄﬄﬄﬄﬄﬄﬄﬄﬄﬄﬄﬄﬄﬄﬄﬄﬄﬄ}
+
+document independent constant
+
+¼
+
+rank �
+
+X
+
+w2Q\D
+
+cðw; QÞ log 1 þ
+
+d
+
+lpðwjCÞ
+
+�
+
+�
+
+ð20Þ
+
+Inf Retrieval J (2015) 18:359–378
+
+367
+
+123
+
+
+Plugging Eqs. 5 and 20 into Eq. 19, we ﬁnally obtain a more complete query likelihood
+
+retrieval function that also contains the negative query generation component:
+
+OðR ¼ ‘jQ; DÞ
+
+¼
+
+rank jQj log
+
+l
+
+jDj þ l þ
+
+X
+
+w2Q\D
+
+cðw; QÞ log 1 þ cðw; DÞ
+
+lpðwjCÞ
+
+�
+
+�
+
+þ log 1 þ
+
+d
+
+lpðwjCÞ
+
+�
+
+�
+
+�
+
+� ð21Þ
+
+Comparing Formula 21 with the standard query likelihood in Formula 5, we can see that
+
+our new retrieval function essentially introduces a novel component log 1 þ
+
+d
+
+lpðwjCÞ
+
+�
+
+�
+
+to
+
+reward the matching of a query term, and it rewards more the matching of a more dis-
+
+criminative query term, which not only intuitively makes sense, but also provides a natural
+
+way to incorporate IDF weighting to query likelihood, which has so far only been possible
+
+through a second-stage smoothing step (Hiemstra 2000; Zhai and Lafferty 2002). Note that
+
+when we set d ¼ 0, the proposed retrieval function degenerates to the standard query
+
+likelihood function.
+
+Moreover, this new component will not change the relative score of two documents if
+
+they match the same number of unique query terms, but it will change the relative score of
+
+two documents if one matches a query term while the other does not. In this sense, we
+
+would hypothesize that (1) the proposed new retrieval function may not affect the standard
+
+query likelihood ranking of top result documents too much, as the top result documents
+
+tend more likely to match all the query terms, and (2) the proposed retrieval function would
+
+inﬂuence the standard query likelihood ranking more signiﬁcantly for verbose queries,
+
+because the result documents tend to easily miss some query terms when a query is
+
+verbose. Both hypotheses are conﬁrmed in our experiments.
+
+Furthermore, since this new component we introduced is a term-dependent constant, the
+
+proposed new retrieval function only incurs OðjQjÞ additional computation cost as com-
+
+pared to the standard query likelihood function, where |Q| is the number of query terms.
+
+This can be certainly ignored.
+
+Interestingly, the developed retrieval function based on query likelihood with negative
+
+query generation (Formula 21) leads to the same ranking formula as derived by lower-
+
+boundingterm frequency normalization in thestandard query likelihood method(Lv and Zhai
+
+2011). However, the derivation of the ranking formula there is based on a heuristic approach;
+
+in this work, we show that the heuristic derivation is actually consistent with the probabilistic
+
+framework of the query likelihood method. In other words, query likelihood with negative
+
+query generation essentially provides a probabilistic interpretation for the heuristic method of
+
+lower-bounding term frequency normalization in the standard query likelihood method;
+
+meanwhile, this connection can also justify why the component of negative query generation
+
+is necessary to improve the standard query likelihood retrieval function.
+
+4.3 KL-divergence retrieval method with negative query generation
+
+Estimating query language models using relevance or PRF is an important technique to
+
+improve retrieval accuracy. However, similar to the standard query likelihood, a major
+
+deﬁciency of the proposed query likelihood with negative query generation is that it cannot
+
+easily incorporate query language models (Zhai and Lafferty 2001a). To address this
+
+problem, we further develop a more general probabilistic distance retrieval method to
+
+explicitly incorporate the query language model, inspired by the development of the KL-
+
+divergence retrieval method (Lafferty and Zhai 2001).
+
+368
+
+Inf Retrieval J (2015) 18:359–378
+
+123
+
+
+The key idea is that, the closer the document language model is to the query language
+
+model and the farther away the corresponding negative document language model is from the
+
+query language model, the higher the document would be ranked. Speciﬁcally, we choose the
+
+KL-divergence to measure the distance between two language models; given the regular
+
+document language model hD, the regular query language model hQ, and the proposed
+
+negative document language model h �D (Eq. 18), we score a document D with respect to a
+
+query Q based on the difference of two KL-divergence values: one is the KL-divergence
+
+between the query language model hQ and the regular document language model hD, and the
+
+other KL-divergence between hQ and the negative document language model h �D. Formally,
+
+ScoreðD; QÞ ¼ DðhQjjh �DÞ � DðhQjjhDÞ
+
+¼
+
+X
+
+w2V
+
+pðwjhQÞ log pðwjhQÞ
+
+pðwjh �DÞ �
+
+X
+
+w2V
+
+pðwjhQÞ log pðwjhQÞ
+
+pðwjhDÞ
+
+¼
+
+X
+
+w2V
+
+pðwjhQÞ log pðwjhDÞ
+
+pðwjh �DÞ
+
+ð22Þ
+
+Moreover, it is easy to show that this probabilistic distance retrieval method covers the
+
+query likelihood with negative query generation as its special case when we use the actual/
+
+raw query word distribution to estimate hQ, i.e.,
+
+pðwjhQÞ ¼ cðw; QÞ
+
+jQj
+
+ð23Þ
+
+Indeed, with such an estimate, we have:
+
+ScoreðD; QÞ ¼
+
+X
+
+w2V
+
+cðw; QÞ
+
+jQj
+
+log pðwjhDÞ
+
+pðwjh �DÞ
+
+¼
+
+rank X
+
+w2V
+
+cðw; QÞ log pðwjhDÞ
+
+pðwjh �DÞ
+
+¼ log pðQjhDÞ � log pðQjh �DÞ
+
+ð24Þ
+
+In this regard, the proposed probabilistic distance retrieval method is not only an extended
+
+KL-divergence model with a negative document language model but also a generalization
+
+of the proposed query likelihood with a negative query generation component. Although
+
+the proposed probabilistic distance retrieval method (Formula 22) and the basic query
+
+likelihood with a negative query generation (Formula 21) rank documents equally for the
+
+actual/initial query, as shown above, we would like, however, to emphasize that the major
+
+advantage of the former over the latter is that the former is also able to deal with a query
+
+language model pðwjhQÞ that may be estimated using advanced query modeling tech-
+
+niques, such as PRF (Zhai and Lafferty 2001a; Lv and Zhai 2010).
+
+5 Experiments
+
+5.1 Testing collections and evaluation
+
+We use four TREC collections: WT2G, WT10G, Terabyte, and Robust04, which represent
+
+different sizes and genre of text collections. WT2G, WT10G, and Terabyte are small,
+
+Inf Retrieval J (2015) 18:359–378
+
+369
+
+123
+
+
+medium, and large Web collections respectively. Robust04 is a representative news
+
+dataset. We use the Lemur toolkit and the Indri search engine4 to carry out our experi-
+
+ments. For all the datasets, the preprocessing of documents and queries is minimum,
+
+involving only Porter’s stemming. An overview of the involved query topics, the average
+
+length of short/verbose queries, the total number of relevance judgments, the total number
+
+of documents, the average document length, and the standard deviation of document length
+
+in each collection are shown in Table 1. We test three types of queries:
+
+•
+
+Short queries, which are taken from the title ﬁeld of the TREC topics.
+
+•
+
+Verbose queries, which are taken from the description ﬁeld of the TREC topics.
+
+•
+
+Automatically expanded queries, which are generated using PRF techniques.
+
+We employ a twofold cross-validation for parameter tuning, where the query topics are
+
+split into even and odd numbered topics as the two folds. Speciﬁcally, the parameters of
+
+each method are trained on even (odd) numbered topics and tested on the odd (even)
+
+numbered topics. The performance is then measured by combining both test sets. The top-
+
+ranked 1000 documents for each run are compared in terms of their mean average pre-
+
+cisions (MAP), which also serves as the objective function for parameter training. In
+
+addition, the precision at top-10 documents (P@10) and the recall are also considered. The
+
+major goals of the experiments are to answer the following questions:
+
+1.
+
+If the proposed negative query generation component can work well for improving the
+
+standard query likelihood method and the KL-divergence method?
+
+2.
+
+How do the proposed techniques perform on different types of queries, such as short
+
+(keyword) queries, verbose queries, and automatically expanded queries?
+
+5.2 Performance comparison
+
+We ﬁrst compare the effectiveness of the standard language modeling approach (labeled as
+
+LM) (Ponte and Croft 1998; Zhai and Lafferty 2001b) and the proposed language modeling
+
+approach with negative query generation (labeled as XLM) for both short and verbose
+
+queries without using feedback. Note that without using feedback, the query likelihood
+
+method with negative query generation (Sect. 4.2) and the KL-divergence method with
+
+negative query generation (Sect. 4.3) are rank equivalent. LM has one free parameter l (for
+
+smoothing the standard document language model in Eq. 4) and XLM has two free
+
+parameters l (for smoothing both the standard document language model in Eq. 4 and the
+
+negative document language model in Eq. 18) and d. We use cross validation to train both
+
+l and d for XLM, and l for LM.
+
+We report the comparison results in Table 2. The results demonstrate that XLM out-
+
+performs LM consistently in terms of MAP and recall (#Rel) and also achieves better
+
+P@10 scores than LM in most cases. The MAP improvements of XLM over LM are
+
+signiﬁcant in most cases. These results show that bringing back the negative query gen-
+
+eration component is able to improve retrieval performance, and that the proposed
+
+approach to the estimation of negative query generation probabilities works effectively.
+
+Although XLM achieves better or comparable p@10 scores as compared to LM, their score
+
+differences are often minor; this veriﬁes our ﬁrst hypothesis in Sect. 4 that the negative
+
+query generation component may not inﬂuence too much the top-ranked result documents.
+
+4 http://www.lemurproject.org/.
+
+370
+
+Inf Retrieval J (2015) 18:359–378
+
+123
+
+
+So far we have shown that the proposed language modeling approach with negative
+
+query generation outperforms the standard language modeling approach when basic
+
+queries are used without exploiting any feedback information. Next, we turn to examine if
+
+negative query generation can also beneﬁt the automatically expanded queries using PRF.
+
+Speciﬁcally, we use the standard language modeling method to do an initial retrieval for
+
+each short query, and then apply the positional-relevance model (PRM1) (Lv and Zhai
+
+Table 1 Document set characteristic
+
+Terabyte
+
+WT10G
+
+Robust04
+
+WT2G
+
+Queries
+
+701–850
+
+451–550
+
+301–450, 601–700
+
+401–450
+
+#qry(with qrel)
+
+149
+
+100
+
+249
+
+50
+
+avg(ql_short)
+
+3.13
+
+4.24
+
+2.74
+
+2.46
+
+avg(ql_verb)
+
+11.55
+
+11.61
+
+15.47
+
+13.86
+
+#total_qrel
+
+28,640
+
+5981
+
+17,412
+
+2279
+
+#documents
+
+25,205k
+
+1692k
+
+528k
+
+247k
+
+avdl
+
+949
+
+611
+
+481
+
+1056
+
+std(dl)/avdl
+
+2.63
+
+2.31
+
+1.19
+
+2.14
+
+Table 2 Comparison of the
+
+standard language modeling
+
+approach (LM) and the proposed
+
+language modeling approach
+
+with negative query generation
+
+(XLM) on short queries, verbose
+
+queries, and automatically
+
+expanded queries using PRF
+
+We do signiﬁcance test on MAP,
+
+where superscripts 1/2/3/4
+
+indicate that the corresponding
+
+improvement is signiﬁcant at the
+
+0.05/0.02/0.01/0.001 level using
+
+the Wilcoxon non-directional
+
+test. ‘‘#Rel’’ stands for the
+
+number of total relevant
+
+documents retrieved
+
+Bold font highlights the MAP
+
+improvements of XLM over LM
+
+Dataset
+
+Query type
+
+Method
+
+MAP
+
+P@10
+
+#Rel
+
+WT2G
+
+Short
+
+LM
+
+0.3088
+
+0.4600
+
+1905
+
+XLM
+
+0.31873
+
+0.4620
+
+1920
+
+Verbose
+
+LM
+
+0.2742
+
+0.4000
+
+1837
+
+XLM
+
+0.28712
+
+0.4100
+
+1854
+
+PRF
+
+LM
+
+0.3385
+
+0.4880
+
+1915
+
+XLM
+
+0.34742
+
+0.4800
+
+1964
+
+WT10G
+
+Short
+
+LM
+
+0.1930
+
+0.2796
+
+3812
+
+XLM
+
+0.1961
+
+0.2807
+
+3852
+
+Verbose
+
+LM
+
+0.1790
+
+0.3150
+
+3816
+
+XLM
+
+0.18713
+
+0.3140
+
+3975
+
+PRF
+
+LM
+
+0.2205
+
+0.3071
+
+3809
+
+XLM
+
+0.22451
+
+0.3031
+
+3931
+
+Terabyte
+
+Short
+
+LM
+
+0.2921
+
+0.5463
+
+19,391
+
+XLM
+
+0.29363
+
+0.5503
+
+19,404
+
+Verbose
+
+LM
+
+0.2112
+
+0.4718
+
+14,468
+
+XLM
+
+0.21431
+
+0.4718
+
+14,734
+
+PRF
+
+LM
+
+0.3278
+
+0.5791
+
+19,896
+
+XLM
+
+0.33393
+
+0.5858
+
+20,075
+
+Robust04
+
+Short
+
+LM
+
+0.2521
+
+0.4225
+
+10,260
+
+XLM
+
+0.25301
+
+0.4229
+
+10,244
+
+Verbose
+
+LM
+
+0.2329
+
+0.3968
+
+9344
+
+XLM
+
+0.24404
+
+0.3992
+
+9372
+
+PRF
+
+LM
+
+0.2788
+
+0.4382
+
+10,741
+
+XLM
+
+0.2797
+
+0.4422
+
+10,814
+
+Inf Retrieval J (2015) 18:359–378
+
+371
+
+123
+
+
+2010), which is a state-of-the-art PRF algorithm, to estimate an improved query language
+
+model. After that we use the obtained query language model to rank documents using the
+
+proposed KL-divergence retrieval method with a negative document language model
+
+(Eq. 22); in addition, we also use the same query language model in the standard KL-
+
+divergence retrieval method (Lafferty and Zhai 2001) as our baseline.5 The parameters l
+
+and d in the scoring functions are trained using cross validation.
+
+We present the results in Table 2. It shows that XLM consistently outperforms LM,
+
+suggesting that the negative query generation component also works well for PRF. This
+
+demonstrates that, through bringing back the negative query generation, we have devel-
+
+oped a general retrieval method that works well for different types of queries.
+
+Comparing short with verbose queries, we observe that XLM generally improves more
+
+on verbose queries than on short queries. In particular, the MAP improvements on WT2G,
+
+WT10G, and Robust04 collections are as high as 5 % for verbose queries. However, this is
+
+likely and also veriﬁes the second hypothesis in Sect. 4 that XLM would affect the retrieval
+
+effectiveness more for verbose queries, because result documents tend to miss more query
+
+terms when a query is verbose.
+
+Comparing PRF with short queries, the relative improvements of XML over LM on the
+
+former are often larger than those on the latter, which is likely because automatic query
+
+expansion using PRF generally improves the verbosity of queries.
+
+Comparing PRF with verbose queries, the relative improvements on the former are
+
+often less than those on the latter, although the former often contains more distinct terms
+
+(and is thus more verbose) than the latter. One possible reason is that redundant expansion
+
+terms may be introduced by PRF. Intuitively, matching a redundant expansion term should
+
+not be rewarded as much as matching a basic query term from the original query, sug-
+
+gesting that we may use different d values for the expansion terms and the basic query
+
+terms for PRF, which would be an interesting direction for future work.
+
+We introduce a parameter d to control the negative query generation component. We
+
+plot MAP improvements of XLM over LM against different d values in Fig. 1. It
+
+demonstrates that, for verbose queries, when d is set to a value around 0.05, XLM works
+
+very well across different collections. Therefore, d can be safely ‘‘eliminated’’ from XLM
+
+for verbose queries by setting it to a default value 0.05. Although d tends to be collection-
+
+dependent for short queries and for PRF, setting it conservatively, e.g., 0.02 for short
+
+queries and 0.1 for PRF, can often lead to consistent improvement on all collections.
+
+As XLM and LM share one parameter l, the Dirichlet prior, we are also interested in
+
+understanding how this parameter affects the retrieval performance of XLM and LM. So
+
+we draw the sensitivity curves of XLM and LM w.r.t. l in Fig. 2. It shows that XLM is
+
+consistently more effective than LM when we vary the value of l. Moreover, the curve
+
+trends of XLM and LM are very similar to each other. In particular, XLM and LM even
+
+often share the same optimal setting for l. These are interesting observations, which
+
+suggest that l and d do not interact with each other seriously; as a result, we could tune two
+
+parameters one by one independently.
+
+We also observe that the optimal l value for short queries tends to be smaller than that
+
+for verbose queries for both LM and XLM, which is consistent to our previous
+
+5 Following previous work (Zhai and Lafferty 2001a), we use the same query language model to compare
+
+XLM and LM so that we can focus on the comparison of scoring functions, i.e., XLM and LM, rather than
+
+the feedback techniques. Speciﬁcally, the feedback interpolation coefﬁcient a ¼ 0:8, the number of feed-
+
+back documents to 20, the number of terms in feedback model to 50, and the two parameters r and k inside
+
+the positional relevance model are set to their default values as suggested by Lv and Zhai (2010).
+
+372
+
+Inf Retrieval J (2015) 18:359–378
+
+123
+
+
+-0.5
+
+ 0
+
+ 0.5
+
+ 1
+
+ 1.5
+
+ 2
+
+ 2.5
+
+ 3
+
+ 0
+
+ 0.02
+
+ 0.04
+
+ 0.06
+
+ 0.08
+
+ 0.1
+
+ 0.12
+
+ 0.14
+
+Relative MAP improvement (%)
+
+δ
+
+Short Queries
+
+WT10G-odd
+
+WT10G-even
+
+Robust04-odd
+
+Robust04-even
+
+ 0
+
+ 2
+
+ 4
+
+ 6
+
+ 8
+
+ 10
+
+ 12
+
+ 0
+
+ 0.02
+
+ 0.04
+
+ 0.06
+
+ 0.08
+
+ 0.1
+
+ 0.12
+
+ 0.14
+
+Relative MAP improvement (%)
+
+δ
+
+Verbose Queries
+
+WT10G-odd
+
+WT10G-even
+
+Robust04-odd
+
+Robust04-even
+
+-0.5
+
+ 0
+
+ 0.5
+
+ 1
+
+ 1.5
+
+ 2
+
+ 2.5
+
+ 3
+
+ 3.5
+
+ 4
+
+ 0
+
+ 0.05
+
+ 0.1
+
+ 0.15
+
+ 0.2
+
+ 0.25
+
+ 0.3
+
+ 0.35
+
+ 0.4
+
+Relative MAP improvement (%)
+
+δ
+
+Pseudo-Relevance Feedback
+
+WT10G-odd
+
+WT10G-even
+
+Robust04-odd
+
+Robust04-even
+
+Fig. 1 Performance sensitivity
+
+to d of the proposed method
+
+XML for short queries (top),
+
+verbose queries (middle), and
+
+query language models estimated
+
+using PRF (bottom). y-axis shows
+
+the relative MAP improvements
+
+of XLM over the standard
+
+language modeling method. Note
+
+that XLM will degenerate to LM
+
+when d ¼ 0. The corresponding
+
+settings of parameter l for each d
+
+value are well tuned. ‘‘odd’’ and
+
+‘‘even’’ in the legend mean that
+
+the corresponding curves are
+
+based on odd and even-numbered
+
+topics respectively
+
+Inf Retrieval J (2015) 18:359–378
+
+373
+
+123
+
+
+observation (Lv and Zhai 2011). Interestingly, we ﬁnd that the optimal l for PRF is often
+
+smaller than that for short queries, which needs more experiments to understand the reason.
+
+5.3 Summary
+
+Our experiments demonstrate empirically that bringing back the negative query generation
+
+component can improve the standard language modeling retrieval models for various types
+
+of queries across different collections.
+
+We have derived two effective retrieval functions, a query likelihood model with
+
+negative query generation (Formula 21) and a KL-divergence model with negative doc-
+
+ument language models (Formula 22). Both of them work as efﬁciently as but more
+
+effectively than their corresponding standard retrieval functions, i.e., the standard query
+
+likelihood method (Ponte and Croft 1998) and the standard KL-divergence method (Laf-
+
+ferty and Zhai 2001), respectively. There is an extra parameter d in the derived formulas.
+
+However, we observe that d and the Dirichlet prior l generally do not interact with each
+
+other. Therefore we can tune two parameters independently. The suggested default d
+
+values are 0.05, 0.02 and 0.1 for verbose queries, short queries and PRF, respectively.
+
+ 0.14
+
+ 0.15
+
+ 0.16
+
+ 0.17
+
+ 0.18
+
+ 0.19
+
+ 0.2
+
+ 0.21
+
+ 0.22
+
+ 0.23
+
+ 0
+
+ 1000  2000  3000  4000  5000  6000  7000  8000  9000 10000
+
+MAP
+
+μ
+
+WT10G
+
+LM-short
+
+XLM-short
+
+LM-verbose
+
+XLM-verbose
+
+LM-PRF
+
+XLM-PRF
+
+ 0.2
+
+ 0.21
+
+ 0.22
+
+ 0.23
+
+ 0.24
+
+ 0.25
+
+ 0.26
+
+ 0.27
+
+ 0.28
+
+ 0
+
+ 1000  2000  3000  4000  5000  6000  7000  8000  9000 10000
+
+MAP
+
+μ
+
+Robust04
+
+LM-Short
+
+XLM-Short
+
+LM-Verbose
+
+XLM-Verbose
+
+LM-PRF
+
+XLM-PRF
+
+Fig. 2 Performance sensitivity
+
+to the Dirichlet prior l of the
+
+standard language model (LM)
+
+and the proposed language model
+
+with negative query generation
+
+(XLM) on WT10G (top) and
+
+Robust04 (bottom). d is set to
+
+0.05 for short/verbose queries
+
+and 0.1 for PRF query language
+
+models respectively in XLM, and
+
+LM is essentially a special case
+
+of XLM where d ¼ 0. It shows
+
+that LM and XLM share similar
+
+sensitive curves to l
+
+374
+
+Inf Retrieval J (2015) 18:359–378
+
+123
+
+
+6 Conclusions
+
+In this paper, we show that we can improve the standard language modeling retrieval
+
+models by bringing back the component of negative query generation (i.e., the probability
+
+that a user who dislikes a document would use a query). We argue that ignoring the
+
+component of negative query generation in the standard query likelihood retrieval function
+
+is questionable, because in reality, a user who dislikes a document would more likely avoid
+
+using words in the document when posing a query. We propose an effective approach to
+
+estimate document-dependent probabilities of negative query generation based on the
+
+principle of maximum entropy, and derive a more complete query likelihood retrieval
+
+function that contains the negative query generation component, which essentially scores a
+
+document with respect to a query according to the ratio of the probability that a user who
+
+likes the document would pose the query to the probability that a user who dislikes the
+
+document would pose the query. In addition, we further develop a more general proba-
+
+bilistic distance retrieval method to naturally incorporate query language models, which
+
+covers the proposed query likelihood with negative query generation as its special case.
+
+Our work not only bridges the theoretic gap between the standard language modeling
+
+retrieval models and the probability ranking principle, but also improves the retrieval
+
+effectiveness for various types of queries across different collections, with (almost) no
+
+additional computational cost. The proposed retrieval functions can potentially replace the
+
+standard query likelihood retrieval method and the standard KL-divergence retrieval
+
+method in all retrieval applications.
+
+As a ﬁrst attempt at bringing back negative query generation, our work opens up an
+
+interesting novel research direction in optimizing language models for information
+
+retrieval through improving the estimation of negative query generation (or negative
+
+document language model). One of the most interesting directions is to study whether
+
+setting a term-speciﬁc d can further improve performance. For example, term necessity
+
+prediction (Zhao and Callan 2010) and the discovery of key concepts (Bendersky and Croft
+
+2008) could be two possible ways for setting adaptive d. Another interesting direction is to
+
+go beyond document D and seek other resources for estimating a more accurate negative
+
+query generation probability.
+
+References
+
+Aly, R., Demeester, T., &amp; Robertson, S. E. (2014). Probabilistic models in ir and their relationships.
+
+Information Retrieval, 17(2), 177–201.
+
+Balog, K., Azzopardi, L., &amp; de Rijke, M. (2006). Formal models for expert ﬁnding in enterprise corpora. In
+
+Proceedings of the 29th annual international ACM SIGIR conference on research and development in
+
+information retrieval, SIGIR ’06 (pp. 43–50). ACM: New York, NY
+
+Bendersky, M., &amp; Croft, W. B. (2008). Discovering key concepts in verbose queries. In Proceedings of the
+
+31st annual international ACM SIGIR conference on research and development in information
+
+retrieval, SIGIR ’08 (pp. 491–498). ACM: New York, NY.
+
+Berger, A., &amp; Lafferty, J. (1999). Information retrieval as statistical translation. In Proceedings of the 22nd
+
+annual international ACM SIGIR conference on Research and development in information retrieval,
+
+SIGIR ’99 (pp. 222–229). ACM: New York, NY.
+
+Collins-Thompson, K., &amp; Callan, J. (2007). Estimation and use of uncertainty in pseudo-relevance feedback.
+
+In Proceedings of the 30th annual international ACM SIGIR conference on research and development
+
+in information retrieval, SIGIR ’07 (pp. 303–310). ACM: New York, NY.
+
+Inf Retrieval J (2015) 18:359–378
+
+375
+
+123
+
+
+Cronen-Townsend, S., Zhou, Y., &amp; Croft, W. B. (2002). Predicting query performance. In Proceedings of
+
+the 25th annual international ACM SIGIR conference on research and development in information
+
+retrieval, SIGIR ’02 (pp. 299–306). ACM: New York, NY.
+
+Diaz, F., &amp; Metzler, D. (2006). Improving the estimation of relevance models using large external corpora.
+
+In Proceedings of the 29th annual international ACM SIGIR conference on research and development
+
+in information retrieval, SIGIR ’06 (pp. 154–161). ACM: New York, NY.
+
+Fang, H., &amp; Zhai, C. (2007). Probabilistic models for expert ﬁnding. In Proceedings of the 29th European
+
+conference on IR research, ECIR’07 (pp 418–430). Springer: Berlin, Heidelberg.
+
+Fuhr, N. (1992). Probabilistic models in information retrieval. The Computer Journal, 35, 243–255.
+
+Gao, J., Nie, J. Y., Wu, G., &amp; Cao, G. (2004). Dependence language model for information retrieval. In
+
+Proceedings of the 27th annual international ACM SIGIR conference on research and development in
+
+information retrieval, SIGIR ’04 (pp. 170–177). ACM: New York, NY.
+
+Hiemstra, D. (2000). A probabilistic justiﬁcation for using tf.idf term weighting in information retrieval.
+
+International Journal on Digital Libraries, 3(2), 131–139.
+
+Hiemstra, D. (2001). Using language models for information retrieval. PhD thesis, University of Twente.
+
+Hiemstra, D., Robertson, S., &amp; Zaragoza, H. (2004). Parsimonious language models for information
+
+retrieval. In Proceedings of the 27th annual international ACM SIGIR conference on research and
+
+development in information retrieval, SIGIR ’04 (pp. 178–185). ACM: New York, NY.
+
+Jaynes, E. T. (1957). Information theory and statistical mechanics. Physical Review, 106(4), 620–630.
+
+Kurland, O., Lee, L., &amp; Domshlak, C. (2005). Better than the real thing? Iterative pseudo-query processing
+
+using cluster-based language models. In Proceedings of the 28th annual international ACM SIGIR
+
+conference on research and development in information retrieval, SIGIR ’05 (pp. 19–26). ACM: New
+
+York, NY.
+
+Lafferty, J., &amp; Zhai, C. (2001). Document language models, query models, and risk minimization for
+
+information retrieval. In Proceedings of the 24th annual international ACM SIGIR conference on
+
+research and development in information retrieval, SIGIR ’01 (pp. 111–119). ACM: New York, NY.
+
+Lafferty, J., &amp; Zhai, C. (2002). Probabilistic relevance models based on document and query generation. In
+
+Language modeling and information retrieval (pp. 1–10). Kluwer Academic Publishers: Dordrecht.
+
+Lafferty, J. D., &amp; Zhai, C. (2003). Probabilistic relevance models based on document and query generation.
+
+In Language modeling and information retrieval (Vol. 13).
+
+Lavrenko, V., &amp; Croft, W. B. (2001). Relevance based language models. In Proceedings of the 24th annual
+
+international ACM SIGIR conference on research and development in information retrieval, SIGIR ’01
+
+(pp. 120–127). ACM: New York, NY.
+
+Lavrenko, V., Choquette, M., &amp; Croft, W. B. (2002). Cross-lingual relevance models. In Proceedings of the
+
+25th annual international ACM SIGIR conference on research and development in information
+
+retrieval, SIGIR ’02 (pp. 175–182). ACM: New York, NY.
+
+Liu, X., &amp; Croft, W. B. (2002). Passage retrieval based on language models. In Proceedings of the eleventh
+
+international conference on information and knowledge management, CIKM ’02 (pp. 375–382). ACM:
+
+New York, NY.
+
+Liu, X., &amp; Croft, W. B. (2004). Cluster-based retrieval using language models. In Proceedings of the 27th
+
+annual international ACM SIGIR conference on research and development in information retrieval,
+
+SIGIR ’04 (pp. 186–193). ACM: New York, NY.
+
+Luk, R. W. (2008). On event space and rank equivalence between probabilistic retrieval models. Information
+
+Retrieval, 11(6), 539–561. doi:10.1007/s10791-008-9062-z.
+
+Lv, Y., &amp; Zhai, C. (2009). Positional language models for information retrieval. In Proceedings of the 32nd
+
+international ACM SIGIR conference on research and development in information retrieval, SIGIR ’09
+
+(pp. 299–306). ACM: New York, NY.
+
+Lv, Y., &amp; Zhai, C. (2010). Positional relevance model for pseudo-relevance feedback. In Proceedings of the
+
+33rd international ACM SIGIR conference on research and development in information retrieval,
+
+SIGIR ’10 (pp. 579–586). ACM: New York, NY.
+
+Lv, Y., &amp; Zhai, C. (2011). Lower-bounding term frequency normalization. In Proceedings of the 20th ACM
+
+international conference on information and knowledge management, CIKM ’11 (pp. 7–16). ACM:
+
+New York, NY.
+
+Lv, Y., &amp; Zhai, C. (2012). Query likelihood with negative query generation. In Proceedings of the 21st ACM
+
+international conference on information and knowledge management, CIKM ’12 (pp. 1799–1803).
+
+ACM: New York, NY.
+
+Mei, Q., Fang, H., &amp; Zhai, C. (2007). A study of poisson query generation model for information retrieval.
+
+In Proceedings of the 30th annual international ACM SIGIR conference on research and development
+
+in information retrieval, SIGIR ’07 (pp. 319–326). ACM: New York, NY.
+
+376
+
+Inf Retrieval J (2015) 18:359–378
+
+123
+
+
+Metzler, D., Lavrenko, V., &amp; Croft, W. B. (2004). Formal multiple-bernoulli models for language modeling.
+
+In Proceedings of the 27th annual international ACM SIGIR conference on research and development
+
+in information retrieval, SIGIR ’04 (pp. 540–541). ACM: New York, NY.
+
+Miller, D. R. H., Leek, T., &amp; Schwartz, R. M. (1999). A hidden markov model information retrieval system.
+
+In Proceedings of the 22nd annual international ACM SIGIR conference on research and development
+
+in information retrieval, SIGIR ’99 (pp. 214–221) ACM: New York, NY.
+
+Ogilvie, P., &amp; Callan, J. (2003). Combining document representations for known-item search. In Pro-
+
+ceedings of the 26th annual international ACM SIGIR conference on research and development in
+
+informaion retrieval, SIGIR ’03 (pp. 143–150). ACM: New York, NY.
+
+Ponte, J. M., &amp; Croft, W. B. (1998). A language modeling approach to information retrieval. In Proceedings
+
+of the 21st annual international ACM SIGIR conference on research and development in information
+
+retrieval, SIGIR ’98, (pp 275–281). ACM: New York, NY.
+
+Robertson, S., &amp; Hiemstra, D. (2001). Language models and probability of relevance. In J. Callan, B.
+
+W. Croft, &amp; J. Lafferty (Eds.), Proceedings of the ﬁrst workshop on language modeling and infor-
+
+mation retrieval (pp. 21–25). Pittsburgh, PA: Carnegie Mellon University.
+
+Robertson, S. E. (1977). The probability ranking principle in IR. Journal of Documentation, 33(4), 294–304.
+
+Robertson, S. E. (2005). On event spaces and probabilistic models in information retrieval. Information
+
+Retrieval, 8(2), 319–329.
+
+Robertson, S. E., &amp; Sparck-Jones, K. (1976). Relevance weighting of search terms. Journal of the American
+
+Society of Information Science, 27(3), 129–146.
+
+Shen, X., Tan, B., &amp; Zhai, C. (2005). Context-sensitive information retrieval using implicit feedback. In
+
+Proceedings of the 28th annual international ACM SIGIR conference on research and development in
+
+information retrieval, SIGIR ’05 (pp. 43–50). ACM: New York, NY.
+
+Si, L., Jin, R., Callan, J., &amp; Ogilvie, P. (2002). A language modeling framework for resource selection and
+
+results merging. In Proceedings of the eleventh international conference on information and knowl-
+
+edge management, CIKM ’02 (pp. 391–397). ACM: New York, NY.
+
+Song, F., &amp; Croft, W. B. (1999). A general language model for information retrieval. In Proceedings of the
+
+eighth international conference on information and knowledge management, CIKM ’99 (pp. 316–321).
+
+ACM: New York, NY.
+
+Sparck-Jones, K., &amp; Robertson, S. E. (2001). LM vs PM: Where’s the relevance? In J. Callan, B. W. Croft,
+
+&amp; J. Lafferty (Eds.), Proceedings of the workshop on language modeling and information retrieval (pp.
+
+12–15). Pittsburgh, PA: Carnegie Mellon University.
+
+Sparck-Jones, K., Walker, S., &amp; Robertson, S. E. (2000). A probabilistic model of information retrieval:
+
+Development and comparative experiments. Information Processing and Management, 36, 779–808.
+
+Sparck-Jones, K., Robertson, S. E., Hiemstra, D., &amp; Zaragoza, H. (2003). Language modeling and relevance.
+
+In B. W. Croft &amp; J. Lafferty (Eds.), Language modeling for information retrieval, the kluwer inter-
+
+national series on information retrieval (Vol. 13). Dordrecht: Kluwer academic Publishers.
+
+Tan, B., Shen, X., &amp; Zhai, C. (2006). Mining long-term search history to improve search accuracy. In
+
+Proceedings of the 12th ACM SIGKDD international conference on knowledge discovery and data
+
+mining, KDD ’06 (pp. 718–723). ACM: New York, NY.
+
+Tao, T., Wang, X., Mei, Q., &amp; Zhai, C. (2006). Language model information retrieval with document
+
+expansion. In Proceedings of the main conference on human language technology conference of the
+
+North American chapter of the association of computational linguistics, HLT-NAACL ’06 (pp.
+
+407–414). Association for Computational Linguistics: Stroudsburg, PA.
+
+Tsagkias, M., de Rijke, M., &amp; Weerkamp, W. (2011). Hypergeometric language models for republished
+
+article ﬁnding. In Proceedings of the 34th international ACM SIGIR conference on research and
+
+development in information retrieval, SIGIR ’11 (pp. 485–494). ACM: New York, NY.
+
+Wang, X., Fang, H., &amp; Zhai, C. (2008). A study of methods for negative relevance feedback. In Proceedings
+
+of the 31st annual international ACM SIGIR conference on research and development in information
+
+retrieval, SIGIR ’08 (pp. 219–226). ACM: New York, NY.
+
+Wei, X., &amp; Croft, W. B. (2006). Lda-based document models for ad-hoc retrieval. In Proceedings of the 29th
+
+annual international ACM SIGIR conference on research and development in information retrieval,
+
+SIGIR ’06 (pp. 178–185). ACM: New York, NY.
+
+Xu, J., &amp; Croft, W. B. (1999). Cluster-based language models for distributed retrieval. In Proceedings of the
+
+22nd annual international ACM SIGIR conference on research and development in information
+
+retrieval, SIGIR ’99 (pp. 254–261). ACM: New York, NY.
+
+Xu, J., Weischedel, R., &amp; Nguyen, C. (2001). Evaluating a probabilistic model for cross-lingual information
+
+retrieval. In Proceedings of the 24th annual international ACM SIGIR conference on research and
+
+development in information retrieval, SIGIR ’01 (pp. 105–110). ACM: New York, NY.
+
+Inf Retrieval J (2015) 18:359–378
+
+377
+
+123
+
+
+Zaragoza, H., Hiemstra, D., &amp; Tipping, M. (2003). Bayesian extension to the language model for ad hoc
+
+information retrieval. In Proceedings of the 26th annual international ACM SIGIR conference on
+
+research and development in informaion retrieval, SIGIR ’03 (pp. 4–9). ACM: New York, NY.
+
+Zhai, C. (2008). Statistical language models for information retrieval a critical review. Foundations and
+
+Trends in Information Retrieval, 2(3), 137–213.
+
+Zhai, C., &amp; Lafferty, J. (2001a). Model-based feedback in the language modeling approach to information
+
+retrieval. In Proceedings of the tenth international conference on information and knowledge man-
+
+agement, CIKM ’01 (pp. 403–410). ACM: New York, NY.
+
+Zhai, C., &amp; Lafferty, J. (2001b). A study of smoothing methods for language models applied to ad hoc
+
+information retrieval. In Proceedings of the 24th annual international ACM SIGIR conference on
+
+research and development in information retrieval, SIGIR ’01 (pp. 334–342). ACM: New York, NY.
+
+Zhai, C., &amp; Lafferty, J. (2002). Two-stage language models for information retrieval. In Proceedings of the
+
+25th annual international ACM SIGIR conference on research and development in information
+
+retrieval, SIGIR ’02 (pp. 49–56). ACM: New York, NY.
+
+Zhai, C., Cohen, W.W., &amp; Lafferty, J. (2003). Beyond independent relevance: methods and evaluation
+
+metrics for subtopic retrieval. In Proceedings of the 26th annual international ACM SIGIR conference
+
+on research and development in informaion retrieval, SIGIR ’03 (pp. 10–17). ACM: New York, NY.
+
+Zhang, Y., Callan, J., &amp; Minka, T. (2002). Novelty and redundancy detection in adaptive ﬁltering. In
+
+Proceedings of the 25th annual international ACM SIGIR conference on research and development in
+
+information retrieval, SIGIR ’02 (pp. 81–88). ACM: New York, NY.
+
+Zhao, L., &amp; Callan, J. (2010). Term necessity prediction. In Proceedings of the 19th ACM international
+
+conference on information and knowledge management, CIKM ’10 (pp. 259–268). ACM: New York,
+
+NY.
+
+378
+
+Inf Retrieval J (2015) 18:359–378
+
+123
+

@@ -1,0 +1,819 @@
+
+
+
+Table of Contents
+
+1  Quick Introduction to Okapi BM25
+
+1.1  Gaining Intuition for Okapi BM25
+
+1.2  Implementation
+
+1.3  ElasticSearch BM25
+
+2  Reference
+
+
+
+In [1]:
+
+# code for loading the format for the notebook
+
+import os
+
+# path : store the current path to convert back to it later
+
+path = os.getcwd()
+
+os.chdir(os.path.join('..', 'notebook_format'))
+
+from formats import load_style
+
+load_style(plot_style=False)
+
+
+
+In [2]:
+
+os.chdir(path)
+
+import math
+
+import json
+
+import requests
+
+# 1. magic to print version
+
+# 2. magic so that the notebook will reload external python modules
+
+%load_ext watermark
+
+%load_ext autoreload
+
+%autoreload 2
+
+%watermark -a 'Ethen' -d -t -v -p requests
+
+Quick Introduction to Okapi BM25
+
+The problem that BM25 (Best Match 25) tries to solve is similar to that of TFIDF (Term Frequency, Inverse
+
+Document Frequency), that is representing our text in a vector space (it can be applied to field outside of text, but
+
+text is where it has the biggest presence) so we can search/find similar documents for a given document or query.
+
+The gist behind TFIDF is that is relies on two main factors to determine whether a document is similar to our query.
+
+Term Frequency aka tf: how often does the term occur in the document? 3 times? 10 times?
+
+Inverse Document Frequency aka idf: measures how many documents the term appeared in. Inverse
+
+document frequency (1/df) then measures how special the term is. Is the term a very rare (occurs in just
+
+one doc) word? Or a relatively common one (occurs in nearly all the docs)?
+
+Using these two factors, TFIDF measures the relative concentration of a term in a given piece of document. If the
+
+term is common in this article, but relatively rare elsewhere, then the TFIDF score will be high, and documents that
+
+have higher TFIDF score would be considered as very relevant to the search term.
+
+BM25 improves upon TFIDF by casting relevance as a probability problem. A relevance score, according to
+
+probabilistic information retrieval, ought to reflect the probability a user will consider the result relevant. Instead of
+
+going through how the formula was derived, here we'll take a look a the formula and try to digest it to see why it
+
+makes some kind of sense.
+
+Out[1]:
+
+Ethen 2018-11-17 17:24:06 
+
+CPython 3.6.4
+
+IPython 6.4.0
+
+requests 2.20.1
+
+
+
+
+Gaining Intuition for Okapi BM25
+
+BM25 (Best Match 25) function scores each document in a corpus according to the document's relevance to a
+
+particular text query. For a query Q, with terms q1,…,qn, the BM25 score for document D is:
+
+BM25(D,Q) =
+
+n
+
+∑
+
+i=1IDF(qi,D)
+
+f(qi,D) ⋅ (k1 + 1)
+
+f(qi) + k1 ⋅ (1 − b + b ⋅ |D|/davg))
+
+where:
+
+f(qi,D) is the number of times term qi occurs in document D.
+
+|D| is the number of words in document D.
+
+davg is the average number of words per document.
+
+b and k1 are hyperparameters for BM25.
+
+Let's break the formula down into smaller components to see why it makes sense.
+
+First of all, there's f(qi,D) and k1. f(qi,D) should match our intuition, as this means the more times the
+
+query term appears in the document, the higher the document's score will be. The interesting part is the
+
+parameter k1, which determines the term frequency saturation characteristic. The higher the
+
+value, the slower the saturation. And when we say saturation, we are referring to the fact that if terms
+
+occurring extra times add extra score. We can observe this diminishing return in term frequency from the
+
+graph below.
+
+
+
+Then |D|/davg part in the denominator means a document that is longer than the average documents will
+
+result in a bigger denominator, resulting in a decrease in the score. The intuition is that the more terms
+
+in the document that does not match our input query - the lower the document's score should be. In
+
+other words, if a 300 page long document mentions the query term once, it's less likely to have as much
+
+to do with the query compared to a short tweet which mentions query once.
+
+
+
+
+
+
+
+
+From the graph above, we can see that shorter documents hit the asymptote much faster. Hopefully, this resembles
+
+our intuition as the more matches we have on shorter documents, the more certain we are about the relevance,
+
+whereas, for a lengthy book, it might take us longer to get to a point where we feel confident that the book is
+
+indeed relevant to the given query.
+
+The parameter b (bound 0.0 ~ 1.0) in the denominator is multiplied by the ratio of the document length
+
+we just discussed. If b is bigger, the effects of the document length compared to the average length
+
+are more amplified. We can imagine if we set b to 0, the effect of the length ratio would be completely
+
+nullified.
+
+As for the inverse document frequency part, IDF(qi,D). For a corpus with N documents, inverse document frequency for
+
+term qi is computed as follows:
+
+IDF(qi,D) = log
+
+N − N(qi) + 0.5
+
+N(qi) + 0.5
+
+where
+
+N(qi) is the number of documents in the corpus that contain term qi.
+
+The inverse document frequency part is very similar to that of TFIDF, whose role is to make sure that rarer words will
+
+have a higher score and contribute more to the final score.
+
+Please note that the IDF formula listed above has a drawback when using it for terms appearing in more than half of
+
+the corpus since the value would come out as negative value, resulting in the overall score to become negative. e.g.
+
+if we have 10 documents in the corpus, and the term "the" appeared in 6 of them, its IDF would be 
+
+log(10 − 6 + 0.5/6 + 0.5) = log(4.5/6.5). Although we can argue that our implementation should have already removed these
+
+frequently appearing words as these words are mostly used to form a complete sentence and carry little meaning of
+
+note, different softwares/packages still make different adjustments to prevent a negative score from ever occurring.
+
+e.g.
+
+Add a 1 to the equation.
+
+IDF(qi) = log(1 +
+
+N − N(qi) + 0.5
+
+N(qi) + 0.5 )
+
+For term that resulted in a negative IDF value, swap it with an small positive value, usually denoted as ϵ
+
+Like all hyperparameters in general, the default ones are usually a good starting point, and we should probably focus
+
+on tweaking other stuff before jumping into the rabbit hole of hyperparameter tuning. In the context of search, it
+
+might be making sure our ranking scores older documents lower in application such as news ranking. But if we were
+
+to start tuning, remember to always measure the performance of various settings and the following questions are
+
+general starting points that we can reference to.
+
+Fo r k1, we should be asking, "when do we think a term is likely to be saturated?" For very long
+
+documents like books, it's very likely to have a lot of different terms appear several times in a work,
+
+even when the term isn't the primary subject of the document. We may not want terms to be saturated
+
+as quickly in this situation, so the suggestion is that k1 should generally trend toward larger numbers
+
+when the text is a lot longer and more diverse. On the opposite side of things, it's been suggested to
+
+set k1 on the lower side. It's very unlikely that a collection of short tweets would have a term multiple
+
+times without being highly related to that term.
+
+For b, we should be asking, "when do we think a document is likely to be very long, and when should
+
+that hinder its relevance to a term?" Documents which are highly specific like engineering specifications
+
+or patents are lengthy in order to be more specific about a subject. Their length is unlikely to be
+
+detrimental to the relevance and lower b may be more appropriate. On the other end of the spectrum,
+
+documents which touch on several different topics in a broad way — news articles (a political article may
+
+touch on economics, international affairs, and certain corporations), user reviews, etc. — often benefit
+
+by choosing a larger b so that irrelevant topics to a user's search, including spam and the like, are
+
+penalized.
+
+
+
+
+Implementation
+
+
+
+In [3]:
+
+# we'll generate some fake texts to experiment with
+
+corpus = [
+
+ 'Human machine interface for lab abc computer applications',
+
+ 'A survey of user opinion of computer system response time',
+
+ 'The EPS user interface management system',
+
+ 'System and human system engineering testing of EPS',
+
+ 'Relation of user perceived response time to error measurement',
+
+ 'The generation of random binary unordered trees',
+
+ 'The intersection graph of paths in trees',
+
+ 'Graph minors IV Widths of trees and well quasi ordering',
+
+ 'Graph minors A survey'
+
+]
+
+# remove stop words and tokenize them (we probably want to do some more
+
+# preprocessing with our text in a real world setting, but we'll keep
+
+# it simple here)
+
+stopwords = set(['for', 'a', 'of', 'the', 'and', 'to', 'in'])
+
+texts = [
+
+    [word for word in document.lower().split() if word not in stopwords]
+
+ for document in corpus
+
+]
+
+# build a word count dictionary so we can remove words that appear only once
+
+word_count_dict = {}
+
+for text in texts:
+
+ for token in text:
+
+        word_count = word_count_dict.get(token, 0) + 1
+
+        word_count_dict[token] = word_count
+
+texts = [[token for token in text if word_count_dict[token] &gt; 1] for text in texts]
+
+texts
+
+
+
+In [4]:
+
+class BM25:
+
+ """
+
+    Best Match 25.
+
+    Parameters
+
+    ----------
+
+    k1 : float, default 1.5
+
+    b : float, default 0.75
+
+    Attributes
+
+    ----------
+
+    tf_ : list[dict[str, int]]
+
+        Term Frequency per document. So [{'hi': 1}] means
+
+        the first document contains the term 'hi' 1 time.
+
+    df_ : dict[str, int]
+
+        Document Frequency per term. i.e. Number of documents in the
+
+        corpus that contains the term.
+
+    idf_ : dict[str, float]
+
+        Inverse Document Frequency per term.
+
+    doc_len_ : list[int]
+
+        Number of terms per document. So [3] means the first
+
+        document contains 3 terms.
+
+    corpus_ : list[list[str]]
+
+        The input corpus.
+
+    corpus_size_ : int
+
+        Number of documents in the corpus.
+
+    avg_doc_len_ : float
+
+        Average number of terms for documents in the corpus.
+
+    """
+
+Out[3]:
+
+[['human', 'interface', 'computer'],
+
+ ['survey', 'user', 'computer', 'system', 'response', 'time'],
+
+ ['eps', 'user', 'interface', 'system'],
+
+ ['system', 'human', 'system', 'eps'],
+
+ ['user', 'response', 'time'],
+
+ ['trees'],
+
+ ['graph', 'trees'],
+
+ ['graph', 'minors', 'trees'],
+
+ ['graph', 'minors', 'survey']]
+
+
+
+
+
+
+ def __init__(self, k1=1.5, b=0.75):
+
+ self.b = b
+
+ self.k1 = k1
+
+ def fit(self, corpus):
+
+ """
+
+        Fit the various statistics that are required to calculate BM25 ranking
+
+        score using the corpus given.
+
+        Parameters
+
+        ----------
+
+        corpus : list[list[str]]
+
+            Each element in the list represents a document, and each document
+
+            is a list of the terms.
+
+        Returns
+
+        -------
+
+        self
+
+        """
+
+        tf = []
+
+        df = {}
+
+        idf = {}
+
+        doc_len = []
+
+        corpus_size = 0
+
+ for document in corpus:
+
+            corpus_size += 1
+
+            doc_len.append(len(document))
+
+ # compute tf (term frequency) per document
+
+            frequencies = {}
+
+ for term in document:
+
+                term_count = frequencies.get(term, 0) + 1
+
+                frequencies[term] = term_count
+
+            tf.append(frequencies)
+
+ # compute df (document frequency) per term
+
+ for term, _ in frequencies.items():
+
+                df_count = df.get(term, 0) + 1
+
+                df[term] = df_count
+
+ for term, freq in df.items():
+
+            idf[term] = math.log(1 + (corpus_size - freq + 0.5) / (freq + 0.5))
+
+ self.tf_ = tf
+
+ self.df_ = df
+
+ self.idf_ = idf
+
+ self.doc_len_ = doc_len
+
+ self.corpus_ = corpus
+
+ self.corpus_size_ = corpus_size
+
+ self.avg_doc_len_ = sum(doc_len) / corpus_size
+
+ return self
+
+ def search(self, query):
+
+        scores = [self._score(query, index) for index in range(self.corpus_size_)]
+
+ return scores
+
+ def _score(self, query, index):
+
+        score = 0.0
+
+        doc_len = self.doc_len_[index]
+
+        frequencies = self.tf_[index]
+
+ for term in query:
+
+ if term not in frequencies:
+
+ continue
+
+            freq = frequencies[term]
+
+            numerator = self.idf_[term] * freq * (self.k1 + 1)
+
+            denominator = freq + self.k1 * (1 - self.b + self.b * doc_len / self.avg_doc_len_)
+
+            score += (numerator / denominator)
+
+ return score
+
+
+
+In [5]:
+
+# query our corpus to see which document is more relevant
+
+query = 'The intersection of graph survey and trees'
+
+query = [word for word in query.lower().split() if word not in stopwords]
+
+bm25 = BM25()
+
+bm25.fit(texts)
+
+scores = bm25.search(query)
+
+for score, doc in zip(scores, corpus):
+
+    score = round(score, 3)
+
+ print(str(score) + '\t' + doc)
+
+
+
+
+
+
+In the code chunk above, we printed each corpus's BM25 relevance score along with the original text, note that this
+
+isn't sorted in decreasing order of the relevance score yet, which is usually what we want to do in a real world
+
+setting. That is to find the more relevant document, sort them in decreasing order and present them to the user.
+
+Also here, we are computing the scores for every document, this becomes computationally expensive when we start
+
+have a large corpus size. Thus search engine uses inverted index to speed things up. An inverted index consists of
+
+a list of all the unique words that appear in any document, and for each word, a list of the documents in which it
+
+appears, this allows us to quickly find the documents that contains the term in our query and only then do we
+
+compute the relevance score for this smaller recall set. This link contains a good high level description of this
+
+concept.
+
+ElasticSearch BM25
+
+We can see BM25 in action to rank documents using ElasticSearch, this notebook isn't an ElasticSearch tutorial, so
+
+hopefully, the reader are some what familiar with the tool, if not, each code chunk contains links to some helpful
+
+references.
+
+We will follow the standard process of creating the index to store our documents, add some sample documents to
+
+the index and provide a query against the index to return the relevant documents sorted in decreasing order based
+
+on the relevance score, which will be based on BM25.
+
+
+
+In [8]:
+
+# installation instructions
+
+# https://www.elastic.co/guide/en/elasticsearch/reference/current/_installation.html
+
+# creating an index
+
+# https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-create-index.html
+
+settings = {
+
+ 'settings': {
+
+ 'index': {
+
+ 'number_of_shards': 1,
+
+ 'number_of_replicas': 1,
+
+ # configure our default similarity algorithm explicitly to use bm25,
+
+ # this allows it to use it for all the fields
+
+ 'similarity': {
+
+ 'default': {
+
+ 'type': 'BM25'
+
+                }
+
+            }
+
+        }
+
+    },
+
+ # we will be indexing our documents in the title field using the English analyzer,
+
+ # which removes stop words for us, the default standard analyzer doesn't have
+
+ # this preprocessing step
+
+ # https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis.html
+
+ 'mappings': {
+
+ # this key is the "type", which will be explained in the next code chunk
+
+ '_doc': {
+
+ 'properties': {
+
+ 'title': {
+
+ 'type': 'text',
+
+ 'analyzer': 'english'
+
+                }
+
+            }
+
+        }
+
+    }
+
+}
+
+headers = {'Content-Type': 'application/json'}
+
+response = requests.put('http://localhost:9200/experiment', data=json.dumps(settings), headers=headers)
+
+response
+
+
+
+In [9]:
+
+# indexing document
+
+# https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-bulk.html
+
+# https://www.elastic.co/guide/en/elasticsearch/guide/master/index-doc.html
+
+0.0 Human machine interface for lab abc computer applications
+
+1.025 A survey of user opinion of computer system response time
+
+0.0 The EPS user interface management system
+
+0.0 System and human system engineering testing of EPS
+
+0.0 Relation of user perceived response time to error measurement
+
+1.462 The generation of random binary unordered trees
+
+2.485 The intersection graph of paths in trees
+
+2.161 Graph minors IV Widths of trees and well quasi ordering
+
+2.507 Graph minors A survey
+
+Out[8]:
+
+&lt;Response [200]&gt;
+
+
+
+
+
+
+# a document is uniquely identified by the index, the type and id
+
+# it's worth noting that there's a note on removing the capabilities of
+
+# having multiple types under one index, and going forward the type will
+
+# just to set to '_doc'
+
+# https://www.elastic.co/guide/en/elasticsearch/reference/current/removal-of-types.html
+
+url = 'http://localhost:9200/experiment/_doc'
+
+for document in corpus:
+
+ # we insert the document into the 'title' field
+
+    data = {'title': document}
+
+    response = requests.post(url, data=json.dumps(data), headers=headers)
+
+ 
+
+response
+
+
+
+In [10]:
+
+def search(query, headers):
+
+    url = 'http://localhost:9200/experiment/_doc/_search'
+
+    response = requests.get(url, data=json.dumps(query), headers=headers)
+
+ 
+
+ # the response contains other information, such as time it took to
+
+ # give the response back, here we are only interested in the matched
+
+ # results, which are stored under 'hits'
+
+    search_hits = json.loads(response.text)['hits']['hits']
+
+ print('Num\tRelevance Score\tTitle')
+
+ for idx, hit in enumerate(search_hits):
+
+ print('%s\t%s\t%s' % (idx + 1, hit['_score'], hit['_source']['title']))
+
+
+
+In [11]:
+
+# match query
+
+# https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-match-query.html
+
+query = {
+
+ 'query': {
+
+ 'match': {
+
+ # search against the 'title' field
+
+ 'title': 'The intersection of graph survey and trees'
+
+        }
+
+    }
+
+}
+
+search(query, headers={'Content-Type': 'application/json'})
+
+
+
+In [12]:
+
+# we can delete this experimental index to prevent occupying space
+
+response = requests.delete('http://localhost:9200/experiment')
+
+response
+
+Reference
+
+Wiki: Okapi BM25
+
+Blog: BM25 The Next Generation of Lucene Relevance
+
+Blog: Practical BM25 - Part 1: How Shards Affect Relevance Scoring in Elasticsearch
+
+Blog: Practical BM25 - Part 2: The BM25 Algorithm and its Variables
+
+Blog: Practical BM25 - Part 3: Considerations for Picking b and k1 in Elasticsearch
+
+Out[9]:
+
+&lt;Response [201]&gt;
+
+Num Relevance Score Title
+
+1 4.572298 The intersection graph of paths in trees
+
+2 3.0325541 Graph minors A survey
+
+3 1.814194 Graph minors IV Widths of trees and well quasi ordering
+
+4 1.2758815 A survey of user opinion of computer system response time
+
+5 1.1110051 The generation of random binary unordered trees
+
+Out[12]:
+
+&lt;Response [200]&gt;
+

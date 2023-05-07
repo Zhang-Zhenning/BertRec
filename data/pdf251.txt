@@ -1,0 +1,972 @@
+
+1
+
+The EM algorithm
+
+In this set of notes, we discuss the EM (Expectation-Maximization) algorithm, which is a common
+
+algorithm used in statistical estimation to try and ﬁnd the MLE.
+
+It is often used in situations that are not exponential families, but are derived from exponential
+
+families. A common mechanism by which these likelihoods are derived is through missing data,
+
+i.e. we only observe some of the suﬃcient statistics of the family.
+
+1.1
+
+Mixture model
+
+A canonical application of the EM algorithm is its use in ﬁtting a mixture model where we assume
+
+we observe an IID sample of (Xi)1≤i≤n from
+
+Y ∼ Multinomial(1, π),
+
+π ∈ RL
+
+X|Y = l ∼ Pηl
+
+with the simplest example of Pη being the univariate normal model
+
+Pηl = N(µl, σ2
+
+l )
+
+keeping in mind that the parameters on the right are the mean space parameters, not the natural
+
+parameters.
+
+1.1.1
+
+Exercise
+
+1. Show that the joint distribution of (X, Y ) is an exponential family. What is its reference mea-
+
+sure, its suﬃcient statistics? Write out the log-likelihood based on observing an IID sample
+
+(Xi, Yi)1≤i≤n for this model. Call this ℓc(η; X, Y ) the complete likelihood.
+
+2. What is the marginal density of X?
+
+3. Write out the log-likelihood ℓ(η; X) based on observing an IID sample (Xi)1≤i≤n from this model.
+
+What are its parameters?
+
+In the mixture model, we only observe X, though the marginal distribution of X is the same as
+
+if we had generated pairs (X, Y ) and marginalized over Y . In this problem, Y is missing data which
+
+we might call M, and X is observed data which we might call O. Formally, then, we partition our
+
+suﬃcient statistic into two sets: those observed, and those missing.
+
+1.2
+
+The EM algorithm
+
+The EM algorithm usually has two steps, both of which are based on the following function
+
+Q(η; ˜η) = E˜η
+
+�
+
+ℓc(η; O, M)
+
+��O
+
+�
+
+The basis of the EM algorithm is the following result:
+
+Q(η; ˜η) ≥ Q(˜η; ˜η) =⇒ ℓ(η; O) ≥ ℓ(˜η; O).
+
+1
+
+
+Therefore, any sequence (η(k))k≥1 satisfying
+
+Q(η(k+1); η(k)) ≥ Q(η(k); η(k))
+
+has ℓ(η(k); O) non-decreasing. An algorithm that produces such a sequence is called a GEM algo-
+
+rithm (generalized EM algorithm).
+
+The proof of this is fairly straightforward after some initial slight of hand. After this slight of
+
+hand, we see the main ingredient in the proof is deviance of the conditional distribution of M|O.
+
+In the general case, this deviance is not expressed in terms natural parameters but the argument is
+
+the same.
+
+Here is the proof: writing the joint distribution of (O, M) (assuming it has a density with respect
+
+to P0) as
+
+dPη
+
+dP0
+
+= fη,(O,M)(o, m) = fη,O(o) · fη,M|O(m|o)
+
+where the f’s are densities with respect to P0. Or,
+
+fη,O(o) = fη,(O,M)(o, m)
+
+fη,M|O(m|o) .
+
+Although the RHS seems to depend on m, the above equality shows that it is actually measurable
+
+with respect to o.
+
+We see that
+
+ℓ(η; O) =
+
+n
+
+�
+
+i=1
+
+log fη(Oi)
+
+=
+
+n
+
+�
+
+i=1
+
+[log fη(Oi, Mi) − log fη(Mi|Oi)]
+
+=
+
+n
+
+�
+
+i=1
+
+[log fη(Oi, Mi) − log fη(Mi|Oi)]
+
+where we know that fη(m|o) is an exponential family for O ﬁxed.
+
+The right hand side is measurable with respect to O so its conditional expectation with respect
+
+2
+
+
+to O leaves it unchanged. Therefore, for any ˜η we have the equality
+
+ℓ(η; O) =
+
+n
+
+�
+
+i=1
+
+log fη(Oi)
+
+=
+
+n
+
+�
+
+i=1
+
+[log fη(Oi, Mi) − log fη(Mi|Oi)]
+
+=
+
+n
+
+�
+
+i=1
+
+�
+
+E˜η
+
+�
+
+log fη(Oi, Mi)
+
+��O
+
+�
+
+− E˜η
+
+�
+
+log fη(Mi|Oi)
+
+��O
+
+��
+
+= E˜η
+
+�
+
+ℓc(η; O, M)
+
+��O
+
+�
+
+−
+
+n
+
+�
+
+i=1
+
+E˜η
+
+�
+
+log fη(Mi|Oi)
+
+��Oi
+
+�
+
+= Q(η; ˜η) −
+
+n
+
+�
+
+i=1
+
+E˜η
+
+�
+
+log fη(Mi|Oi)
+
+��Oi
+
+�
+
+.
+
+Now,
+
+ℓ(η; O) − ℓ(˜η; O) = Q(η; ˜η) − Q(˜η; ˜η)
+
++
+
+n
+
+�
+
+i=1
+
+�
+
+E˜η
+
+�
+
+log f˜η(Mi|Oi)
+
+��Oi
+
+�
+
+− E˜η
+
+�
+
+log fη(Mi|Oi)
+
+��Oi
+
+��
+
+The term
+
+n
+
+�
+
+i=1
+
+�
+
+E˜η
+
+�
+
+log f˜η(Mi|Oi)
+
+��O
+
+�
+
+− E˜η
+
+�
+
+log fη(Mi|Oi)
+
+��O
+
+��
+
+is essentially half the deviance of the exponential family of conditional distributions for M|O with
+
+suﬃcient statistics M.
+
+To see this, recall our general form of the conditional density of T1|T2 = s2 for an Rp valued
+
+suﬃcient statistic partitioned as T1 ∈ Rk, T2 ∈ Rp−k:
+
+fT1|T2=s2(t1) =
+
+fT1,T2(t1, s2)
+
+�
+
+Rk fT1,T2(s1, s2) ds1
+
+=
+
+eηT
+
+1 t1+ηT
+
+2 s2 ˜m0(t1, s2)
+
+�
+
+Rk eηT
+
+1 s1+ηT
+
+2 s2 ˜m0(s1, s2) ds1
+
+=
+
+eηT
+
+1 t1 ˜m0(t1, s2)
+
+�
+
+Rk eηT
+
+1 s1 ˜m0(s1, s2) ds1
+
+Therefore, with C a function independent of η
+
+log fη(Mi|Oi) = ηT
+
+MMi − log
+
+��
+
+Rk eηT
+
+Ms ˜m0(s, Oi) ds
+
+�
+
++ C(Mi, Oi)
+
+= ηT
+
+MMi − ˜Λ(ηM, Oi) + C(Mi, Oi)
+
+where ˜Λ(ηM, Oi) is the appropriate CGF for this conditional distribution.
+
+3
+
+
+We see then, that
+
+log f˜η(Mi|Oi) − log fη(Mi|Oi) = ˜Λ(ηM, Oi) − ˜Λ(˜ηM, Oi) − (ηM − ˜ηM)T Mi.
+
+Taking conditional expectation with respect to O yields at ˜η yields
+
+n
+
+�
+
+i=1
+
+E˜η
+
+�
+
+log f˜η(Mi|Oi) − log fη(Mi|Oi)
+
+��O
+
+�
+
+= 1
+
+2D(˜η; η|O) ≥ 0.
+
+1.3
+
+The two basic steps
+
+The algorithm is often described as having two steps the E step and the M step. Formally, the E
+
+step can be described as evaluating Q(η; ˜η) with ˜η ﬁxed. That is, ﬁx ˜η and compute
+
+q˜η(η) = E˜η
+
+�
+
+ℓc(η; O, M)
+
+��O
+
+�
+
+as a function of η.
+
+The M is the maximization step and amounts to ﬁnding
+
+ˆη(˜η) ∈ argmaxη Q(η; ˜η) = argmaxη q˜η(η).
+
+1.4
+
+EM algorithm for exponential families
+
+The EM algorithm for exponential families takes a particularly nice form when the MLE map is
+
+nice in the complete data problem. Expressed sequentially, it can be expressed by the recursion
+
+ˆη(k+1) = argmaxη
+
+�
+
+ηT Eη(k)((M, O)|O) − Λ(η)
+
+�
+
+.
+
+In other words, we need to form the conditional expectation of all the suﬃcient statistics given the
+
+suﬃcient statistics we did observe. Following this, we just return the MLE as if we had observed
+
+those suﬃcient statistics.
+
+Another way to phrase this is
+
+ˆη(k+1) = ∇Λ∗ �
+
+Eη(k)((M, O)|O)
+
+�
+
+1.5
+
+Mixture model example
+
+In the mixture model, if we write Yi = (Yi1, . . . , YiL) example the suﬃcient statistics can be taken
+
+to be
+
+t(X, Y ) =
+
+� n
+
+�
+
+i=1
+
+Yij,
+
+n
+
+�
+
+i=1
+
+YijXi,
+
+n
+
+�
+
+i=1
+
+YijX2
+
+i
+
+�
+
+1≤j≤L
+
+.
+
+where only �L
+
+j=1 YijXi = Xi, 1 ≤ i ≤ n is observed.
+
+4
+
+
+1.5.1
+
+Exercise
+
+Use Bayes rule to show that, in our univariat e normal mixture model
+
+Pη(Y = l|X = x) =
+
+πlφ(x, µl, σ2
+
+l )
+
+�L
+
+j=1 πjφ(x, µj, σ2
+
+l )
+
+where φ(x, µ, σ2) is the univariate density of N(µ, σ2
+
+l ).
+
+If we set
+
+ˆγl(x, ˜η) = P˜η(Y = l|X = x)
+
+The above exercise shows that
+
+E˜η
+
+� n
+
+�
+
+i=1
+
+YilXi
+
+��X
+
+�
+
+=
+
+n
+
+�
+
+i=1
+
+ˆγl(Xi, ˜η)Xi
+
+E˜η
+
+� n
+
+�
+
+i=1
+
+YilX2
+
+i
+
+��X
+
+�
+
+=
+
+n
+
+�
+
+i=1
+
+ˆγl(Xi, ˜η)X2
+
+i
+
+E˜η
+
+� n
+
+�
+
+i=1
+
+Yil
+
+��X
+
+�
+
+=
+
+n
+
+�
+
+i=1
+
+ˆγl(Xi, ˜η)
+
+The usual MLE map (for the mean parameters) in this model can be expressed as
+
+ˆπl =
+
+n
+
+�
+
+i=1
+
+Yil/n
+
+ˆµl =
+
+�n
+
+i=1 YilXi
+
+�n
+
+i=1 Yil
+
+ˆσ2
+
+l =
+
+�n
+
+i=1 Yil(Xi − ˆµl)2
+
+�n
+
+i=1 Yil
+
+=
+
+�n
+
+i=1 YilX2
+
+i
+
+�n
+
+i=1 Yil
+
+−
+
+��n
+
+i=1 YilXi
+
+�n
+
+i=1 Yil
+
+�2
+
+This leads to the algorithm, given an initial set of parameters η(0) we repeat the following
+
+updates for k ≥ 0:
+
+• Form the responsibilities ˆγl(Xi; η(k)), 1 ≤ l ≤ L, 1 ≤ i ≤ n.
+
+• Compute
+
+ˆπ(k+1)
+
+l
+
+=
+
+n
+
+�
+
+i=1
+
+ˆγl(Xi; η(k))/n
+
+ˆµ(k+1)
+
+l
+
+=
+
+�n
+
+i=1 ˆγl(Xi; η(k))Xi
+
+�n
+
+i=1 ˆγl(Xi; η(k))
+
+ˆσ2(k+1)
+
+l
+
+=
+
+�n
+
+i=1 ˆγl(Xi; η(k))X2
+
+i
+
+�n
+
+i=1 ˆγl(Xi; η(k))
+
+−
+
+�
+
+ˆµ(k+1)
+
+l
+
+�2
+
+• Repeat
+
+5
+
+
+Let’s test out our algorithm on some data from the mixture model.
+
+mu1, sigma1 = 2, 1
+
+mu2, sigma2 = -1, 0.8
+
+X1 = np.random.standard_normal(200)*sigma1 + mu1
+
+X2 = np.random.standard_normal(600)*sigma2 + mu2
+
+X = np.hstack([X1,X2])
+
+%R -i X plot(density(X))
+
+
+
+def phi(x, mu, sigma):
+
+"""
+
+Normal density
+
+"""
+
+return np.exp(-(x-mu)**2 / (2 * sigma**2)) / np.sqrt(2 * np.pi * sigma**2)
+
+def responsibilities(X, params):
+
+"""
+
+Compute the responsibilites, as well as the likelihood at the
+
+same time.
+
+"""
+
+mu1, mu2, sigma1, sigma2, pi1, pi2 = params
+
+6
+
+
+gamma1 = phi(X, mu1, sigma1) * pi1
+
+gamma2 = phi(X, mu2, sigma2) * pi2
+
+denom = gamma1 + gamma2
+
+gamma1 /= denom
+
+gamma2 /= denom
+
+return np.array([gamma1, gamma2]).T, np.log(denom).sum()
+
+mu1, mu2, sigma1, sigma2, pi1, pi2 = 0, 1, 1, 4, 0.5, 0.5
+
+gamma, likelihood = responsibilities(X, (mu1, mu2, sigma1, sigma2, pi1, pi2))
+
+Here is our recursive estimation procedure, which is fairly straightforward here.
+
+niter = 20
+
+n = X.shape[0]
+
+values = []
+
+for _ in range(niter):
+
+gamma, likelihood = responsibilities(X, (mu1, mu2, sigma1, sigma2, pi1, pi2))
+
+pi1, pi2 = gamma.sum(0) / n
+
+mu1 = (gamma[:,0] * X).sum() / (pi1*n)
+
+mu2 = (gamma[:,1] * X).sum() / (pi2*n)
+
+sigma1_sq = (gamma[:,0] * X**2).sum() / (n*pi1) - mu1**2
+
+sigma2_sq = (gamma[:,1] * X**2).sum() / (n*pi2) - mu2**2
+
+sigma1 = np.sqrt(sigma1_sq)
+
+sigma2 = np.sqrt(sigma2_sq)
+
+values.append(likelihood)
+
+We can track the value of the likelihood and, since we have an EM algorithm, the likelihood
+
+should be monotone with iterations.
+
+plt.plot(values)
+
+plt.gca().set_ylabel(r’$\ell^{(k)}$’)
+
+plt.gca().set_xlabel(r’Iteration $k$’)
+
+&lt;matplotlib.text.Text at 0xdbd6fb0&gt;
+
+7
+
+
+
+
+Let’s plot our density estimate to see how well the mixture model was ﬁt.
+
+%%R -i pi1,pi2,sigma1,sigma2,mu1,mu2
+
+X = sort(X)
+
+plot(X, pi1*dnorm(X,mu1,sigma1)+pi2*dnorm(X,mu2,sigma2), col=’red’, lwd=2, type=’l’,
+
+ylab=’Density’)
+
+lines(density(X))
+
+8
+
+
+
+
+1.5.2
+
+Exercise
+
+1. Reﬁt the mixture model assuming the variance is the same within each class, i.e. σ2
+
+l = σ2,
+
+independent of class l.
+
+2. Try ﬁtting 3 and 4 component mixture models to the above data which only has two. What do
+
+you expect to see in the ﬁtted density?
+
+1.6
+
+Gaussian random eﬀects model
+
+Another application of the EM algorithm is to random or linear mixed eﬀects models. One version
+
+of a linear mixed eﬀect model is
+
+Y
+
+��X, Z ∼ N
+
+�
+
+Xβ, σ2I + ZΣZT �
+
+where X is a ﬁxed eﬀects design matrix, Z is a random eﬀect design matrix and Σ is a covariance
+
+matrix that must be estimated along with σ.
+
+The covariance matrix Σ might not be estimated in a completely unrestricted fashion. In the
+
+example below, the model is Σ = σ2
+
+α · I for some constant.
+
+This distribution is the same as the distribution of
+
+Xβ + Zα + ϵ
+
+��X, Z
+
+9
+
+
+where α ∼ N(0, Σ), ϵ ∼ N(0, σ2I) independently given X, Z.
+
+The simplest version of such a random eﬀects model would one in which observations were
+
+grouped by subjects and each subject had a random intercept
+
+Yij = XT
+
+i β + αi + ϵij,
+
+1 ≤ i ≤ n, 1 ≤ j ≤ ni
+
+ϵij ∼ N(0, σ2)
+
+αi ∼ N(0, σ2
+
+α)
+
+with the ϵ’s and α’s being independent.
+
+This corresponds to Z being a design matrix of indicator variables for a factor that has n levels,
+
+i.e. subject. Here, the matrix Σ = σ2
+
+α · In×n.
+
+1.6.1
+
+Exercise
+
+Deﬁne the complete data to be (Yij, αi, Xi)1≤i≤n,1≤j≤ni and assume you are only able to observe
+
+(Yij, Xi)1≤i≤n,1≤j≤ni.
+
+1. What are the suﬃcient statistics for the joint likelihood of the complete data (conditional on
+
+X)?
+
+2. What is the conditional distribution of αi|Yij, Xi1 ≤ j ≤ n?
+
+3. Describe the EM algorithm to estimate (β, σ2, σ2
+
+α).
+
+4. How would you estimate the accuracy of σ2
+
+α?
+
+10
+

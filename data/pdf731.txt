@@ -1,0 +1,1987 @@
+
+Speech and Language Processing.
+
+Daniel Jurafsky &amp; James H. Martin.
+
+Copyright © 2023.
+
+All
+
+rights reserved.
+
+Draft of January 7, 2023.
+
+CHAPTER
+
+11
+
+Fine-Tuning and Masked Lan-
+
+guage Models
+
+Larvatus prodeo [Masked, I go forward]
+
+Descartes
+
+In the previous chapter we saw how to pretrain transformer language models,
+
+and how these pretrained models can be used as a tool for many kinds of NLP tasks,
+
+by casting the tasks as word prediction. The models we introduced in Chapter 10 to
+
+do this task are causal or left-to-right transformer models.
+
+In this chapter we’ll introduce a second paradigm for pretrained language mod-
+
+els, called the bidirectional transformer encoder, trained via masked language
+
+modeling, a method that allows the model to see entire texts at a time, including
+
+masked
+
+language
+
+modeling
+
+both the right and left context. We’ll introduce the most widely-used version of the
+
+masked language modeling architecture, the BERT model (Devlin et al., 2019).
+
+BERT
+
+We’ll also introduce two important ideas that are often used with these masked
+
+language models. The ﬁrst is the idea of ﬁne-tuning. Fine-tuning is the process
+
+ﬁne-tuning
+
+of taking the network learned by these pretrained models, and further training the
+
+model, often via an added neural net classiﬁer that takes the top layer of the network
+
+as input, to perform some downstream task like named entity tagging or question an-
+
+swering or coreference. The intuition is that the pretraining phase learns a language
+
+model that instantiates a rich representations of word meaning, that thus enables the
+
+model to more easily learn (‘be ﬁne-tuned to’) the requirements of a downstream
+
+language understanding task. The pretrain-ﬁnetune paradigm is an instance of what
+
+is called transfer learning in machine learning: the method of acquiring knowledge
+
+transfer
+
+learning
+
+from one task or domain, and then applying it (transferring it) to solve a new task.
+
+The second idea that we introduce in this chapter is the idea of contextual em-
+
+beddings: representations for words in context. The methods of Chapter 6 like
+
+word2vec or GloVe learned a single vector embedding for each unique word w in
+
+the vocabulary. By contrast, with contextual embeddings, such as those learned by
+
+masked language models like BERT, each word w will be represented by a different
+
+vector each time it appears in a different context. While the causal language mod-
+
+els of Chapter 10 also made use of contextual embeddings, embeddings created by
+
+masked language models turn out to be particularly useful.
+
+11.1
+
+Bidirectional Transformer Encoders
+
+Let’s begin by introducing the bidirectional transformer encoder that underlies mod-
+
+els like BERT and its descendants like RoBERTa (Liu et al., 2019) or SpanBERT
+
+(Joshi et al., 2020). In Chapter 10 we explored causal (left-to-right) transformers
+
+that can serve as the basis for powerful language models—models that can eas-
+
+ily be applied to autoregressive generation problems such as contextual generation,
+
+summarization and machine translation. However, when applied to sequence classi-
+
+ﬁcation and labeling problems causal models have obvious shortcomings since they
+
+
+2
+
+CHAPTER 11
+
+•
+
+FINE-TUNING AND MASKED LANGUAGE MODELS
+
+are based on an incremental, left-to-right processing of their inputs. If we want to
+
+assign the correct named-entity tag to each word in a sentence, or other sophisticated
+
+linguistic labels like the parse tags we’ll introduce in later chapters, we’ll want to
+
+be able to take into account information from the right context as we process each
+
+element. Fig. 11.1, reproduced here from Chapter 10, illustrates the information
+
+ﬂow in the purely left-to-right approach of Chapter 10. As can be seen, the hidden
+
+state computation at each point in time is based solely on the current and earlier
+
+elements of the input, ignoring potentially useful information located to the right of
+
+each tagging decision.
+
+
+
+Self-Attention
+
+Layer
+
+x1
+
+y1
+
+x2
+
+y2
+
+y3
+
+y4
+
+y5
+
+x3
+
+x4
+
+x5
+
+Figure 11.1
+
+A causal, backward looking, transformer model like Chapter 10. Each output
+
+is computed independently of the others using only information seen earlier in the context.
+
+
+
+Self-Attention
+
+Layer
+
+x1
+
+y1
+
+x2
+
+y2
+
+y3
+
+y4
+
+y5
+
+x3
+
+x4
+
+x5
+
+Figure 11.2
+
+Information ﬂow in a bidirectional self-attention model. In processing each
+
+element of the sequence, the model attends to all inputs, both before and after the current one.
+
+Bidirectional encoders overcome this limitation by allowing the self-attention
+
+mechanism to range over the entire input, as shown in Fig. 11.2. The focus of bidi-
+
+rectional encoders is on computing contextualized representations of the tokens in an
+
+input sequence that are generally useful across a range of downstream applications.
+
+Therefore, bidirectional encoders use self-attention to map sequences of input em-
+
+beddings (x1,...,xn) to sequences of output embeddings the same length (y1,...,yn),
+
+where the output vectors have been contextualized using information from the entire
+
+input sequence.
+
+This contextualization is accomplished through the use of the same self-attention
+
+mechanism used in causal models. As with these models, the ﬁrst step is to gener-
+
+ate a set of key, query and value embeddings for each element of the input vector
+
+x through the use of learned weight matrices WQ, WK, and WV. These weights
+
+
+11.1
+
+•
+
+BIDIRECTIONAL TRANSFORMER ENCODERS
+
+3
+
+project each input vector xi into its speciﬁc role as a key, query, or value.
+
+qi = WQxi; ki = WKxi; vi = WVxi
+
+(11.1)
+
+The output vector yi corresponding to each input element xi is a weighted sum of all
+
+the input value vectors v, as follows:
+
+yi =
+
+n
+
+�
+
+j=1
+
+αijvj
+
+(11.2)
+
+The α weights are computed via a softmax over the comparison scores between
+
+every element of an input sequence considered as a query and every other element
+
+as a key, where the comparison scores are computed using dot products.
+
+αij =
+
+exp(scoreij)
+
+�n
+
+k=1 exp(scoreik)
+
+(11.3)
+
+scoreij = qi ·kj
+
+(11.4)
+
+Since each output vector, yi, is computed independently, the processing of an
+
+entire sequence can be parallelized via matrix operations. The ﬁrst step is to pack
+
+the input embeddings xi into a matrix X ∈ RN×dh. That is, each row of X is the
+
+embedding of one token of the input. We then multiply X by the key, query, and
+
+value weight matrices (all of dimensionality d ×d) to produce matrices Q ∈ RN×d,
+
+K ∈ RN×d, and V ∈ RN×d, containing all the key, query, and value vectors in a single
+
+step.
+
+Q = XWQ; K = XWK; V = XWV
+
+(11.5)
+
+Given these matrices we can compute all the requisite query-key comparisons si-
+
+multaneously by multiplying Q and K⊺ in a single operation. Fig. 11.3 illustrates
+
+the result of this operation for an input with length 5.
+
+q1•k1
+
+q2•k1
+
+q2•k2
+
+q5•k1
+
+q5•k2
+
+q5•k3
+
+q5•k4
+
+q5•k5
+
+q4•k1
+
+q4•k2
+
+q4•k3
+
+q4•k4
+
+q3•k1
+
+q3•k2
+
+q3•k3
+
+N
+
+N
+
+q1•k2
+
+q1•k3
+
+q1•k4
+
+q1•k5
+
+q2•k3
+
+q2•k4
+
+q2•k5
+
+q3•k4
+
+q3•k5
+
+q4•k5
+
+Figure 11.3
+
+The N ×N QK⊺ matrix showing the complete set of qi ·kj comparisons.
+
+Finally, we can scale these scores, take the softmax, and then multiply the result
+
+by V resulting in a matrix of shape N ×d where each row contains a contextualized
+
+output embedding corresponding to each token in the input.
+
+SelfAttention(Q,K,V) = softmax
+
+�QK⊺
+
+√dk
+
+�
+
+V
+
+(11.6)
+
+
+4
+
+CHAPTER 11
+
+•
+
+FINE-TUNING AND MASKED LANGUAGE MODELS
+
+As shown in Fig. 11.3, the full set of self-attention scores represented by QKT
+
+constitute an all-pairs comparison between the keys and queries for each element
+
+of the input. In the case of causal language models in Chapter 10, we masked the
+
+upper triangular portion of this matrix (in Fig. ??) to eliminate information about
+
+future words since this would make the language modeling training task trivial. With
+
+bidirectional encoders we simply skip the mask, allowing the model to contextualize
+
+each token using information from the entire input.
+
+Beyond this simple change, all of the other elements of the transformer archi-
+
+tecture remain the same for bidirectional encoder models. Inputs to the model are
+
+segmented using subword tokenization and are combined with positional embed-
+
+dings before being passed through a series of standard transformer blocks consisting
+
+of self-attention and feedforward layers augmented with residual connections and
+
+layer normalization, as shown in Fig. 11.4.
+
+Self-Attention Layer
+
+Layer Normalize
+
+Feedforward Layer
+
+Layer Normalize
+
+Transformer
+
+Block
+
+yn
+
+x1
+
+x2
+
+x3
+
+xn
+
+…
+
+Residual
+
+connection
+
+Residual
+
+connection
+
++
+
++
+
+Figure 11.4
+
+A transformer block showing all the layers.
+
+To make this more concrete, the original bidirectional transformer encoder model,
+
+BERT (Devlin et al., 2019), consisted of the following:
+
+• A subword vocabulary consisting of 30,000 tokens generated using the Word-
+
+Piece algorithm (Schuster and Nakajima, 2012),
+
+• Hidden layers of size of 768,
+
+• 12 layers of transformer blocks, with 12 multihead attention layers each.
+
+The result is a model with over 100M parameters. The use of WordPiece (one of the
+
+large family of subword tokenization algorithms that includes the BPE algorithm
+
+we saw in Chapter 2) means that BERT and its descendants are based on subword
+
+tokens rather than words. Every input sentence ﬁrst has to be tokenized, and then
+
+all further processing takes place on subword tokens rather than words. This will
+
+require, as we’ll see, that for some NLP tasks that require notions of words (like
+
+named entity tagging, or parsing) we will occasionally need to map subwords back
+
+to words.
+
+Finally, a fundamental issue with transformers is that the size of the input layer
+
+dictates the complexity of model. Both the time and memory requirements in a
+
+transformer grow quadratically with the length of the input. It’s necessary, therefore,
+
+to set a ﬁxed input length that is long enough to provide sufﬁcient context for the
+
+
+11.2
+
+•
+
+TRAINING BIDIRECTIONAL ENCODERS
+
+5
+
+model to function and yet still be computationally tractable. For BERT, a ﬁxed input
+
+size of 512 subword tokens was used.
+
+11.2
+
+Training Bidirectional Encoders
+
+We trained causal transformer language models in Chapter 10 by making them iter-
+
+atively predict the next word in a text. But eliminating the causal mask makes the
+
+guess-the-next-word language modeling task trivial since the answer is now directly
+
+available from the context, so we’re in need of a new training scheme. Fortunately,
+
+the traditional learning objective suggests an approach that can be used to train bidi-
+
+rectional encoders. Instead of trying to predict the next word, the model learns to
+
+perform a ﬁll-in-the-blank task, technically called the cloze task (Taylor, 1953). To
+
+cloze task
+
+see this, let’s return to the motivating example from Chapter 3. Instead of predicting
+
+which words are likely to come next in this example:
+
+Please turn your homework
+
+.
+
+we’re asked to predict a missing item given the rest of the sentence.
+
+Please turn
+
+homework in.
+
+That is, given an input sequence with one or more elements missing, the learning
+
+task is to predict the missing elements. More precisely, during training the model is
+
+deprived of one or more elements of an input sequence and must generate a proba-
+
+bility distribution over the vocabulary for each of the missing items. We then use the
+
+cross-entropy loss from each of the model’s predictions to drive the learning process.
+
+This approach can be generalized to any of a variety of methods that corrupt the
+
+training input and then asks the model to recover the original input. Examples of the
+
+kinds of manipulations that have been used include masks, substitutions, reorder-
+
+ings, deletions, and extraneous insertions into the training text.
+
+11.2.1
+
+Masking Words
+
+The original approach to training bidirectional encoders is called Masked Language
+
+Modeling (MLM) (Devlin et al., 2019). As with the language model training meth-
+
+Masked
+
+Language
+
+Modeling
+
+ods we’ve already seen, MLM uses unannotated text from a large corpus. Here, the
+
+MLM
+
+model is presented with a series of sentences from the training corpus where a ran-
+
+dom sample of tokens from each training sequence is selected for use in the learning
+
+task. Once chosen, a token is used in one of three ways:
+
+• It is replaced with the unique vocabulary token [MASK].
+
+• It is replaced with another token from the vocabulary, randomly sampled
+
+based on token unigram probabilities.
+
+• It is left unchanged.
+
+In BERT, 15% of the input tokens in a training sequence are sampled for learning.
+
+Of these, 80% are replaced with [MASK], 10% are replaced with randomly selected
+
+tokens, and the remaining 10% are left unchanged.
+
+The MLM training objective is to predict the original inputs for each of the
+
+masked tokens using a bidirectional encoder of the kind described in the last section.
+
+The cross-entropy loss from these predictions drives the training process for all the
+
+parameters in the model. Note that all of the input tokens play a role in the self-
+
+attention process, but only the sampled tokens are used for learning.
+
+
+6
+
+CHAPTER 11
+
+•
+
+FINE-TUNING AND MASKED LANGUAGE MODELS
+
+More speciﬁcally, the original input sequence is ﬁrst tokenized using a subword
+
+model. The sampled items which drive the learning process are chosen from among
+
+the set of tokenized inputs. Word embeddings for all of the tokens in the input
+
+are retrieved from the word embedding matrix and then combined with positional
+
+embeddings to form the input to the transformer.
+
+Softmax over
+
+Vocabulary
+
+So
+
+[mask]
+
+and
+
+[mask]
+
+for 
+
+long
+
+thanks
+
+CE Loss
+
+all 
+
+apricot 
+
+ﬁsh
+
+the
+
+Token +
+
+Positional 
+
+Embeddings
+
+So
+
+long
+
+and
+
+thanks
+
+for 
+
+all 
+
+ﬁsh
+
+the
+
+
+
+Bidirectional Transformer Encoder
+
++
+
+p1
+
++
+
++
+
++
+
++
+
++
+
++
+
++
+
+p2
+
+p3
+
+p4
+
+p5
+
+p6
+
+p7
+
+p8
+
+Figure 11.5
+
+Masked language model training. In this example, three of the input tokens are selected, two of
+
+which are masked and the third is replaced with an unrelated word. The probabilities assigned by the model
+
+to these three items are used as the training loss. (In this and subsequent ﬁgures we display the input as words
+
+rather than subword tokens; the reader should keep in mind that BERT and similar models actually use subword
+
+tokens instead.)
+
+Fig. 11.5 illustrates this approach with a simple example. Here, long, thanks and
+
+the have been sampled from the training sequence, with the ﬁrst two masked and the
+
+replaced with the randomly sampled token apricot. The resulting embeddings are
+
+passed through a stack of bidirectional transformer blocks. To produce a probability
+
+distribution over the vocabulary for each of the masked tokens, the output vector
+
+from the ﬁnal transformer layer for each of the masked tokens is multiplied by a
+
+learned set of classiﬁcation weights WV ∈ R|V|×dh and then through a softmax to
+
+yield the required predictions over the vocabulary.
+
+yi = softmax(WVhi)
+
+With a predicted probability distribution for each masked item, we can use cross-
+
+entropy to compute the loss for each masked item—the negative log probability
+
+assigned to the actual masked word, as shown in Fig. 11.5. The gradients that form
+
+the basis for the weight updates are based on the average loss over the sampled
+
+learning items from a single training sequence (or batch of sequences).
+
+11.2.2
+
+Masking Spans
+
+For many NLP applications, the natural unit of interest may be larger than a single
+
+word (or token). Question answering, syntactic parsing, coreference and seman-
+
+tic role labeling applications all involve the identiﬁcation and classiﬁcation of con-
+
+stituents, or phrases. This suggests that a span-oriented masked learning objective
+
+might provide improved performance on such tasks.
+
+
+11.2
+
+•
+
+TRAINING BIDIRECTIONAL ENCODERS
+
+7
+
+A span is a contiguous sequence of one or more words selected from a train-
+
+ing text, prior to subword tokenization. In span-based masking, a set of randomly
+
+selected spans from a training sequence are chosen. In the SpanBERT work that
+
+originated this technique (Joshi et al., 2020), a span length is ﬁrst chosen by sam-
+
+pling from a geometric distribution that is biased towards shorter spans and with an
+
+upper bound of 10. Given this span length, a starting location consistent with the
+
+desired span length and the length of the input is sampled uniformly.
+
+Once a span is chosen for masking, all the words within the span are substituted
+
+according to the same regime used in BERT: 80% of the time the span elements are
+
+substituted with the [MASK] token, 10% of the time they are replaced by randomly
+
+sampled words from the vocabulary, and 10% of the time they are left as is. Note
+
+that this substitution process is done at the span level—all the tokens in a given span
+
+are substituted using the same method. As with BERT, the total token substitution
+
+is limited to 15% of the training sequence input. Having selected and masked the
+
+training span, the input is passed through the standard transformer architecture to
+
+generate contextualized representations of the input tokens.
+
+Downstream span-based applications rely on span representations derived from
+
+the tokens within the span, as well as the start and end points, or the boundaries, of
+
+a span. Representations for these boundaries are typically derived from the ﬁrst and
+
+last words of a span, the words immediately preceding and following the span, or
+
+some combination of them. The SpanBERT learning objective augments the MLM
+
+objective with a boundary oriented component called the Span Boundary Objective
+
+(SBO). The SBO relies on a model’s ability to predict the words within a masked
+
+span from the words immediately preceding and following it. This prediction is
+
+made using the output vectors associated with the words that immediately precede
+
+and follow the span being masked, along with positional embedding that signals
+
+which word in the span is being predicted:
+
+L(x) = LMLM(x)+LSBO(x)
+
+(11.7)
+
+LSBO(x) = −logP(x|xs,xe, px)
+
+(11.8)
+
+where s denotes the position of the word before the span and e denotes the word
+
+after the end. The prediction for a given position i within the span is produced
+
+by concatenating the output embeddings for words s and e span boundary vectors
+
+with a positional embedding for position i and passing the result through a 2-layer
+
+feedforward network.
+
+s = FFN([ys−1;ye+1; pi−s+1])
+
+(11.9)
+
+z = softmax(Es)
+
+(11.10)
+
+The ﬁnal loss is the sum of the BERT MLM loss and the SBO loss.
+
+Fig. 11.6 illustrates this with one of our earlier examples. Here the span selected
+
+is and thanks for which spans from position 3 to 5. The total loss associated with
+
+the masked token thanks is the sum of the cross-entropy loss generated from the pre-
+
+diction of thanks from the output y4, plus the cross-entropy loss from the prediction
+
+of thanks from the output vectors for y2, y6 and the embedding for position 4 in the
+
+span.
+
+11.2.3
+
+Next Sentence Prediction
+
+The focus of masked-based learning is on predicting words from surrounding con-
+
+texts with the goal of producing effective word-level representations. However, an
+
+
+8
+
+CHAPTER 11
+
+•
+
+FINE-TUNING AND MASKED LANGUAGE MODELS
+
+So
+
+long
+
+[mask]
+
+[mask]
+
+[mask] 
+
+all
+
+ﬁsh
+
+Embedding
+
+Layer
+
+So
+
+long
+
+and
+
+thanks
+
+for 
+
+all 
+
+ﬁsh
+
+the
+
+
+
+Bidirectional Transformer Encoder
+
+the
+
+FFN
+
++
+
+Span-based loss
+
+Figure 11.6
+
+Span-based language model training. In this example, a span of length 3 is selected for training
+
+and all of the words in the span are masked. The ﬁgure illustrates the loss computed for word thanks; the loss
+
+for the entire span is based on the loss for all three of the words in the span.
+
+important class of applications involves determining the relationship between pairs
+
+of sentences. These include tasks like paraphrase detection (detecting if two sen-
+
+tences have similar meanings), entailment (detecting if the meanings of two sen-
+
+tences entail or contradict each other) or discourse coherence (deciding if two neigh-
+
+boring sentences form a coherent discourse).
+
+To capture the kind of knowledge required for applications such as these, BERT
+
+introduced a second learning objective called Next Sentence Prediction (NSP). In
+
+Next Sentence
+
+Prediction
+
+this task, the model is presented with pairs of sentences and is asked to predict
+
+whether each pair consists of an actual pair of adjacent sentences from the training
+
+corpus or a pair of unrelated sentences. In BERT, 50% of the training pairs consisted
+
+of positive pairs, and in the other 50% the second sentence of a pair was randomly
+
+selected from elsewhere in the corpus. The NSP loss is based on how well the model
+
+can distinguish true pairs from random pairs.
+
+To facilitate NSP training, BERT introduces two new tokens to the input repre-
+
+sentation (tokens that will prove useful for ﬁne-tuning as well). After tokenizing the
+
+input with the subword model, the token [CLS] is prepended to the input sentence
+
+pair, and the token [SEP] is placed between the sentences and after the ﬁnal token of
+
+the second sentence. Finally, embeddings representing the ﬁrst and second segments
+
+of the input are added to the word and positional embeddings to allow the model to
+
+more easily distinguish the input sentences.
+
+During training, the output vector from the ﬁnal layer associated with the [CLS]
+
+token represents the next sentence prediction. As with the MLM objective, a learned
+
+set of classiﬁcation weights WNSP ∈ R2×dh is used to produce a two-class prediction
+
+from the raw [CLS] vector.
+
+yi = softmax(WNSPhi)
+
+
+11.2
+
+•
+
+TRAINING BIDIRECTIONAL ENCODERS
+
+9
+
+Cross entropy is used to compute the NSP loss for each sentence pair presented
+
+to the model. Fig. 11.7 illustrates the overall NSP training setup. In BERT, the NSP
+
+loss was used in conjunction with the MLM training objective to form ﬁnal loss.
+
+Cancel
+
+my
+
+ﬂight
+
+[SEP] 
+
+1
+
+CE Loss
+
+And 
+
+the 
+
+
+
+Bidirectional Transformer Encoder
+
+p1
+
+p2
+
+p3
+
+p4
+
+p5
+
+p6
+
+p7
+
+p8
+
+[CLS]
+
++
+
++
+
+s1
+
+Softmax
+
+Token +
+
+Segment +
+
+Positional
+
+Embeddings 
+
+hotel 
+
+p9
+
+[SEP] 
+
++
+
++
+
+s1
+
+s1
+
+s1
+
+s1
+
+s2
+
+s2
+
+s2
+
+s2
+
++
+
++
+
++
+
++
+
++
+
++
+
++
+
++
+
++
+
++
+
++
+
++
+
++
+
++
+
+Figure 11.7
+
+An example of the NSP loss calculation.
+
+11.2.4
+
+Training Regimes
+
+The corpus used in training BERT and other early transformer-based language mod-
+
+els consisted of an 800 million word corpus of book texts called BooksCorpus (Zhu
+
+et al., 2015) and a 2.5 Billion word corpus derived from the English Wikipedia, for
+
+a combined size of 3.3 Billion words. The BooksCorpus is no longer used (for in-
+
+tellectual property reasons), and in general, as we’ll discuss later, state-of-the-art
+
+models employ corpora that are orders of magnitude larger than these early efforts.
+
+To train the original BERT models, pairs of sentences were selected from the
+
+training corpus according to the next sentence prediction 50/50 scheme. Pairs were
+
+sampled so that their combined length was less than the 512 token input. Tokens
+
+within these sentence pairs were then masked using the MLM approach with the
+
+combined loss from the MLM and NSP objectives used for a ﬁnal loss. Approx-
+
+imately 40 passes (epochs) over the training data was required for the model to
+
+converge.
+
+The result of this pretraining process consists of both learned word embeddings,
+
+as well as all the parameters of the bidirectional encoder that are used to produce
+
+contextual embeddings for novel inputs.
+
+11.2.5
+
+Contextual Embeddings
+
+Given a pretrained language model and a novel input sentence, we can think of the
+
+output of the model as constituting contextual embeddings for each token in the
+
+contextual
+
+embeddings
+
+input. These contextual embeddings can be used as a contextual representation of
+
+the meaning of the input token for any task requiring the meaning of word.
+
+Contextual embeddings are thus vectors representing some aspect of the meaning
+
+of a token in context. For example, given a sequence of input tokens x1,...,xn, we can
+
+use the output vector yi from the ﬁnal layer of the model as a representation of the
+
+meaning of token xi in the context of sentence x1,...,xn. Or instead of just using the
+
+vector yi from the ﬁnal layer of the model, it’s common to compute a representation
+
+for xi by averaging the output tokens yi from each of the last four layers of the model.
+
+
+10
+
+CHAPTER 11
+
+•
+
+FINE-TUNING AND MASKED LANGUAGE MODELS
+
+Just as we used static embeddings like word2vec to represent the meaning of
+
+words, we can use contextual embeddings as representations of word meanings in
+
+context for any task that might require a model of word meaning. Where static
+
+embeddings represent the meaning of word types (vocabulary entries), contextual
+
+embeddings represent the meaning of word tokens: instances of a particular word
+
+type in a particular context. Contextual embeddings can thus be used for tasks like
+
+measuring the semantic similarity of two words in context, and are useful in linguis-
+
+tic tasks that require models of word meaning.
+
+In the next section, however, we’ll see the most common use of these repre-
+
+sentations: as embeddings of word or even entire sentences that are the inputs to
+
+classiﬁers in the ﬁne-tuning process for downstream NLP applications.
+
+11.3
+
+Transfer Learning through Fine-Tuning
+
+The power of pretrained language models lies in their ability to extract generaliza-
+
+tions from large amounts of text—generalizations that are useful for myriad down-
+
+stream applications. To make practical use of these generalizations, we need to
+
+create interfaces from these models to downstream applications through a process
+
+called ﬁne-tuning. Fine-tuning facilitates the creation of applications on top of pre-
+
+ﬁne-tuning
+
+trained models through the addition of a small set of application-speciﬁc parameters.
+
+The ﬁne-tuning process consists of using labeled data from the application to train
+
+these additional application-speciﬁc parameters. Typically, this training will either
+
+freeze or make only minimal adjustments to the pretrained language model parame-
+
+ters.
+
+The following sections introduce ﬁne-tuning methods for the most common ap-
+
+plications including sequence classiﬁcation, sequence labeling, sentence-pair infer-
+
+ence, and span-based operations.
+
+11.3.1
+
+Sequence Classiﬁcation
+
+Sequence classiﬁcation applications often represent an input sequence with a single
+
+consolidated representation. With RNNs, we used the hidden layer associated with
+
+the ﬁnal input element to stand for the entire sequence. A similar approach is used
+
+with transformers. An additional vector is added to the model to stand for the entire
+
+sequence. This vector is sometimes called the sentence embedding since it refers
+
+sentence
+
+embedding
+
+to the entire sequence, although the term ‘sentence embedding’ is also used in other
+
+ways. In BERT, the [CLS] token plays the role of this embedding. This unique token
+
+is added to the vocabulary and is prepended to the start of all input sequences, both
+
+during pretraining and encoding. The output vector in the ﬁnal layer of the model
+
+for the [CLS] input represents the entire input sequence and serves as the input to
+
+a classiﬁer head, a logistic regression or neural network classiﬁer that makes the
+
+classiﬁer head
+
+relevant decision.
+
+As an example, let’s return to the problem of sentiment classiﬁcation. A sim-
+
+ple approach to ﬁne-tuning a classiﬁer for this application involves learning a set of
+
+weights, WC, to map the output vector for the [CLS] token, yCLS to a set of scores
+
+over the possible sentiment classes. Assuming a three-way sentiment classiﬁcation
+
+task (positive, negative, neutral) and dimensionality dh for the size of the language
+
+model hidden layers gives WC ∈ R3×dh. Classiﬁcation of unseen documents pro-
+
+ceeds by passing the input text through the pretrained language model to generate
+
+
+11.3
+
+•
+
+TRANSFER LEARNING THROUGH FINE-TUNING
+
+11
+
+yCLS, multiplying it by WC, and ﬁnally passing the resulting vector through a soft-
+
+max.
+
+y = softmax(WCyCLS)
+
+(11.11)
+
+Finetuning the values in WC requires supervised training data consisting of input
+
+sequences labeled with the appropriate class. Training proceeds in the usual way;
+
+cross-entropy loss between the softmax output and the correct answer is used to
+
+drive the learning that produces WC.
+
+A key difference from what we’ve seen earlier with neural classiﬁers is that this
+
+loss can be used to not only learn the weights of the classiﬁer, but also to update the
+
+weights for the pretrained language model itself. In practice, reasonable classiﬁca-
+
+tion performance is typically achieved with only minimal changes to the language
+
+model parameters, often limited to updates over the ﬁnal few layers of the trans-
+
+former. Fig. 11.8 illustrates this overall approach to sequence classiﬁcation.
+
+[CLS]
+
+entirely
+
+predictable
+
+and
+
+lacks
+
+energy
+
+Word +
+
+Positional 
+
+Embeddings
+
+
+
+Bidirectional Transformer Encoder
+
+Figure 11.8
+
+Sequence classiﬁcation with a bidirectional transformer encoder.
+
+The output vector for the
+
+[CLS] token serves as input to a simple classiﬁer.
+
+11.3.2
+
+Pair-Wise Sequence Classiﬁcation
+
+As mentioned in Section 11.2.3, an important type of problem involves the classi-
+
+ﬁcation of pairs of input sequences. Practical applications that fall into this class
+
+include logical entailment, paraphrase detection and discourse analysis.
+
+Fine-tuning an application for one of these tasks proceeds just as with pretraining
+
+using the NSP objective. During ﬁne-tuning, pairs of labeled sentences from the
+
+supervised training data are presented to the model. As with sequence classiﬁcation,
+
+the output vector associated with the prepended [CLS] token represents the model’s
+
+view of the input pair. And as with NSP training, the two inputs are separated by
+
+the a [SEP] token. To perform classiﬁcation, the [CLS] vector is multiplied by a
+
+set of learning classiﬁcation weights and passed through a softmax to generate label
+
+predictions, which are then used to update the weights.
+
+As an example, let’s consider an entailment classiﬁcation task with the Multi-
+
+Genre Natural Language Inference (MultiNLI) dataset (Williams et al., 2018). In
+
+the task of natural language inference or NLI, also called recognizing textual
+
+natural
+
+language
+
+inference
+
+
+12
+
+CHAPTER 11
+
+•
+
+FINE-TUNING AND MASKED LANGUAGE MODELS
+
+entailment, a model is presented with a pair of sentences and must classify the re-
+
+lationship between their meanings. For example in the MultiNLI corpus, pairs of
+
+sentences are given one of 3 labels: entails, contradicts and neutral. These labels
+
+describe a relationship between the meaning of the ﬁrst sentence (the premise) and
+
+the meaning of the second sentence (the hypothesis). Here are representative exam-
+
+ples of each class from the corpus:
+
+• Neutral
+
+a: Jon walked back to the town to the smithy.
+
+b: Jon traveled back to his hometown.
+
+• Contradicts
+
+a: Tourist Information ofﬁces can be very helpful.
+
+b: Tourist Information ofﬁces are never of any help.
+
+• Entails
+
+a: I’m confused.
+
+b: Not all of it is very clear to me.
+
+A relationship of contradicts means that the premise contradicts the hypothesis; en-
+
+tails means that the premise entails the hypothesis; neutral means that neither is
+
+necessarily true. The meaning of these labels is looser than strict logical entailment
+
+or contradiction indicating that a typical human reading the sentences would most
+
+likely interpret the meanings in this way.
+
+To ﬁne-tune a classiﬁer for the MultiNLI task, we pass the premise/hypothesis
+
+pairs through a bidirectional encoder as described above and use the output vector
+
+for the [CLS] token as the input to the classiﬁcation head. As with ordinary sequence
+
+classiﬁcation, this head provides the input to a three-way classiﬁer that can be trained
+
+on the MultiNLI training corpus.
+
+11.3.3
+
+Sequence Labelling
+
+Sequence labelling tasks, such as part-of-speech tagging or BIO-based named entity
+
+recognition, follow the same basic classiﬁcation approach. Here, the ﬁnal output
+
+vector corresponding to each input token is passed to a classiﬁer that produces a
+
+softmax distribution over the possible set of tags. Again, assuming a simple classiﬁer
+
+consisting of a single feedforward layer followed by a softmax, the set of weights
+
+to be learned for this additional layer is WK ∈ Rk×dh, where k is the number of
+
+possible tags for the task. As with RNNs, a greedy approach, where the argmax tag
+
+for each token is taken as a likely answer, can be used to generate the ﬁnal output
+
+tag sequence. Fig. 11.9 illustrates an example of this approach.
+
+yi = softmax(WKzi)
+
+(11.12)
+
+ti = argmaxk(yi)
+
+(11.13)
+
+Alternatively, the distribution over labels provided by the softmax for each input
+
+token can be passed to a conditional random ﬁeld (CRF) layer which can take global
+
+tag-level transitions into account.
+
+A complication with this approach arises from the use of subword tokenization
+
+such as WordPiece or Byte Pair Encoding. Supervised training data for tasks like
+
+named entity recognition (NER) is typically in the form of BIO tags associated with
+
+text segmented at the word level. For example the following sentence containing
+
+two named entities:
+
+
+11.3
+
+•
+
+TRANSFER LEARNING THROUGH FINE-TUNING
+
+13
+
+[CLS]
+
+Janet
+
+will
+
+back
+
+the
+
+bill
+
+Embedding
+
+Layer
+
+
+
+Bidirectional Transformer Encoder
+
+NNP
+
+MD
+
+VB
+
+DT
+
+NN
+
+Figure 11.9
+
+Sequence labeling for part-of-speech tagging with a bidirectional transformer encoder. The out-
+
+put vector for each input token is passed to a simple k-way classiﬁer.
+
+[LOC Mt. Sanitas ] is in [LOC Sunshine Canyon] .
+
+would have the following set of per-word BIO tags.
+
+(11.14) Mt.
+
+B-LOC
+
+Sanitas
+
+I-LOC
+
+is
+
+O
+
+in
+
+O
+
+Sunshine
+
+B-LOC
+
+Canyon
+
+I-LOC
+
+.
+
+O
+
+Unfortunately, the WordPiece tokenization for this sentence yields the following
+
+sequence of tokens which doesn’t align directly with BIO tags in the ground truth
+
+annotation:
+
+’Mt’, ’.’, ’San’, ’##itas’, ’is’, ’in’, ’Sunshine’, ’Canyon’ ’.’
+
+To deal with this misalignment, we need a way to assign BIO tags to subword
+
+tokens during training and a corresponding way to recover word-level tags from
+
+subwords during decoding. For training, we can just assign the gold-standard tag
+
+associated with each word to all of the subword tokens derived from it.
+
+For decoding, the simplest approach is to use the argmax BIO tag associated with
+
+the ﬁrst subword token of a word. Thus, in our example, the BIO tag assigned to
+
+“Mt” would be assigned to “Mt.” and the tag assigned to “San” would be assigned
+
+to “Sanitas”, effectively ignoring the information in the tags assigned to “.” and
+
+“##itas”. More complex approaches combine the distribution of tag probabilities
+
+across the subwords in an attempt to ﬁnd an optimal word-level tag.
+
+11.3.4
+
+Fine-tuning for Span-Based Applications
+
+Span-oriented applications operate in a middle ground between sequence level and
+
+token level tasks. That is, in span-oriented applications the focus is on generating
+
+and operating with representations of contiguous sequences of tokens. Typical op-
+
+erations include identifying spans of interest, classifying spans according to some
+
+labeling scheme, and determining relations among discovered spans. Applications
+
+include named entity recognition, question answering, syntactic parsing, semantic
+
+role labeling and coreference resolution.
+
+
+14
+
+CHAPTER 11
+
+•
+
+FINE-TUNING AND MASKED LANGUAGE MODELS
+
+Formally, given an input sequence x consisting of T tokens, (x1,x2,...,xT), a
+
+span is a contiguous sequence of tokens with start i and end j such that 1 &lt;= i &lt;=
+
+j &lt;= T. This formulation results in a total set of spans equal to T(T−1)
+
+2
+
+. For practical
+
+purposes, span-based models often impose an application-speciﬁc length limit L, so
+
+the legal spans are limited to those where j −i &lt; L. In the following, we’ll refer to
+
+the enumerated set of legal spans in x as S(x).
+
+The ﬁrst step in ﬁne-tuning a pretrained language model for a span-based ap-
+
+plication is using the contextualized input embeddings from the model to generate
+
+representations for all the spans in the input. Most schemes for representing spans
+
+make use of two primary components: representations of the span boundaries and
+
+summary representations of the contents of each span. To compute a uniﬁed span
+
+representation, we concatenate the boundary representations with the summary rep-
+
+resentation.
+
+In the simplest possible approach, we can use the contextual embeddings of
+
+the start and end tokens of a span as the boundaries, and the average of the output
+
+embeddings within the span as the summary representation.
+
+gij =
+
+1
+
+( j −i)+1
+
+j
+
+�
+
+k=i
+
+hk
+
+(11.15)
+
+spanRepij = [hi;hj;gi, j]
+
+(11.16)
+
+A weakness of this approach is that it doesn’t distinguish the use of a word’s em-
+
+bedding as the beginning of a span from its use as the end of one. Therefore, more
+
+elaborate schemes for representing the span boundaries involve learned representa-
+
+tions for start and end points through the use of two distinct feedforward networks:
+
+si = FFNstart(hi)
+
+(11.17)
+
+ej = FFNend(hj)
+
+(11.18)
+
+spanRepij = [si;ej;gi, j]
+
+(11.19)
+
+Similarly, a simple average of the vectors in a span is unlikely to be an optimal
+
+representation of a span since it treats all of a span’s embeddings as equally impor-
+
+tant. For many applications, a more useful representation would be centered around
+
+the head of the phrase corresponding to the span. One method for getting at such in-
+
+formation in the absence of a syntactic parse is to use a standard self-attention layer
+
+to generate a span representation.
+
+gij = SelfAttention(hi:j)
+
+(11.20)
+
+Now, given span representations g for each span in S(x), classiﬁers can be ﬁne-
+
+tuned to generate application-speciﬁc scores for various span-oriented tasks: binary
+
+span identiﬁcation (is this a legitimate span of interest or not?), span classiﬁcation
+
+(what kind of span is this?), and span relation classiﬁcation (how are these two spans
+
+related?).
+
+To ground this discussion, let’s return to named entity recognition (NER). Given
+
+a scheme for representing spans and a set of named entity types, a span-based ap-
+
+proach to NER is a straightforward classiﬁcation problem where each span in an
+
+input is assigned a class label. More formally, given an input sequence x, we want
+
+to assign a label y, from the set of valid NER labels, to each of the spans in S(x).
+
+Since most of the spans in a given input will not be named entities we’ll add the
+
+label NULL to the set of types in Y.
+
+yij = softmax(FFN(gij))
+
+(11.21)
+
+
+11.4
+
+•
+
+TRAINING CORPORA
+
+15
+
+Contextualized
+
+Embeddings (h)
+
+Bidirectional Transformer Encoder 
+
+Jane
+
+Villanueva
+
+of
+
+United
+
+Airlines
+
+Holding
+
+discussed
+
+…
+
+Span summary 
+
+Span representation 
+
+Classiﬁcation
+
+Scores
+
+FFNN
+
+FFNN
+
+…
+
+PER
+
+ORG
+
+Softmax
+
+SelfAttn
+
+SelfAttn
+
+Figure 11.10
+
+A span-oriented approach to named entity classiﬁcation. The ﬁgure only illustrates the compu-
+
+tation for 2 spans corresponding to ground truth named entities. In reality, the network scores all of the T(T−1)
+
+2
+
+spans in the text. That is, all the unigrams, bigrams, trigrams, etc. up to the length limit.
+
+With this approach, ﬁne-tuning entails using supervised training data to learn
+
+the parameters of the ﬁnal classiﬁer, as well as the weights used to generate the
+
+boundary representations, and the weights in the self-attention layer that generates
+
+the span content representation. During training, the model’s predictions for all
+
+spans are compared to their gold-standard labels and cross-entropy loss is used to
+
+drive the training.
+
+During decoding, each span is scored using a softmax over the ﬁnal classiﬁer
+
+output to generate a distribution over the possible labels, with the argmax score for
+
+each span taken as the correct answer. Fig. 11.10 illustrates this approach with an
+
+example. A variation on this scheme designed to improve precision adds a calibrated
+
+threshold to the labeling of a span as anything other than NULL.
+
+There are two signiﬁcant advantages to a span-based approach to NER over a
+
+BIO-based per-word labeling approach. The ﬁrst advantage is that BIO-based ap-
+
+proaches are prone to a labeling mis-match problem. That is, every label in a longer
+
+named entity must be correct for an output to be judged correct. Returning to the
+
+example in Fig. 11.10, the following labeling would be judged entirely wrong due to
+
+the incorrect label on the ﬁrst item. Span-based approaches only have to make one
+
+classiﬁcation for each span.
+
+(11.22) Jane
+
+B-PER
+
+Villanueva
+
+I-PER
+
+of
+
+O
+
+United
+
+I-ORG
+
+Airlines
+
+I-ORG
+
+Holding
+
+I-ORG
+
+discussed
+
+O
+
+...
+
+The second advantage to span-based approaches is that they naturally accommo-
+
+date embedded named entities. For example, in this example both United Airlines
+
+and United Airlines Holding are legitimate named entities. The BIO approach has
+
+no way of encoding this embedded structure. But the span-based approach can nat-
+
+urally label both since the spans are labeled separately.
+
+11.4
+
+Training Corpora
+
+
+16
+
+CHAPTER 11
+
+•
+
+FINE-TUNING AND MASKED LANGUAGE MODELS
+
+11.5
+
+Summary
+
+This chapter has introduced the topic of transfer learning from pretrained language
+
+models. Here’s a summary of the main points that we covered:
+
+• Bidirectional encoders can be used to generate contextualized representations
+
+of input embeddings using the entire input context.
+
+• Pretrained language models based on bidirectional encoders can be learned
+
+using a masked language model objective where a model is trained to guess
+
+the missing information from an input.
+
+• Pretrained language models can be ﬁne-tuned for speciﬁc applications by
+
+adding lightweight classiﬁer layers on top of the outputs of the pretrained
+
+model.
+
+Bibliographical and Historical Notes
+
+
+Bibliographical and Historical Notes
+
+17
+
+Devlin, J., M.-W. Chang, K. Lee, and K. Toutanova. 2019.
+
+BERT: Pre-training of deep bidirectional transformers for
+
+language understanding. NAACL HLT.
+
+Joshi, M., D. Chen, Y. Liu, D. S. Weld, L. Zettlemoyer, and
+
+O. Levy. 2020.
+
+SpanBERT: Improving pre-training by
+
+representing and predicting spans. TACL, 8:64–77.
+
+Liu, Y., M. Ott, N. Goyal, J. Du, M. Joshi, D. Chen,
+
+O. Levy, M. Lewis, L. Zettlemoyer, and V. Stoyanov.
+
+2019. RoBERTa: A robustly optimized BERT pretraining
+
+approach. ArXiv preprint arXiv:1907.11692.
+
+Schuster, M. and K. Nakajima. 2012. Japanese and Korean
+
+voice search. ICASSP.
+
+Taylor, W. L. 1953. Cloze procedure: A new tool for mea-
+
+suring readability. Journalism Quarterly, 30:415–433.
+
+Williams, A., N. Nangia, and S. Bowman. 2018. A broad-
+
+coverage challenge corpus for sentence understanding
+
+through inference. NAACL HLT.
+
+Zhu, Y., R. Kiros, R. Zemel, R. Salakhutdinov, R. Urtasun,
+
+A. Torralba, and S. Fidler. 2015.
+
+Aligning books and
+
+movies: Towards story-like visual explanations by watch-
+
+ing movies and reading books. IEEE International Con-
+
+ference on Computer Vision.
+

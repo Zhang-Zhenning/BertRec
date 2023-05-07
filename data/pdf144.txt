@@ -1,0 +1,978 @@
+
+CS229 Lecture notes
+
+Andrew Ng
+
+Part IX
+
+The EM algorithm
+
+In the previous set of notes, we talked about the EM algorithm as applied to
+
+ﬁtting a mixture of Gaussians. In this set of notes, we give a broader view
+
+of the EM algorithm, and show how it can be applied to a large family of
+
+estimation problems with latent variables. We begin our discussion with a
+
+very useful result called Jensen’s inequality
+
+1
+
+Jensen’s inequality
+
+Let f be a function whose domain is the set of real numbers. Recall that
+
+f is a convex function if f ′′(x) ≥ 0 (for all x ∈ R). In the case of f taking
+
+vector-valued inputs, this is generalized to the condition that its hessian H
+
+is positive semi-deﬁnite (H ≥ 0). If f ′′(x) &gt; 0 for all x, then we say f is
+
+strictly convex (in the vector-valued case, the corresponding statement is
+
+that H must be strictly positive semi-deﬁnite, written H &gt; 0). Jensen’s
+
+inequality can then be stated as follows:
+
+Theorem. Let f be a convex function, and let X be a random variable.
+
+Then:
+
+E[f(X)] ≥ f(EX).
+
+Moreover, if f is strictly convex, then E[f(X)] = f(EX) holds true if and
+
+only if X = E[X] with probability 1 (i.e., if X is a constant).
+
+Recall our convention of occasionally dropping the parentheses when writ-
+
+ing expectations, so in the theorem above, f(EX) = f(E[X]).
+
+For an interpretation of the theorem, consider the ﬁgure below.
+
+1
+
+
+2
+
+a
+
+E[X]
+
+b
+
+f(a)
+
+f(b)
+
+f(EX)
+
+E[f(X)]
+
+f
+
+Here, f is a convex function shown by the solid line. Also, X is a random
+
+variable that has a 0.5 chance of taking the value a, and a 0.5 chance of
+
+taking the value b (indicated on the x-axis). Thus, the expected value of X
+
+is given by the midpoint between a and b.
+
+We also see the values f(a), f(b) and f(E[X]) indicated on the y-axis.
+
+Moreover, the value E[f(X)] is now the midpoint on the y-axis between f(a)
+
+and f(b). From our example, we see that because f is convex, it must be the
+
+case that E[f(X)] ≥ f(EX).
+
+Incidentally, quite a lot of people have trouble remembering which way
+
+the inequality goes, and remembering a picture like this is a good way to
+
+quickly ﬁgure out the answer.
+
+Remark. Recall that f is [strictly] concave if and only if −f is [strictly]
+
+convex (i.e., f ′′(x) ≤ 0 or H ≤ 0). Jensen’s inequality also holds for concave
+
+functions f, but with the direction of all the inequalities reversed (E[f(X)] ≤
+
+f(EX), etc.).
+
+2
+
+The EM algorithm
+
+Suppose we have an estimation problem in which we have a training set
+
+{x(1), . . . , x(m)} consisting of m independent examples. We wish to ﬁt the
+
+parameters of a model p(x, z) to the data, where the likelihood is given by
+
+ℓ(θ)
+
+=
+
+m
+
+�
+
+i=1
+
+log p(x; θ)
+
+=
+
+m
+
+�
+
+i=1
+
+log
+
+�
+
+z
+
+p(x, z; θ).
+
+
+3
+
+But, explicitly ﬁnding the maximum likelihood estimates of the parameters θ
+
+may be hard. Here, the z(i)’s are the latent random variables; and it is often
+
+the case that if the z(i)’s were observed, then maximum likelihood estimation
+
+would be easy.
+
+In such a setting, the EM algorithm gives an eﬃcient method for max-
+
+imum likelihood estimation. Maximizing ℓ(θ) explicitly might be diﬃcult,
+
+and our strategy will be to instead repeatedly construct a lower-bound on ℓ
+
+(E-step), and then optimize that lower-bound (M-step).
+
+For each i, let Qi be some distribution over the z’s (�
+
+z Qi(z) = 1, Qi(z) ≥
+
+0). Consider the following:1
+
+�
+
+i
+
+log p(x(i); θ)
+
+=
+
+�
+
+i
+
+log
+
+�
+
+z(i)
+
+p(x(i), z(i); θ)
+
+(1)
+
+=
+
+�
+
+i
+
+log
+
+�
+
+z(i)
+
+Qi(z(i))p(x(i), z(i); θ)
+
+Qi(z(i))
+
+(2)
+
+≥
+
+�
+
+i
+
+�
+
+z(i)
+
+Qi(z(i)) log p(x(i), z(i); θ)
+
+Qi(z(i))
+
+(3)
+
+The last step of this derivation used Jensen’s inequality. Speciﬁcally, f(x) =
+
+log x is a concave function, since f ′′(x) = −1/x2 &lt; 0 over its domain x ∈ R+.
+
+Also, the term
+
+�
+
+z(i)
+
+Qi(z(i))
+
+�p(x(i), z(i); θ)
+
+Qi(z(i))
+
+�
+
+in the summation is just an expectation of the quantity
+
+�
+
+p(x(i), z(i); θ)/Qi(z(i))
+
+�
+
+with respect to z(i) drawn according to the distribution given by Qi. By
+
+Jensen’s inequality, we have
+
+f
+
+�
+
+Ez(i)∼Qi
+
+�p(x(i), z(i); θ)
+
+Qi(z(i))
+
+��
+
+≥ Ez(i)∼Qi
+
+�
+
+f
+
+�p(x(i), z(i); θ)
+
+Qi(z(i))
+
+��
+
+,
+
+where the “z(i) ∼ Qi” subscripts above indicate that the expectations are
+
+with respect to z(i) drawn from Qi. This allowed us to go from Equation (2)
+
+to Equation (3).
+
+Now, for any set of distributions Qi, the formula (3) gives a lower-bound
+
+on ℓ(θ).
+
+There’re many possible choices for the Qi’s.
+
+Which should we
+
+choose? Well, if we have some current guess θ of the parameters, it seems
+
+1If z were continuous, then Qi would be a density, and the summations over z in our
+
+discussion are replaced with integrals over z.
+
+
+4
+
+natural to try to make the lower-bound tight at that value of θ. I.e., we’ll
+
+make the inequality above hold with equality at our particular value of θ.
+
+(We’ll see later how this enables us to prove that ℓ(θ) increases monotonically
+
+with successsive iterations of EM.)
+
+To make the bound tight for a particular value of θ, we need for the step
+
+involving Jensen’s inequality in our derivation above to hold with equality.
+
+For this to be true, we know it is suﬃcient that that the expectation be taken
+
+over a “constant”-valued random variable. I.e., we require that
+
+p(x(i), z(i); θ)
+
+Qi(z(i))
+
+= c
+
+for some constant c that does not depend on z(i). This is easily accomplished
+
+by choosing
+
+Qi(z(i)) ∝ p(x(i), z(i); θ).
+
+Actually, since we know �
+
+z Qi(z(i)) = 1 (because it is a distribution), this
+
+further tells us that
+
+Qi(z(i))
+
+=
+
+p(x(i), z(i); θ)
+
+�
+
+z p(x(i), z; θ)
+
+=
+
+p(x(i), z(i); θ)
+
+p(x(i); θ)
+
+=
+
+p(z(i)|x(i); θ)
+
+Thus, we simply set the Qi’s to be the posterior distribution of the z(i)’s
+
+given x(i) and the setting of the parameters θ.
+
+Now, for this choice of the Qi’s, Equation (3) gives a lower-bound on the
+
+loglikelihood ℓ that we’re trying to maximize. This is the E-step. In the
+
+M-step of the algorithm, we then maximize our formula in Equation (3) with
+
+respect to the parameters to obtain a new setting of the θ’s. Repeatedly
+
+carrying out these two steps gives us the EM algorithm, which is as follows:
+
+Repeat until convergence {
+
+(E-step) For each i, set
+
+Qi(z(i)) := p(z(i)|x(i); θ).
+
+(M-step) Set
+
+θ := arg max
+
+θ
+
+�
+
+i
+
+�
+
+z(i)
+
+Qi(z(i)) log p(x(i), z(i); θ)
+
+Qi(z(i))
+
+.
+
+
+5
+
+}
+
+How we we know if this algorithm will converge?
+
+Well, suppose θ(t)
+
+and θ(t+1) are the parameters from two successive iterations of EM. We will
+
+now prove that ℓ(θ(t)) ≤ ℓ(θ(t+1)), which shows EM always monotonically
+
+improves the log-likelihood. The key to showing this result lies in our choice
+
+of the Qi’s. Speciﬁcally, on the iteration of EM in which the parameters had
+
+started out as θ(t), we would have chosen Q(t)
+
+i (z(i)) := p(z(i)|x(i); θ(t)). We
+
+saw earlier that this choice ensures that Jensen’s inequality, as applied to get
+
+Equation (3), holds with equality, and hence
+
+ℓ(θ(t)) =
+
+�
+
+i
+
+�
+
+z(i)
+
+Q(t)
+
+i (z(i)) log p(x(i), z(i); θ(t))
+
+Q(t)
+
+i (z(i))
+
+.
+
+The parameters θ(t+1) are then obtained by maximizing the right hand side
+
+of the equation above. Thus,
+
+ℓ(θ(t+1))
+
+≥
+
+�
+
+i
+
+�
+
+z(i)
+
+Q(t)
+
+i (z(i)) log p(x(i), z(i); θ(t+1))
+
+Q(t)
+
+i (z(i))
+
+(4)
+
+≥
+
+�
+
+i
+
+�
+
+z(i)
+
+Q(t)
+
+i (z(i)) log p(x(i), z(i); θ(t))
+
+Q(t)
+
+i (z(i))
+
+(5)
+
+=
+
+ℓ(θ(t))
+
+(6)
+
+This ﬁrst inequality comes from the fact that
+
+ℓ(θ) ≥
+
+�
+
+i
+
+�
+
+z(i)
+
+Qi(z(i)) log p(x(i), z(i); θ)
+
+Qi(z(i))
+
+holds for any values of Qi and θ, and in particular holds for Qi = Q(t)
+
+i ,
+
+θ = θ(t+1).
+
+To get Equation (5), we used the fact that θ(t+1) is chosen
+
+explicitly to be
+
+arg max
+
+θ
+
+�
+
+i
+
+�
+
+z(i)
+
+Qi(z(i)) log p(x(i), z(i); θ)
+
+Qi(z(i))
+
+,
+
+and thus this formula evaluated at θ(t+1) must be equal to or larger than the
+
+same formula evaluated at θ(t). Finally, the step used to get (6) was shown
+
+earlier, and follows from Q(t)
+
+i
+
+having been chosen to make Jensen’s inequality
+
+hold with equality at θ(t).
+
+
+6
+
+Hence, EM causes the likelihood to converge monotonically. In our de-
+
+scription of the EM algorithm, we said we’d run it until convergence. Given
+
+the result that we just showed, one reasonable convergence test would be
+
+to check if the increase in ℓ(θ) between successive iterations is smaller than
+
+some tolerance parameter, and to declare convergence if EM is improving
+
+ℓ(θ) too slowly.
+
+Remark. If we deﬁne
+
+J(Q, θ) =
+
+�
+
+i
+
+�
+
+z(i)
+
+Qi(z(i)) log p(x(i), z(i); θ)
+
+Qi(z(i))
+
+,
+
+the we know ℓ(θ) ≥ J(Q, θ) from our previous derivation. The EM can also
+
+be viewed a coordinate ascent on J, in which the E-step maximizes it with
+
+respect to Q (check this yourself), and the M-step maximizes it with respect
+
+to θ.
+
+3
+
+Mixture of Gaussians revisited
+
+Armed with our general deﬁnition of the EM algorithm, lets go back to our
+
+old example of ﬁtting the parameters φ, µ and Σ in a mixture of Gaussians.
+
+For the sake of brevity, we carry out the derivations for the M-step updates
+
+only for φ and µj, and leave the updates for Σj as an exercise for the reader.
+
+The E-step is easy. Following our algorithm derivation above, we simply
+
+calculate
+
+w(i)
+
+j
+
+= Qi(z(i) = j) = P(z(i) = j|x(i); φ, µ, Σ).
+
+Here, “Qi(z(i) = j)” denotes the probability of z(i) taking the value j under
+
+the distribution Qi.
+
+Next, in the M-step, we need to maximize, with respect to our parameters
+
+φ, µ, Σ, the quantity
+
+m
+
+�
+
+i=1
+
+�
+
+z(i)
+
+Qi(z(i)) log p(x(i), z(i); φ, µ, Σ)
+
+Qi(z(i))
+
+=
+
+m
+
+�
+
+i=1
+
+k
+
+�
+
+j=1
+
+Qi(z(i) = j) log p(x(i)|z(i) = j; µ, Σ)p(z(i) = j; φ)
+
+Qi(z(i) = j)
+
+=
+
+m
+
+�
+
+i=1
+
+k
+
+�
+
+j=1
+
+w(i)
+
+j log
+
+1
+
+(2π)n/2|Σj|1/2 exp
+
+�
+
+−1
+
+2(x(i) − µj)TΣ−1
+
+j (x(i) − µj)
+
+�
+
+· φj
+
+w(i)
+
+j
+
+
+7
+
+Lets maximize this with respect to µl. If we take the derivative with respect
+
+to µl, we ﬁnd
+
+∇µl
+
+m
+
+�
+
+i=1
+
+k
+
+�
+
+j=1
+
+w(i)
+
+j log
+
+1
+
+(2π)n/2|Σj|1/2 exp
+
+�
+
+−1
+
+2(x(i) − µj)TΣ−1
+
+j (x(i) − µj)
+
+�
+
+· φj
+
+w(i)
+
+j
+
+=
+
+−∇µl
+
+m
+
+�
+
+i=1
+
+k
+
+�
+
+j=1
+
+w(i)
+
+j
+
+1
+
+2(x(i) − µj)TΣ−1
+
+j (x(i) − µj)
+
+=
+
+1
+
+2
+
+m
+
+�
+
+i=1
+
+w(i)
+
+l ∇µl2µT
+
+l Σ−1
+
+l x(i) − µT
+
+l Σ−1
+
+l µl
+
+=
+
+m
+
+�
+
+i=1
+
+w(i)
+
+l
+
+�
+
+Σ−1
+
+l x(i) − Σ−1
+
+l µl
+
+�
+
+Setting this to zero and solving for µl therefore yields the update rule
+
+µl :=
+
+�m
+
+i=1 w(i)
+
+l x(i)
+
+�m
+
+i=1 w(i)
+
+l
+
+,
+
+which was what we had in the previous set of notes.
+
+Lets do one more example, and derive the M-step update for the param-
+
+eters φj. Grouping together only the terms that depend on φj, we ﬁnd that
+
+we need to maximize
+
+m
+
+�
+
+i=1
+
+k
+
+�
+
+j=1
+
+w(i)
+
+j log φj.
+
+However, there is an additional constraint that the φj’s sum to 1, since they
+
+represent the probabilities φj = p(z(i) = j; φ). To deal with the constraint
+
+that �k
+
+j=1 φj = 1, we construct the Lagrangian
+
+L(φ) =
+
+m
+
+�
+
+i=1
+
+k
+
+�
+
+j=1
+
+w(i)
+
+j log φj + β(
+
+k
+
+�
+
+j=1
+
+φj − 1),
+
+where β is the Lagrange multiplier.2 Taking derivatives, we ﬁnd
+
+∂
+
+∂φj
+
+L(φ) =
+
+m
+
+�
+
+i=1
+
+w(i)
+
+j
+
+φj
+
++ 1
+
+2We don’t need to worry about the constraint that φj ≥ 0, because as we’ll shortly see,
+
+the solution we’ll ﬁnd from this derivation will automatically satisfy that anyway.
+
+
+8
+
+Setting this to zero and solving, we get
+
+φj =
+
+�m
+
+i=1 w(i)
+
+j
+
+−β
+
+I.e., φj ∝ �m
+
+i=1 w(i)
+
+j . Using the constraint that �
+
+j φj = 1, we easily ﬁnd
+
+that −β = �m
+
+i=1
+
+�k
+
+j=1 w(i)
+
+j
+
+= �m
+
+i=1 1 = m. (This used the fact that w(i)
+
+j
+
+=
+
+Qi(z(i) = j), and since probabilities sum to 1, �
+
+j w(i)
+
+j
+
+= 1.) We therefore
+
+have our M-step updates for the parameters φj:
+
+φj := 1
+
+m
+
+m
+
+�
+
+i=1
+
+w(i)
+
+j .
+
+The derivation for the M-step updates to Σj are also entirely straightfor-
+
+ward.
+

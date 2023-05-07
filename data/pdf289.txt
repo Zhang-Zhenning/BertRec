@@ -1,0 +1,273 @@
+
+Understanding Probabilistic Latent Semantic
+
+Allocation
+
+Salfo
+
+May 27, 2016
+
+1 Introduction
+
+2 Pros and Cons of PLSA vs LSA
+
+2.1 Few pros of PLSA over SVD (LSA)
+
+2.2 Few cons of PLSA over SVD (LSA)
+
+3 Model Specification
+
+4 The Joint Probability Distribution
+
+5 The Likelihood Function
+
+6 Deriving the EM algorithm
+
+6.1 Jensen Inequality
+
+7 The Lagrange
+
+8 In Summary
+
+9 Implementation of the EM algorithm
+
+1 Introduction
+
+PLSA is a probabilistic approach to the Singular Value Decomposition (SVD) of a documents terms matrix (dtm). It is a probabilitic matrix
+
+decomposition algorithm, which is often used for dimension reduction purposes.
+
+2 Pros and Cons of PLSA vs LSA
+
+LSA is a SVD of a matrix (dtm in our case).
+
+2.1 Few pros of PLSA over SVD (LSA)
+
+1. It is a model based approach, i.e it is a probabilistic approach.
+
+2. LSA assumes multivariate normal distribution of the data. But, text data are count data.
+
+3. Parameters estimates can be interpreted.
+
+2.2 Few cons of PLSA over SVD (LSA)
+
+1. Estimation of the parameters is slow.
+
+2. There is no guarantee of global optimum.
+
+3 Model Specification
+
+Assume \(p(w|d_i)\) is the probability of observing the word \(w\) in document \(d_i\).
+
+We can write: \[p(w|d_i) = \sum_{z \in Z}p(w,z|d_i) \nonumber\] \[p(w|d_i) = \sum_{z \in Z}p(w|z,d_i)p(z|d_i) \nonumber\] \[p(w|d_i) = \sum_{z
+
+\in Z}p(w|z)p(z|d_i) \label{eq1}\] Here, it is assumed that conditional on \(z\), \(w\) and \(d_i\) are independent.
+
+4 The Joint Probability Distribution
+
+Given a document, the joint probability of observing the words \(w_1, w_2, ..., w_V\) is:
+
+\[p(w_1, w_2, ..., w_V|d_i) = \prod_{v=1}^V p(w_v|d_i)^{n(d_i,w_v)}\]
+
+Assuming independence of the documents, the joint probability of observing the corpus (collection of documents) is:
+
+\[p(W|D) = \prod_{d=1}^D \prod_{v=1}^V p(w_v|d_i)^{n(d_i,w_v)} \label{eq3}\]
+
+And that is the likelihood of the corpus, i.e the likelihood of the observed data.
+
+5 The Likelihood Function
+
+\(\eqref{eq1}\) in \(\eqref{eq3}\), the likelihood is:
+
+\[L(\theta|W) = \prod_{d=1}^D \prod_{v=1}^V (\sum_{z \in Z}p(z|d_i)p(w|z))^{n(d_i,w_v)} \label{eq4}\]
+
+Taking the log of \(\eqref{eq4}\) gives:
+
+
+\[\mathcal L (\theta|W) = \sum_{d = 1}^D \sum_{v = 1}^V n(w_v, d_i) log(\sum_{z \in Z}p(w|z)p(z|d_i)) \label{eq5}\]
+
+Note: Due to the sum operator inside the log, there is no closed form solution.Thus, the traditional maximum likelihood estimation (MLE)
+
+method does not work here. An alternative is to use the Expectation Maximization (EM) algorithm. It is a numerical method which aims at
+
+approximating the log likelihood.
+
+6 Deriving the EM algorithm
+
+6.1 Jensen Inequality
+
+If \(f\) is concave, then the following holds:
+
+\[E(f(x)) \le f(E(x)) \label{eq6}\]
+
+\[log(\sum_{z \in Z}p(w|z)p(z|d_i)) = log(\sum_{z \in Z}p(w|z)p(z|d_i) \frac{q(z)}{q(z)}) \nonumber\] \[log(\sum_{z \in Z}p(w|z)p(z|d_i)) =
+
+log[E_{q(z)} (\frac{p(w|z)p(z|d_i)}{q(z)})] \nonumber\]
+
+Using \(\eqref{eq6}\) in the log section of \(\eqref{eq5}\), we can write:
+
+\[log(\sum_{z \in Z}p(w|z)p(z|d_i)) = log[E_{q(z)} (\frac{p(w|z)p(z|d_i)}{q(z)})] \ge E_{q(z)} (log[\frac{p(w|z)p(z|d_i)}{q(z)}]) \nonumber\] \
+
+[log(\sum_{z \in Z}p(w|z)p(z|d_i)) \ge E_{q(z)} (log[p(w|z)p(z|d_i)] - log[q(z)]) \nonumber\] \[log(\sum_{z \in Z}p(w|z)p(z|d_i)) \ge E_{q(z)}
+
+(log[p(w|z)p(z|d_i)]) - E_{q(z)} (log[q(z)]) \nonumber\]
+
+Now, we can drop the last part of this equation to get:
+
+\[log(\sum_{z \in Z}p(w|z)p(z|d_i)) \ge E_{q(z)} (log[p(w|z)p(z|d_i)]) \nonumber\]
+
+Thus, \[\mathcal L (\theta|W) \ge \sum_{d = 1}^D \sum_{v = 1}^V n(w_v, d_i) E_{q(z)} (log[p(w|z)p(z|d_i)]) \nonumber\]
+
+\[\mathcal L (\theta|W) \ge \sum_{d = 1}^D \sum_{v = 1}^V n(w_v, d_i) \sum_{z\in Z}q(z) (log[p(w|z)p(z|d_i)]) \nonumber\]
+
+Now, let \(q(z_k) = p(z_k|w_v,d_i),\) Then, \[\mathcal L (\theta|W) \ge \sum_{d = 1}^D \sum_{v = 1}^V n(w_v, d_i) \sum_{k = 1}^K
+
+p(z_k|w_v,d_i) log[p(w_v|z_k)p(z_k|d_i)] \label{eq7}\]
+
+Call the RHS of \(\eqref{eq7}\) \(Q(\theta)\). The \(\theta\) that maximizes \(Q(\theta)\) maximizes \(\mathcal L (\theta|W)\).
+
+7 The Lagrange
+
+\(p(z_k|d_i)\) and \(p(w_v|z_k)\) must satisfy the the sum to 1 condition; i.e. \(\sum_{k =1}^K p(z_k|d_i) = 1\), and \(\sum_{v = 1}^V
+
+p(w_v|z_k) = 1\)
+
+So, we want to choose \(p(z_k|d_i)\) and \(p(w_v|z_k)\) to maximize \(Q(\theta)\) subject to \(\sum_{k =1}^K p(z_k|d_i) = 1\), and \(\sum_{v
+
+= 1}^V p(w_v|z_k) = 1\)
+
+We can use the Lagrange method for that.
+
+\[\mathcal L = \sum_{d = 1}^D \sum_{v = 1}^V n(w_v, d_i) \sum_{k = 1}^K p(z_k|w_v,d_i) log[p(w_v|z_k)p(z_k|d_i)] + \sum_{k = 1}^K
+
+\lambda_k(1-\sum_{v=1}^V p(w_v|z_k)) + \sum_{d = 1}^D \tau_d (1-\sum_{k =1}^K p(z_k|d_i)) \label{eq8}\]
+
+The first order condition (FOC)
+
+\[\frac{\partial \mathcal L}{\partial p(w_v|z_k)} = 0 \Leftrightarrow \sum_{d = 1}^D n(d_i, w_v)p(z_k|d_i, w_v) = \lambda_k p(w_v|z_k)
+
+\label{eq9}\]
+
+Likewise,
+
+\[\frac{\partial \mathcal L}{\partial p(z_k|d_i)} = 0 \Leftrightarrow \sum_{v = 1}^V n(d_i, w_v)p(z_k|d_i, w_v) = \tau_d p(z_k|d_i)
+
+\label{eq10}\]
+
+By using the constraints, we have:
+
+\(\eqref{eq9}\) becomes: \[\sum_{v = 1}^V \sum_{d = 1}^D n(w_v, d_i) p(z_k|d_i, w_v) = \lambda_k \label{eq11}\] And \[\sum_{k = 1}^K
+
+\sum_{v = 1}^V n(w_v, d_i) p(z_k|d_i, w_v) = \tau_d \label{eq12}\]
+
+\(\eqref{eq11}\) into \(\eqref{eq9}\) gives: \[\sum_{d = 1}^D n(d_i, w_v)p(z_k|d_i, w_v) = p(w_v|z_k) \sum_{v = 1}^V \sum_{d = 1}^D n(w_v,
+
+d_i) p(z_k|d_i, w_v) , \nonumber\] So,
+
+\[p(w_v|z_k) = \frac{\sum_{d = 1}^D n(d_i, w_v)p(z_k|d_i, w_v)}{\sum_{v = 1}^V \sum_{d = 1}^D n(w_v, d_i) p(z_k|d_i, w_v)} \label{eq13}\]
+
+Likewise, \(\eqref{eq12}\) into \(\eqref{eq10}\) gives:
+
+\[\sum_{v = 1}^V n(d_i, w_v)p(z_k|d_i, w_v) = p(z_k|d_i) \sum_{k = 1}^K \sum_{v = 1}^V n(w_v, d_i) p(z_k|d_i, w_v) ,\nonumber\]
+
+So,
+
+\[p(z_k|d_i) = \frac{\sum_{v = 1}^V n(d_i, w_v)p(z_k|d_i, w_v)}{\sum_{k = 1}^K \sum_{v = 1}^V n(w_v, d_i) p(z_k|d_i, w_v)} \nonumber\]
+
+
+
+
+i.e.
+
+\[p(z_k|d_i) = \frac{\sum_{v = 1}^V n(d_i, w_v)p(z_k|d_i, w_v)}{n_d} \label{eq14}\]
+
+By bayes rule,
+
+\[p(z_k|w_v,d_i) = \frac{p(w_v|z_k) p(z_k|d_i)}{\sum_{l = 1}^K p(w_v|z_l) p(z_l|d_i)} \label{eq15}\]
+
+8 In Summary
+
+E Step
+
+\[p(z_k|w_v,d_i) = \frac{p(w_v|z_k) p(z_k|d_i)}{\sum_{l = 1}^K p(w_v|z_l) p(z_l|d_i)} \nonumber\]
+
+M Step
+
+\[p(w_v|z_k) = \frac{\sum_{d = 1}^D n(d_i, w_v)p(z_k|d_i, w_v)}{\sum_{v = 1}^V \sum_{d = 1}^D n(w_v, d_i) p(z_k|d_i, w_v)} \nonumber\]
+
+\[p(z_k|d_i) = \frac{\sum_{v = 1}^V n(d_i, w_v)p(z_k|d_i, w_v)}{n_d} \nonumber\]
+
+9 Implementation of the EM algorithm
+
+#===================================================================================
+
+#================ estimate parameters ==============================================
+
+#===================================================================================
+
+ll &lt;- numeric()
+
+iter &lt;- 50
+
+for(it in 1:iter){
+
+ # E step
+
+ l = 0
+
+ for(v in 1:V){
+
+ for(d in 1:D){
+
+ for(k in 1:K){
+
+ l = l+1
+
+ pz_dw[k, d, v] &lt;- pz_d[d, k]*pw_z[k, v]/sum(pz_d[d, ]*pw_z[, v])
+
+ }
+
+ }
+
+ }
+
+ 
+
+ # M step
+
+ for(k in 1:K){
+
+ for(v in 1:V){
+
+ pw_z[k, v] &lt;- sum(dat_mat[, v]*pz_dw[k, , v])/sum(rowSums(dat_mat*pz_dw[k, , ]))
+
+ }
+
+ }
+
+ 
+
+ for(d in 1:D){
+
+ for(k in 1:K){
+
+ pz_d[d, k] &lt;- sum(dat_mat[d, ]*pz_dw[k, d, ])/ sum(dat_mat[d,])
+
+ }
+
+ }
+
+ ll[it] &lt;- sum(rowSums(t(dat_mat)%*%log(pz_d%*%pw_z)))
+
+ print(it)
+
+}
+
+pw_z &lt;- data.frame(t(pw_z)); row.names(pw_z) &lt;- names(dat_mat); names(pw_z) &lt;- paste("Topic.", 1:K, sep =
+
+"")
+
+pz_d &lt;- data.frame(pz_d); row.names(pz_d) &lt;- row.names(dat_mat); names(pz_d) &lt;- paste("Topic.", 1:K, sep 
+
+= "")
+

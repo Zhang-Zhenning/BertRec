@@ -1,0 +1,880 @@
+
+Example of the Baum-Welch Algorithm
+
+Larry Moss
+
+Q520, Spring 2008
+
+1
+
+Our corpus c
+
+We start with a very simple corpus. We take the set Y of unanalyzed words to be {ABBA, BAB}, and c to
+
+be given by c(ABBA) = 10, c(BAB) = 20.
+
+Note that the total value of the corpus is �
+
+u∈Y c(u) = 10 + 20 = 30.
+
+2
+
+Our ﬁrst HMM h1
+
+The ﬁrst HMM h1 is arbitrary. To have deﬁnite numbers around, we select some.
+
+����
+
+����
+
+s
+
+.7
+
+�
+
+.3
+
+�
+
+����
+
+����
+
+t
+
+.1
+
+�
+
+.9
+
+�
+
+Starting probability of s is .85, of t is .15. In s, Pr(A) = .4, Pr(B) = .6. In t, Pr(A) = .5, Pr(B) = .5.
+
+3
+
+α(y, j, s)
+
+Let y ∈ Y , and let n be the length of y. For 1 ≤ j ≤ n and s one of our states, we deﬁne α(y, j, s) to be the
+
+probability in the space of analyzed words that the ﬁrst j symbols match those of y, and the ending state is s.
+
+This is related to the computations in the Forward Algorithm because the overall probability of y in the
+
+HMM h is �
+
+u∈S α(y, n, u). This is number is written as Prh(y).
+
+Writing y as A1A2 · · · An, we have
+
+α(y, 1, s)
+
+=
+
+start(s)out(s, A1)
+
+α(y, j + 1, s)
+
+=
+
+�
+
+t∈S
+
+α(y, j, t)go(t, s)out(s, Aj+1)
+
+ABBA
+
+α(ABBA, 1, s) = (.85)(.4) = 0.34.
+
+α(ABBA, 1, t) = (.15)(.5) = 0.08.
+
+α(ABBA, 2, s) = (0.34)(.3)(.6) + (0.08)(.1)(.6) = 0.06120 + 0.00480 = 0.06600.
+
+α(ABBA, 2, t) = (0.34)(.7)(.5) + (0.08)(.9)(.5) = 0.11900 + 0.03600 = 0.15500.
+
+α(ABBA, 3, s) = (0.06600)(.3)(.6) + (0.15500)(.1)(.6) = 0.01188 + 0.00930 = 0.02118.
+
+1
+
+
+α(ABBA, 3, t) = (0.06600)(.7)(.5) + (0.15500)(.9)(.5) = 0.02310 + 0.06975 = 0.09285.
+
+α(ABBA, 4, s) = (0.02118)(.3)(.4) + (0.09285)(.1)(.4) = 0.00254 + 0.00371 = 0.00625.
+
+α(ABBA, 4, t) = (0.02118)(.7)(.5) + (0.09285)(.9)(.5) = 0.00741 + 0.04178 = 0.04919.
+
+Total probability of ABBA is 0.00625 + 0.04919 = 0.05544.
+
+BAB
+
+α(BAB, 1, s) = (.85)(.6) = 0.51.
+
+α(BAB, 1, t) = (.15)(.5) = 0.08.
+
+α(BAB, 2, s) = (0.51)(.3)(.4) + (0.08)(.1)(.4) = 0.0612 + 0.0032 = 0.0644.
+
+α(BAB, 2, t) = (0.51)(.7)(.5) + (0.08)(.9)(.5) = 0.1785 + 0.0360 = 0.2145.
+
+α(BAB, 3, s) = (0.06600)(.3)(.6) + (0.15500)(.1)(.6) = 0.01188 + 0.00930 = 0.0209.
+
+α(BAB, 3, t) = (0.0644)(.7)(.5) + (0.2145)(.9)(.5) = 0.0225 + 0.0965 = 0.1190.
+
+Total probability of BAB is 0.0209 + 0.1190 = 0.1399.
+
+3.1
+
+The likelihood of the corpus using h1
+
+L(c, h1) = Pr(ABBA)c(ABBA) · Pr(BAB)c(BAB) = 0.05544100.139920
+
+It is easier to work with the log of this, and then
+
+log L(c, h1) = (10 ∗ log 0.05544) + (20 ∗ log 0.1399) = −68.2611
+
+4
+
+The β(y, j, s) values
+
+Deﬁne β(y, j, s) to be the following conditional probability:
+
+Given that the jth state is s, the (j + 1)st symbol will be Aj+1, the (j + 2)nd will be Aj+2, . . ., the nth
+
+will be An.
+
+Writing y as A1A2 · · · An, our equations go backward:
+
+β(y, n, s)
+
+=
+
+1
+
+β(y, j, s)
+
+=
+
+�
+
+u∈S
+
+go(s, u)out(u, Aj+1)β(y, j + 1, u)
+
+4.1
+
+β(ABBA, j, s) for 1 ≤ j ≤ 4
+
+β(ABBA, 4, s) = 1.
+
+β(ABBA, 4, t) = 1.
+
+β(ABBA, 3, s) =
+
+�
+
+u∈S
+
+go(s, u)out(u, A)β(ABBA, 4, u) = (.3)(.4)(1) + (.7)(.5)(1) = 0.47000
+
+β(ABBA, 3, t) =
+
+�
+
+u∈S
+
+go(t, u)out(u, A)β(ABBA, 4, u) = (.1)(.4)(1) + (.9)(.5)(1) = 0.49000
+
+β(ABBA, 2, s) =
+
+�
+
+u∈S
+
+go(s, u)out(u, B)β(ABBA, 3, u) = (.3)(.6)(0.47000) + (.7)(.5)(0.49000) = 0.25610
+
+β(ABBA, 2, t) =
+
+�
+
+u∈S
+
+go(t, u)out(u, B)β(ABBA, 3, u) = (.1)(.6)(0.47000) + (.9)(.5)(0.49000) = 0.24870
+
+β(ABBA, 1, s) =
+
+�
+
+u∈S
+
+go(s, u)out(u, B)β(ABBA, 2, u) = (.3)(.6)(0.25610) + (.7)(.5)(0.24870) = 0.13315
+
+β(ABBA, 1, t) =
+
+�
+
+u∈S
+
+go(t, u)out(u, B)β(ABBA, 2, u) = (.1)(.6)(0.25610) + (.9)(.5)(0.24870) = 0.12729
+
+2
+
+
+4.2
+
+β(BAB, j, s) for 1 ≤ j ≤ 3
+
+β(BAB, 3, s) = 1.
+
+β(BAB, 3, t) = 1.
+
+β(BAB, 2, s) =
+
+�
+
+u∈S
+
+go(s, u)out(u, B)β(BAB, 3, u) = (.3)(.4)(1) + (.7)(.5)(1) = 0.53000
+
+β(BAB, 2, t) =
+
+�
+
+u∈S
+
+go(t, u)out(u, B)β(BAB, 3, u) = (.1)(.4)(1) + (.9)(.5)(1) = 0.51000
+
+β(BAB, 1, s) =
+
+�
+
+u∈S
+
+go(s, u)out(u, A)β(BAB, 2, u) = (.3)(.6)(0.53000) + (.7)(.5)(0.51000) = 0.24210
+
+β(BAB, 1, t) =
+
+�
+
+u∈S
+
+go(t, u)out(u, A)β(BAB, 2, u) = (.1)(.6)(0.53000) + (.9)(.5)(0.51000) = 0.25070
+
+5
+
+γ(y, j, s, t)
+
+Let y ∈ Y , and write y as A1 · · · An. We want the probability in the subspace A(y) that an analyzed word
+
+has s as its jth state, (Aj+1 as its (j + 1)st symbol), and t as its (j + 1)st state. (This only makes sense when
+
+1 ≤ j &lt; n.)
+
+This probability is called γ(y, j, s, t). It is given by
+
+γ(y, j, s, t)
+
+=
+
+α(y, j, s)go(s, t)out(t, Aj+1)β(y, j + 1, t)
+
+Prh(y)
+
+.
+
+In other words, γ(y, j, s, t) is the probability that a word in A(y) has an s as its jth symbol and a t as its
+
+(j + 1)st symbol.
+
+It is important to see that for diﬀerent unanalyzed words, say y and z, γ(y, j, s, t) and γ(z, j, s, t) are
+
+probabilities in diﬀerent spaces.
+
+For example,
+
+γ(ABBA, 1, t, s) = α(ABBA, 1, t)go(t, s)out(s, B)β(ABBA, 2, s)
+
+Prh(ABBA)
+
+= 0.08 ∗ .1 ∗ .6 ∗ 0.25610
+
+0.05544
+
+= 0.02217.
+
+The values are
+
+γ(ABBA, 1, s, s)
+
+=
+
+0.28271
+
+γ(ABBA, 1, s, t)
+
+=
+
+0.53383
+
+γ(ABBA, 1, t, s)
+
+=
+
+0.02217
+
+γ(ABBA, 1, t, t)
+
+=
+
+0.16149
+
+γ(ABBA, 2, s, s)
+
+=
+
+0.10071
+
+γ(ABBA, 2, s, t)
+
+=
+
+0.20417
+
+γ(ABBA, 2, t, s)
+
+=
+
+0.07884
+
+γ(ABBA, 2, t, t)
+
+=
+
+0.61648
+
+γ(ABBA, 3, s, s)
+
+=
+
+0.04584
+
+γ(ABBA, 3, s, t)
+
+=
+
+0.13371
+
+γ(ABBA, 3, t, s)
+
+=
+
+0.06699
+
+γ(ABBA, 3, t, t)
+
+=
+
+0.75365
+
+γ(BAB, 1, s, s)
+
+=
+
+0.23185
+
+γ(BAB, 1, s, t)
+
+=
+
+0.65071
+
+γ(BAB, 1, t, s)
+
+=
+
+0.01212
+
+γ(BAB, 1, t, t)
+
+=
+
+0.13124
+
+γ(BAB, 2, s, s)
+
+=
+
+0.08286
+
+γ(BAB, 2, s, t)
+
+=
+
+0.16112
+
+γ(BAB, 2, t, s)
+
+=
+
+0.09199
+
+γ(BAB, 2, t, t)
+
+=
+
+0.68996
+
+6
+
+δ(y, j, s)
+
+This is the probability of an analyzed word in A(y) that the jth state is s. For j &lt; length(y), δ(y, j, s) =
+
+�
+
+u∈S γ(y, j, s, u). Also, δ(y, n, s) = α(y, n, s)/ Prh(y).
+
+3
+
+
+So here we have
+
+δ(ABBA, 1, s)
+
+=
+
+0.81654
+
+δ(ABBA, 1, t)
+
+=
+
+0.18366
+
+δ(ABBA, 2, s)
+
+=
+
+0.30488
+
+δ(ABBA, 2, t)
+
+=
+
+0.69532
+
+δ(ABBA, 3, s)
+
+=
+
+0.17955
+
+δ(ABBA, 3, t)
+
+=
+
+0.82064
+
+δ(ABBA, 4, s)
+
+=
+
+0.11273
+
+δ(ABBA, 4, t)
+
+=
+
+0.88727
+
+δ(BAB, 1, s)
+
+=
+
+0.88256
+
+δ(BAB, 1, t)
+
+=
+
+0.14336
+
+δ(BAB, 2, s)
+
+=
+
+0.24398
+
+δ(BAB, 2, t)
+
+=
+
+0.78195
+
+δ(BAB, 3, s)
+
+=
+
+0.14939
+
+δ(BAB, 3, t)
+
+=
+
+0.85061
+
+7
+
+Our next HMM h2
+
+Recall that we start with a corpus c given by c(ABBA) = 10, c(BBA) = 20.
+
+We want to use the δ values along with the corpus to get a new HMM, deﬁned by relative frequency
+
+estimates of the expected analyzed corpus c∗.
+
+The starting probability of state s is I/(I + J), and that of t is J/(I + J), where
+
+I
+
+=
+
+δ(ABBA, 1, s)(c(ABBA)) + δ(BAB, 1, s)(c(BAB))
+
+=
+
+(0.81654 ∗ 10) + (0.88256 ∗ 20)
+
+=
+
+25.816600
+
+J
+
+=
+
+δ(ABBA, 1, t)(c(ABBA)) + δ(BAB, 1, t)(c(BAB))
+
+=
+
+(0.18366 ∗ 10) + (0.14336 ∗ 20)
+
+=
+
+4.703800
+
+So we get that the start of s is 0.846, and the start of t is 0.154.
+
+The probability of going from state s to state s will be K/(K + L), where
+
+K
+
+=
+
+(γ(ABBA, 1, s, s) + γ(ABBA, 2, s, s) + γ(ABBA, 3, s, s)) ∗ c(ABBA)
+
++(γ(BAB, 1, s, s) + γ(BAB, 2, s, s)) ∗ c(BAB)
+
+=
+
+(0.28271 + 0.10071 + 0.04584) ∗ (10) + (0.23185 + 0.08286) ∗ (20)
+
+=
+
+10.58680
+
+L
+
+=
+
+(γ(ABBA, 1, s, t) + γ(ABBA, 2, s, t) + γ(ABBA, 3, s, t)) ∗ c(ABBA)
+
++(γ(BAB, 1, s, t) + γ(BAB, 2, s, t)) ∗ c(BAB)
+
+=
+
+(0.53383 + 0.20417 + 0.13371) ∗ (10) + (0.65071 + 0.16112) ∗ (20)
+
+=
+
+24.95370
+
+So the new value of go(s, s) is 0.298. Similarly, the new value of go(s, t) is 0.702. The probability of going
+
+from state t to state s will be M/(M + N), where
+
+M
+
+=
+
+(γ(ABBA, 1, t, s) + γ(ABBA, 2, t, s) + γ(ABBA, 3, t, s)) ∗ c(ABBA)
+
++(γ(BAB, 1, t, s) + γ(BAB, 2, t, s)) ∗ c(BAB)
+
+=
+
+(0.02217 + 0.07884 + 0.06699) ∗ (10) + (0.01212 + 0.09199) ∗ (20)
+
+=
+
+3.76220
+
+N
+
+=
+
+(γ(ABBA, 1, t, t) + γ(ABBA, 2, t, t) + γ(ABBA, 3, t, t)) ∗ c(ABBA)
+
++(γ(BAB, 1, t, t) + γ(BAB, 2, t, t)) ∗ c(BAB)
+
+=
+
+(0.16149 + 0.61648 + 0.75365) ∗ (10) + (0.13124 + 0.68996) ∗ (20)
+
+=
+
+31.74020
+
+So the new value of go(t, s) is 0.106. Similarly, the new value of go(t, t) is 0.894.
+
+4
+
+
+Turning to the outputs, the probability that in state s we output A is K/(K + L), where
+
+K
+
+=
+
+(δ(ABBA, 1, s) + δ(ABBA, 4, s)) ∗ c(ABBA)) + (δ(BAB, 2, s) ∗ c(BAB))
+
+=
+
+((0.81654 + 0.11273) ∗ 10) + (0.24398 ∗ 20)
+
+=
+
+14.17230
+
+L
+
+=
+
+(δ(ABBA, 2, s) + δ(ABBA, 3, s)) ∗ c(ABBA)) + ((δ(BAB, 1, s) + δ(BAB, 3, s)) ∗ c(BAB))
+
+=
+
+((0.30488 + 0.17955) ∗ 10) + (0.88256 + 0.14939) ∗ 20)
+
+=
+
+25.48330
+
+Thus the probability is 0.357. Similarly, the probability that we output B in state s is 0.643.
+
+The probability that in state t we output A is M/(M + N), where
+
+M
+
+=
+
+(δ(ABBA, 1, t) + δ(ABBA, 4, t)) ∗ c(ABBA)) + (δ(BAB, 2, t) ∗ c(BAB))
+
+=
+
+((0.18366 + 0.88727) ∗ 10) + (0.78195 ∗ 20)
+
+=
+
+26.34830
+
+N
+
+=
+
+(δ(ABBA, 2, s) + δ(ABBA, 3, s)) ∗ c(ABBA)) + ((δ(BAB, 1, s) + δ(BAB, 3, s)) ∗ c(BAB))
+
+=
+
+((0.69532 + 0.82064) ∗ 10) + (0.14336 + 0.85061) ∗ 20)
+
+=
+
+35.03900
+
+Thus the probability is 0.4292. Similarly, the probability that we output B in state s is N/(M + N), 0.5708.
+
+7.1
+
+Another model
+
+We have a new HMM which we call h2:
+
+����
+
+����
+
+s
+
+0.702
+
+�
+
+0.298
+
+�
+
+����
+
+����
+
+t
+
+0.106
+
+�
+
+0.894
+
+�
+
+Starting probability of s is 0.846, of t is 0.154.
+
+In s, Pr(A) = 0.357, Pr(B) = 0.643. In t, Pr(A) = 0.4292, Pr(B) = 0.5708.
+
+8
+
+Again
+
+At this point, we do all the calculations over again. I have hidden them, and only report the probabilities of
+
+the elements of Y and the log likelihood of the corpus.
+
+Total probability of ABBA is 0.00635 + 0.04690 = 0.05325.
+
+Total probability of BAB is 0.0223 + 0.1250 = 0.1473.
+
+8.1
+
+The likelihood of the corpus using h2
+
+L(c, h2) = Pr(ABBA)c(ABBA) · Pr(BAB)c(BAB) = 0.05325100.147320
+
+log L(c, h2) = (10 ∗ log 0.05325) + (20 ∗ log 0.1473) = −67.6333
+
+5
+
+
+8.2
+
+Again a new model
+
+Using h2, we then do all the calculations and construct a new HMM which we call h3:
+
+����
+
+����
+
+s
+
+0.708
+
+�
+
+0.292
+
+�
+
+����
+
+����
+
+t
+
+0.109
+
+�
+
+0.891
+
+�
+
+Starting probability of s is 0.841 of t is 0.159.
+
+In s, Pr(A) = 0.3624, Pr(B) = 0.6376. In t, Pr(A) = 0.4252, Pr(B) = 0.5748.
+
+9
+
+Again Again
+
+Total probability of ABBA is 0.00653 + 0.04672 = 0.05325.
+
+Total probability of BAB is 0.0223 + 0.1254 = 0.1477.
+
+9.1
+
+The likelihood of the corpus using h3
+
+L(c, h3) = Pr(ABBA)c(ABBA) · Pr(BAB)c(BAB) = 0.05325100.147720
+
+log L(c, h3) = (10 ∗ log 0.05325) + (20 ∗ log 0.1477) = −67.5790
+
+9.2
+
+Another model
+
+After doing all the calculations once again, we have a new HMM which we call h4:
+
+����
+
+����
+
+s
+
+0.713
+
+�
+
+0.287
+
+�
+
+����
+
+����
+
+t
+
+0.111
+
+�
+
+0.889
+
+�
+
+Starting probability of s is 0.841, of t is 0.159. In s, Pr(A) = 0.3637, Pr(B) = 0.6363. In t, Pr(A) = 0.4243,
+
+Pr(B) = 0.5757.
+
+10
+
+The likelihoods
+
+The likelihood of c in h1 was −68.2611.
+
+The likelihood of c in h2 was −67.6333.
+
+The likelihood of c in h3 was −67.5790.
+
+In playing around with diﬀerent starting values, I found that the likelihood on h3 sometimes was worse than
+
+that of h2 (contrary to what we’ll prove in class). I believe this is due to rounding errors in the calculations of
+
+the starting probabilities in the diﬀerent states. I also noticed that most of the updating was actually to those
+
+starting probabilities, with the others changing only a little.
+
+6
+

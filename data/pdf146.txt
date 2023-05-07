@@ -1,0 +1,1001 @@
+
+IEOR E4570: Machine Learning for OR&amp;FE
+
+Spring 2015
+
+c⃝ 2015 by Martin Haugh
+
+The EM Algorithm
+
+The EM algorithm is used for obtaining maximum likelihood estimates of parameters when some of the data is
+
+missing. More generally, however, the EM algorithm can also be applied when there is latent, i.e. unobserved,
+
+data which was never intended to be observed in the ﬁrst place. In that case, we simply assume that the latent
+
+data is missing and proceed to apply the EM algorithm. The EM algorithm has many applications throughout
+
+statistics. It is often used for example, in machine learning and data mining applications, and in Bayesian
+
+statistics where it is often used to obtain the mode of the posterior marginal distributions of parameters.
+
+1
+
+The Classical EM Algorithm
+
+We begin by assuming that the complete data-set consists of Z = (X, Y) but that only X is observed. The
+
+complete-data log likelihood is then denoted by l(θ; X, Y) where θ is the unknown parameter vector for which
+
+we wish to ﬁnd the MLE.
+
+E-Step: The E-step of the EM algorithm computes the expected value of l(θ; X, Y) given the observed data,
+
+X, and the current parameter estimate, θold say. In particular, we deﬁne
+
+Q(θ; θold)
+
+:=
+
+E [l(θ; X, Y) | X, θold]
+
+=
+
+�
+
+l(θ; X, y) p(y | X, θold) dy
+
+(1)
+
+where p(· | X, θold) is the conditional density of Y given the observed data, X, and assuming θ = θold.
+
+M-Step: The M-step consists of maximizing over θ the expectation computed in (1). That is, we set
+
+θnew := max
+
+θ
+
+Q(θ; θold).
+
+We then set θold = θnew.
+
+The two steps are repeated as necessary until the sequence of θnew’s converges. Indeed under very general
+
+circumstances convergence to a local maximum can be guaranteed and we explain why this is the case below. If
+
+it is suspected that the log-likelihood function has multiple local maximums then the EM algorithm should be
+
+run many times, using a diﬀerent starting value of θold on each occasion. The ML estimate of θ is then taken to
+
+be the best of the set of local maximums obtained from the various runs of the EM algorithm.
+
+Why Does the EM Algorithm Work?
+
+We use p(· | ·) to denote a generic conditional PDF. Now observe that
+
+l(θ; X) = ln p(X | θ)
+
+=
+
+ln
+
+�
+
+p(X, y | θ) dy
+
+=
+
+ln
+
+�
+
+p(X, y | θ)
+
+p(y | X, θold)p(y | X, θold) dy
+
+
+The EM Algorithm
+
+2
+
+=
+
+ln E
+
+� p(X, Y | θ)
+
+p(Y | X, θold) | X, θold
+
+�
+
+≥
+
+E
+
+�
+
+ln
+
+� p(X, Y | θ)
+
+p(Y | X, θold)
+
+�
+
+| X, θold
+
+�
+
+(2)
+
+=
+
+E [ln p(X, Y | θ) | X, θold] − E [ln p(Y | X, θold) | X, θold]
+
+=
+
+Q(θ; θold) − E [ln p(Y | X, θold) | X, θold]
+
+(3)
+
+where (2) follows from Jensen’s Inequality and since the ln function is concave. It is also clear (because the
+
+term inside the expectation becomes a constant) that the inequality in (2) becomes an equality if we take
+
+θ = θold. Letting g(θ | θold) denote the right-hand-side of (3), we therefore have
+
+l(θ; X) ≥ g(θ | θold)
+
+for all θ with equality when θ = θold. Therefore any value of θ that increases g(θ | θold) beyond g(θold | θold)
+
+must also increase l(θ; X) beyond l(θold; X). The M-step ﬁnds such a θ by maximizing Q(θ; θold) over θ which
+
+is equivalent (why?) to maximizing g(θ | θold) over θ. It is also worth mentioning that in many applications the
+
+function Q(θ; θold) will be a convex function of θ and therefore easy to optimize.
+
+2
+
+Examples
+
+Example 1 (Missing Data in a Multinomial Model)
+
+Suppose x := (x1, x2, x3, x4) is a sample from a Mult(n, πθ) distribution where
+
+πθ =
+
+�1
+
+2 + 1
+
+4θ, 1
+
+4(1 − θ), 1
+
+4(1 − θ), 1
+
+4θ
+
+�
+
+.
+
+The likelihood, L(θ; x), is then given by
+
+L(θ; x) =
+
+n!
+
+x1!x2!x3!x4!
+
+�1
+
+2 + 1
+
+4θ
+
+�x1 �1
+
+4(1 − θ)
+
+�x2 �1
+
+4(1 − θ)
+
+�x3 �1
+
+4θ
+
+�x4
+
+so that the log-likelihood l(θ; x) is
+
+l(θ; x) = C + x1 ln
+
+�1
+
+2 + 1
+
+4θ
+
+�
+
++ (x2 + x3) ln (1 − θ) + x4 ln (θ)
+
+where C is a constant that does not depend on θ. We could try to maximize l(θ; x) over θ directly using
+
+standard non-linear optimization algorithms. However, in this example we will perform the optimization instead
+
+using the EM algorithm. To do this we assume that the complete data is given by y := (y1, y2, y3, y4, y5) and
+
+that y has a Mult(n, π∗
+
+θ) distribution where
+
+π∗
+
+θ =
+
+�1
+
+2, 1
+
+4θ, 1
+
+4(1 − θ), 1
+
+4(1 − θ), 1
+
+4θ
+
+�
+
+.
+
+However, instead of observing y we only observe (y1 + y2, y3, y4, y5), i.e, we only observe x. We therefore take
+
+X = (y1 + y2, y3, y4, y5) and take Y = y2. The log-likelihood of the complete data is then given by
+
+l(θ; X, Y) = C + y2 ln (θ) + (y3 + y4) ln (1 − θ) + y5 ln (θ)
+
+where again C is a constant containing all terms that do no depend on θ. It is also clear that the conditional
+
+density of Y satisﬁes
+
+f(Y | X, θ) = Bin
+
+�
+
+y1 + y2,
+
+θ/4
+
+1/2 + θ/4
+
+�
+
+.
+
+
+The EM Algorithm
+
+3
+
+We can now implement the E-step and M-step.
+
+E-Step: Recalling that Q(θ; θold) := E [l(θ; X, Y) | X, θold], we have
+
+Q(θ; θold)
+
+:=
+
+C + E [y2 ln (θ) | X, θold] + (y3 + y4) ln (1 − θ) + y5 ln (θ)
+
+=
+
+C + (y1 + y2)pold ln (θ) + (y3 + y4) ln (1 − θ) + y5 ln (θ)
+
+where
+
+pold :=
+
+θold/4
+
+1/2 + θold/4.
+
+(4)
+
+M-Step: We now maximize Q(θ; θold) to ﬁnd θnew. Taking the derivative we obtain
+
+dQ
+
+dθ
+
+= (y1 + y2)
+
+θ
+
+pold − (y3 + y4)
+
+1 − θ
+
++ y5
+
+θ
+
+which is zero when we take θ = θnew where
+
+θnew :=
+
+y5 + pold(y1 + y2)
+
+y3 + y4 + y5 + pold(y1 + y2)
+
+(5)
+
+Equations (4) and (5) now deﬁne the EM iteration which begins with some (judiciously) chosen value of θold.
+
+Example 2 (A Simple Normal-Mixture Model)
+
+An extremely common application of the EM algorithm is to estimate the MLE of normal mixture models. This
+
+is often used, for example, in clustering algorithms. Suppose for example that X = (X1, . . . , Xn) are IID
+
+random variables each with PDF
+
+fx(x) =
+
+m
+
+�
+
+j=1
+
+pj
+
+e−(x−µj)2/2σ2
+
+j
+
+�
+
+2πσ2
+
+j
+
+where pj ≥ 0 for all j and where � pj = 1. The parameters in this model are the pj’s, the µj’s and the σj’s.
+
+Instead of trying to ﬁnding the maximum likelihood estimates of these parameters directly via numerical
+
+optimization, we can use the EM algorithm. We do this by assuming the presence of an additional random
+
+variable, Y say, where P(Y = j) = pj for j = 1, . . . , m. The realized value of Y then determines which of the
+
+m normal distributions generates the corresponding value of X. There are n such random variables,
+
+(Y1, . . . , Yn) := Y. Note that
+
+fx|y(xi | yi = j, θ) =
+
+1
+
+�
+
+2πσ2
+
+j
+
+e−(xi−µj)2/2σ2
+
+j
+
+(6)
+
+where θ := (p1, . . . , pm, µ1, . . . , µm, σ1, . . . , σm) is the unknown parameter vector and that the likelihood is
+
+given by
+
+L(θ; X, Y) =
+
+n
+
+�
+
+i=1
+
+pyi
+
+1
+
+�
+
+2πσ2yi
+
+e−(xi−µyi)2/2σ2
+
+yi .
+
+The EM algorithm starts with an initial guess, θold, and then iterates the E-step and M-step as described below
+
+until convergence.
+
+E-Step: We need to compute Q(θ; θold) := E [l(θ; X, Y) | X, θold]. Indeed it is straightforward to show that
+
+Q(θ; θold) =
+
+n
+
+�
+
+i=1
+
+m
+
+�
+
+j=1
+
+P(Yi = j | xi, θold) ln
+
+�
+
+fx|y(xi | yi = j, θ) P(Yi = j | θ)
+
+�
+
+.
+
+(7)
+
+
+The EM Algorithm
+
+4
+
+Note that fx|y(xi | yi = j, θ) is given by (6) and that P(Yi = j | θold) = pj,old. Finally, since
+
+P(Yi = j | xi, θold) = P(Yi = j, Xi = xi | θold)
+
+P(Xi = xi | θold)
+
+=
+
+fx|y(xi | yi = j, θold) P(Yi = j | θold)
+
+�m
+
+k=1 fx|y(xi | yi = k, θold) P(Yi = k | θold)
+
+it is clear that we can compute (7) analytically.
+
+M-Step: We can now maximize Q(θ; θold) by setting the vector of partial derivatives, ∂Q/∂θ, equal to 0 and
+
+solving for θnew. After some algebra, we obtain
+
+µj,new
+
+=
+
+�n
+
+i=1 xiP(Yi = j | xi, θold)
+
+�n
+
+i=1 P(Yi = j | xi, θold)
+
+(8)
+
+σ2
+
+j,new
+
+=
+
+�n
+
+i=1(xi − µj)2P(Yi = j | xi, θold)
+
+�n
+
+i=1 P(Yi = j | xi, θold)
+
+(9)
+
+pj,new
+
+=
+
+1
+
+n
+
+n
+
+�
+
+i=1
+
+P(Yi = j | xi, θold).
+
+(10)
+
+Given an initial estimate, θold, the EM algorithm cycles through (8) to (10) repeatedly, setting θold = θnew after
+
+each cycle, until the estimates converge.
+
+3
+
+A More General Version of the EM Algorithm
+
+The EM algorithm is often stated more generally using the language of information theory. In this section1 we
+
+will describe this more general formulation and relate it back to EM algorithm as described in Section 1. As
+
+before the goal is to maximize the likelihood function, L(θ; X), which is given by2
+
+L(θ; X) = p(X | θ) =
+
+�
+
+y
+
+p(X, y | θ) dy.
+
+(11)
+
+The implicit assumption underlying the EM algorithm is that it is diﬃcult to optimize p(X | θ) with respect to θ
+
+but that it is much easier to optimize p(X, Y | θ). We ﬁrst introduce an arbitrary distribution, q(Y), over the
+
+latent variables, Y, and note that we can decompose the log-likelihood, l(θ; X), into two terms (the ﬁrst of
+
+which is sometimes called the “energy” term) according to
+
+l(θ; X) := ln p(X | θ) =
+
+L(q, θ)
+
+� �� �
+
+“energy”
+
++ KL(q || pY|X )
+
+(12)
+
+where L(q, θ) and KL(q || pY|X ) are the likelihood and Kullback-Leibler (KL) divergence3 which are given by
+
+L(q, θ)
+
+=
+
+�
+
+Y
+
+q(Y) ln
+
+�p(X, Y | θ)
+
+q(Y)
+
+�
+
+(13)
+
+KL(q || pY|X )
+
+=
+
+−
+
+�
+
+Y
+
+q(Y) ln
+
+�p(Y | X, θ)
+
+q(Y)
+
+�
+
+.
+
+It is well-known (see the Appendix) that the KL divergence satisﬁes KL(q || pY|X ) ≥ 0 and equals 0 if and only if
+
+q(Y) = pY|X . It therefore follows that L(q, θ) ≤ l(θ; X) for all distributions, q(·). We can now use the
+
+decomposition of (12) to deﬁne the EM algorithm. We begin with an initial parameter estimate, θold.
+
+E-Step: The E-step maximizes the lower bound, L(q, θold), with respect to q(·) while keeping θold ﬁxed. In
+
+principle this is a variational problem since we are optimizing a functional, but the solution is easily found.
+
+First note that l(θold; X) does not depend on q(·). It then follows from (12) (with θ = θold) that maximizing
+
+L(q, θold) is equivalent to minimizing KL(q || pY|X ). Since this latter term is always non-negative we see that
+
+1The material in this section is drawn from Pattern Recognition and Machine Learning (2006) by Chris Bishop.
+
+2If Y is discrete then we replace the integral in (11) with a summation.
+
+3The KL divergence is also often called the relative entropy.
+
+
+The EM Algorithm
+
+5
+
+L(q, θold) is optimized when KL(q || pY|X ) = 0 which, by our earlier observation, is the case when we take
+
+q(Y) = p(Y | X, θold). At this point we see that the lower bound, L(q, θold), will now equal the current value of
+
+the log-likelihood, l(θold; X).
+
+M-Step: In the M-step we keep q(Y) ﬁxed and maximize L(q, θ) over θ to obtain θnew. This will therefore
+
+cause the lower bound to increase (if it is not already at a maximum) which in turn means that the log-likelihood
+
+must also increase. Moreover, at this new value θnew it will no longer be the case that KL(q || pY|X ) = 0 and so
+
+by (12) the increase in the log-likelihood will be greater than the increase in the lower bound.
+
+Comparing the General EM Algorithm with the Classical EM Algorithm
+
+It is instructive to compare the E-step and M-step of the general EM algorithm with the corresponding steps of
+
+Section 1. To do this, ﬁrst substitute q(Y) = p(Y | X, θold) into (13) to obtain
+
+L(q, θ) = Q(θ; θold) + constant
+
+(14)
+
+where Q(θ; θold) is the expected complete-date log-likelihood as deﬁned in (1) where the expectation is taken
+
+assuming θ = θold. The M-step of the general EM algorithm is therefore identical to the M-step of Section 1
+
+since the constant term in (14) does not depend on θ.
+
+The E-step in the general EM algorithm takes q(Y) = p(Y | X, θold) which, at ﬁrst glance, appears to be
+
+diﬀerent to the E-step in Section 1. But there is no practical diﬀerence: the E-step in Section 1 simply uses
+
+p(Y | X, θold) to compute Q(θ; θold) and, while not explicitly stated, the general E-step must also do this since it
+
+is required for the M-step.
+
+3.1
+
+The Case of Independent and Identically Distributed Observations
+
+When the data set consists of N IID observations, X = {xn} with corresponding latent or unobserved variables,
+
+Y = {yn}, then we can simplify the calculation of p(Y | X, θold). In particular we obtain
+
+p(Y | X, θold) =
+
+p(X, Y | θold)
+
+�
+
+Y p(X, Y | θold) =
+
+�N
+
+n=1 p(xn, yn | θold)
+
+�
+
+Y
+
+�N
+
+n=1 p(xn, yn | θold)
+
+=
+
+�N
+
+n=1 p(xn, yn | θold)
+
+�N
+
+n=1 p(xn | θold)
+
+=
+
+N
+
+�
+
+n=1
+
+p(yn | xn, θold)
+
+so that the posterior distribution also factorizes which makes its calculation much easier. Note that the E-step
+
+of Example 2 is consistent with this observation.
+
+3.2
+
+Bayesian Applications
+
+The EM algorithm can also be used to compute the mode of the posterior distribution, p(θ | X), in a Bayesian
+
+setting where we are given a prior, p(θ), on the unknown parameter (vector), θ. To see this, ﬁrst note that we
+
+can write p(θ | X) = p(X | θ)p(θ)/p(X) which upon taking logs yields
+
+ln p(θ | X) = ln p(X | θ) + ln p(θ) − ln p(X).
+
+(15)
+
+If we now use (12) to substitute for ln p(X | θ) on the right-hand-side of (15) we obtain
+
+ln p(θ | X) = L(q, θ) + KL(q || pY|X ) + ln p(θ) − ln p(X).
+
+(16)
+
+We can now ﬁnd the posterior mode of ln p(θ | X) using a version of the EM algorithm. The E-step is exactly
+
+the same as before since the ﬁnal two terms on the right-hand-side of (16) do not depend on q(·). The M-step,
+
+where we keep q(·) ﬁxed and optimize over θ, must be modiﬁed however to include the ln p(θ) term.
+
+There are also related methods that can be used to estimate the variance-covariance matrix, Σ, of θ. In this
+
+case it is quite common to approximate the posterior distribution of θ with a Gaussian distribution centered at
+
+the mode and with variance-covariance matrix, Σ. This is called a Laplacian approximation and it is a simple
+
+but commonly used framework for deterministic inference. It only works well, however, when the posterior is
+
+
+The EM Algorithm
+
+6
+
+unimodal with contours that are approximately elliptical. It is also worth pointing out, however, that it is often
+
+straightforward to compute the mode of the posterior and determine a suitable Σ for the Gaussian
+
+approximation so that the Laplacian approximation need not rely on the EM algorithm.
+
+We also note in passing that the decomposition in (12) also forms the basis of another commonly used method
+
+of deterministic inference called variational Bayes. The goal with variational Bayes is to select q(·) from some
+
+parametric family of distributions, Q, to approximate p(Y | X). The dependence on θ is omitted since we are
+
+now in a Bayesian setting and θ can be subsumed into the latent or hidden variables, Y. In choosing q(·) we
+
+seek to maximize the lower bound, L(q), or equivalently by (12), to minimize KL(q || pY|X ). A common choice
+
+of Q is the set of distributions under which the latent variables are independent.
+
+Appendix: Kullback-Leibler Divergence
+
+Let P and Q be two probability distributions such that if P(x) = 0 then Q(x) = 0. The Kullback-Leibler (KL)
+
+divergence or relative entropy of Q from P is deﬁned to be
+
+KL(P || Q) =
+
+�
+
+x
+
+P(x) ln
+
+�P(x)
+
+Q(x)
+
+�
+
+(17)
+
+with the understanding4 that 0 log 0 = 0. The KL divergence is a fundamental concept in information theory
+
+and machine learning. One can imagine P representing some true but unknown distribution that we
+
+approximate with Q and that KL(P || Q) measures the “distance” between P and Q. This interpretation is valid
+
+because we will see below that KL(P || Q) ≥ 0 with equality if and only if P = Q. Note however, that the KL
+
+divergence is not a true measure of distance since it is asymmetric in that KL(P || Q) ̸= KL(Q || P) and does not
+
+satisfy the triangle inequality.
+
+In order to see that KL(P || Q) ≥ 0 we ﬁrst recall that a function f(·) is convex on R if
+
+f(αx + (1 − α)y) ≤ αf(x) + (1 − α)f(y)
+
+for all α ∈ [0, 1].
+
+We also recall Jensen’s inequality:
+
+Jensen’s Inequality: Let f(·) be a convex function on R and suppose E[X] &lt; ∞ and E[f(X)] &lt; ∞. Then
+
+f(E[X]) ≤ E[f(X)].
+
+Noting that − ln(x) is a convex function we have
+
+KL(P || Q)
+
+=
+
+−
+
+�
+
+x
+
+P(x) ln
+
+�Q(x)
+
+P(x)
+
+�
+
+≥
+
+− ln
+
+��
+
+x
+
+P(x) Q(x)
+
+P(x)
+
+�
+
+by Jensen’s inequality
+
+=
+
+0.
+
+Moreover it is clear from (17) that KL(P || Q) = 0 if P = Q. In fact because − ln(x) is strictly convex it is easy
+
+to see that KL(P || Q) = 0 only if P = Q.
+
+Example 3 (An Optimization “Trick” that’s Worth Remembering)
+
+Suppose c is a non-negative vector in Rn, i.e. c ∈ Rn
+
++, and we wish to maximize �n
+
+i=1 ci ln(qi) over probability
+
+mass functions, q = {q1, . . . , qn}. Let p = {p1, . . . , pn} where pi := ci/ �
+
+j cj so that p is a (known) pmf. We
+
+then have:
+
+max
+
+q
+
+n
+
+�
+
+i=1
+
+ci ln(qi)
+
+=
+
+�
+
+n
+
+�
+
+i=1
+
+ci
+
+�
+
+max
+
+q
+
+�
+
+n
+
+�
+
+i=1
+
+pi ln(qi)
+
+�
+
+4This is consistent with the fact that limx→0 x log x = 0.
+
+
+The EM Algorithm
+
+7
+
+=
+
+�
+
+n
+
+�
+
+i=1
+
+ci
+
+�
+
+max
+
+q
+
+�
+
+n
+
+�
+
+i=1
+
+pi ln(pi) −
+
+n
+
+�
+
+i=1
+
+pi ln
+
+�pi
+
+qi
+
+� �
+
+,
+
+=
+
+�
+
+n
+
+�
+
+i=1
+
+ci
+
+� � n
+
+�
+
+i=1
+
+pi ln(pi) − min
+
+q KL(p || q)
+
+�
+
+from which it follows (why?) that the optimal q∗ satisﬁes q∗ = p.
+

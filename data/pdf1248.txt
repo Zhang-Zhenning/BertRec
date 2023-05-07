@@ -1,0 +1,674 @@
+
+
+
+
+
+
+
+Try MonkeyLearn
+
+Try MonkeyLearn
+
+A practical explanation of a Naive
+
+Bayes classifier
+
+The simplest solutions are usually the most powerful ones, and Naive Bayes is
+
+a good example of that. In spite of the great advances of machine learning in
+
+the last years, it has proven to not only be simple but also fast, accurate, and
+
+reliable. It has been successfully used for many purposes, but it works
+
+particularly well with natural language processing (NLP) problems.
+
+Naive Bayes is a family of probabilistic algorithms that take advantage of
+
+probability theory and Bayes’ Theorem to predict the tag of a text (like a piece
+
+of news or a customer review). They are probabilistic, which means that they
+
+calculate the probability of each tag for a given text, and then output the tag
+
+with the highest one. The way they get these probabilities is by using Bayes’
+
+Theorem, which describes the probability of a feature, based on prior
+
+knowledge of conditions that might be related to that feature.
+
+We're going to be working with an algorithm called Multinomial Naive Bayes.
+
+We’ll walk through the algorithm applied to NLP with an example, so by the
+
+end, not only will you know how this method works, but also why it works.
+
+Then, we'll lay out a few advanced techniques that can make Naive Bayes
+
+competitive with more complex Machine Learning algorithms, such as SVM and
+
+neural networks.
+
+A Simple Example
+
+A Simple Example
+
+Let’s see how this works in practice with a simple example. Suppose we are
+
+building a classifier that says whether a text is about sports or not. Our training
+
+data has 5 sentences:
+
+Text
+
+Tag
+
+
+"A great game"
+
+Sports
+
+"The election was over"
+
+Not sports
+
+"Very clean match"
+
+Sports
+
+"A clean but forgettable game"
+
+Sports
+
+"It was a close election"
+
+Not sports
+
+Text
+
+Tag
+
+Now, which tag does the sentence A very close game belong to?
+
+Since Naive Bayes is a probabilistic classifier, we want to calculate the
+
+probability that the sentence "A very close game" is Sports and the probability
+
+that it’s Not Sports. Then, we take the largest one. Written mathematically, what
+
+we want is P (Sports | a very close game) — the probability that the tag of a
+
+sentence is Sports given that the sentence is “A very close game”.
+
+That’s great, but how do we calculate these probabilities?
+
+Let’s dig in!
+
+Feature Engineering
+
+Feature Engineering
+
+The first thing we need to do when creating a machine learning model is to
+
+decide what to use as features. We call features the pieces of information that
+
+we take from the text and give to the algorithm so it can work its magic. For
+
+example, if we were doing classification on health, some features could be a
+
+person’s height, weight, gender, and so on. We would exclude things that
+
+maybe are known but aren’t useful to the model, like a person’s name or
+
+favorite color.
+
+In this case though, we don’t even have numeric features. We just have text. We
+
+need to somehow convert this text into numbers that we can do calculations
+
+on.
+
+So what do we do? Simple! We use word frequencies. That is, we ignore word
+
+order and sentence construction, treating every document as a set of the words
+
+it contains. Our features will be the counts of each of these words. Even though
+
+it may seem too simplistic an approach, it works surprisingly well.
+
+
+Bayes’ Theorem
+
+Bayes’ Theorem
+
+Now we need to transform the probability we want to calculate into something
+
+that can be calculated using word frequencies. For this, we will use some basic
+
+properties of probabilities, and Bayes’ Theorem. If you feel like your knowledge
+
+of these topics is a bit rusty, read up on it, and you'll be up to speed in a couple
+
+of minutes.
+
+Bayes' Theorem is useful when working with conditional probabilities (like we
+
+are doing here), because it provides us with a way to reverse them:
+
+In our case, we have P (Sports | a very close game), so using this theorem we
+
+can reverse the conditional probability:
+
+Since for our classifier we’re just trying to find out which tag has a bigger
+
+probability, we can discard the divisor —which is the same for both tags— and
+
+just compare
+
+with
+
+This is better, since we could actually calculate these probabilities! Just count
+
+how many times the sentence “A very close game” appears in the Sports tag,
+
+divide it by the total, and obtain P (a very close game | Sports).
+
+There's a problem though: “A very close game” doesn’t appear in our training
+
+data, so this probability is zero. Unless every sentence that we want to classify
+
+appears in our training data, the model won’t be very useful.
+
+Being Naive
+
+Being Naive
+
+So here comes the Naive part: we assume that every word in a sentence is
+
+independent of the other ones. This means that we’re no longer looking at
+
+entire sentences, but rather at individual words. So for our purposes, “this was
+
+
+a fun party” is the same as “this party was fun” and “party fun was this”.
+
+We write this as:
+
+This assumption is very strong but super useful. It's what makes this model
+
+work well with little data or data that may be mislabeled. The next step is just
+
+applying this to what we had before:
+
+And now, all of these individual words actually show up several times in our
+
+training data, and we can calculate them!
+
+Calculating Probabilities
+
+Calculating Probabilities
+
+The final step is just to calculate every probability and see which one turns out
+
+to be larger.
+
+Calculating a probability is just counting in our training data.
+
+First, we calculate the a priori probability of each tag: for a given sentence in
+
+our training data, the probability that it is Sports P (Sports) is ⅗. Then, P (Not
+
+Sports) is ⅖. That’s easy enough.
+
+Then, calculating P (game | Sports) means counting how many times the word
+
+“game” appears in Sports texts (2) divided by the total number of words in sports
+
+(11). Therefore,
+
+However, we run into a problem here: “close” doesn’t appear in any Sports text!
+
+That means that P (close | Sports) = 0. This is rather inconvenient since we are
+
+going to be multiplying it with the other probabilities, so we'll end up with
+
+This equals 0, since in a multiplication if one of the terms is zero, the whole
+
+calculation is nullified. Doing things this way simply doesn't give us any
+
+information at all, so we have to find a way around.
+
+How do we do it? By using something called Laplace smoothing: we add 1 to
+
+
+every count so it’s never zero. To balance this, we add the number of possible
+
+words to the divisor, so the division will never be greater than 1. In our case,
+
+the possible words are ['a', 'great', 'very', 'over', 'it', 'but', 'game', 'election', 'clean', 'close', 'the',
+
+'was', 'forgettable', 'match'].
+
+Since the number of possible words is 14 (I counted them!), applying
+
+smoothing we get that
+
+The full results are:
+
+Word
+
+P (word | Sports)
+
+P (word | Not Sports)
+
+a
+
+(2 + 1) ÷ (11 + 14)
+
+(1 + 1) ÷ (9 + 14)
+
+very
+
+(1 + 1) ÷ (11 + 14)
+
+(0 + 1) ÷ (9 + 14)
+
+close
+
+(0 + 1) ÷ (11 + 14)
+
+(1 + 1) ÷ (9 + 14)
+
+game
+
+(2 + 1) ÷ (11 + 14)
+
+(0 + 1) ÷ (9 + 14)
+
+Now we just multiply all the probabilities, and see who is bigger:
+
+Excellent! Our classifier gives “A very close game” the Sports tag.
+
+Advanced techniques
+
+Advanced techniques
+
+There are many things that can be done to improve this basic model. These
+
+techniques allow Naive Bayes to perform at the same level as more advanced
+
+methods. Some of these techniques are:
+
+Removing stopwords. These are common words that don’t really add
+
+anything to the classification, such as a, able, either, else, ever and so on. So
+
+for our purposes, The election was over would be election over and a very close
+
+
+game would be very close game.
+
+Lemmatizing words. This is grouping together different inflections of the
+
+same word. So election, elections, elected, and so on would be grouped
+
+together and counted as more appearances of the same word.
+
+Using n-grams. Instead of counting single words as we did here, we could
+
+count sequences of words, like “clean match” and “close election”.
+
+Using TF-IDF. Instead of just counting frequency we could do something
+
+more advanced like also penalizing words that appear frequently in most of
+
+the texts.
+
+Creating a Naive Bayes Classifier with
+
+Creating a Naive Bayes Classifier with
+
+MonkeyLearn
+
+MonkeyLearn
+
+You now know how Naive Bayes works with a text classifier, but you’re still not
+
+quite sure where to start. Well, instead of starting from scratch, you can easily
+
+build a text classifier on MonkeyLearn, which can actually be trained with Naive
+
+Bayes.
+
+But what is MonkeyLearn? Basically, it’s a machine learning platform that
+
+analyzes text in two ways –  by classifying it according to topic, aspect,
+
+sentiment, urgency or intent and by extracting key information such as
+
+keywords, names, and companies.
+
+You don’t need to be a machine learning expert to use MonkeyLearn, or even
+
+know the ins and outs of Naive Bayes to build and use a text classifier.
+
+It’s simple to use
+
+You don’t need to be a machine learning expert to use MonkeyLearn, or even
+
+know the ins and outs of Naive Bayes to build and use a text classifier.
+
+No setup is required:
+
+You don’t have to worry about building the underlying infrastructure for a text
+
+analysis model. MonkeyLearn does it for you. Performance, scalability, logging,
+
+architecture, tools, etc...MonkeyLearn has it all under control!
+
+You don’t need to code:
+
+MonkeyLearn is ready to use straight away. All you need to do is integrate it
+
+
+into your codebase, made super easy thanks to MonkeyLearn’s beautiful API. It
+
+comes with SDKs for every major programming language, as well as well-
+
+written documentation.
+
+Faster training:
+
+The tagging process within MonkeyLearn is much quicker, thanks to a clean
+
+and simple interface specifically built for tagging text data. This process is also
+
+faster thanks to active learning, a machine learning technique that suggests
+
+tags within text data, as you’re training your model.
+
+We've made a strong case for why you should create your naive bayes text
+
+classifier with MonkeyLearn, but let's see how easy it is to create your model.
+
+Here's a step-by-step guide to help you get started.
+
+1. Create a text classifier
+
+1. Create a text classifier
+
+Sign up for free to MonkeyLearn and go to the MonkeyLearn Dashboard, select
+
+'Create Model' and click on the 'Classifier' option:
+
+2. Select 'Topic Classification'
+
+2. Select 'Topic Classification'
+
+Sentiment analysis focuses on how positive or negative a text is, while intent
+
+classification aims to categorize texts according to their purpose. In this case,
+
+we want to classify texts according to the topic, so let’s choose 'Topic
+
+Classification':
+
+
+
+
+
+
+3. Upload your training data
+
+3. Upload your training data
+
+You can easily upload texts from an Excel or CSV file. Remember, it’s always
+
+best to upload a large bunch of data to make sure your model has enough
+
+training data:
+
+4. Create your tags
+
+4. Create your tags
+
+In this step, it’s important to keep the number of tags to a minimum. At
+
+MonkeyLearn, we usually recommend starting with no more than ten. Once the
+
+model is performing well, you can add more tags:
+
+
+
+
+
+
+
+
+5. Train your classifier
+
+5. Train your classifier
+
+We know what you’re thinking: what about naive bayes? We’re almost there, but
+
+first, it’s crucial to teach your classifier how to tag different text units. Just click
+
+on the correct tag for each piece of text and confirm. Soon enough, your model
+
+will start making predictions which you can confirm or correct:
+
+Don’t worry if more than one tag applies to a given text, just use both tags to
+
+classify it. If you start noticing that the features (pieces of information from a
+
+text that are useful for the algorithm) don’t match any tags, you can create a
+
+new tag by clicking on the add button next to 'Tags'.
+
+6. Change to Naive Bayes
+
+6. Change to Naive Bayes
+
+After training your model, go to the Settings section and change the algorithm
+
+from Support Vector Machines (our default algorithm) to Naive Bayes. Save
+
+your settings and go back to training your model to test it:
+
+
+
+
+
+
+
+
+
+
+
+
+From that moment on, MonkeyLearn will start training your classifier with
+
+Naive Bayes.
+
+7. Test your Naive Bayes classifier
+
+7. Test your Naive Bayes classifier
+
+Is it ready? This phase will show you whether it's time to put your model to
+
+work or continue training it. Click on the 'Run' tab and type something into the
+
+text box. Did your model predict the correct tag? Try a few more times to make
+
+sure you're using a classifier that's ready work for you:
+
+Test with your own text
+
+Lack of live support outside of open office hours.
+
+
+
+Classify Text
+
+Results
+
+TAG
+
+CONFIDENCE
+
+Customer Support
+
+61.9%
+
+
+
+
+
+
+
+
+Just to make sure, you can look at the classifier stats to see how accurate your
+
+Naive Bayes classifier is.
+
+8. Start working with your model
+
+8. Start working with your model
+
+It's time to reap what you sowed! Run brand new pieces of text through your
+
+classifier, which you can import in various ways:
+
+1. Using MonkeyLearn’s API with the programming language of your choice:
+
+With some quick and simple coding, you can integrate MonkeyLearn into your
+
+codebase and run your classification model automatically. There are different
+
+SDKs available: Python, Ruby, PHP, Node.js, and Java.
+
+2. Go to the 'Batch' tab and upload a CSV or Excel file:
+
+After running text data from your file through your model, you'll get a new file
+
+in return with all the tag predictions, in just a few seconds.
+
+3. Use third-party Integrations:
+
+MonkeyLearn has various integrations, including Google Sheets, Zapier,
+
+Rapidminer or Zendesk, so that you can analyze data without any hassle. Just
+
+go to the 'Integrate' section and take your pick:
+
+
+
+
+
+
+
+
+Final words
+
+Final words
+
+Hopefully, you now have a better understanding of what Naive Bayes is and
+
+how it can be used for text classification. This simple method works
+
+surprisingly well for classification problems and, computationally speaking, it’s
+
+very cheap. Creating a classifier from scratch also takes a lot of time, and that’s
+
+where MonkeyLearn’s classifier swoops in to save the day.
+
+Whether you’re a Machine Learning expert or not, you have the tools to build
+
+your own Naive Bayes classifier. You don’t need to spend hours studying and
+
+coding – just sign up to MonkeyLearn for free or request a demo and get
+
+started.
+
+If you’re interested in learning more about these topics, check out our guides
+
+to machine learning and natural language processing.
+
+Bruno Stecanella
+
+May 25th, 2017
+
+Posts you might like...
+
+
+
+
+
+
+
+
+
+
+Text Analysis with Machine Learning
+
+Turn tweets, emails, documents, webpages and more into actionable data. Automate
+
+business processes and save hours of manual data processing.
+
+Try MonkeyLearn
+
+Try MonkeyLearn
+
+
+
+Guide to Data Labeling for AI
+
+Data labeling is time-consuming and tedious, but it’s essential if you want to get the most out of your
+
+machine learning and AI tools. You…
+
+Tobias Geisler Mesevage
+
+March 4th, 2021
+
+
+
+
+
+Machine Learning Classifiers - The Algorithms &amp; How They Work
+
+It used to be that you needed a data science and engineering background to use AI and machine
+
+learning, but new user-friendly tools and SaaS…
+
+Tobias Geisler Mesevage
+
+December 14th, 2020
+
+
+
+
+
+Top 8 No-Code Machine Learning Tools &amp; How to Use Them
+
+Machine learning and AI technology have exploded in capabilities and applications in the past couple
+
+decades. But until very recently, you…
+
+Rachel Wolff
+
+December 11th, 2020
+
+
+
+
+
+
+
+
+
+
+
+
+
+

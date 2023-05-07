@@ -1,0 +1,4801 @@
+
+1
+
+Multi-Modal Mutual Information Maximization:
+
+A Novel Approach for Unsupervised Deep
+
+Cross-Modal Hashing
+
+Tuan Hoang, Thanh-Toan Do, Tam V. Nguyen, Ngai-Man Cheung
+
+Abstract—In this paper, we adopt the maximizing mutual
+
+information (MI) approach to tackle the problem of unsupervised
+
+learning of binary hash codes for efﬁcient cross-modal retrieval.
+
+We proposed a novel method, dubbed Cross-Modal Info-Max
+
+Hashing (CMIMH). First, to learn informative representations
+
+that can preserve both intra- and inter-modal similarities, we
+
+leverage the recent advances in estimating variational lower-
+
+bound of MI to maximizing the MI between the binary repre-
+
+sentations and input features and between binary representations
+
+of different modalities. By jointly maximizing these MIs under
+
+the assumption that the binary representations are modelled
+
+by multivariate Bernoulli distributions, we can learn binary
+
+representations, which can preserve both intra- and inter-modal
+
+similarities, effectively in a mini-batch manner with gradient
+
+descent. Furthermore, we ﬁnd out that trying to minimize the
+
+modality gap by learning similar binary representations for the
+
+same instance from different modalities could result in less
+
+informative representations. Hence, balancing between reduc-
+
+ing the modality gap and losing modality-private information
+
+is important for the cross-modal retrieval tasks. Quantitative
+
+evaluations on standard benchmark datasets demonstrate that
+
+the proposed method consistently outperforms other state-of-the-
+
+art cross-modal retrieval methods.
+
+I. INTRODUCTION
+
+The last few years have witnessed an exponential surge in
+
+the amount of information available online in heterogeneous
+
+modalities, e.g., images, tags, text documents, videos, subtitles,
+
+etc. Thus, it is desirable to have a single efﬁcient system
+
+that can facilitate large-scale multi-media searches. In general,
+
+this system should support both single and cross-modality
+
+searches, i.e., the system returns a set of semantically relevant
+
+results of all modalities given a query in any modality. In
+
+addition, to be used in large scale applications, the system
+
+should have efﬁcient storage and fast searching. Several cross-
+
+modality hashing approaches have been proposed to handle
+
+the above challenges, in both supervised [1]–[22] and unsu-
+
+pervised [23]–[37] manners. Furthermore, as the unsupervised
+
+hashing does not require any label information, it is suitable
+
+for large-scale retrieval problem in which the label information
+
+is mostly unavailable. Thus, in this work, we focus on the
+
+unsupervised setting of the cross-modality hashing problem
+
+for retrieval tasks.
+
+Tuan Hoang and Ngai-Man Cheung are with the Singapore University
+
+of Technology and Design (SUTD), Singapore. Email:
+
+nguyenanhtuan hoang@mymail.sutd.edu.sg, ngaiman cheung@sutd.edu.sg
+
+Thanh-Toan
+
+Do
+
+is
+
+with
+
+Monash
+
+University,
+
+Australia.
+
+Email:
+
+toan.do@monash.edu
+
+Tam V. Nguyen is with the University of Dayton, United States.
+
+E-
+
+mail:tamnguyen@udayton.edu
+
+When learning binary representations for the cross-modal
+
+retrieval task, it is essential to preserve both intra- and inter-
+
+modal similarities in a common Hamming space. Equivalently,
+
+the binary representations should satisfy several requirements:
+
+(i) First, the representations necessarily capture information
+
+from the input features, i.e., preserve intra-modal similarity.
+
+(ii) For the representations of a modality to effectively retrieve
+
+samples of other modalities (i.e., the inter-modal similarity is
+
+preserved), the representations of this modality should cap-
+
+ture as much information about other modalities as possible.
+
+Additionally, (iii) the modality gap (i.e., heterogeneous gap)
+
+between the representations of different modalities should be
+
+minimized, i.e., binary codes of all modalities should be in
+
+the same common space and binary codes from different
+
+modalities of the same instance (which contain the same
+
+information) should be as similar as possible [29], [38], [39].
+
+Minimizing the modality gap is necessary for the similarity
+
+between different modalities to be measured directly.
+
+To preserve both intra- and inter-modal similarities in the
+
+unsupervised setting, many existing cross-modality hashing
+
+methods, both CNN-based and non CNN-based, relied on sim-
+
+ilarity matrices/graphs (one for each modality [23], [25], [28],
+
+[39], [40] or to a joint similarity matrix for all modalities [29]).
+
+Then they learn hash codes via the eigenvalue decomposition
+
+of the similarity matrices. However, constructing the similarity
+
+matrix could be challenging and computationally expensive
+
+for large datasets. Furthermore, eigenvalue decomposition de-
+
+creases the mapping quality substantially when increasing the
+
+hash code length [41]. Matrix Factorizaton (MF) based meth-
+
+ods could avoid the large scale graph constructing and eigen-
+
+decomposition process by ﬁnding a shared latent semantic
+
+space [26], [41] that can reconstruct input data well for all
+
+modalities. However, only simple and capability-limited linear
+
+projection is used in MF-based methods. In addition, scaling
+
+up MF-based methods for much larger datasets is non-trivial.
+
+Recently, Li et. al. proposed Unsupervised coupled Cycle
+
+generative adversarial Hashing networks (UCH) [42], which
+
+used pair-coupled generative adversarial networks (GAN) to
+
+learn representations for individual modality and generate
+
+compact hash codes. Even though, this approach can achieve
+
+very competitive performance, training the minimax loss of
+
+GAN can be challenging.
+
+Taking a different approach, inspired by recent advances in
+
+unsupervised representation learning [43]–[46]; in this paper,
+
+we propose to learn informative binary representations for
+
+unsupervised cross-modal hashing via maximizing mutual
+
+arXiv:2112.06489v1  [cs.CV]  13 Dec 2021
+
+
+2
+
+information (MI). We learn to preserve the intra-modal and
+
+inter-modal similarities via maximizing the MI between rep-
+
+resentations and input and the MI between representations
+
+of different modalities.
+
+More speciﬁcally, by adopting the
+
+Variational Information Maximization method [47], we can
+
+use the binary representations to be modeled by multivariate
+
+Bernoulli distributions. As a result, the binary representations
+
+can be learned easily and effectively by maximizing the MI
+
+between themselves and input via maximizing the estimated
+
+variational MI lower-bounds [47]–[51] using gradient descent
+
+optimization in the mini-batch manner.
+
+Furthermore, we ﬁnd out that trying to minimize modality
+
+gap by learning similar binary representations for the same
+
+instance from different modalities could result in undesirable
+
+side-effect. Speciﬁcally, the modality-private information (i.e.,
+
+the information of one modality that does not share with any
+
+other modality) is discarded. Consequently, the representations
+
+may become less representative for the input. Hence, balancing
+
+between reducing modality gap and losing modality-private
+
+information is important for the cross-modal retrieval tasks.
+
+In addition to the above requirements for cross-modal
+
+retrieval tasks, independence and balance are well-known to
+
+be important properties of informative hash codes [52]–[57].
+
+The independence property, i.e., different bits in the binary
+
+codes are independent to each other, is to ensure hash codes
+
+do not capture redundant information. The balance property,
+
+i.e., each bit has a 50% chance of being 0 or 1, is to ensure
+
+hash codes contain a maximum amount of information [54].
+
+By assuming the binary representations to be modeled by
+
+multivariate Bernoulli distributions, we propose to leverage
+
+the Total Correlation (TC) [58] as a regularizer (i.e., mini-
+
+mizing TC) to enhance the independence between hash bits.
+
+Furthermore, the balanced property can also be achieved by
+
+regularizing the Bernoulli distributions such that the averaged
+
+probabilities over a training set for a bit to be 0 or 1 are equal
+
+and equal to 50%.
+
+In summary, by adopting the maximizing mutual informa-
+
+tion approach, we propose a novel framework, dubbed Cross-
+
+Modal Info-Max Hashing (CMIMH), whose main contribu-
+
+tions are:
+
+• We propose to adopt the maximizing MI approach to
+
+learn binary representations for the cross-modal retrieval
+
+tasks. Besides maximizing MI between the representa-
+
+tions and inputs, we explicitly maximize the MI between
+
+representations of different modalities, which is impor-
+
+tant to learn informative representations for cross-modal
+
+retrieval tasks.
+
+• We ﬁnd out that minimizing modality gap by learn-
+
+ing similar binary representations for the same instance
+
+from different modalities could result in less informative
+
+representations. Since both informative representations
+
+and modality gap are important for cross-modal retrieval
+
+tasks, properly balancing these two factors is important to
+
+achieve good performance, as shown in our experiments.
+
+To the best of our knowledge, our work is the ﬁrst work
+
+that provide in-depth analyses about the trade-off between
+
+these two factors.
+
+• We propose to leverage the Total Correlation (TC) as a
+
+regularizer to enhance the independence between hash
+
+bits. The experimental results conﬁrm that minimizing
+
+TC results in more independence hash bits and higher
+
+performance.
+
+• We compare our proposed method against various state-
+
+of-the-art unsupervised cross-modality hashing methods
+
+on three standard cross-modal benchmark datasets, i.e.,
+
+MIR-Flickr25K, NUS-WIDE, and MS-COCO. Quantita-
+
+tive results justify our contributions and demonstrate that
+
+CMIMH outperforms the compared methods on various
+
+evaluation metrics and settings.
+
+II. RELATED WORKS
+
+In this section we brieﬂy discuss noticeable methods pro-
+
+posed cross-modal hashing.
+
+Supervised Cross-modal hashing. Supervised hashing
+
+methods can explore the semantic information to enhance
+
+the data correlation from different modalities (i.e., reduce
+
+modality gap) and reduce the semantic gap. Many supervised
+
+cross-modal hashing methods with shallow architectures have
+
+been proposed, for instance Co-Regularized Hashing (CRH)
+
+[1], Heterogeneous Translated Hashing (HTH) [2], Supervised
+
+Multi-Modal Hashing (SMH) [3], Quantized Correlation Hash-
+
+ing (QCH) [4], Semantics-Preserving Hashing (SePH) [5],
+
+Discrete Cross-modal Hashing (DCH) [6], and Supervised Ma-
+
+trix Factorization Hashing (SMFH) [8]. All of these methods
+
+are based on hand-crafted features, which cannot effectively
+
+capture heterogeneous correlation between different modali-
+
+ties and may therefore result in unsatisfactory performance.
+
+Unsurprisingly, recent deep learning-based works [10]–[16],
+
+[59] can capture heterogeneous cross-modal correlations more
+
+effectively. Deep cross-modal hashing (DCMH) [12] simulta-
+
+neously conducts feature learning and hash code learning in a
+
+uniﬁed framework. Pairwise relationship-guided deep hashing
+
+(PRDH) [15], in addition, takes intra-modal and inter-modal
+
+constraints into consideration. Deep visual-semantic hashing
+
+(DVSH) [16] uses CNNs, long short-term memory (LSTM),
+
+and a deep visual semantic fusion network (unifying CNN
+
+and LSTM) for learning isomorphic hash codes in a joint
+
+embedding space. However, the text modality in DVSH is
+
+only limited to sequence texts (e.g., sentences). In Cross-
+
+Modal Deep Variational Hashing [14], [60], the authors ﬁrst
+
+proposed to learn shared binary codes from a fusion network,
+
+then learn generative modality-speciﬁc networks for encoding
+
+out-of-sample inputs. In Cross-modal Hamming Hashing [61],
+
+the author proposed Exponential Focal Loss which puts higher
+
+losses on pairs of similar samples with Hamming distance
+
+much larger than 2 (in comparison with the sigmoid function
+
+with the inner product of binary codes). Mandal et al. [9]
+
+proposed Generalized Semantic Preserving Hashing (GSPH)
+
+which can work for unpaired inputs (i.e., given a sample in
+
+one modality, there is no paired sample in other modality.).
+
+Song et al. [18] took advantage of the memory mechanism
+
+to design a memory network that can learn to store sup-
+
+porting information and retrieve the necessary information in
+
+reference. Xie et al. [19] proposed Multi-Task Consistency-
+
+Preserving Adversarial Hashing (CPAH), which consists of
+
+
+3
+
+two modules: consistency reﬁned module to learn modality-
+
+common and modality-private representations and multi-task
+
+adversarial learning module to preserve the semantic consis-
+
+tency information between different modalities. Ji et. al. [62]
+
+proposed a attribute-guided network (AgNet) framework to
+
+narrow the semantic gap brought by modality heterogeneity
+
+and category migration for the zero-shot cross-modal retrieval.
+
+Although supervised hashing typically achieves very high
+
+performance, it requires a labor-intensive process to obtain
+
+large-scale labels, especially for multi-modalities, in many
+
+real-world applications. In contrast, unsupervised hashing does
+
+not require any label information. Hence, it is suitable for
+
+large-scale image search in which the label information is
+
+usually unavailable.
+
+Unsupervised Cross-modal hashing. Cross-view hashing
+
+(CVH) [23] and Inter-Media Hashing (IMH) [25] adopt Spec-
+
+tral Hashing [52] for the cross-modality hashing problem.
+
+These two methods, however, produce different sets of bi-
+
+nary codes for different modalities, which may result in
+
+limited performance. Linear cross-modal hashing (LCMH)
+
+[40] reduces the training complexity of IMH by representing
+
+training data with some cluster centers to avoid the large-
+
+scale graph construction process. In Predictable Dual-View
+
+Hashing (PDH) [24], the authors introduced the predictability
+
+to explain the idea of learning linear hyper-planes that each
+
+one divides a particular space into two subspaces represented
+
+by −1 or 1. The hyper-planes, in addition, are learned in a
+
+self-taught manner, i.e., to learn a certain hash bit of a sample
+
+by looking at the corresponding bit of its nearest neighbors.
+
+Collective Matrix Factorization Hashing (CMFH) [26] aims to
+
+ﬁnd consistent hash codes from different views by collective
+
+matrix factorization. Latent Semantic Sparse Hashing (LSSH)
+
+[27] was proposed to learn hash codes in two steps: ﬁrst,
+
+latent features from images and texts are jointly learned with
+
+sparse coding, and then hash codes are achieved by using
+
+matrix factorization. Subsequently, Wang et al. [41] proposed
+
+Robust and Flexible Discrete Hashing (RFDH) which directly
+
+optimizes and generates the uniﬁed binary codes for various
+
+views in the unsupervised manner via matrix factorization
+
+such that large quantization errors caused by relaxation can
+
+be relieved to some extent. Inspired by CCA-ITQ [53], Go
+
+et al. [28] proposed Alternating Co-Quantization (ACQ) to
+
+alternately minimize the binary quantization error for each
+
+of modalities. In [29], the authors applied Nearest Neighbor
+
+Similarity [63] to construct Fusion Anchor Graph (FSH) from
+
+text and image modals for learning binary codes. Recently,
+
+proposed Collective Afﬁnity Learning Method (CALM) [35],
+
+which collectively and adaptively learns hashing functions in
+
+an unsupervised manner with an anchor graph constructed on
+
+partial multi-modal data. We would like to refer readers to [64]
+
+for a more comprehensive survey on non-DNN-based cross-
+
+modal retrieval methods.
+
+In addition to the aforementioned shallow methods, several
+
+works [31]–[33] utilized (stacked) auto-encoders for learning
+
+binary codes. These methods try to minimize the distance
+
+between hidden spaces of modalities to the preserve inter-
+
+modal semantic to a certain extent. Deep Binary Reconstruc-
+
+tion (DBRC) [65] proposed to minimize the reconstruction
+
+error based on the shared binary representation. DBRC addi-
+
+tionally proposed a scalable tanh activation with a learnable
+
+parameter, which can mitigate the gradient problem of the
+
+discrete domain of {−1, 1} during training. Recently, Zhang
+
+et al. [66] propsoed Multi-pathway Generative Adversarial
+
+Hashing (MGAH), which consists of a generative model and
+
+a discriminative model. In which, the generative model ﬁts the
+
+distribution over the manifold structure and selects informative
+
+data of other modalities. While the discriminative model learns
+
+to discriminate data generated from the generative model and
+
+data sampled a correlation graph (a graph which captures the
+
+underlying manifold structure across different modalities). Wu
+
+et al. [39] proposed Unsupervised Deep Cross Modal Hashing
+
+(UDCMH), that enables the feature learning to be jointly
+
+optimized with the binarization. Su et al. [38] proposed a joint-
+
+semantics afﬁnity matrix, which integrates the neighborhood
+
+information of two modals, for mini-batch samples to train
+
+deep network in an end-to-end manner. Li et. al. proposed
+
+Unsupervised coupled Cycle generative adversarial Hashing
+
+networks (UCH) [42], which used pair-coupled generative
+
+adversarial networks to learn representations for individual
+
+modality and generate compact hash codes. Given a multi-
+
+modal unpaired data, Wu et al. [67] adopted the cycle-
+
+consistent loss [68] to learn hashing functions. Although these
+
+methods make great progresses, the performance of these
+
+systems still has room for improvement.
+
+Representation learning with Mutual Information: In
+
+MIHash [69], the authors proposed to use mutual information
+
+(MI) to learn hash codes for online hashing. In speciﬁc,
+
+given two Hamming distance distributions of a sample with
+
+its neighbors and its non-neighbors, the MI is used to mea-
+
+sure the separability of these two distributions, which gives
+
+a good quality indicator for online hashing. However, this
+
+method is only proposed for the single modality case in
+
+a supervised manner, while our proposed method aims to
+
+learn binary representations for cross-modal retrieval in an
+
+unsupervised manner. In [70], the authors only adopted MI
+
+to learn to preserve intra-modal similarity, while our proposed
+
+method utilized MI to preserve both intra-modal and inter-
+
+modal similarities. Additionally, in contrast with [70] which
+
+learns real-valued representations, our method learns binary
+
+representations for large-scale retrieval. Besides, several works
+
+[43], [45], [46], [71]–[73] rely on MI to learn representations
+
+in unsupervised/self-supervised manner for single view and/or
+
+multi-view settings. Speciﬁcally, Hjelm et. al. [43] proposed to
+
+learn a global image representation such that the MI between
+
+this global representation and local features are maximized.
+
+Bachman et. al. [45] further improved [43] by maximizing
+
+the MI between a global representation and local features of
+
+the different views (i.e., different images generated by data
+
+augmentation). Different from [43], [45], [74] adopted the
+
+Information Bottleneck (IB) objective [75] with a variational
+
+approximation to minimize the MI between the input and the
+
+representation, while still ensuring the global representations
+
+can fulﬁll the target task (e.g., classiﬁcation). This learning
+
+method could result in more robust representations. In [46],
+
+with the assumption that any single view can fully contain in-
+
+
+4
+
+formation of labels of a down-stream task (e.g., classiﬁcation),
+
+the authors aimed to learn robust representations by capturing
+
+the shared information between views and discarding the pri-
+
+vate information (i.e., information that is exclusively contained
+
+in a particular view). Information Competing Process (ICP)
+
+[71] is another intriguing MI-based representation learning
+
+method. ICP aims to learn diversiﬁed representations by ﬁrst
+
+separating a representation into two parts with different MI
+
+constraints, and then forcing separated parts to accomplish
+
+the downstream task independently without any knowledge
+
+of what the other part has learned. However, these works
+
+[43], [45], [46], [71]–[73] mainly focus on learning a single
+
+real-valued representation from single/multi-view inputs for
+
+classiﬁcation. In contrast, our work aims to learn binary
+
+representations for multi-modal retrieval.
+
+III. PROPOSED METHOD
+
+Given a multi-modality dataset of N instances, denoted as
+
+O = {oj}N
+
+j=1, in which each instance is described by an
+
+image-text pair oj = (xi
+
+j, xt
+
+j), where xi
+
+j ∈ RDi and xt
+
+j ∈ RDt
+
+are the j-th Di, Dt dimensional features of image and text
+
+modalities respectively. We aim to learn the corresponding L-
+
+bit binary representations hi
+
+j and ht
+
+j ∈ {0, 1}L for each image
+
+and text pair (xi
+
+j, xt
+
+j).
+
+For representations being suitable for the cross-modal re-
+
+trieval task, the representations should satisfy several require-
+
+ments: (i) First, the representations should well represent the
+
+input data, i.e., they necessarily capture information from the
+
+input features. (ii) Second, for the image representations to
+
+effectively retrieve text samples, the image representations
+
+should capture as much information about the text modality as
+
+possible. Analogously, the text representation should contain
+
+as much information about the image modality as possible to
+
+retrieve image samples effectively. (iii) Third, the representa-
+
+tions of different modalities should be well aligned with each
+
+other (i.e., the modal gap is minimized).
+
+A. Mutual Information Maximization
+
+Mutual information (MI) has been proven to be an important
+
+quantity in data science to measure the dependence of two
+
+random variables, since it can capture non-linear statistical
+
+dependencies between variables [50]. Recent representation
+
+learning methods [43], [45] showed that MI maximization
+
+between inputs and encoder outputs can help to learn informa-
+
+tive representations. Hence to achieve the ﬁrst requirement, we
+
+aim to maximize the MI between the binary representations
+
+and the input data. Noticeably, in the ideal case, when the
+
+representations fully capture all input information; the MI
+
+between image and text representations would be maximized
+
+and be equal to the MI between the image and text input data
+
+(which is a constant). Equivalently, the second requirement
+
+would be satisﬁed. However, in practice, the representations
+
+may not fully capture all input information. Hence, we pro-
+
+pose to further enforce the second requirement by explicitly
+
+maximizing the MI between the representations of image and
+
+text modalities. Our initial objective now can be written as
+
+follows:
+
+max I(xi; hi) + I(xt; ht) + I(hi; ht).
+
+(1)
+
+However, MI is well-known to be notoriously difﬁcult to
+
+compute. To handle this trouble, we propose to assume the
+
+image and text representations to be random variables; so
+
+that we can leverage recent advances in estimating variational
+
+lower bounds of MI [47]–[51] to maximize the objective
+
+function (1).
+
+B. Variational Lower Bounds of MI
+
+1) Variational Information Maximization: Directly optimiz-
+
+ing I(xi; hi) and I(xt; ht) in the objective (1) is infeasible
+
+as the true posterior distributions (i.e., P(xi|hi), P(xt|ht))
+
+requiring for computing the MI is still unknown. Fortunately,
+
+we can use the Variational Information Maximization [47],
+
+[48] to compute the MI lower bound, in which Qφi(xi|hi)
+
+can be used to approximate the true posterior distribution, as
+
+follows:
+
+I(xi; hi) = H(xi) − H(xi|hi)
+
+= H(xi) + Ep(xi)
+
+�
+
+EPθi(hi|xi)[log P(xi|hi)]
+
+�
+
+= H(xi) + Ep(xi)
+
+�
+
+DKL[P(xi|hi)||Qφi(xi|hi)]
+
++ EPθi(hi|xi)[log Qφi(xi|hi)]
+
+�
+
+≥ H(xi) + Ep(xi)
+
+�
+
+EPθi(hi|xi)[log Qφi(xi|hi)]
+
+�
+
+,
+
+(2)
+
+where H(·) is the entropy function of a random variable; E is
+
+expectation, and θi; φi represent the model parameters of the
+
+encoder and decoder distributions, respectively. Similarly, we
+
+have
+
+I(xt; ht) ≥ H(xt) + Ep(xt)
+
+�
+
+EPθt(ht|xt)[log Qφt(xt|ht)]
+
+�
+
+.
+
+(3)
+
+Note that H(xi) and H(xt) are constant for the given input
+
+data. To be concise, from now on, we skip the subscript about
+
+model parameters in the encoder and decoder distributions
+
+whenever the context is clear.
+
+As we aim to obtain binary representations for the cross-
+
+modal hashing, we adopt the multivariate Bernoulli distri-
+
+butions to model the encoder distributions P(hi|xi) and
+
+P(ht|xt); i.e., P(hi|xi) := Bern(µi) and P(ht|xt) :=
+
+Bern(µt). Additionally, we assume that the decoder distribu-
+
+tions Q(xi|hi) and Q(xt|ht) are Gaussian. Therefore, the log
+
+likelihoods in (2) and (3) can be maximized by minimizing
+
+L2 reconstruction loss.
+
+2) Reparameterization trick: Following [76], [77], we can
+
+reparameterize h ∼ Bern(µ) as h = sign(z) (i.e., sign(z) = 1
+
+if z ≥ 0 and sign(z) = 0 if z &lt; 0), where z is a vector of
+
+independent logistic random variables deﬁned as follows
+
+z = g(u, µ) = log
+
+µ
+
+1 − µ + log
+
+u
+
+1 − u,
+
+(4)
+
+where u ∼ Uniform(0, 1). Even though this reparameteriza-
+
+tion trick can help to avoid sampling from the Bernoulli dis-
+
+tribution, this trick still requires a discrete threshold function
+
+which hinders the gradient descent optimization. To handle
+
+
+5
+
+this difﬁculty, we resort to the Straight-Through Estimator
+
+(STE) [78], i.e.,
+
+∂sign(z)
+
+∂z
+
+= 1, to approximate the gradients
+
+propagating through the sign function.
+
+3) Sample-based differentiable MI lower bound: Different
+
+from I(xi; hi) and I(xt; ht); in I(hi; ht), we can access
+
+samples from two random variables independently. This allows
+
+us to maximize the MI between the two representations
+
+I(hi; ht) using a sample-based differentiable MI lower bound,
+
+which could have a tighter bound than (2) and (3) in practice
+
+[79]. Furthermore, as our primary interest is to maximize the
+
+MI, and not to ﬁnd its precise value; we can rely on non-
+
+KL divergences estimator, i.e., a Jensen-Shannon MI estimator
+
+(IJS), which is observed to work better in practice (e.g., more
+
+stable) than the KL divergences MI estimator (e.g., Donsker-
+
+Varadhan representation (DV) [80] or f-divergences [49]) [43].
+
+The sample-based differentiable Jensen-Shannon MI estimator
+
+(IJS) could be deﬁned as follows
+
+I(hi; ht) ∝ IJS(hi; ht) = DJS
+
+�
+
+p(hi, ht)
+
+��p(hi)p(ht)
+
+�
+
+(5)
+
+≥ sup
+
+T ∈F
+
+Ep(hi,ht)[ ¯T]+Ep(hi)p(ht)[log(2 − exp( ¯T))],
+
+where F is a family of functions T(hi; ht) ∈ R, parameterized
+
+by neuron networks, which is jointly optimized during the
+
+training procedure to classify if a pair of samples are from
+
+the joint distribution p(hi, ht) or the product of marginal
+
+distributions p(hi)p(ht), i.e., pairs of (hi; ht) are produced
+
+from the pairs of inputs sampled from joint distributions
+
+p(xi, xt) or sampled from the product of marginal distribu-
+
+tions p(xi)p(xt), respectively [49], [50]. Additionally, ¯T =
+
+log(2) − log(1 + exp(−T)) [49].
+
+From (5), we can see that if the function T can cor-
+
+rectly classify between samples from the joint and product
+
+of marginal distributions with high conﬁdent, the MI lower
+
+bound will be maximized. However, we found that the process
+
+of jointly training the function T (with binary inputs sampled
+
+from hi ∼ Bern(µi) and ht ∼ Bern(µt)) and the encoders
+
+may result in an undesirable side-effect. Particularly, besides
+
+encouraging the encoders to learn the hidden variables for
+
+different modalities, such that the MI of these hidden variables
+
+is maximized; the function T also promotes the encoders
+
+to reduce the stochasticity in Bern(µi) and Bern(µt) (i.e.,
+
+µ → 0 or µ → 1). Intuitively, reducing stochasticity in
+
+Bern(µi) and Bern(µt) (i.e., less noise) allows the function
+
+T to correctly classify samples easier. Consequently, this side-
+
+effect may impact on the variational information maximization
+
+in (2) and (3) as the P(hi|xi) and P(ht|xt) become more
+
+deterministic1. Arguably, using multiple pairs of (hi, ht) could
+
+help to mitigate this problem. However, this requires a higher
+
+computational cost. To effectively address the problem, we
+
+propose to directly classify if pairs of multivariate Bernoulli
+
+distributions (Bern(µi), Bern(µt)) (from which a pair (hi, ht)
+
+is sampled) are produced from the pairs of inputs sampled
+
+from joint distributions p(xi, xt) or sampled from the product
+
+of marginal distributions p(xi)p(xt), i.e., T(µi; µt) instead of
+
+T(hi; ht). This would help to eliminate noise in the inputs of
+
+1Note that the MI lower bound in (2) is derived for random variables
+
+[47], [48], and may not be applicable for deterministic variables.
+
+the function T, while still being able to reﬂect the relationship
+
+between hidden variables of different modalities. Additionally,
+
+using the Bernoulli variables as the inputs is also helpful in
+
+gradient descent optimization process. As the gradients from
+
+the function T do not ﬂow through the STE, which is a biased
+
+gradient estimator [78].
+
+Noticeably, a more direct way to enforce the inter-modal
+
+similarity is to maximize I(xi; ht) + I(xt; hi). However,
+
+we ﬁnd out that maximizing I(xi; ht) + I(xt; hi) results in
+
+similar performances compared with maximizing I(hi; ht),
+
+while requiring a higher computational cost.
+
+C. Minimizing modality gap
+
+In the cross-modal retrieval task, besides having the rep-
+
+resentations that well capture input information and having
+
+MI between representations of different modalities maximized
+
+(the ﬁrst and second requirements); it is also desirable for
+
+the gap between different modalities to be minimized (the
+
+third requirement). In other words, binary codes from different
+
+modalities of the same pair should be as similar as possible
+
+[29], [38], [39]. To achieve this requirement, we propose
+
+to minimize the symmetrized KL divergence between the
+
+two multivariate Bernoulli distributions (i.e., P(hi|xi) and
+
+P(ht|xt)) of the same pairs as follows:
+
+DSKL
+
+�
+
+P(hi|xi)∥P(ht|xt)
+
+�
+
+=
+
+(6)
+
+DKL
+
+�
+
+P(hi|xi)∥P(ht|xt)
+
+�
+
++ DKL
+
+�
+
+P(ht|xt)∥P(hi|xi)
+
+�
+
+,
+
+with the KL divergence between two multivariate Bernoulli
+
+distributions as
+
+DKL
+
+�
+
+P(hi|xi)∥P(ht|xt)
+
+�
+
+=
+
+L
+
+�
+
+l=1
+
+�
+
+µi|l log µi|l
+
+µt|l
+
++(1−µi|l) log 1−µi|l
+
+1−µt|l
+
+�
+
+,
+
+(7)
+
+where µi|l and µt|l are the l-th element of µi and µt
+
+respectively.
+
+However, we found that strictly enforcing this property
+
+could result in an undesirable outcome, speciﬁcally, discarding
+
+modality-private information [46]. In particular, considering
+
+the amount of information hi contains which is unique to xi
+
+and not shared by xt (i.e., I(xi; hi|xt) 2), I(xi; hi|xt) can be
+
+expressed as3:
+
+I(xi; hi|xt)
+
+(8)
+
+= Exi;xt∼p(xi,xt)Eh∼Pθi(hi|xi)
+
+�
+
+log Pθi(hi = h|xi = xi)
+
+Pθi(hi = h|xt = xt)
+
+�
+
+= Exi;xt∼p(xi,xt)Eh∼Pθi(hi|xi)
+
+�
+
+log Pθi(hi = h|xi = xi)
+
+Pθt(ht = h|xt = xt)
+
+�
+
++ Exi;xt∼p(xi,xt)Eh∼Pθi(hi|xi)
+
+�
+
+log Pθt(ht = h|xt = xt)
+
+Pθi(hi = h|xt = xt)
+
+�
+
+= DKL
+
+�
+
+Pθi(hi|xi)||Pθt(ht|xt)
+
+�
+
+− DKL
+
+�
+
+Pθi(ht|xi)||Pθt(ht|xt)
+
+�
+
+≤ DKL
+
+�
+
+Pθi(hi|xi)||Pθt(ht|xt)
+
+�
+
+.
+
+Analogously,
+
+I(xt; ht|xi) ≤ DKL
+
+�
+
+Pθt(ht|xt)||Pθi(hi|xi)
+
+�
+
+.
+
+(9)
+
+2The mutual information of xi and hi given xt.
+
+3A more detail derivation is provided in Appendix A.
+
+
+6
+
+Note that the upper bounds in Eq. (8), (9) are tight as the
+
+distributions of two representations coincide. Consequently,
+
+we can obtain
+
+I(xi; hi|xt) + I(xt; ht|xi) ≤ DSKL
+
+�
+
+P(ht|xt)||P(hi|xi)
+
+�
+
+.
+
+(10)
+
+From equation (10), we can see that minimizing the differ-
+
+ence between the binary representations of different modalities
+
+(to minimize the modality gap in binary representation spaces)
+
+would also result in discarding the modality-private informa-
+
+tion (i.e., minimizing I(xi; hi|xt) and I(xt; ht|xi)). Equiv-
+
+alently, the binary representations become less representative
+
+(less informative) for the inputs. However, having inconsistent
+
+representations for pairs of image and text samples, on the
+
+other hand, inevitably deteriorates the cross-modal retrieval
+
+performance. Therefore, it is important to appropriately weight
+
+the symmetrized KL divergence to balance the modality gap
+
+and modality-private information loss. We will further empir-
+
+ically analyze this problem in the experiment section (Section
+
+IV-B3).
+
+D. Additional properties of good hash code: Independence
+
+and Balance
+
+The encoded binaries in hashing algorithms are in general
+
+short in length. To maximize hash code representative capa-
+
+bility, we additionally include the independent and balancing
+
+regularizers on the binary codes, i.e., different bits in the
+
+binary codes are independent to each other and each bit has
+
+50% chance of being 0 or 1, respectively [52], [54]. The
+
+independence property is to minimize redundant information
+
+captured in hash codes, and the balance property is to ensure
+
+hash codes contain a maximum amount of information [54].
+
+Independence: To enhance the independence between hash
+
+bits, we aim to minimize the Total Correlation (TC) [58],
+
+which is a popular measure of dependence for multiple ran-
+
+dom variables (i.e., multiple Bernoulli variables of multiple
+
+hash bits in our case) TC(z) := DKL[q(z)∥q(˜z)] , where
+
+q(˜z) := �L
+
+j=1 q(zj). However, the TC is intractable since both
+
+q(z) and q(˜z) involve mixtures with an exponential number of
+
+components. Fortunately, being able to access to samples from
+
+both q(z) and q(˜z) distributions4 allows us to minimise their
+
+KL divergence using the density-ratio trick [51] as illustrated
+
+in [81] as follows:
+
+TC(z) = Eq(z)
+
+�
+
+log q(z)
+
+q(˜z)
+
+�
+
+≈ Eq(z)
+
+�
+
+log
+
+D(z)
+
+1 − D(z)
+
+�
+
+,
+
+(11)
+
+in which the classiﬁer D ∈ [0, 1] is jointly trained to classify
+
+between samples from q(z) and q(˜z); and the classiﬁer outputs
+
+the probability D(z) that the input is a sample from q(z)
+
+rather than from q(˜z). Similar to the function T for estimating
+
+MI lower-bound discussed in Section III-B3, we also use the
+
+Bernoulli variables as the input for the classiﬁer D(·).
+
+Lind = Eq(µi)
+
+�
+
+log
+
+Di(µi)
+
+1 − Di(µi)
+
+�
+
++ Eq(µt)
+
+�
+
+log
+
+Dt(µt)
+
+1 − Dt(µt)
+
+�
+
+(12)
+
+4The sampling for the distribution q(˜z) can be obtained by randomly
+
+permuting across a mini-batch of samples from q(z) for each dimension.
+
+Balance: To obtain balanced hash codes, we regularize the
+
+encoders such that the averaged probabilities (over the training
+
+set) for a bit to be 0 or 1 are equal and equal to 50%.
+
+Equivalently, we have
+
+Lbal =
+
+L
+
+�
+
+l=1
+
+����
+
+1
+
+N
+
+N
+
+�
+
+j=1
+
+�
+
+µi
+
+j|l − 0.5
+
+� ���� +
+
+����
+
+1
+
+N
+
+N
+
+�
+
+j=1
+
+�
+
+µt
+
+j|l − 0.5
+
+� ����,
+
+(13)
+
+where | · | is the absolute function. Note that Lbal can be
+
+minimized in mini-batch manner.
+
+E. Final objective function and reference stage
+
+In summary, the ﬁnal objective function of our proposed
+
+method is deﬁned as follows:
+
+max
+
+I(xi; hi) + I(xt; ht) + λ1I(hi; ht)
+
+− λ2DSKL(hi; ht) − λ3Lind − λ4Lbal,
+
+(14)
+
+in which λ1, λ2, λ3, and λ4 are hyper-parameters.
+
+For reference, it is undesirable to have different binary
+
+code for a query sample under different retrieval runs; hence,
+
+we obtain the deterministic binary codes by simply applying
+
+a threshold function on the Bernoulli variables, i.e., h =
+
+sign(µ − 0.5).
+
+IV. EXPERIMENT
+
+In this section, we conduct a wide range of experiments to
+
+validate our proposed method on three standard benchmark
+
+datasets for the cross-model retrieval task, i.e., MIR-Flickr25k
+
+[82], NUS-WIDE [83], and MS-COCO [84].
+
+A. Experiment setting
+
+Datasets: The MIR-Flickr25K dataset [82] is collected
+
+from Flickr website, which contains 25,000 image-text pairs
+
+together with 24 provided labels. The texts are represented as
+
+1386-dimensional tagging vectors. Additionally, we remove
+
+the pairs whose texts do not contain any tag in the 1,386
+
+common tags results. As a result, 20,015 pairs are preserved.
+
+Following [38], [39], we randomly sample 2,000 instances for
+
+the query set while the remaining instances are used as the
+
+database. Additionally, 5,000 instances are randomly sampled
+
+from the database to form the training set.
+
+The NUS-WIDE dataset [83] is a multi-label image dataset
+
+crawled from Flickr, which contains 296,648 images with
+
+associated tags. Each image-tag pair is annotated with one
+
+or more labels from 81 concepts. In this dataset, each text is
+
+represented by a 1,000-dimension preprocessed BOW feature.
+
+Following the common practice [13], [29], [38], we select
+
+image-tag pairs which have at least one label belonging to the
+
+top 10 most frequent concepts and the corresponding 186,577
+
+annotated instances are preserved. We randomly sample 2,000
+
+instances as queries. The remaining instances are used as the
+
+database, and 5,000 instances are randomly sampled from the
+
+database to form the training set.
+
+The MS-COCO-2017 consists of 118,287 training images
+
+and 5,000 validation images. Each image includes at least
+
+ﬁve sentences annotations (captions). We randomly select one
+
+
+7
+
+Fig. 1: The mAP@1K curves as the weight of I(hi, ht) varies
+
+on MIR-Flickr25k and NUS-WIDE datasets using 32-bit hash
+
+codes.
+
+(a) MIR-Flickr25k
+
+0.01
+
+0.1
+
+0.5
+
+1
+
+2
+
+5
+
+10
+
+Weight of I(hi; ht) (61)
+
+74
+
+76
+
+78
+
+80
+
+82
+
+84
+
+86
+
+mAP@1K
+
+Img!Img
+
+Img!Txt
+
+Txt!Img
+
+Txt!Txt
+
+(b) NUS-WIDE
+
+0.01
+
+0.1
+
+0.5
+
+1
+
+2
+
+5
+
+10
+
+Weight of I(hi; ht) (61)
+
+68
+
+70
+
+72
+
+74
+
+76
+
+78
+
+80
+
+82
+
+mAP@1K
+
+Img!Img
+
+Img!Txt
+
+Txt!Img
+
+Txt!Txt
+
+sentence and use the pretrained BERT model [85] to extract
+
+the sentence embedding as the text representations. Following
+
+[67], we use the provided 80 image segmentation categories
+
+as ground truth labels for the image-sentence pairs. We use
+
+the validation set as the query set. By removing image-
+
+sentence pairs that have no category information, we obtain
+
+117,266 database samples and 4,952 query samples. Similar
+
+to the MIR-Flickr25K and NUS-WIDE datasets, we randomly
+
+sample 5,000 instances from the database for training.
+
+For images of all datasets, we extract FC7 features from
+
+the PyTorch pretrained AlexNet network [86], and then apply
+
+PCA to compress to 1024-dimension.
+
+Evaluation Metrics: The evaluations are presented in both
+
+cross-modal retrieval tasks (i.e., Img → Txt, Txt → Img) and
+
+single-modal retrieval tasks (i.e., Img → Img, Txt → Txt); in
+
+which images (Img)/texts (Txt) are used as queries to retrieve
+
+image/text database samples accordingly. The quantitative
+
+performance is evaluated by the standard evaluation metrics:
+
+(i) mean Average Precision of top 1000 returned samples
+
+(mAP@1k) and (ii) precision curve at top-K retrieved images
+
+(Prec@K). The image-text pairs are considered to be similar
+
+if they share at least one common label. Otherwise, they are
+
+considered to be dissimilar.
+
+Implementation Details: Both encoder and decoder consist
+
+of multi-layer perceptrons (MLP) of two hidden ReLU units
+
+of size 1,024. The critic T for IJS estimator (5) is a separable
+
+function f(x; y) = φi(x)⊤φt(y), where φi(·) and φt(·) are
+
+MLPs with two hidden layers of size 512 and Leaky-ReLU
+
+activations. The classiﬁer D to estimate TC also consists of
+
+a MLP of two hidden Leaky-ReLU units of size 512.
+
+Additionally, we employ the SGD optimizer with mini-batch
+
+size of 128, momentum of 0.9 and weight decay of 0.0001.
+
+The learning rate is set as 0.01 for the encoders, the critic
+
+T and the classiﬁer D , and set as 0.001 for the decoders.
+
+The hyper-parameters λ1, λ2, λ3 and λ4 are empirically set by
+
+cross validation as 1.5, 1, 0.25, and 0.01 respectively for MIR-
+
+Flickr25k and NUS-WIDE datasets and set as 4, 1.5, 0.25, and
+
+0.01 respectively for MS-COCO dataset.
+
+B. Ablation Study and Parameter Analysis
+
+1) The necessity of explicitly maximizing the mutual in-
+
+formation between hash codes of different modalities.: In
+
+this section, we conduct experiments on MIR-Flickr25k and
+
+Fig. 2: Histogram of µi when using T(µi, µt) and T(hi, ht)
+
+(single pair of binary samples) for the MI lower bound
+
+estimator. The experiment is conducted on MIR-Flicrk25k
+
+with 32-bit hash codes. We observe similar histograms for
+
+µt.
+
+(a) T(µi, µt)
+
+
+
+(b) T(hi, ht)
+
+
+
+TABLE I: Cross-modal retrieval performance (mAP@1K (%))
+
+with different input settings for function T(·) in estimating
+
+I(hi, ht) lower bound. The experiment is conducted on MIR-
+
+Flicrk25k with 32 bit hash codes.
+
+Task
+
+T(µi, µt)
+
+# of pairs of bin. samples for T(hi, ht)
+
+1
+
+5
+
+10
+
+20
+
+Img→Txt
+
+81.93
+
+80.24
+
+81.27
+
+81.75
+
+81.74
+
+Txt→Img
+
+81.43
+
+79.41
+
+80.86
+
+81.22
+
+81.29
+
+NUS-WIDE datasets using 32-bit hash codes with various
+
+values of I(hi, ht) weight (i.e., λ1). The experimental results
+
+in term of mAP@1K are presented in Figure 1. As can be
+
+seen, when using a very small weight for I(hi, ht) (i.e.,
+
+λ1 ≤ 0.1), the retrieval performance is signiﬁcantly lower
+
+for all four retrieval tasks in compared with larger I(hi, ht)
+
+weights (i.e., λ1 ≥ 1). With a reasonable large weight for
+
+I(hi, ht), the model is enforced to retain the information that
+
+is shared across modalities. The information that is shared
+
+among different modalities information is generally more
+
+useful for both the cross-modal and single-modal retrieval
+
+tasks; as, intuitively, this type of information is more likely
+
+to contain the ground-truth information. The experimental
+
+results conﬁrm the importance and necessity of explicitly
+
+maximizing the mutual information between hash codes of
+
+different modalities. Besides, at a too large I(hi, ht) weight
+
+(i.e., λ1 ≥ 5), we also observe small decreases in retrieval
+
+performance. This fact is also understandable as the model
+
+pays less attention on maximizing I(xi, hi) and I(xt, ht),
+
+which results in less informative hash codes.
+
+2) The beneﬁt of using Bernoulli variables as the input
+
+of function T in estimating I(hi, ht) lower bound: In this
+
+section, we conduct experiments on MIR-Flickr25 dataset
+
+with L = 32 bits to validate the beneﬁt of using Bernoulli
+
+variables as the input of function T in estimating I(hi, ht)
+
+lower bound in comparison with using multiple pairs of binary
+
+samples as the input. The retrieval performance is presented
+
+in Table I. We also present the histograms of µi when using
+
+T(µi, µt) and T(hi, ht) (with single sample) for the MI
+
+lower bound estimator in Figure 2. When using single pairs
+
+of binary samples as the input for the function T(hi, ht),
+
+we can observe that the majority values of µi become very
+
+
+8
+
+Fig. 3: The mAP@1K (%) curves as the weight of DSKL varies
+
+on MIR-Flickr25k and NUS-WIDE using 32-bit hash codes.
+
+(a) MIR-Flickr25k
+
+0.1
+
+0.5
+
+1
+
+2
+
+5
+
+10
+
+Weight of DSKL (62)
+
+70
+
+75
+
+80
+
+85
+
+90
+
+mAP@1K
+
+Img!Img
+
+Img!Txt
+
+Txt!Img
+
+Txt!Txt
+
+(b) NUS-WIDE
+
+0.1
+
+0.5
+
+1
+
+2
+
+5
+
+10
+
+Weight of DSKL (62)
+
+65
+
+70
+
+75
+
+80
+
+85
+
+mAP@1K
+
+Img!Img
+
+Img!Txt
+
+Txt!Img
+
+Txt!Txt
+
+TABLE II: The TC, Corr MSE, and cross-modal retrieval
+
+performance (mAP@1K (%)) for MIR-Flickr25k dataset at
+
+different code lengths. and  indicate the hash codes are
+
+learned with and without Lind, respectively.
+
+16
+
+32
+
+48
+
+
+
+
+
+
+
+
+
+
+
+
+
+TC
+
+Img
+
+2.327
+
+4.491
+
+6.142
+
+6.418
+
+6.514
+
+6.718
+
+Txt
+
+2.174
+
+4.288
+
+6.015
+
+6.424
+
+6.425
+
+6.645
+
+Corr MSE
+
+Img
+
+0.037
+
+0.068
+
+0.040
+
+0.092
+
+0.051
+
+0.078
+
+Txt
+
+0.045
+
+0.079
+
+0.047
+
+0.110
+
+0.064
+
+0.095
+
+mAP@1K
+
+Img→Txt
+
+80.68
+
+80.39
+
+81.93
+
+81.38
+
+82.92
+
+82.16
+
+Txt→Img
+
+79.77
+
+79.76
+
+81.43
+
+81.14
+
+82.18
+
+81.28
+
+small or very large. Approximate 67% of µi are in [0, 0.01] or
+
+[0.99, 1] (i.e., to be 0 or 1 respectively with 99% conﬁdent), in
+
+comparison with about 22% when using T(µi, µt). This effect
+
+signiﬁcantly affects the retrieval performance. When using
+
+multiple binary samples, the performance improves. However,
+
+the best performance is achieved when using Bernoulli vari-
+
+ables. As this not only helps to eliminate input noise; but it
+
+also helps the gradients to not propagate through the biased
+
+gradient estimator STE, which introduces noise in gradients.
+
+Furthermore, we note that using n binary samples would
+
+require approximately n-times computational cost.
+
+3) Effect the symmetrized KL divergence: In Figure 3, we
+
+present the mAP@1K curves as the weight of DSKL varies
+
+on the MIR-Flickr25k and NUS-WIDE datasets. Firstly, we
+
+can observe that too large weights for DSKL (i.e., λ2 ≥ 5)
+
+have signiﬁcant impacts on the retrieval performance for all
+
+four retrieval tasks. This observation is consistent with our
+
+discussion in Section III-C that too large DSKL weights will
+
+force the model to discard a large amount of modality-private
+
+information in the representations. As a result, the binary
+
+representations do not well-represent for the input data. For too
+
+small DSKL weights (i.e., λ2 &lt; 0.5), the retrieval performance
+
+on Img → Txt and Txt → Img retrieval tasks is unsurprisingly
+
+low as the binary representations of image and text modalities
+
+are poorly aligned with each other and not suitable for the
+
+cross-modal retrieval tasks. However, different from the case
+
+of too large DSKL weights, too small DSKL weights only result
+
+in minor performance drops for the Img → Img and Txt
+
+→ Txt retrieval tasks, which means that the learned binary
+
+representations still well capture information of the input
+
+data. The small performance drops for the Img → Img and
+
+Txt → Txt retrieval tasks potentially indicate that the binary
+
+representations also capture information from the input data
+
+that does not share with the ground truth (e.g., noise).
+
+4) The effectiveness of using Total Correlation (TC) as a
+
+regularizer to enhance hash bit independence: We conduct
+
+experiments on the MIR-Flickr25k dataset with and without
+
+the independence regularizer Lind. In Table II, we show the
+
+Mean Square Error (MSE) between the correlation matrix
+
+of the binary code of the database and the identity matrix
+
+(i.e., Corr MSE =
+
+��� 1
+
+N ˆH⊤ ˆH − IL
+
+���
+
+2
+
+F , where ˆH = {ˆhj}N
+
+j=1 ∈
+
+{−1, 1}N×L is the set of L-bit hash codes of a dataset and
+
+ˆhj = 2hj − 1) together with the retrieval performance at
+
+different code lengths. As can be seen, Lind consistently helps
+
+to reduce the Corr MSEs for both image and text modalities at
+
+various code lengths. A smaller Corr MSE indicates that the
+
+hash bits are more independence and consequently leads to
+
+higher performance. Interestingly, we also notice that, at high
+
+code lengths, even though the classiﬁers can easily predict if a
+
+sample is from q(z) with very high conﬁdent (i.e., high TC5),
+
+Lind is still helpful in reducing correlation between hash bits
+
+and improving performance.
+
+5) A summary of effectiveness of different components:
+
+We additionally present in Table IV the cross-modal retrieval
+
+performance (mAP@1K (%)) for MIR-Flickr25k dataset with
+
+32 and 48 bit hash codes with different combinations of
+
+components in the loss function.
+
+We can observe that the
+
+two terms I(hi; ht) and DSKL(hi; ht) play very important
+
+roles in our proposed cross-modal hashing method. Without
+
+either I(hi; ht) or DSKL(hi; ht) the cross-modal retrieval
+
+performance is signiﬁcantly degraded. The ablation study also
+
+shows that the independence and balance terms are beneﬁ-
+
+cial for hashing methods. However, even without these two
+
+terms, our proposed method CMIMH still achieves very good
+
+performance.
+
+C. Comparison with the states of the art
+
+In this section, we compare our proposed method against re-
+
+cent state-of-the-art cross-modal hashing methods, i.e., Cross-
+
+View Hashing (CVH) [23], Predictable Dualview Hashing
+
+(PDH) [24], Collective Matrix Factorization Hashing (CMFH)
+
+[26], Alternating Co-Quantization (ACQ) [28], Fusion Sim-
+
+ilarity Hashing (FSH) [29], and Deep Joint Semantics Re-
+
+constructing Hashing (DJSRH) [38]. From the experimental
+
+results in term of mAP@1k shown in Table III, we can observe
+
+that our proposed method outperforms the state-of-the-art un-
+
+supervised cross-modal hashing methods including the deep-
+
+based method (i.e., DJSRH) at majority of encoding lengths,
+
+datasets, and retrieval tasks. For the MS-COCO dataset with at
+
+L = 48, CMIMH achieves lower performance than FSH and
+
+DJSRH on the Txt→Txt retrieval tasks, while still outperforms
+
+DJSRH by clear margins in other settings.
+
+Additionally, Figure 4 and Figure 5, respectively, show the
+
+Pre@K curves and Precision-Recall (PR) curves for Img→Txt
+
+and Txt→Img tasks with 32-bit hash codes. Compared with
+
+5The probability, that the classiﬁer predicts a sample from q(z), can be
+
+computed as 1/(1 + exp(−TC)) (e.g., 1/(1 + exp(−6.0)) ≈ 99.75%)
+
+
+9
+
+TABLE III: Comparison with state-of-the-art methods using mAP@1k (%) on three benchmark datasets.
+
+Task
+
+Method
+
+MIR-Flickr25k
+
+NUS-WIDE
+
+MS-COCO
+
+16
+
+32
+
+48
+
+16
+
+32
+
+48
+
+16
+
+32
+
+48
+
+Img→Txt
+
+CVH [23]
+
+68.18
+
+66.95
+
+66.32
+
+56.43
+
+57.16
+
+57.47
+
+61.49
+
+62.15
+
+60.06
+
+PDH [24]
+
+78.16
+
+79.62
+
+81.10
+
+70.98
+
+74.21
+
+75.13
+
+61.66
+
+65.60
+
+67.27
+
+CMFH [26]
+
+77.97
+
+78.69
+
+78.50
+
+69.13
+
+70.96
+
+71.18
+
+59.21
+
+64.62
+
+66.55
+
+ACQ [28]
+
+76.16
+
+76.50
+
+76.93
+
+67.35
+
+70.05
+
+70.88
+
+60.66
+
+63.24
+
+65.66
+
+FSH [29]
+
+77.55
+
+79.36
+
+80.52
+
+69.45
+
+70.48
+
+72.72
+
+62.75
+
+66.24
+
+69.04
+
+DJSRH [38]
+
+79.05
+
+79.53
+
+81.66
+
+71.23
+
+74.86
+
+76.52
+
+59.39
+
+67.32
+
+68.50
+
+CMIMH
+
+80.68
+
+81.93
+
+82.92
+
+73.92
+
+76.37
+
+77.21
+
+65.32
+
+69.21
+
+70.20
+
+Txt→Img
+
+CVH
+
+68.08
+
+66.89
+
+66.40
+
+57.40
+
+58.30
+
+58.51
+
+62.45
+
+63.46
+
+61.22
+
+PDH
+
+76.79
+
+78.64
+
+79.22
+
+69.61
+
+72.24
+
+73.88
+
+63.24
+
+67.69
+
+69.66
+
+CMFH
+
+76.81
+
+76.83
+
+77.36
+
+66.98
+
+69.14
+
+70.32
+
+60.20
+
+66.06
+
+68.39
+
+ACQ
+
+74.46
+
+75.22
+
+75.39
+
+65.53
+
+68.22
+
+69.54
+
+61.83
+
+64.44
+
+66.96
+
+FSH
+
+75.10
+
+77.10
+
+78.47
+
+67.59
+
+69.03
+
+70.25
+
+65.05
+
+69.07
+
+71.48
+
+DJSRH
+
+77.44
+
+78.65
+
+80.10
+
+68.18
+
+73.29
+
+74.72
+
+56.19
+
+67.95
+
+71.11
+
+CMIMH
+
+79.77
+
+81.43
+
+82.18
+
+72.75
+
+75.02
+
+75.68
+
+66.08
+
+70.35
+
+72.21
+
+Img→Img
+
+CVH
+
+69.49
+
+68.36
+
+67.76
+
+59.64
+
+60.41
+
+61.25
+
+60.66
+
+61.97
+
+60.94
+
+PDH
+
+79.65
+
+81.46
+
+82.86
+
+74.23
+
+77.06
+
+78.08
+
+61.10
+
+65.28
+
+67.06
+
+CMFH
+
+81.45
+
+82.54
+
+83.13
+
+75.33
+
+77.72
+
+78.35
+
+60.31
+
+65.53
+
+67.78
+
+ACQ
+
+78.91
+
+78.94
+
+79.58
+
+71.13
+
+76.63
+
+74.88
+
+60.07
+
+62.46
+
+64.76
+
+FSH
+
+80.22
+
+82.39
+
+83.68
+
+73.28
+
+75.57
+
+76.59
+
+61.70
+
+65.64
+
+68.47
+
+DJSRH
+
+82.39
+
+83.17
+
+84.07
+
+77.29
+
+79.29
+
+80.27
+
+59.87
+
+66.77
+
+68.29
+
+CMIMH
+
+83.79
+
+85.74
+
+86.76
+
+78.74
+
+81.35
+
+81.95
+
+65.38
+
+69.24
+
+70.16
+
+Txt→Txt
+
+CVH
+
+67.47
+
+66.79
+
+66.72
+
+57.45
+
+60.13
+
+61.50
+
+64.17
+
+66.84
+
+64.96
+
+PDH
+
+75.72
+
+76.66
+
+78.04
+
+67.61
+
+71.02
+
+71.63
+
+64.27
+
+70.16
+
+72.36
+
+CMFH
+
+74.48
+
+74.92
+
+75.38
+
+65.92
+
+68.00
+
+69.64
+
+62.16
+
+69.09
+
+71.17
+
+ACQ
+
+72.77
+
+73.91
+
+74.18
+
+63.68
+
+67.13
+
+68.72
+
+63.28
+
+66.38
+
+69.45
+
+FSH
+
+73.35
+
+75.03
+
+76.28
+
+65.89
+
+67.55
+
+69.10
+
+67.05
+
+72.78
+
+75.67
+
+DJSRH
+
+75.34
+
+76.48
+
+77.51
+
+67.22
+
+71.01
+
+72.27
+
+64.55
+
+72.44
+
+74.94
+
+CMIMH
+
+77.36
+
+78.42
+
+79.01
+
+70.18
+
+72.33
+
+72.72
+
+68.15
+
+73.28
+
+74.89
+
+TABLE IV: The cross-modal retrieval performance (mAP@1K
+
+(%)) for MIR-Flickr25k dataset to evaluate the effectiveness
+
+of each component in CMIMH. and  indicate the hash
+
+codes are learned with and without the according component,
+
+respectively. I→T and T→I mean Img→Txt and Txt→Img
+
+respectively.
+
+Conﬁguration
+
+32 bits
+
+48 bits
+
+I(hi; ht)
+
+DSKL
+
+Lind
+
+Lbal
+
+I→T
+
+T→I
+
+I→T
+
+T→I
+
+
+
+
+
+
+
+
+
+75.13
+
+73.14
+
+77.57
+
+75.49
+
+
+
+
+
+
+
+
+
+77.61
+
+75.53
+
+78.89
+
+78.39
+
+
+
+
+
+
+
+
+
+75.52
+
+73.69
+
+77.84
+
+75.83
+
+
+
+
+
+
+
+
+
+77.87
+
+75.95
+
+79.34
+
+78.69
+
+
+
+
+
+
+
+
+
+81.28
+
+80.73
+
+82.07
+
+81.51
+
+
+
+
+
+
+
+
+
+81.35
+
+80.93
+
+82.11
+
+81.82
+
+
+
+
+
+
+
+
+
+81.43
+
+81.14
+
+82.16
+
+81.78
+
+
+
+
+
+
+
+
+
+81.93
+
+81.43
+
+82.92
+
+82.18
+
+other methods, ours still signiﬁcantly outperforms the state-
+
+of-the-art baselines over the three benchmark datasets for both
+
+metrics (i.e., Pre@K curves and PR curve). These results con-
+
+ﬁrm the advantages of our proposed method in unsupervised
+
+cross-modal retrieval.
+
+Comparison with Unsupervised Deep Cross Modal
+
+Hashing (UDCMH) [39] Following UDCMH, we report the
+
+mAP of top-50 retrieved results (mAP@50). The experiment
+
+results are shown in Table V. We observe that our proposed
+
+TABLE V: Comparison with UDCMH [39] using mAP@50
+
+on MIR-FLickr25k and NUS-WIDE datasets. The results of
+
+UDCMH are cited from [39].
+
+Task
+
+Method
+
+MIR-Flickr25k
+
+NUS-WIDE
+
+16
+
+32
+
+64
+
+16
+
+32
+
+64
+
+Img→
+
+UDCMH
+
+68.9
+
+69.8
+
+71.4
+
+51.1
+
+51.9
+
+52.4
+
+Txt
+
+CMIMH
+
+83.2
+
+86.5
+
+88.2
+
+74.52
+
+78.23
+
+79.75
+
+Txt→
+
+UDCMH
+
+69.2
+
+70.4
+
+71.8
+
+63.7
+
+65.3
+
+69.5
+
+Img
+
+CMIMH
+
+82.4
+
+83.8
+
+86.2
+
+73.89
+
+76.08
+
+79.14
+
+TABLE VI: Comparison with MGAH [66] and UKD [87]
+
+using mAP (%) on MIR-Flickr25k and NUS-WIDE datasets.
+
+The results of MGAH and UKD are cited from original papers
+
+[66], [87].
+
+Task
+
+Method
+
+MIR-Flickr25k
+
+NUS-WIDE
+
+16
+
+32
+
+64
+
+16
+
+32
+
+64
+
+Img→
+
+MGAH
+
+68.5
+
+69.3
+
+70.4
+
+61.3
+
+62.3
+
+62.8
+
+Txt
+
+UKD-SS
+
+71.4
+
+71.8
+
+72.5
+
+61.4
+
+63.7
+
+63.8
+
+CMIMH
+
+74.15
+
+74.65
+
+75.98
+
+62.72
+
+63.83
+
+64.75
+
+Txt→
+
+MGAH
+
+67.3
+
+67.6
+
+68.6
+
+60.3
+
+61.4
+
+64.0
+
+Img
+
+UKD-SS
+
+71.5
+
+71.6
+
+72.1
+
+63.0
+
+65.6
+
+65.7
+
+CMIMH
+
+73.87
+
+74.24
+
+75.41
+
+62.41
+
+63.70
+
+64.23
+
+method can outperform UDCMH by large margins for both
+
+MIR-Flickr25k and NUS-WIDE datasets.
+
+Comparison with Multi-pathway Generative Adversar-
+
+ial Hashing (MGAH) [66] and Unsupervised Knowledge
+
+
+10
+
+Fig. 4: The Pre@K (%) curves on different datasets of 32-bit hash codes.
+
+50
+
+1000
+
+2000
+
+3000
+
+4000
+
+5000
+
+Number of Retrieved Points K
+
+60
+
+65
+
+70
+
+75
+
+80
+
+85
+
+Precision
+
+MIR-Flickr25K: Img ! Txt
+
+CMIMH
+
+DJSRH
+
+FSH
+
+ACQ
+
+CMFH
+
+PDH
+
+CVH
+
+50
+
+1000
+
+2000
+
+3000
+
+4000
+
+5000
+
+Number of Retrieved Points K
+
+60
+
+65
+
+70
+
+75
+
+80
+
+Precision
+
+NUS-WIDE: Img ! Txt
+
+CMIMH
+
+DJSRH
+
+FSH
+
+ACQ
+
+CMFH
+
+PDH
+
+CVH
+
+50
+
+1000
+
+2000
+
+3000
+
+4000
+
+5000
+
+Number of Retrieved Points K
+
+50
+
+55
+
+60
+
+65
+
+70
+
+75
+
+Precision
+
+MS-COCO: Img ! Txt
+
+CMIMH
+
+DJSRH
+
+FSH
+
+ACQ
+
+CMFH
+
+PDH
+
+CVH
+
+50
+
+1000
+
+2000
+
+3000
+
+4000
+
+5000
+
+Number of Retrieved Points K
+
+60
+
+65
+
+70
+
+75
+
+80
+
+85
+
+Precision
+
+MIR-Flickr25K: Txt ! Img
+
+CMIMH
+
+DJSRH
+
+FSH
+
+ACQ
+
+CMFH
+
+PDH
+
+CVH
+
+50
+
+1000
+
+2000
+
+3000
+
+4000
+
+5000
+
+Number of Retrieved Points K
+
+60
+
+65
+
+70
+
+75
+
+Precision
+
+NUS-WIDE: Txt ! Img
+
+CMIMH
+
+DJSRH
+
+FSH
+
+ACQ
+
+CMFH
+
+PDH
+
+CVH
+
+50
+
+1000
+
+2000
+
+3000
+
+4000
+
+5000
+
+Number of Retrieved Points K
+
+50
+
+55
+
+60
+
+65
+
+70
+
+75
+
+Precision
+
+MS-COCO: Txt ! Img
+
+CMIMH
+
+DJSRH
+
+FSH
+
+ACQ
+
+CMFH
+
+PDH
+
+CVH
+
+Distillation for Cross-Modal Hashing (UKD) [87]: We
+
+conduct additional experiments on MIR-FLickr25k and NUS-
+
+WIDE datasets. For a fair comparison, we follow the ex-
+
+periment settings from [66] and [87]. Speciﬁcally, the FC7
+
+features of the pretrained 19-layer VGGNet are used for
+
+images. 1,000-dimension BOW features are used for texts in
+
+both datasets. 1% samples of the NUS-WIDE dataset and
+
+5% samples of the MIR-FLickr25k dataset are used as the
+
+query sets, and the rest as training set and also the retrieval
+
+database. We present the retrieval performance in term of mAP
+
+(of all retrieved samples) are shown in Table VI. We can
+
+observe that our proposed CMIMH consistently outperforms
+
+MGAH for both MIR-Flickr25k and NUS-WIDE datasets,
+
+especially for MIR-Flickr25k where the improvement gaps are
+
+greater than 5%. In comparison with UKD [87], our proposed
+
+method achieves lower performance on NUS-WIDE dataset -
+
+Txt→Img task, while still outperform UKD on NUS-WIDE
+
+dataset - Img→Txt task and MIR-Flickr25k for both tasks.
+
+These results show that our proposed method is still more
+
+favorable than UKD.
+
+Comparison with Learning Disentangled Representation
+
+for Cross-Modal Retrieval with Deep Mutual Information
+
+Estimation (LDR) [70]: To have a fair comparison, we follow
+
+the experiment setting of [70]. Speciﬁcally, we extract VGG19
+
+FC7 feature for images. We randomly select 1000 images as
+
+query, 1000 images as validation and the remaining images as
+
+database as well as training set. We report in Table VII the
+
+retrieval performance in term of RecallOne@K, the percent
+
+of queries for which the ground-truth is one of the ﬁrst K
+
+retrieved. In [70], the authors reported the RecallOne@K for
+
+1024-dimension real-value features (32,768 bits), we ﬁnd out
+
+that even with 128 bit hash codes, our proposed method can
+
+outperform LDR by large margins for both RecallOne@1 and
+
+RecallOne@10.
+
+TABLE VII: Comparison with LDR [70] using RecallOne@K
+
+(%) on MS-COCO. The results of LDR are cited from [70].
+
+Method
+
+Img→Txt
+
+Img→Txt
+
+K = 1
+
+K = 10
+
+K = 1
+
+K = 10
+
+LDR (1024-D)
+
+53.4
+
+91.3
+
+40.5
+
+88.7
+
+CMIMH (128 bits)
+
+65.53
+
+94.35
+
+69.82
+
+93.32
+
+a) Comparison with state of the art using hand-crafted
+
+image feature: Following the experiment setting of CRE [30]
+
+and FSH [29], we conduct experiments with hand-crafted
+
+features on NUS-WIDE datasets. For NUS-WIDE dataset,
+
+each image is represented by 500-dimensional BoW SIFT
+
+features and each text is represented by a 1,000-dimension
+
+preprocessed BOW feature. We randomly select 2,000 pairs
+
+as the query set; the remaining are used as the database. We
+
+also sample 20,000 pairs from the database as the training
+
+set. We present the experiment results in terms of mAP (of
+
+all returned samples) and Pre@100 (as used in [29], [30])
+
+in Table VIII. We can observe that our proposed method can
+
+also work well with hand-crafted features and outperforms all
+
+compared methods.
+
+b) Effect of training size: Different from most of the
+
+state-of-the-art methods [23], [24], [26], [28], [29], [39], our
+
+proposed method can be fully-optimized using gradient de-
+
+scent in a mini-batch manner. Therefore, our proposed method
+
+can be easily trained with much larger training sets. We further
+
+analyze the effects on retrieval performance when varying
+
+the training size on NUS-WIDE dataset. We also compare
+
+our retrieval performance with the retrieval performance of
+
+DJSRH [38], which is one of our most competitive methods
+
+
+11
+
+Fig. 5: The Precision-Recall (PR) (%) curves on different datasets of 32-bit hash codes.
+
+0
+
+20
+
+40
+
+60
+
+80
+
+100
+
+55
+
+60
+
+65
+
+70
+
+75
+
+80
+
+85
+
+0
+
+20
+
+40
+
+60
+
+80
+
+100
+
+40
+
+50
+
+60
+
+70
+
+80
+
+0
+
+20
+
+40
+
+60
+
+80
+
+100
+
+30
+
+40
+
+50
+
+60
+
+70
+
+0
+
+20
+
+40
+
+60
+
+80
+
+100
+
+60
+
+65
+
+70
+
+75
+
+80
+
+0
+
+20
+
+40
+
+60
+
+80
+
+100
+
+40
+
+50
+
+60
+
+70
+
+0
+
+20
+
+40
+
+60
+
+80
+
+100
+
+40
+
+50
+
+60
+
+70
+
+TABLE VIII: Comparison using mAP (%) (of all returned
+
+samples) and Pre@100 on NUS-WIDE using hand-crafted
+
+features for images. The results of CRE method are cited from
+
+[30] and the results of other methods are cited from [29].
+
+Task
+
+Method
+
+NUS-WIDE
+
+mAP
+
+Pre@100
+
+16
+
+32
+
+64
+
+32
+
+64
+
+Img→Txt
+
+CVH
+
+38.11
+
+36.85
+
+35.74
+
+47.49
+
+43.87
+
+PDH
+
+46.58
+
+47.47
+
+47.80
+
+49.89
+
+51.25
+
+CMFH
+
+37.23
+
+37.81
+
+37.99
+
+50.64
+
+53.09
+
+ACQ
+
+42.47
+
+44.35
+
+43.28
+
+44.42
+
+43.09
+
+FSH [29]
+
+50.59
+
+50.63
+
+51.71
+
+52.97
+
+56.16
+
+CRE [30]
+
+51.31
+
+52.99
+
+53.32
+
+-
+
+-
+
+CMIMH
+
+53.66
+
+53.95
+
+55.34
+
+63.98
+
+65.68
+
+Txt→Img
+
+CVH
+
+37.68
+
+36.52
+
+35.55
+
+46.90
+
+43.21
+
+PDH
+
+44.58
+
+45.19
+
+45.52
+
+51.33
+
+52.84
+
+CMFH
+
+39.57
+
+40.36
+
+41.05
+
+45.17
+
+45.95
+
+ACQ
+
+41.34
+
+42.73
+
+42.00
+
+45.73
+
+48.87
+
+FSH
+
+47.90
+
+48.10
+
+49.65
+
+53.88
+
+56.85
+
+CRE
+
+49.27
+
+50.86
+
+51.49
+
+-
+
+-
+
+CMIMH
+
+53.01
+
+53.44
+
+55.19
+
+60.77
+
+61.37
+
+and also can be trained in a mini-batch manner. The retrieval
+
+performance in term of mAP@1k when using different training
+
+set sizes are shown in Table IX. We can observe that our
+
+proposed method can achieve higher mAP@1k when utilizing
+
+more training data. Furthermore, our proposed method also
+
+consistently outperforms DJSRH [38] with different training
+
+sizes.
+
+V. CONCLUSION
+
+In this paper, inspired by recent advances in learning rep-
+
+resentation by maximizing mutual information, we proposed
+
+a novel framework, dubbed Cross-Modal Info-Max Hashing
+
+TABLE IX: The cross-modal retrieval performance in term
+
+of mAP@1k (%) on the NUS-WIDE dataset with different
+
+numbers of training samples.
+
+L
+
+Task
+
+Method
+
+Training size
+
+5k
+
+10k
+
+20k
+
+16
+
+Img→Txt
+
+DJSRH [38]
+
+71.23
+
+72.67
+
+73.46
+
+CMIMH
+
+73.59
+
+75.14
+
+77.25
+
+Txt→Img
+
+DJSRH
+
+68.18
+
+71.12
+
+73.53
+
+CMIMH
+
+73.39
+
+75.45
+
+76.54
+
+32
+
+Img→Txt
+
+DJSRH
+
+74.86
+
+76.93
+
+77.58
+
+CMIMH
+
+76.20
+
+77.80
+
+79.06
+
+Txt→Img
+
+DJSRH
+
+73.29
+
+74.97
+
+77.31
+
+CMIMH
+
+74.88
+
+76.46
+
+78.23
+
+48
+
+Img→Txt
+
+DJSRH
+
+76.52
+
+78.17
+
+78.78
+
+CMIMH
+
+76.71
+
+78.62
+
+79.66
+
+Txt→Img
+
+DJSRH
+
+74.72
+
+77.35
+
+77.29
+
+CMIMH
+
+75.98
+
+78.12
+
+78.81
+
+(CMIMH). By assuming the binary representations to be mod-
+
+eled by multivariate Bernoulli distributions, we can maximize
+
+the MI effectively using gradient descent optimization in a
+
+mini-batch manner via maximizing their estimated variational
+
+lower-bounds. We additionally ﬁnd out that trying to mini-
+
+mize modality gap by learning similar binary representations
+
+for the same instance from different modalities could result
+
+in modality-private information loss. Properly balancing the
+
+modality gap and modality-private information loss is impor-
+
+tant to achieve better performance. Experiment results conﬁrm
+
+the effectiveness of our proposed method for both cross-modal
+
+and single-modal retrieval tasks. Additionally, the ablation
+
+studies clearly justify the advantages of different components
+
+in our proposed method.
+
+
+12
+
+ACKNOWLEDGEMENT
+
+This project was supported by SUTD project PIE-SGP-AI-
+
+2018-01. This research was also supported by the National
+
+Research Foundation Singapore under its AI Singapore Pro-
+
+gramme [Award Number:AISG-100E2018-005].
+
+REFERENCES
+
+[1] Y. Zhen and D.-Y. Yeung, “Co-regularized hashing for multimodal data,”
+
+in NIPS, 2012, pp. 1376–1384. 1, 2
+
+[2] Y. Wei, Y. Song, Y. Zhen, B. Liu, and Q. Yang, “Heterogeneous
+
+translated hashing: A scalable solution towards multi-modal similarity
+
+search,” ACM Trans. Knowl. Discov. Data, vol. 10, no. 4, 2016. 1, 2
+
+[3] D. Zhangy and W.-J. Li, “Large-scale supervised multimodal hashing
+
+with semantic correlation maximization,” in AAAI, 2014. 1, 2
+
+[4] B. Wu, Q. Yang, W.-S. Zheng, Y. Wang, and J. Wang, “Quantized
+
+correlation hashing for fast cross-modal search,” in IJCAI, 2015.
+
+1,
+
+2
+
+[5] Z. Lin, G. Ding, Mingqing Hu, and J. Wang, “Semantics-preserving
+
+hashing for cross-view retrieval,” in CVPR, 2015. 1, 2
+
+[6] X. Xu, F. Shen, Y. Yang, H. T. Shen, and X. Li, “Learning discriminative
+
+binary codes for large-scale cross-modal retrieval,” IEEE TIP, vol. 26,
+
+no. 5, pp. 2494–2507, 2017. 1, 2
+
+[7] Q. Jiang and W. Li, “Discrete latent factor model for cross-modal
+
+hashing,” IEEE TIP, vol. 28, no. 7, pp. 3490–3501, 2019. 1
+
+[8] J. Tang, K. Wang, and L. Shao, “Supervised matrix factorization hashing
+
+for cross-modal retrieval,” IEEE Transactions on Image Processing,
+
+vol. 25, no. 7, 2016. 1, 2
+
+[9] D. Mandal, K. N. Chaudhury, and S. Biswas, “Generalized semantic
+
+preserving hashing for cross-modal retrieval,” IEEE TIP, vol. 28, no. 1,
+
+pp. 102–112, Jan 2019. 1, 2
+
+[10] C. Deng, Z. Chen, X. Liu, X. Gao, and D. Tao, “Triplet-based deep
+
+hashing network for cross-modal retrieval,” IEEE TIP, vol. 27, no. 8,
+
+pp. 3893–3903, Aug 2018. 1, 2
+
+[11] Z. Cao, M. Long, J. Wang, and Q. Yang, “Transitive hashing network
+
+for heterogeneous multimedia retrieval,” in AAAI, 2017. 1, 2
+
+[12] Q. Jiang and W. Li, “Deep cross-modal hashing,” in CVPR, July 2017.
+
+1, 2
+
+[13] Z.-D. Chen, W.-J. Yu, C.-X. Li, L. Nie, and X.-S. Xu, “Dual deep neural
+
+networks cross-modal hashing,” in AAAI, 2018. 1, 2, 6
+
+[14] V. E. Liong, J. Lu, Y. Tan, and J. Zhou, “Cross-modal deep variational
+
+hashing,” in ICCV, 2017. 1, 2
+
+[15] E. Yang, C. Deng, W. Liu, X. Liu, D. Tao, and X. Gao, “Pairwise
+
+relationship guided deep hashing for cross-modal retrieval,” in AAAI,
+
+2017. 1, 2
+
+[16] Y. Cao, M. Long, J. Wang, Q. Yang, and P. S. Yu, “Deep visual-semantic
+
+hashing for cross-modal retrieval,” in ACM SIGKDD International
+
+Conference on Knowledge Discovery and Data Mining, 2016. 1, 2
+
+[17] C. Li, T. Yan, X. Luo, L. Nie, and X. Xu, “Supervised robust discrete
+
+multimodal hashing for cross-media retrieval,” IEEE TMM, vol. 21,
+
+no. 11, pp. 2863–2877, 2019. 1
+
+[18] G. Song, D. Wang, and X. Tan, “Deep Memory Network for Cross-
+
+Modal Retrieval,” IEEE TMM, vol. 21, no. 5, pp. 1261–1275, 2019. 1,
+
+2
+
+[19] D. Xie, C. Deng, C. Li, X. Liu, and D. Tao, “Multi-Task Consistency-
+
+Preserving Adversarial Hashing for Cross-Modal Retrieval,” IEEE TIP,
+
+vol. 29, pp. 3626–3637, 2020. 1, 2
+
+[20] L. Jin, K. Li, Z. Li, F. Xiao, G.-J. Qi, and J. Tang, “Deep semantic-
+
+preserving ordinal hashing for cross-modal similarity search,” IEEE
+
+Transactions on Neural Networks and Learning Systems, vol. 30, no. 5,
+
+pp. 1429–1440, 2019. 1
+
+[21] B. Wang, Y. Yang, X. Xu, A. Hanjalic, and H. T. Shen, “Adversarial
+
+cross-modal retrieval,” in ACM Multimedia, 2017. 1
+
+[22] F. Wu, X.-Y. Jing, Z. Wu, Y. Ji, X. Dong, X. Luo, Q. Huang, and
+
+R. Wang, “Modality-speciﬁc and shared generative adversarial network
+
+for cross-modal retrieval,” Pattern Recognition, vol. 104, p. 107335,
+
+2020. 1
+
+[23] S. Kumar and R. Udupa, “Learning hash functions for cross-view
+
+similarity search,” in IJCAI, 2011. 1, 3, 8, 9, 10
+
+[24] M. Rastegari, J. Choi, S. Fakhraei, D. Hal, and L. Davis, “Predictable
+
+dual-view hashing,” in ICML, 2013. 1, 3, 8, 9, 10
+
+[25] J. Song, Y. Yang, Y. Yang, Z. Huang, and H. T. Shen, “Inter-media
+
+hashing for large-scale retrieval from heterogeneous data sources,” in
+
+ACM SIGMOD, 2013. 1, 3
+
+[26] G. Ding, Y. Guo, J. Zhou, and Y. Gao, “Large-scale cross-modality
+
+search via collective matrix factorization hashing,” IEEE TIP, vol. 25,
+
+2016. 1, 3, 8, 9, 10
+
+[27] J. Zhou, G. Ding, and Y. Guo, “Latent semantic sparse hashing for
+
+cross-modal similarity search,” in ACM SIGIR, 2014. 1, 3
+
+[28] G. Irie, H. Arai, and Y. Taniguchi, “Alternating co-quantization for cross-
+
+modal hashing,” in ICCV, 2015. 1, 3, 8, 9, 10
+
+[29] H. Liu, R. Ji, Y. Wu, F. Huang, and B. Zhang, “Cross-modality binary
+
+code learning via fusion similarity hashing,” in CVPR, 2017. 1, 3, 5, 6,
+
+8, 9, 10, 11
+
+[30] M. Hu, Y. Yang, F. Shen, N. Xie, R. Hong, and H. T. Shen, “Collective
+
+reconstructive embeddings for cross-modal hashing,” IEEE TIP, vol. 28,
+
+no. 6, pp. 2770–2784, June 2019. 1, 10, 11
+
+[31] D. Wang, P. Cui, M. Ou, and W. Zhu, “Learning compact hash codes
+
+for multimodal representations using orthogonal deep structure,” IEEE
+
+TMM, vol. 17, no. 9, 2015. 1, 3
+
+[32] W. Wang, B. C. Ooi, X. Yang, D. Zhang, and Y. Zhuang, “Effective
+
+multi-modal retrieval based on stacked auto-encoders,” VLDB Endow-
+
+ment, vol. 7, no. 8, 2014. 1, 3
+
+[33] F. Feng, X. Wang, and R. Li, “Cross-modal retrieval with correspondence
+
+autoencoder,” in ACM Multimedia, 2014. 1, 3
+
+[34] J. G. Zhang, Y. Peng, and M. Yuan, “Unsupervised generative adversarial
+
+cross-modal hashing,” in AAAI, 2018. 1
+
+[35] J. Guo and W. Zhu, “Collective afﬁnity learning for partial cross-modal
+
+hashing,” IEEE TIP, vol. 29, pp. 1344–1355, 2020. 1, 3
+
+[36] L. Wang, W. Sun, Z. Zhao, and F. Su, “Modeling intra- and inter-
+
+pair correlation via heterogeneous high-order preserving for cross-modal
+
+retrieval,” Signal Processing, vol. 131, pp. 249–260, 2017. 1
+
+[37] T. Hoang, T.-T. Do, T. V. Nguyen, and N.-M. Cheung, “Unsupervised
+
+Deep Cross-modality Spectral Hashing,” IEEE TIP, vol. 29, pp. 8391–
+
+8406, 2020. 1
+
+[38] S. Su, Z. Zhong, and C. Zhang, “Deep joint-semantics reconstructing
+
+hashing for large-scale unsupervised cross-modal retrieval,” in ICCV,
+
+2019. 1, 3, 5, 6, 8, 9, 10, 11
+
+[39] G. Wu, Z. Lin, J. Han, L. Liu, G. Ding, B. Zhang, and J. Shen,
+
+“Unsupervised deep hashing via binary latent factor models for large-
+
+scale cross-modal retrieval,” in IJCAI, 2018. 1, 3, 5, 6, 9, 10
+
+[40] X. Zhu, Z. Huang, H. T. Shen, and X. Zhao, “Linear cross-modal hashing
+
+for efﬁcient multimedia search,” in ACM Multimedia, 2013, p. 143–152.
+
+1, 3
+
+[41] D. Wang, Q. Wang, and X. Gao, “Robust and ﬂexible discrete hashing
+
+for cross-modal similarity search,” IEEE Transactions on Circuits and
+
+Systems for Video Technology, vol. 28, no. 10, pp. 2703–2715, Oct 2018.
+
+1, 3
+
+[42] C. Li, C. Deng, L. Wang, D. Xie, and X. Liu, “Coupled CycleGAN:
+
+Unsupervised Hashing Network for Cross-Modal Retrieval,” in AAAI,
+
+2019. 1, 3
+
+[43] R. D. Hjelm, A. Fedorov, S. Lavoie-Marchildon, K. Grewal, P. Bachman,
+
+A. Trischler, and Y. Bengio, “Learning deep representations by mutual
+
+information estimation and maximization,” in ICLR, 2019. 1, 3, 4, 5
+
+[44] A. van den Oord, Y. Li, and O. Vinyals, “Representation learning
+
+with contrastive predictive coding,” 2018. [Online]. Available: http:
+
+//arxiv.org/abs/1807.03748 1
+
+[45] P. Bachman, R. D. Hjelm, and W. Buchwalter, “Learning Representa-
+
+tions by Maximizing Mutual Information Across Views,” in NeurIPS,
+
+2019, pp. 15 535–15 545. 1, 3, 4
+
+[46] M. Federici, A. Dutta, P. Forr´e, N. Kushman, and Z. Akata, “Learning
+
+robust representations via multi-view information bottleneck,” in ICLR,
+
+2020. 1, 3, 4, 5
+
+[47] D. Barber and F. Agakov, “The im algorithm: A variational approach to
+
+information maximization.” in NIPS, 2003. 2, 4, 5
+
+[48] X. Chen, Y. Duan, R. Houthooft, J. Schulman, I. Sutskever, and
+
+P. Abbeel, “Infogan: Interpretable representation learning by information
+
+maximizing generative adversarial nets,” in NIPS, 2016. 2, 4, 5
+
+[49] S. Nowozin, B. Cseke, and R. Tomioka, “f-gan: Training generative
+
+neural samplers using variational divergence minimization,” in NIPS,
+
+2016. 2, 4, 5
+
+[50] M. I. Belghazi, A. Baratin, S. Rajeshwar, S. Ozair, Y. Bengio,
+
+A. Courville, and D. Hjelm, “Mutual information neural estimation,”
+
+in ICML, 2018. 2, 4, 5
+
+[51] X. Nguyen, M. J. Wainwright, and M. I. Jordan, “Estimating divergence
+
+functionals and the likelihood ratio by convex risk minimization,” IEEE
+
+Transactions on Information Theory, vol. 56, no. 11, p. 5847–5861,
+
+2010. 2, 4, 6
+
+[52] Y. Weiss, A. Torralba, and R. Fergus, “Spectral hashing,” in NIPS, 2008.
+
+2, 3, 6
+
+
+13
+
+APPENDIX A
+
+MORE DETAIL DERIVATION OF EQUATION (8)
+
+I(xi; hi|xt) = Exi;xt∼p(xi,xt)Eh∼Pθi (hi|xi)
+
+�
+
+log
+
+p(xi = xi, hi = h|xt = xt)
+
+p(xi = xi|xt = xt)Pθi(hi = h|xt = xt)
+
+�
+
+= Exi;xt∼p(xi,xt)Eh∼Pθi (hi|xi)
+
+�
+
+log p(xi = xi|xt = xt)Pθi(hi = h|xi = xi, xt = xt)
+
+p(xi = xi|xt = xt)Pθi(hi = h|xt = xt)
+
+�
+
+= Exi;xt∼p(xi,xt)Eh∼Pθi (hi|xi)
+
+�
+
+log Pθi(hi = h|xi = xi)
+
+Pθi(hi = h|xt = xt)
+
+�
+
+= Exi;xt∼p(xi,xt)Eh∼Pθi (hi|xi)
+
+�
+
+log Pθi(hi = h|xi = xi)
+
+Pθt(ht = h|xt = xt)
+
+�
+
++ Exi;xt∼p(xi,xt)Eh∼Pθi (hi|xi)
+
+�
+
+log Pθt(ht = h|xt = xt)
+
+Pθi(hi = h|xt = xt)
+
+�
+
+= DKL
+
+�
+
+Pθi(hi|xi)||Pθt(ht|xt)
+
+�
+
+− DKL
+
+�
+
+Pθi(ht|xi)||Pθt(ht|xt)
+
+�
+
+≤ DKL
+
+�
+
+Pθi(hi|xi)||Pθt(ht|xt)
+
+�
+
+.
+
+(8)
+
+Note that since hi is completely determined by xi, H(hi|xi) = 0. Consequently, hi and xt are conditionally independent given xi, i.e.,
+
+Pθi(hi = h|xi = xi, xt = xt) = Pθi(hi = h|xi = xi)
+
+(15)
+
+[53] Y. Gong, S. Lazebnik, A. Gordo, and F. Perronnin, “Iterative quantiza-
+
+tion: A procrustean approach to learning binary codes for large-scale
+
+image retrieval,” IEEE TPAMI, vol. 35, no. 12, 2013. 2, 3
+
+[54] J. Wang, S. Kumar, and S. Chang, “Semi-supervised hashing for scalable
+
+image retrieval,” in CVPR, 2010, pp. 3424–3431. 2, 6
+
+[55] T.-T. Do, D. L. Tan, T. T. Pham, and N. Cheung, “Simultaneous feature
+
+aggregating and hashing for large-scale image search,” in CVPR, 2017.
+
+2
+
+[56] T.-T. Do, T. Hoang, D.-K. Le Tan, A.-D. Doan, and N.-M. Cheung,
+
+“Compact Hash Code Learning With Binary Deep Neural Network,”
+
+IEEE TMM, vol. 22, no. 4, pp. 992–1004, 2020. 2
+
+[57] T. Hoang, T.-T. Do, H. Le, D.-K. Le-Tan, and N.-M. Cheung, “Simul-
+
+taneous compression and quantization: A joint approach for efﬁcient
+
+unsupervised hashing,” CVIU, vol. 191, 2020. 2
+
+[58] W. Satosi, “Information theoretical analysis of multivariate correlation,”
+
+IBM Journal of research and development, vol. 4, no. 1, pp. 66–82,
+
+1960. 2, 6
+
+[59] C. Li, C. Deng, N. Li, W. Liu, X. Gao, and D. Tao, “Self-supervised
+
+adversarial hashing networks for cross-modal retrieval,” in CVPR, 2018.
+
+2
+
+[60] V. E. Liong, J. Lu, L. yu Duan, and Y. Tan, “Deep variational and
+
+structural hashing,” IEEE TPAMI, vol. 42, pp. 580–595, 2020. 2
+
+[61] Y. Cao, B. Liu, M. Long, and J. Wang, “Cross-Modal Hamming
+
+Hashing,” in ECCV, 2018, pp. 207–223. 2
+
+[62] Z. Ji, Y. Sun, Y. Yu, Y. Pang, and J. Han, “Attribute-guided network
+
+for cross-modal zero-shot hashing,” IEEE TNNLS, vol. 31, no. 1, pp.
+
+321–330, 2020. 3
+
+[63] X. Bai, S. Bai, and X. Wang, “Beyond diffusion process: Neighbor set
+
+similarity for fast re-ranking,” Information Sciences, vol. 325, 2015. 3
+
+[64] K. Wang, Q. Yin, W. Wang, S. Wu, and L. Wang, “A comprehensive
+
+survey on cross-modal retrieval,” CoRR, vol. abs/1607.06215, 2016. 3
+
+[65] D. Hu, F. Nie, and X. Li, “Deep binary reconstruction for cross-modal
+
+hashing,” IEEE Transactions on Multimedia, 2018. 3
+
+[66] J. Zhang and Y. Peng, “Multi-Pathway Generative Adversarial Hashing
+
+for Unsupervised Cross-Modal Retrieval,” IEEE TMM, vol. 22, no. 1,
+
+pp. 174–187, 2020. 3, 9, 10
+
+[67] L. Wu, Y. Wang, and L. Shao, “Cycle-consistent deep generative hashing
+
+for cross-modal retrieval,” IEEE TIP, vol. 28, no. 4, pp. 1602–1612,
+
+2019. 3, 7
+
+[68] J.-Y. Zhu, T. Park, P. Isola, and A. A. Efros, “Unpaired image-to-image
+
+translation using cycle-consistent adversarial networks,” in ICCV, 2017.
+
+3
+
+[69] F. Cakir, K. He, S. Adel Bargal, and S. Sclaroff, “Mihash: Online hashing
+
+with mutual information,” in ICCV, 2017. 3
+
+[70] W. Guo, H. Huang, X. Kong, and R. He, “Learning Disentangled
+
+Representation for Cross-Modal Retrieval with Deep Mutual Information
+
+Estimation,” in ACM Multimedia, 2019, pp. 1712–1720. 3, 10
+
+[71] J. Hu, R. Ji, S. Zhang, X. Sun, Q. Ye, C.-W. Lin, and Q. Tian, “Infor-
+
+mation Competing Process for Learning Diversiﬁed Representations,” in
+
+Advances in Neural Information Processing Systems, 2019. 3, 4
+
+[72] Y. Tian, D. Krishnan, and P. Isola, “Contrastive Representation Distil-
+
+lation,” in ICLR, 2020. 3, 4
+
+[73] ——, “Contrastive multiview coding,” arXiv preprint arXiv:1906.05849,
+
+2019. 3, 4
+
+[74] A. A. Alemi, I. Fischer, J. V. Dillon, and K. Murphy, “Deep variational
+
+information bottleneck,” in ICLR, 2017. 3
+
+[75] N. Tishby, F. C. Pereira, and W. Bialek, “The information bottleneck
+
+method,” 2000. 3
+
+[76] C. J. Maddison, A. Mnih, and Y. W. Teh, “The concrete distribution: A
+
+continuous relaxation of discrete random variables,” in ICLR, 2017. 4
+
+[77] G. Tucker, A. Mnih, C. J. Maddison, J. Lawson, and J. Sohl-Dickstein,
+
+“Rebar: Low-variance, unbiased gradient estimates for discrete latent
+
+variable models,” in NIPS, 2017. 4
+
+[78] G. Hinton, “Neural networks for machine learning,” Coursera, video
+
+lectures, 2012. 5
+
+[79] B. Poole, S. Ozair, A. Van Den Oord, A. Alemi, and G. Tucker, “On
+
+variational bounds of mutual information,” in ICML, 2019, pp. 5171–
+
+5180. 5
+
+[80] M. D. Donsker and S. R. S. Varadhan, “Asymptotic evaluation of certain
+
+markov process expectations for large time, i,” Communications on Pure
+
+and Applied Mathematics, vol. 28, no. 1, pp. 1–47, 1975. 5
+
+[81] H. Kim and A. Mnih, “Disentangling by factorising,” in ICML, 2018. 6
+
+[82] M. J. Huiskes and M. S. Lew, “The MIR Flickr retrieval evaluation,”
+
+in ACM International Conference on Multimedia Information Retrieval,
+
+2008. 6
+
+[83] T. seng Chua, J. Tang, R. Hong, H. Li, Z. Luo, and Y. Zheng, “NUS-
+
+WIDE: A real-world web image database from National University of
+
+Singapore,” in CIVR, 2009. 6
+
+[84] T. Lin, M. Maire, S. J. Belongie, L. D. Bourdev, R. B. Girshick, J. Hays,
+
+P. Perona, D. Ramanan, P. Doll´ar, and C. L. Zitnick, “Microsoft COCO:
+
+common objects in context,” in ECCV, 2014. 6
+
+[85] J. Devlin, M. Chang, K. Lee, and K. Toutanova, “BERT: pre-training of
+
+deep bidirectional transformers for language understanding,” arXiv, vol.
+
+abs/1810.04805, 2018. 7
+
+[86] A. Krizhevsky, I. Sutskever, and G. E. Hinton, “Imagenet classiﬁcation
+
+with deep convolutional neural networks,” in NeurIPS, 2012. 7
+
+[87] H. Hu, L. Xie, R. Hong, and Q. Tian, “Creating Something From Noth-
+
+ing: Unsupervised Knowledge Distillation for Cross-Modal Hashing,” in
+
+CVPR, 2020, pp. 3120–3129. 9, 10
+

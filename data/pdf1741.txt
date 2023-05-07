@@ -1,0 +1,507 @@
+
+Smitha Milli
+
+Smitha Milli
+
+Smitha Milli
+
+Smitha Milli
+
+blog
+
+blog
+
+blog
+
+blog papers
+
+papers
+
+papers
+
+papers
+
+ 
+
+ 
+
+ 
+
+Kneser-Ney Smoothing
+
+Kneser-Ney Smoothing
+
+Jun 30, 2015
+
+7 minute read
+
+Language modeling
+
+Language modeling
+
+Language modeling
+
+Language modeling is important for almost all natural language processing tasks:
+
+speech recognition, spelling correction, machine translation, etc. Today I’ll go over
+
+Kneser-Ney smoothing, a historically important technique for language model
+
+smoothing.
+
+Language Models
+
+Language Models
+
+A language model estimates the probability of an n-gram from a training corpus. The
+
+simplest way to get a probability distribution over n-grams from a corpus is to use
+
+the MLE
+
+MLE
+
+MLE
+
+MLE. That is, the probability of an n-gram (w1, …, wn)
+
+is simply the number of times it appears divided by the number of n-grams. Usually
+
+we’re interested in the conditional probability of the last word, given the context of
+
+the last (n-1) words:
+
+P(wn|w1, …, wn−1) =
+
+C(w1,…,wn)
+
+∑w′ �LC(w1,…,w′ )
+
+where C(x) is the number of times that x appears and L is the set of all possible words.
+
+The problem with the MLE arises when the n-gram you want a probability for was not
+
+seen in the data; in these cases the MLE will simply assign a probability of zero to the
+
+sequences. This is an inevitable problem for language tasks because no matter how
+
+large your corpus is it’s impossible for it to contain all possibilities of n-grams from
+
+the language.
+
+(About a month ago I also wrote about how to use a trigram character model
+
+trigram character model
+
+trigram character model
+
+trigram character model to
+
+generate pronounceable anagrams. Can you see why smoothing was unnecessary for a
+
+character model?)
+
+Kneser-Ney Smoothing
+
+Kneser-Ney Smoothing
+
+The solution is to “smooth” the language models to move some probability towards
+
+unknown n-grams. There are many ways to do this, but the method with the best
+
+best
+
+best
+
+best
+
+performance
+
+performance
+
+performance
+
+performance is interpolated modified Kneser-Ney smoothing
+
+Kneser-Ney smoothing
+
+Kneser-Ney smoothing
+
+Kneser-Ney smoothing. I’ll explain the
+
+intuition behind Kneser-Ney in three parts:
+
+Absolute-Discounting
+
+Absolute-Discounting
+
+To retain a valid probability distribution (i.e. one that sums to one) we must remove
+
+some probability mass from the MLE to use for n-grams that were not seen in the
+
+corpus. Absolute discounting does this by subtracting a fixed number D from all n-
+
+gram counts. The adjusted count of an n-gram is A(w1, …, wn) = C(w1, …, wn) − D
+
+.
+
+Interpolation
+
+Interpolation
+
+After we’ve assured that we have probability mass to use for unknown n-grams, now
+
+we still need to figure out how to actually estimate the probability of unknown n-
+
+grams.
+
+A clever way to do this is to use lower order models. Suppose your language model
+
+estimates the probabilities of trigrams. When you come across an unknown trigram,
+
+
+
+
+
+
+
+
+
+
+e.g. (‘orange’, ‘cat’, ‘pounced’), although the trigram may be unknown, the bigram
+
+suffix, (‘cat’, ‘pounced’), may be present in the corpus. So, when creating a language
+
+model, we don’t merely calculate the probabilities of all N-grams, where N is the
+
+highest order of the language model, we estimate probabilities for all k-grams where 
+
+k � 1, …, N
+
+.
+
+Interpolation recursively combines probabilities of all lower-order models to get the
+
+probability of an n-gram:
+
+Ps(wn|wi, …, wn−1) =
+
+C(wi, …, wn) − D
+
+∑w′ �LC(wi, …, w′) + γ(wi, …, wn−1)Ps(wn|wi+1…, wn−1)
+
+The recursion stops at the unigram model: Ps(w) =
+
+C(w)
+
+∑w′ �LC(w′ )
+
+γ(wi, …, wn−1)
+
+is known as the back-off weight. It is simply the amount of probability mass we left
+
+for the next lower order model.
+
+γ(wi, …, wn−1) =
+
+D � |{(wi, …, wn−1, w′):C(wi, …, wn−1, w′) &gt; 0}|
+
+∑w′ �LC(wi, …, w′)
+
+After interpolating the probabilities, if a sequence has any k-gram suffix present in
+
+the corpus, it will have a non-zero probability.
+
+It’s also easier to see why absolute discounting works so well now. Notice how the
+
+fewer words there are that follow the context (the sequence of words we’re
+
+conditioning on), the lower the associated back-off weight for that context is. This
+
+makes sense since if there are only a few words that follow a given contexts, it’s less
+
+likely that a new word following the context is valid.
+
+Word Histories
+
+Word Histories
+
+This is the part that is actually attributed to Kneser &amp; Ney. When predicting the
+
+probability of a word given a context, we not only want to take into account the
+
+current context, but the number of contexts that the word appears in. Remember how
+
+absolute discounting works well because if there are only a few words that come after
+
+a context, a novel word in that context should be less likely? It also works the other
+
+way. If a word appears after a small number of contexts, then it should be less likely
+
+to appear in a novel context.
+
+The quintessential example is ‘San Francisco’. Francisco alone may have a high count
+
+in a corpus, but it should never be predicted unless it follows ‘San’. This is the
+
+motivation for replacing the MLE unigram probability with the ‘continuation
+
+probability’ that estimates how likely the unigram is to continue a new context.
+
+Let N1+( ∙ w1, …, wk) = |{(w′, w1, …, wk):C(w′, w1, …, wk) &gt; 0}|
+
+PKN(w) =
+
+N1+( ∙ w)
+
+N1+( ∙ ∙ )
+
+The unigram Kneser-Ney probability is the number of unique words the unigram
+
+follows divided by all bigrams. The Kneser-Ney unigram probability can be extended
+
+to k-grams, where 1 &lt;= k &lt; N, as such:
+
+PKN(wn|wi, …, wn−1) =
+
+N1+( ∙ wi, …, wn) − D
+
+N1+( ∙ wi, …, wn−1, ∙ ) + λ(wi, …, wn−1)PKN(wn|wi+1, …, wn−1)
+
+Note that the above equation does NOT apply to the highest order; we have no data on
+
+the ‘word histories’ for the highest order N-grams. When i = 1 in the above equation,
+
+we instead use normal counts discounted and interpolated with the remaining
+
+Kneser-Ney probabilities:
+
+
+PKN(wn|w1, …, wn−1) =
+
+C(w1, …, wn) − D
+
+∑w′ �LC(w1, …, wn−1, w′) + λ(w1, …, wn−1)PKN(wn|w2, …, wn−1)
+
+Side note: In reality, there are normally three different discount values, Dk,1
+
+, Dk,2
+
+, and Dk,3+
+
+, computed for each k-gram order (1 &lt;= k &lt;= N). Dk,i
+
+is used if C(wN−k+1, …, wN) = i
+
+. The closed-form estimate for the optimal discounts (see Chen &amp; Goodman
+
+Chen &amp; Goodman
+
+Chen &amp; Goodman
+
+Chen &amp; Goodman) is
+
+Dk,i = i − (i + 1)Yk
+
+Nk,i+1
+
+Nk,i
+
+where Yk =
+
+Nk,1
+
+Nk,1+2Nk,2
+
+. If k = n, Nk,i = |{wN−k+1, …, wN:C(wN−k+1, …, wN) = i}|
+
+Otherwise, Nk,i = |{wN−k+1, …, wN:N1+( ∙ wN−k+1, …, wN) = i}|
+
+The use of multiple discount values is what the ‘modified’ part of ‘modified’ Kneser-
+
+Ney smoothing is.
+
+Language Modeling Toolkits
+
+Language Modeling Toolkits
+
+How do you actually create a Kneser-Ney language model? I put a pretty bare-bones,
+
+unoptimized implementation of Kneser-Ney smoothing on Github
+
+implementation of Kneser-Ney smoothing on Github
+
+implementation of Kneser-Ney smoothing on Github
+
+implementation of Kneser-Ney smoothing on Github in the hopes that
+
+it would be easy to learn from / use for small datasets.
+
+But there exist several free and open-source language modeling toolkits that are
+
+much more optimized for memory/performance. I recommend KenLM
+
+KenLM
+
+KenLM
+
+KenLM. It’s written in
+
+c++, but there’s also an article on how to use KenLM in Python
+
+also an article on how to use KenLM in Python
+
+also an article on how to use KenLM in Python
+
+also an article on how to use KenLM in Python. Others include
+
+BerkeleyLM
+
+BerkeleyLM
+
+BerkeleyLM
+
+BerkeleyLM, SRILM
+
+SRILM
+
+SRILM
+
+SRILM, MITLM
+
+MITLM
+
+MITLM
+
+MITLM.
+
+Further Reading
+
+Further Reading
+
+NLP Courses
+
+Stanford NLP 
+
+Stanford NLP 
+
+Stanford NLP 
+
+Stanford NLP Coursera
+
+Coursera
+
+Coursera
+
+Coursera
+
+Columbia's NLP class
+
+Columbia's NLP class
+
+Columbia's NLP class
+
+Columbia's NLP class: Michael Collins' lecture notes are really good.
+
+Smoothing
+
+Stanford NLP Smoothing Tutorial
+
+Stanford NLP Smoothing Tutorial
+
+Stanford NLP Smoothing Tutorial
+
+Stanford NLP Smoothing Tutorial: Easy explanations of different smoothing
+
+techniques.
+
+An 
+
+An 
+
+An 
+
+An Empirical Study of Smoothing Techniques for Language Modeling 
+
+Empirical Study of Smoothing Techniques for Language Modeling 
+
+Empirical Study of Smoothing Techniques for Language Modeling 
+
+Empirical Study of Smoothing Techniques for Language Modeling :
+
+Compares performance of different smoothing techniques.
+
+Stupid Backoff 
+
+Stupid Backoff 
+
+Stupid Backoff 
+
+Stupid Backoff : An extremely simplistic type of smoothing that does as well
+
+as Kneser-Ney smoothing for very large datasets.
+
+Language Model Estimation
+
+Scalable 
+
+Scalable 
+
+Scalable 
+
+Scalable Modified Kneser-Ney Language Model Estimation
+
+Modified Kneser-Ney Language Model Estimation
+
+Modified Kneser-Ney Language Model Estimation
+
+Modified Kneser-Ney Language Model Estimation: This is the paper
+
+that explains how KenLM does language model estimation. Section three,
+
+"Estimation Pipeline", is really helpful.
+
+Faster 
+
+Faster 
+
+Faster 
+
+Faster and Smaller N-Gram Language Models
+
+and Smaller N-Gram Language Models
+
+and Smaller N-Gram Language Models
+
+and Smaller N-Gram Language Models: BerkeleyLM paper
+
+Tightly Packed 
+
+Tightly Packed 
+
+Tightly Packed 
+
+Tightly Packed Tries: How to Fit Large Models into Memory, 
+
+Tries: How to Fit Large Models into Memory, 
+
+Tries: How to Fit Large Models into Memory, 
+
+Tries: How to Fit Large Models into Memory, and Make them
+
+and Make them
+
+and Make them
+
+and Make them
+
+Load Fast, Too
+
+Load Fast, Too
+
+Load Fast, Too
+
+Load Fast, Too
+
+Processing math: 100%
+

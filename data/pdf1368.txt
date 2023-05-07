@@ -1,0 +1,658 @@
+
+
+
+
+
+SI485i : NLP 
+
+Set 4 
+
+Smoothing Language Models 
+
+ Fall 2013 : Chambers 
+
+
+
+
+
+
+
+
+
+
+
+
+Review: evaluating n-gram models 
+
+• Best evaluation for an N-gram 
+
+• Put model A in a speech recognizer 
+
+• Run recognition, get word error rate (WER) for A 
+
+• Put model B in speech recognition, get word error 
+
+rate for B 
+
+• Compare WER for A and B 
+
+• In-vivo evaluation 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Difficulty of in-vivo evaluations 
+
+• In-vivo evaluation 
+
+• Very time-consuming 
+
+ 
+
+• Instead: perplexity 
+
+
+
+
+
+
+Perplexity 
+
+•
+
+Perplexity is the probability of the test set 
+
+(assigned by the language model), 
+
+normalized by the number of words: 
+
+ 
+
+ 
+
+ 
+
+•
+
+Chain rule: 
+
+ 
+
+ 
+
+•
+
+For bigrams: 
+
+ 
+
+
+
+
+
+
+
+
+
+Minimizing perplexity is the same as maximizing probability 
+
+
+
+The best language model is one that best predicts an 
+
+unseen test set 
+
+
+
+
+
+
+Lesson 1: the perils of overfitting 
+
+• N-grams only work well for word prediction if the test 
+
+corpus looks like the training corpus 
+
+• In real life, it often doesn’t 
+
+• We need to train robust models, adapt to test set, etc 
+
+ 
+
+
+
+
+
+
+Lesson 2: zeros or not? 
+
+• Zipf’s Law: 
+
+• A small number of events occur with high frequency 
+
+• A large number of events occur with low frequency 
+
+ 
+
+• Resulting Problem: 
+
+• You might have to wait an arbitrarily long time to get valid 
+
+statistics on low frequency events 
+
+• Our estimates are sparse! No counts exist for the vast bulk of 
+
+things we want to estimate! 
+
+ 
+
+• Solution: 
+
+• Estimate the likelihood of unseen N-grams 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Smoothing is like Robin Hood: 
+
+Steal from the rich, give to the poor (probability mass) 
+
+
+
+Slide from Dan Klein 
+
+
+
+
+
+
+Laplace smoothing 
+
+• Also called “add-one smoothing” 
+
+• Just add one to all the counts! 
+
+ 
+
+• MLE estimate: 
+
+ 
+
+• Laplace estimate: 
+
+ 
+
+• Reconstructed counts: 
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+Laplace smoothed bigram counts 
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+Laplace-smoothed bigrams 
+
+ 
+
+
+
+
+
+
+
+
+
+
+Reconstituted counts 
+
+ 
+
+
+
+
+
+
+
+
+
+
+Note big change to counts 
+
+•
+
+C(“want to”) went from 609 to 238! 
+
+•
+
+P(to|want) from .66 to .26! 
+
+•
+
+Discounted by d= c* / c 
+
+• d for “chinese food” =.10!!!  A 10x reduction 
+
+• This means Laplace is a blunt instrument 
+
+• Could use more fine-grained method (add-k) 
+
+ 
+
+•
+
+Laplace smoothing not often used for N-grams, as we have 
+
+much better methods 
+
+•
+
+Despite its flaws, Laplace (add-k) is however still used to 
+
+smooth other probabilistic models in NLP, especially 
+
+• For pilot studies 
+
+• In domains where the number of zeros isn’t so huge. 
+
+
+
+
+
+
+Exercise 
+
+Hey, I just met you, And this is crazy, 
+
+But here's my number, So call me, maybe? 
+
+ 
+
+It's hard to look right, At you baby, 
+
+But here's my number, So call me, maybe? 
+
+ 
+
+• Using a unigram model and Laplace smoothing (+1) 
+
+• Calculate P(“call me possibly”) 
+
+• Assume a vocabulary based on the above, plus the word “possibly” 
+
+ 
+
+• Now instead of k=1, set k=0.01 
+
+• Calculate P(“call me possibly”) 
+
+
+
+
+
+
+Better discounting algorithms 
+
+• Intuition: use the count of things we’ve seen once to 
+
+help estimate the count of things we’ve never seen 
+
+ 
+
+• Intuition in many smoothing algorithms: 
+
+• Good-Turing 
+
+• Kneser-Ney 
+
+• Witten-Bell 
+
+
+
+
+
+
+
+
+
+
+Good-Turing: Josh Goodman intuition 
+
+• Imagine you are fishing 
+
+• There are 8 species in the lake: carp, perch, whitefish, trout, 
+
+salmon, eel, catfish, bass 
+
+• You catch: 
+
+• 10 carp, 3 perch, 2 whitefish, 1 trout, 1 salmon, 1 eel = 18 fish 
+
+• How likely is it the next species is new (catfish or bass)? 
+
+• 3/18 
+
+• And how likely is it that the next species is another trout? 
+
+• Must be less than 1/18 
+
+
+
+
+
+
+
+
+
+
+
+
+Good-Turing Counts 
+
+•
+
+N[x] is the frequency-of-frequency-x 
+
+• So for the fish:  N[10]=1, N[1]=3, etc. 
+
+ 
+
+•
+
+To estimate the total number of unseen species: 
+
+• Use the number of species (words) we’ve seen once 
+
+• c[0]* = N[1]      p0 = c[0]*/N = N[1]/N = 3/18 
+
+• PGT(things with frequency zero in training) = 
+
+𝑵[𝟏]
+
+𝑵  
+
+ 
+
+•
+
+All other estimates are adjusted (down) 
+
+ 
+
+𝑐[𝑥]∗ = (𝑥 + 1) 𝑁[𝑥 + 1]
+
+𝑁[𝑥]
+
+ 
+
+𝑃𝐺𝑇 𝑜𝑐𝑐𝑢𝑟𝑟𝑒𝑑 𝑥 𝑡𝑖𝑚𝑒𝑠 = 𝑐[𝑥]∗
+
+𝑁  
+
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Bigram frequencies of frequencies 
+
+and GT re-estimates 
+
+
+
+
+
+
+
+
+Complications 
+
+•
+
+In practice, assume large counts (c&gt;k for some k) are reliable: 
+
+ 
+
+ 
+
+•
+
+That complicates c*, making it: 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+•
+
+Also: we assume singleton counts c=1 are unreliable, so treat N-grams 
+
+with count of 1 as if they were count=0 
+
+•
+
+Also, need the Nk to be non-zero, so we need to smooth (interpolate) 
+
+the Nk counts before computing c* from them 
+
+
+
+
+
+
+
+
+
+
+
+
+GT smoothed bigram probs 
+
+ 
+
+
+
+
+
+
+
+
+Backoff and Interpolation 
+
+• Don’t try to account for unseen n-grams, just backoff 
+
+to a simpler model until you’ve seen it. 
+
+ 
+
+• Start with estimating the trigram: P(z | x, y)  
+
+• but C(x,y,z) is zero! 
+
+• Backoff and use info from the bigram: P(z | y) 
+
+• but C(y,z) is zero! 
+
+• Backoff to the unigram: P(z) 
+
+ 
+
+• How to combine the trigram/bigram/unigram info? 
+
+
+
+
+
+
+Backoff versus interpolation 
+
+• Backoff: use trigram if you have it, otherwise bigram, 
+
+otherwise unigram 
+
+ 
+
+• Interpolation: always mix all three 
+
+
+
+
+
+
+Interpolation 
+
+• Simple interpolation 
+
+ 
+
+ 
+
+ 
+
+• Lambdas conditional on context: 
+
+
+
+
+
+
+
+
+
+
+
+
+How to set the lambdas? 
+
+• Use a held-out corpus 
+
+• Choose lambdas which maximize the probability of 
+
+some held-out data 
+
+• I.e. fix the N-gram probabilities 
+
+• Then search for lambda values 
+
+• That when plugged into previous equation 
+
+• Give largest probability for held-out set 
+
+
+
+
+
+
+
+
+Katz Backoff 
+
+• Use the trigram probabilty if the trigram was observed: 
+
+• P(dog | the, black)  if  C(“the black dog”) &gt; 0 
+
+ 
+
+• “Backoff” to the bigram if it was unobserved: 
+
+• P(dog | black) if C(“black dog”) &gt; 0  
+
+ 
+
+• “Backoff” again to unigram if necessary: 
+
+• P(dog) 
+
+ 
+
+
+
+
+
+
+
+
+Katz Backoff 
+
+• Gotcha: You can’t just backoff to the shorter n-gram. 
+
+• Why not? It is no longer a probability distribution. The 
+
+entire model must sum to one. 
+
+• The individual trigram and bigram distributions are valid, but 
+
+we can’t just combine them. 
+
+ 
+
+• Each distribution now needs a factor. See the book 
+
+for details. 
+
+• P(dog|the,black) = alpha(dog,black) * P(dog | black) 
+

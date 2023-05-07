@@ -1,0 +1,4459 @@
+
+Speech and Language Processing.
+
+Daniel Jurafsky &amp; James H. Martin.
+
+Copyright © 2023.
+
+All
+
+rights reserved.
+
+Draft of January 7, 2023.
+
+CHAPTER
+
+8
+
+Sequence Labeling for Parts of
+
+Speech and Named Entities
+
+To each word a warbling note
+
+A Midsummer Night’s Dream, V.I
+
+Dionysius Thrax of Alexandria (c. 100 B.C.), or perhaps someone else (it was a long
+
+time ago), wrote a grammatical sketch of Greek (a “techn¯e”) that summarized the
+
+linguistic knowledge of his day. This work is the source of an astonishing proportion
+
+of modern linguistic vocabulary, including the words syntax, diphthong, clitic, and
+
+analogy. Also included are a description of eight parts of speech: noun, verb,
+
+parts of speech
+
+pronoun, preposition, adverb, conjunction, participle, and article. Although earlier
+
+scholars (including Aristotle as well as the Stoics) had their own lists of parts of
+
+speech, it was Thrax’s set of eight that became the basis for descriptions of European
+
+languages for the next 2000 years. (All the way to the Schoolhouse Rock educational
+
+television shows of our childhood, which had songs about 8 parts of speech, like the
+
+late great Bob Dorough’s Conjunction Junction.) The durability of parts of speech
+
+through two millennia speaks to their centrality in models of human language.
+
+Proper names are another important and anciently studied linguistic category.
+
+While parts of speech are generally assigned to individual words or morphemes, a
+
+proper name is often an entire multiword phrase, like the name “Marie Curie”, the
+
+location “New York City”, or the organization “Stanford University”. We’ll use the
+
+term named entity for, roughly speaking, anything that can be referred to with a
+
+named entity
+
+proper name: a person, a location, an organization, although as we’ll see the term is
+
+commonly extended to include things that aren’t entities per se.
+
+Parts of speech (also known as POS) and named entities are useful clues to
+
+POS
+
+sentence structure and meaning. Knowing whether a word is a noun or a verb tells us
+
+about likely neighboring words (nouns in English are preceded by determiners and
+
+adjectives, verbs by nouns) and syntactic structure (verbs have dependency links to
+
+nouns), making part-of-speech tagging a key aspect of parsing. Knowing if a named
+
+entity like Washington is a name of a person, a place, or a university is important to
+
+many natural language processing tasks like question answering, stance detection,
+
+or information extraction.
+
+In this chapter we’ll introduce the task of part-of-speech tagging, taking a se-
+
+quence of words and assigning each word a part of speech like NOUN or VERB, and
+
+the task of named entity recognition (NER), assigning words or phrases tags like
+
+PERSON, LOCATION, or ORGANIZATION.
+
+Such tasks in which we assign, to each word xi in an input word sequence, a
+
+label yi, so that the output sequence Y has the same length as the input sequence X
+
+are called sequence labeling tasks. We’ll introduce classic sequence labeling algo-
+
+sequence
+
+labeling
+
+rithms, one generative— the Hidden Markov Model (HMM)—and one discriminative—
+
+the Conditional Random Field (CRF). In following chapters we’ll introduce modern
+
+sequence labelers based on RNNs and Transformers.
+
+
+2
+
+CHAPTER 8
+
+•
+
+SEQUENCE LABELING FOR PARTS OF SPEECH AND NAMED ENTITIES
+
+8.1
+
+(Mostly) English Word Classes
+
+Until now we have been using part-of-speech terms like noun and verb rather freely.
+
+In this section we give more complete deﬁnitions. While word classes do have
+
+semantic tendencies—adjectives, for example, often describe properties and nouns
+
+people— parts of speech are deﬁned instead based on their grammatical relationship
+
+with neighboring words or the morphological properties about their afﬁxes.
+
+Tag
+
+Description
+
+Example
+
+Open Class
+
+ADJ
+
+Adjective: noun modiﬁers describing properties
+
+red, young, awesome
+
+ADV
+
+Adverb: verb modiﬁers of time, place, manner
+
+very, slowly, home, yesterday
+
+NOUN
+
+words for persons, places, things, etc.
+
+algorithm, cat, mango, beauty
+
+VERB
+
+words for actions and processes
+
+draw, provide, go
+
+PROPN Proper noun: name of a person, organization, place, etc..
+
+Regina, IBM, Colorado
+
+INTJ
+
+Interjection: exclamation, greeting, yes/no response, etc.
+
+oh, um, yes, hello
+
+Closed Class Words
+
+ADP
+
+Adposition (Preposition/Postposition):
+
+marks a noun’s
+
+spacial, temporal, or other relation
+
+in, on, by, under
+
+AUX
+
+Auxiliary: helping verb marking tense, aspect, mood, etc.,
+
+can, may, should, are
+
+CCONJ Coordinating Conjunction: joins two phrases/clauses
+
+and, or, but
+
+DET
+
+Determiner: marks noun phrase properties
+
+a, an, the, this
+
+NUM
+
+Numeral
+
+one, two, ﬁrst, second
+
+PART
+
+Particle: a function word that must be associated with an-
+
+other word
+
+’s, not, (inﬁnitive) to
+
+PRON
+
+Pronoun: a shorthand for referring to an entity or event
+
+she, who, I, others
+
+SCONJ
+
+Subordinating Conjunction: joins a main clause with a
+
+subordinate clause such as a sentential complement
+
+that, which
+
+Other
+
+PUNCT Punctuation
+
+˙, , ()
+
+SYM
+
+Symbols like $ or emoji
+
+$, %
+
+X
+
+Other
+
+asdf, qwfg
+
+Figure 8.1
+
+The 17 parts of speech in the Universal Dependencies tagset (de Marneffe et al., 2021). Features
+
+can be added to make ﬁner-grained distinctions (with properties like number, case, deﬁniteness, and so on).
+
+Parts of speech fall into two broad categories: closed class and open class.
+
+closed class
+
+open class
+
+Closed classes are those with relatively ﬁxed membership, such as prepositions—
+
+new prepositions are rarely coined. By contrast, nouns and verbs are open classes—
+
+new nouns and verbs like iPhone or to fax are continually being created or borrowed.
+
+Closed class words are generally function words like of, it, and, or you, which tend
+
+function word
+
+to be very short, occur frequently, and often have structuring uses in grammar.
+
+Four major open classes occur in the languages of the world: nouns (including
+
+proper nouns), verbs, adjectives, and adverbs, as well as the smaller open class of
+
+interjections. English has all ﬁve, although not every language does.
+
+Nouns are words for people, places, or things, but include others as well. Com-
+
+noun
+
+mon nouns include concrete terms like cat and mango, abstractions like algorithm
+
+common noun
+
+and beauty, and verb-like terms like pacing as in His pacing to and fro became quite
+
+annoying. Nouns in English can occur with determiners (a goat, this bandwidth)
+
+take possessives (IBM’s annual revenue), and may occur in the plural (goats, abaci).
+
+Many languages, including English, divide common nouns into count nouns and
+
+count noun
+
+mass nouns. Count nouns can occur in the singular and plural (goat/goats, rela-
+
+mass noun
+
+tionship/relationships) and can be counted (one goat, two goats). Mass nouns are
+
+used when something is conceptualized as a homogeneous group. So snow, salt, and
+
+communism are not counted (i.e., *two snows or *two communisms). Proper nouns,
+
+proper noun
+
+like Regina, Colorado, and IBM, are names of speciﬁc persons or entities.
+
+
+8.1
+
+•
+
+(MOSTLY) ENGLISH WORD CLASSES
+
+3
+
+Verbs refer to actions and processes, including main verbs like draw, provide,
+
+verb
+
+and go. English verbs have inﬂections (non-third-person-singular (eat), third-person-
+
+singular (eats), progressive (eating), past participle (eaten)). While many scholars
+
+believe that all human languages have the categories of noun and verb, others have
+
+argued that some languages, such as Riau Indonesian and Tongan, don’t even make
+
+this distinction (Broschart 1997; Evans 2000; Gil 2000) .
+
+Adjectives often describe properties or qualities of nouns, like color (white,
+
+adjective
+
+black), age (old, young), and value (good, bad), but there are languages without
+
+adjectives. In Korean, for example, the words corresponding to English adjectives
+
+act as a subclass of verbs, so what is in English an adjective “beautiful” acts in
+
+Korean like a verb meaning “to be beautiful”.
+
+Adverbs are a hodge-podge. All the italicized words in this example are adverbs:
+
+adverb
+
+Actually, I ran home extremely quickly yesterday
+
+Adverbs generally modify something (often verbs, hence the name “adverb”, but
+
+also other adverbs and entire verb phrases). Directional adverbs or locative ad-
+
+locative
+
+verbs (home, here, downhill) specify the direction or location of some action; degree
+
+degree
+
+adverbs (extremely, very, somewhat) specify the extent of some action, process, or
+
+property; manner adverbs (slowly, slinkily, delicately) describe the manner of some
+
+manner
+
+action or process; and temporal adverbs describe the time that some action or event
+
+temporal
+
+took place (yesterday, Monday).
+
+Interjections (oh, hey, alas, uh, um) are a smaller open class that also includes
+
+interjection
+
+greetings (hello, goodbye) and question responses (yes, no, uh-huh).
+
+English adpositions occur before nouns, hence are called prepositions. They can
+
+preposition
+
+indicate spatial or temporal relations, whether literal (on it, before then, by the house)
+
+or metaphorical (on time, with gusto, beside herself), and relations like marking the
+
+agent in Hamlet was written by Shakespeare.
+
+A particle resembles a preposition or an adverb and is used in combination with
+
+particle
+
+a verb. Particles often have extended meanings that aren’t quite the same as the
+
+prepositions they resemble, as in the particle over in she turned the paper over. A
+
+verb and a particle acting as a single unit is called a phrasal verb. The meaning
+
+phrasal verb
+
+of phrasal verbs is often non-compositional—not predictable from the individual
+
+meanings of the verb and the particle. Thus, turn down means ‘reject’, rule out
+
+‘eliminate’, and go on ‘continue’.
+
+Determiners like this and that (this chapter, that page) can mark the start of an
+
+determiner
+
+English noun phrase. Articles like a, an, and the, are a type of determiner that mark
+
+article
+
+discourse properties of the noun and are quite frequent; the is the most common
+
+word in written English, with a and an right behind.
+
+Conjunctions join two phrases, clauses, or sentences. Coordinating conjunc-
+
+conjunction
+
+tions like and, or, and but join two elements of equal status. Subordinating conjunc-
+
+tions are used when one of the elements has some embedded status. For example,
+
+the subordinating conjunction that in “I thought that you might like some milk” links
+
+the main clause I thought with the subordinate clause you might like some milk. This
+
+clause is called subordinate because this entire clause is the “content” of the main
+
+verb thought. Subordinating conjunctions like that which link a verb to its argument
+
+in this way are also called complementizers.
+
+complementizer
+
+Pronouns act as a shorthand for referring to an entity or event. Personal pro-
+
+pronoun
+
+nouns refer to persons or entities (you, she, I, it, me, etc.). Possessive pronouns are
+
+forms of personal pronouns that indicate either actual possession or more often just
+
+an abstract relation between the person and some object (my, your, his, her, its, one’s,
+
+our, their). Wh-pronouns (what, who, whom, whoever) are used in certain question
+
+wh
+
+
+4
+
+CHAPTER 8
+
+•
+
+SEQUENCE LABELING FOR PARTS OF SPEECH AND NAMED ENTITIES
+
+forms, or act as complementizers (Frida, who married Diego...).
+
+Auxiliary verbs mark semantic features of a main verb such as its tense, whether
+
+auxiliary
+
+it is completed (aspect), whether it is negated (polarity), and whether an action is
+
+necessary, possible, suggested, or desired (mood). English auxiliaries include the
+
+copula verb be, the two verbs do and have, forms, as well as modal verbs used to
+
+copula
+
+modal
+
+mark the mood associated with the event depicted by the main verb: can indicates
+
+ability or possibility, may permission or possibility, must necessity.
+
+An English-speciﬁc tagset, the 45-tag Penn Treebank tagset (Marcus et al., 1993),
+
+shown in Fig. 8.2, has been used to label many syntactically annotated corpora like
+
+the Penn Treebank corpora, so is worth knowing about.
+
+Tag Description
+
+Example
+
+Tag
+
+Description
+
+Example
+
+Tag
+
+Description
+
+Example
+
+CC
+
+coord. conj.
+
+and, but, or NNP
+
+proper noun, sing. IBM
+
+TO
+
+“to”
+
+to
+
+CD cardinal number
+
+one, two
+
+NNPS proper noun, plu.
+
+Carolinas
+
+UH
+
+interjection
+
+ah, oops
+
+DT
+
+determiner
+
+a, the
+
+NNS
+
+noun, plural
+
+llamas
+
+VB
+
+verb base
+
+eat
+
+EX
+
+existential ‘there’
+
+there
+
+PDT
+
+predeterminer
+
+all, both
+
+VBD verb past tense
+
+ate
+
+FW foreign word
+
+mea culpa
+
+POS
+
+possessive ending ’s
+
+VBG verb gerund
+
+eating
+
+IN
+
+preposition/
+
+subordin-conj
+
+of, in, by
+
+PRP
+
+personal pronoun
+
+I, you, he
+
+VBN verb past partici-
+
+ple
+
+eaten
+
+JJ
+
+adjective
+
+yellow
+
+PRP$
+
+possess. pronoun
+
+your, one’s VBP
+
+verb non-3sg-pr
+
+eat
+
+JJR comparative adj
+
+bigger
+
+RB
+
+adverb
+
+quickly
+
+VBZ
+
+verb 3sg pres
+
+eats
+
+JJS
+
+superlative adj
+
+wildest
+
+RBR
+
+comparative adv
+
+faster
+
+WDT wh-determ.
+
+which, that
+
+LS
+
+list item marker
+
+1, 2, One
+
+RBS
+
+superlatv. adv
+
+fastest
+
+WP
+
+wh-pronoun
+
+what, who
+
+MD modal
+
+can, should RP
+
+particle
+
+up, off
+
+WP$
+
+wh-possess.
+
+whose
+
+NN sing or mass noun llama
+
+SYM
+
+symbol
+
++,%, &amp;
+
+WRB wh-adverb
+
+how, where
+
+Figure 8.2
+
+Penn Treebank part-of-speech tags.
+
+Below we show some examples with each word tagged according to both the
+
+UD and Penn tagsets. Notice that the Penn tagset distinguishes tense and participles
+
+on verbs, and has a special tag for the existential there construction in English. Note
+
+that since New England Journal of Medicine is a proper noun, both tagsets mark its
+
+component nouns as NNP, including journal and medicine, which might otherwise
+
+be labeled as common nouns (NOUN/NN).
+
+(8.1) There/PRO/EX are/VERB/VBP 70/NUM/CD children/NOUN/NNS
+
+there/ADV/RB ./PUNC/.
+
+(8.2) Preliminary/ADJ/JJ ﬁndings/NOUN/NNS were/AUX/VBD reported/VERB/VBN
+
+in/ADP/IN today/NOUN/NN ’s/PART/POS New/PROPN/NNP
+
+England/PROPN/NNP Journal/PROPN/NNP of/ADP/IN Medicine/PROPN/NNP
+
+8.2
+
+Part-of-Speech Tagging
+
+Part-of-speech tagging is the process of assigning a part-of-speech to each word in
+
+part-of-speech
+
+tagging
+
+a text. The input is a sequence x1,x2,...,xn of (tokenized) words and a tagset, and
+
+the output is a sequence y1,y2,...,yn of tags, each output yi corresponding exactly to
+
+one input xi, as shown in the intuition in Fig. 8.3.
+
+Tagging is a disambiguation task; words are ambiguous —have more than one
+
+ambiguous
+
+possible part-of-speech—and the goal is to ﬁnd the correct tag for the situation.
+
+For example, book can be a verb (book that ﬂight) or a noun (hand me that book).
+
+That can be a determiner (Does that ﬂight serve dinner) or a complementizer (I
+
+
+8.2
+
+•
+
+PART-OF-SPEECH TAGGING
+
+5
+
+will
+
+NOUN
+
+AUX
+
+VERB
+
+DET
+
+NOUN
+
+Janet
+
+back
+
+the
+
+bill
+
+Part of Speech Tagger
+
+x1
+
+x2
+
+x3
+
+x4
+
+x5
+
+y1
+
+y2
+
+y3
+
+y4
+
+y5
+
+Figure 8.3
+
+The task of part-of-speech tagging: mapping from input words x1,x2,...,xn to
+
+output POS tags y1,y2,...,yn .
+
+thought that your ﬂight was earlier). The goal of POS-tagging is to resolve these
+
+ambiguity
+
+resolution
+
+ambiguities, choosing the proper tag for the context.
+
+The accuracy of part-of-speech tagging algorithms (the percentage of test set
+
+accuracy
+
+tags that match human gold labels) is extremely high. One study found accuracies
+
+over 97% across 15 languages from the Universal Dependency (UD) treebank (Wu
+
+and Dredze, 2019). Accuracies on various English treebanks are also 97% (no matter
+
+the algorithm; HMMs, CRFs, BERT perform similarly). This 97% number is also
+
+about the human performance on this task, at least for English (Manning, 2011).
+
+Types:
+
+WSJ
+
+Brown
+
+Unambiguous (1 tag)
+
+44,432 (86%)
+
+45,799 (85%)
+
+Ambiguous
+
+(2+ tags)
+
+7,025 (14%)
+
+8,050 (15%)
+
+Tokens:
+
+Unambiguous (1 tag)
+
+577,421 (45%) 384,349 (33%)
+
+Ambiguous
+
+(2+ tags)
+
+711,780 (55%) 786,646 (67%)
+
+Figure 8.4
+
+Tag ambiguity in the Brown and WSJ corpora (Treebank-3 45-tag tagset).
+
+We’ll introduce algorithms for the task in the next few sections, but ﬁrst let’s
+
+explore the task. Exactly how hard is it? Fig. 8.4 shows that most word types
+
+(85-86%) are unambiguous (Janet is always NNP, hesitantly is always RB). But the
+
+ambiguous words, though accounting for only 14-15% of the vocabulary, are very
+
+common, and 55-67% of word tokens in running text are ambiguous. Particularly
+
+ambiguous common words include that, back, down, put and set; here are some
+
+examples of the 6 different parts of speech for the word back:
+
+earnings growth took a back/JJ seat
+
+a small building in the back/NN
+
+a clear majority of senators back/VBP the bill
+
+Dave began to back/VB toward the door
+
+enable the country to buy back/RP debt
+
+I was twenty-one back/RB then
+
+Nonetheless, many words are easy to disambiguate, because their different tags
+
+aren’t equally likely. For example, a can be a determiner or the letter a, but the
+
+determiner sense is much more likely.
+
+This idea suggests a useful baseline: given an ambiguous word, choose the tag
+
+which is most frequent in the training corpus. This is a key concept:
+
+Most Frequent Class Baseline: Always compare a classiﬁer against a baseline at
+
+least as good as the most frequent class baseline (assigning each token to the class
+
+it occurred in most often in the training set).
+
+
+6
+
+CHAPTER 8
+
+•
+
+SEQUENCE LABELING FOR PARTS OF SPEECH AND NAMED ENTITIES
+
+The most-frequent-tag baseline has an accuracy of about 92%1. The baseline
+
+thus differs from the state-of-the-art and human ceiling (97%) by only 5%.
+
+8.3
+
+Named Entities and Named Entity Tagging
+
+Part of speech tagging can tell us that words like Janet, Stanford University, and
+
+Colorado are all proper nouns; being a proper noun is a grammatical property of
+
+these words. But viewed from a semantic perspective, these proper nouns refer to
+
+different kinds of entities: Janet is a person, Stanford University is an organization,
+
+and Colorado is a location.
+
+A named entity is, roughly speaking, anything that can be referred to with a
+
+named entity
+
+proper name: a person, a location, an organization. The task of named entity recog-
+
+nition (NER) is to ﬁnd spans of text that constitute proper names and tag the type of
+
+named entity
+
+recognition
+
+NER
+
+the entity. Four entity tags are most common: PER (person), LOC (location), ORG
+
+(organization), or GPE (geo-political entity). However, the term named entity is
+
+commonly extended to include things that aren’t entities per se, including dates,
+
+times, and other kinds of temporal expressions, and even numerical expressions like
+
+prices. Here’s an example of the output of an NER tagger:
+
+Citing high fuel prices, [ORG United Airlines] said [TIME Friday] it
+
+has increased fares by [MONEY $6] per round trip on ﬂights to some
+
+cities also served by lower-cost carriers. [ORG American Airlines], a
+
+unit of [ORG AMR Corp.], immediately matched the move, spokesman
+
+[PER Tim Wagner] said. [ORG United], a unit of [ORG UAL Corp.],
+
+said the increase took effect [TIME Thursday] and applies to most
+
+routes where it competes against discount carriers, such as [LOC Chicago]
+
+to [LOC Dallas] and [LOC Denver] to [LOC San Francisco].
+
+The text contains 13 mentions of named entities including 5 organizations, 4 loca-
+
+tions, 2 times, 1 person, and 1 mention of money. Figure 8.5 shows typical generic
+
+named entity types. Many applications will also need to use speciﬁc entity types like
+
+proteins, genes, commercial products, or works of art.
+
+Type
+
+Tag Sample Categories
+
+Example sentences
+
+People
+
+PER people, characters
+
+Turing is a giant of computer science.
+
+Organization
+
+ORG companies, sports teams
+
+The IPCC warned about the cyclone.
+
+Location
+
+LOC regions, mountains, seas
+
+Mt. Sanitas is in Sunshine Canyon.
+
+Geo-Political Entity
+
+GPE countries, states
+
+Palo Alto is raising the fees for parking.
+
+Figure 8.5
+
+A list of generic named entity types with the kinds of entities they refer to.
+
+Named entity tagging is a useful ﬁrst step in lots of natural language processing
+
+tasks. In sentiment analysis we might want to know a consumer’s sentiment toward a
+
+particular entity. Entities are a useful ﬁrst stage in question answering, or for linking
+
+text to information in structured knowledge sources like Wikipedia. And named
+
+entity tagging is also central to tasks involving building semantic representations,
+
+like extracting events and the relationship between participants.
+
+Unlike part-of-speech tagging, where there is no segmentation problem since
+
+each word gets one tag, the task of named entity recognition is to ﬁnd and label
+
+spans of text, and is difﬁcult partly because of the ambiguity of segmentation; we
+
+1
+
+In English, on the WSJ corpus, tested on sections 22-24.
+
+
+8.3
+
+•
+
+NAMED ENTITIES AND NAMED ENTITY TAGGING
+
+7
+
+need to decide what’s an entity and what isn’t, and where the boundaries are. Indeed,
+
+most words in a text will not be named entities. Another difﬁculty is caused by type
+
+ambiguity. The mention JFK can refer to a person, the airport in New York, or any
+
+number of schools, bridges, and streets around the United States. Some examples of
+
+this kind of cross-type confusion are given in Figure 8.6.
+
+[PER Washington] was born into slavery on the farm of James Burroughs.
+
+[ORG Washington] went up 2 games to 1 in the four-game series.
+
+Blair arrived in [LOC Washington] for what may well be his last state visit.
+
+In June, [GPE Washington] passed a primary seatbelt law.
+
+Figure 8.6
+
+Examples of type ambiguities in the use of the name Washington.
+
+The standard approach to sequence labeling for a span-recognition problem like
+
+NER is BIO tagging (Ramshaw and Marcus, 1995). This is a method that allows us
+
+to treat NER like a word-by-word sequence labeling task, via tags that capture both
+
+the boundary and the named entity type. Consider the following sentence:
+
+[PER Jane Villanueva ] of [ORG United] , a unit of [ORG United Airlines
+
+Holding] , said the fare applies to the [LOC Chicago ] route.
+
+Figure 8.7 shows the same excerpt represented with BIO tagging, as well as
+
+BIO
+
+variants called IO tagging and BIOES tagging. In BIO tagging we label any token
+
+that begins a span of interest with the label B, tokens that occur inside a span are
+
+tagged with an I, and any tokens outside of any span of interest are labeled O. While
+
+there is only one O tag, we’ll have distinct B and I tags for each named entity class.
+
+The number of tags is thus 2n+1 tags, where n is the number of entity types. BIO
+
+tagging can represent exactly the same information as the bracketed notation, but has
+
+the advantage that we can represent the task in the same simple sequence modeling
+
+way as part-of-speech tagging: assigning a single label yi to each input word xi:
+
+Words
+
+IO Label
+
+BIO Label
+
+BIOES Label
+
+Jane
+
+I-PER
+
+B-PER
+
+B-PER
+
+Villanueva
+
+I-PER
+
+I-PER
+
+E-PER
+
+of
+
+O
+
+O
+
+O
+
+United
+
+I-ORG
+
+B-ORG
+
+B-ORG
+
+Airlines
+
+I-ORG
+
+I-ORG
+
+I-ORG
+
+Holding
+
+I-ORG
+
+I-ORG
+
+E-ORG
+
+discussed
+
+O
+
+O
+
+O
+
+the
+
+O
+
+O
+
+O
+
+Chicago
+
+I-LOC
+
+B-LOC
+
+S-LOC
+
+route
+
+O
+
+O
+
+O
+
+.
+
+O
+
+O
+
+O
+
+Figure 8.7
+
+NER as a sequence model, showing IO, BIO, and BIOES taggings.
+
+We’ve also shown two variant tagging schemes: IO tagging, which loses some
+
+information by eliminating the B tag, and BIOES tagging, which adds an end tag
+
+E for the end of a span, and a span tag S for a span consisting of only one word.
+
+A sequence labeler (HMM, CRF, RNN, Transformer, etc.) is trained to label each
+
+token in a text with tags that indicate the presence (or absence) of particular kinds
+
+of named entities.
+
+
+8
+
+CHAPTER 8
+
+•
+
+SEQUENCE LABELING FOR PARTS OF SPEECH AND NAMED ENTITIES
+
+8.4
+
+HMM Part-of-Speech Tagging
+
+In this section we introduce our ﬁrst sequence labeling algorithm, the Hidden Markov
+
+Model, and show how to apply it to part-of-speech tagging. Recall that a sequence
+
+labeler is a model whose job is to assign a label to each unit in a sequence, thus
+
+mapping a sequence of observations to a sequence of labels of the same length.
+
+The HMM is a classic model that introduces many of the key concepts of sequence
+
+modeling that we will see again in more modern models.
+
+An HMM is a probabilistic sequence model: given a sequence of units (words,
+
+letters, morphemes, sentences, whatever), it computes a probability distribution over
+
+possible sequences of labels and chooses the best label sequence.
+
+8.4.1
+
+Markov Chains
+
+The HMM is based on augmenting the Markov chain. A Markov chain is a model
+
+Markov chain
+
+that tells us something about the probabilities of sequences of random variables,
+
+states, each of which can take on values from some set. These sets can be words, or
+
+tags, or symbols representing anything, for example the weather. A Markov chain
+
+makes a very strong assumption that if we want to predict the future in the sequence,
+
+all that matters is the current state. All the states before the current state have no im-
+
+pact on the future except via the current state. It’s as if to predict tomorrow’s weather
+
+you could examine today’s weather but you weren’t allowed to look at yesterday’s
+
+weather.
+
+
+
+
+
+
+
+WARM3
+
+HOT1
+
+COLD2
+
+.8
+
+.6
+
+.1
+
+.1
+
+.3
+
+.6
+
+.1
+
+.1
+
+.3
+
+
+
+
+
+
+
+charming
+
+uniformly
+
+are
+
+.1
+
+.4
+
+.5
+
+.5
+
+.5
+
+.2
+
+.6
+
+.2
+
+(a)
+
+(b)
+
+Figure 8.8
+
+A Markov chain for weather (a) and one for words (b), showing states and
+
+transitions. A start distribution π is required; setting π = [0.1, 0.7, 0.2] for (a) would mean a
+
+probability 0.7 of starting in state 2 (cold), probability 0.1 of starting in state 1 (hot), etc.
+
+More formally, consider a sequence of state variables q1,q2,...,qi. A Markov
+
+model embodies the Markov assumption on the probabilities of this sequence: that
+
+Markov
+
+assumption
+
+when predicting the future, the past doesn’t matter, only the present.
+
+Markov Assumption:
+
+P(qi = a|q1...qi−1) = P(qi = a|qi−1)
+
+(8.3)
+
+Figure 8.8a shows a Markov chain for assigning a probability to a sequence of
+
+weather events, for which the vocabulary consists of HOT, COLD, and WARM. The
+
+states are represented as nodes in the graph, and the transitions, with their probabil-
+
+ities, as edges. The transitions are probabilities: the values of arcs leaving a given
+
+state must sum to 1. Figure 8.8b shows a Markov chain for assigning a probability to
+
+a sequence of words w1...wt. This Markov chain should be familiar; in fact, it repre-
+
+sents a bigram language model, with each edge expressing the probability p(wi|w j)!
+
+Given the two models in Fig. 8.8, we can assign a probability to any sequence from
+
+our vocabulary.
+
+
+8.4
+
+•
+
+HMM PART-OF-SPEECH TAGGING
+
+9
+
+Formally, a Markov chain is speciﬁed by the following components:
+
+Q = q1q2 ...qN
+
+a set of N states
+
+A = a11a12 ...aN1 ...aNN
+
+a transition probability matrix A, each aij represent-
+
+ing the probability of moving from state i to state j, s.t.
+
+�n
+
+j=1 aij = 1 ∀i
+
+π = π1,π2,...,πN
+
+an initial probability distribution over states. πi is the
+
+probability that the Markov chain will start in state i.
+
+Some states j may have πj = 0, meaning that they cannot
+
+be initial states. Also, �n
+
+i=1 πi = 1
+
+Before you go on, use the sample probabilities in Fig. 8.8a (with π = [0.1,0.7,0.2])
+
+to compute the probability of each of the following sequences:
+
+(8.4) hot hot hot hot
+
+(8.5) cold hot cold hot
+
+What does the difference in these probabilities tell you about a real-world weather
+
+fact encoded in Fig. 8.8a?
+
+8.4.2
+
+The Hidden Markov Model
+
+A Markov chain is useful when we need to compute a probability for a sequence
+
+of observable events. In many cases, however, the events we are interested in are
+
+hidden: we don’t observe them directly. For example we don’t normally observe
+
+hidden
+
+part-of-speech tags in a text. Rather, we see words, and must infer the tags from the
+
+word sequence. We call the tags hidden because they are not observed.
+
+A hidden Markov model (HMM) allows us to talk about both observed events
+
+hidden Markov
+
+model
+
+(like words that we see in the input) and hidden events (like part-of-speech tags) that
+
+we think of as causal factors in our probabilistic model. An HMM is speciﬁed by
+
+the following components:
+
+Q = q1q2 ...qN
+
+a set of N states
+
+A = a11 ...ai j ...aNN a transition probability matrix A, each aij representing the probability
+
+of moving from state i to state j, s.t. �N
+
+j=1 aij = 1 ∀i
+
+O = o1o2 ...oT
+
+a sequence of T observations, each one drawn from a vocabulary V =
+
+v1,v2,...,vV
+
+B = bi(ot)
+
+a sequence of observation likelihoods, also called emission probabili-
+
+ties, each expressing the probability of an observation ot being generated
+
+from a state qi
+
+π = π1,π2,...,πN
+
+an initial probability distribution over states. πi is the probability that
+
+the Markov chain will start in state i. Some states j may have πj = 0,
+
+meaning that they cannot be initial states. Also, �n
+
+i=1 πi = 1
+
+A ﬁrst-order hidden Markov model instantiates two simplifying assumptions.
+
+First, as with a ﬁrst-order Markov chain, the probability of a particular state depends
+
+only on the previous state:
+
+Markov Assumption:
+
+P(qi|q1,...,qi−1) = P(qi|qi−1)
+
+(8.6)
+
+Second, the probability of an output observation oi depends only on the state that
+
+produced the observation qi and not on any other states or any other observations:
+
+Output Independence: P(oi|q1,...qi,...,qT,o1,...,oi,...,oT) = P(oi|qi)
+
+(8.7)
+
+
+10
+
+CHAPTER 8
+
+•
+
+SEQUENCE LABELING FOR PARTS OF SPEECH AND NAMED ENTITIES
+
+8.4.3
+
+The components of an HMM tagger
+
+Let’s start by looking at the pieces of an HMM tagger, and then we’ll see how to use
+
+it to tag. An HMM has two components, the A and B probabilities.
+
+The A matrix contains the tag transition probabilities P(ti|ti−1) which represent
+
+the probability of a tag occurring given the previous tag. For example, modal verbs
+
+like will are very likely to be followed by a verb in the base form, a VB, like race, so
+
+we expect this probability to be high. We compute the maximum likelihood estimate
+
+of this transition probability by counting, out of the times we see the ﬁrst tag in a
+
+labeled corpus, how often the ﬁrst tag is followed by the second:
+
+P(ti|ti−1) = C(ti−1,ti)
+
+C(ti−1)
+
+(8.8)
+
+In the WSJ corpus, for example, MD occurs 13124 times of which it is followed
+
+by VB 10471, for an MLE estimate of
+
+P(VB|MD) = C(MD,VB)
+
+C(MD)
+
+= 10471
+
+13124 = .80
+
+(8.9)
+
+Let’s walk through an example, seeing how these probabilities are estimated and
+
+used in a sample tagging task, before we return to the algorithm for decoding.
+
+In HMM tagging, the probabilities are estimated by counting on a tagged training
+
+corpus. For this example we’ll use the tagged WSJ corpus.
+
+The B emission probabilities, P(wi|ti), represent the probability, given a tag (say
+
+MD), that it will be associated with a given word (say will). The MLE of the emis-
+
+sion probability is
+
+P(wi|ti) = C(ti,wi)
+
+C(ti)
+
+(8.10)
+
+Of the 13124 occurrences of MD in the WSJ corpus, it is associated with will 4046
+
+times:
+
+P(will|MD) = C(MD,will)
+
+C(MD)
+
+= 4046
+
+13124 = .31
+
+(8.11)
+
+We saw this kind of Bayesian modeling in Chapter 4; recall that this likelihood
+
+term is not asking “which is the most likely tag for the word will?” That would be
+
+the posterior P(MD|will). Instead, P(will|MD) answers the slightly counterintuitive
+
+question “If we were going to generate a MD, how likely is it that this modal would
+
+be will?”
+
+The A transition probabilities, and B observation likelihoods of the HMM are
+
+illustrated in Fig. 8.9 for three states in an HMM part-of-speech tagger; the full
+
+tagger would have one state for each tag.
+
+8.4.4
+
+HMM tagging as decoding
+
+For any model, such as an HMM, that contains hidden variables, the task of deter-
+
+mining the hidden variables sequence corresponding to the sequence of observations
+
+is called decoding. More formally,
+
+decoding
+
+Decoding: Given as input an HMM λ = (A,B) and a sequence of ob-
+
+servations O = o1,o2,...,oT, ﬁnd the most probable sequence of states
+
+Q = q1q2q3 ...qT.
+
+
+8.4
+
+•
+
+HMM PART-OF-SPEECH TAGGING
+
+11
+
+
+
+
+
+
+
+
+
+
+
+
+
+NN3
+
+VB1
+
+MD2
+
+a22
+
+a11
+
+a12
+
+a21
+
+a13
+
+a33
+
+a32
+
+a23
+
+a31
+
+P("aardvark" | NN)
+
+...
+
+P(“will” | NN)
+
+...
+
+P("the" | NN)
+
+...
+
+P(“back” | NN)
+
+...
+
+P("zebra" | NN)
+
+B3
+
+P("aardvark" | VB)
+
+...
+
+P(“will” | VB)
+
+...
+
+P("the" | VB)
+
+...
+
+P(“back” | VB)
+
+...
+
+P("zebra" | VB)
+
+B1
+
+P("aardvark" | MD)
+
+...
+
+P(“will” | MD)
+
+...
+
+P("the" | MD)
+
+...
+
+P(“back” | MD)
+
+...
+
+P("zebra" | MD)
+
+B2
+
+Figure 8.9
+
+An illustration of the two parts of an HMM representation: the A transition
+
+probabilities used to compute the prior probability, and the B observation likelihoods that are
+
+associated with each state, one likelihood for each possible observation word.
+
+For part-of-speech tagging, the goal of HMM decoding is to choose the tag
+
+sequence t1 ...tn that is most probable given the observation sequence of n words
+
+w1 ...wn:
+
+ˆt1:n = argmax
+
+t1... tn
+
+P(t1 ...tn|w1 ...wn)
+
+(8.12)
+
+The way we’ll do this in the HMM is to use Bayes’ rule to instead compute:
+
+ˆt1:n = argmax
+
+t1... tn
+
+P(w1 ...wn|t1 ...tn)P(t1 ...tn)
+
+P(w1 ...wn)
+
+(8.13)
+
+Furthermore, we simplify Eq. 8.13 by dropping the denominator P(wn
+
+1):
+
+ˆt1:n = argmax
+
+t1... tn
+
+P(w1 ...wn|t1 ...tn)P(t1 ...tn)
+
+(8.14)
+
+HMM taggers make two further simplifying assumptions. The ﬁrst is that the
+
+probability of a word appearing depends only on its own tag and is independent of
+
+neighboring words and tags:
+
+P(w1 ...wn|t1 ...tn) ≈
+
+n
+
+�
+
+i=1
+
+P(wi|ti)
+
+(8.15)
+
+The second assumption, the bigram assumption, is that the probability of a tag is
+
+dependent only on the previous tag, rather than the entire tag sequence;
+
+P(t1 ...tn) ≈
+
+n
+
+�
+
+i=1
+
+P(ti|ti−1)
+
+(8.16)
+
+Plugging the simplifying assumptions from Eq. 8.15 and Eq. 8.16 into Eq. 8.14
+
+results in the following equation for the most probable tag sequence from a bigram
+
+tagger:
+
+ˆt1:n = argmax
+
+t1... tn
+
+P(t1 ...tn|w1 ...wn) ≈ argmax
+
+t1... tn
+
+n
+
+�
+
+i=1
+
+emission
+
+� �� �
+
+P(wi|ti)
+
+transition
+
+�
+
+��
+
+�
+
+P(ti|ti−1)
+
+(8.17)
+
+The two parts of Eq. 8.17 correspond neatly to the B emission probability and A
+
+transition probability that we just deﬁned above!
+
+
+12
+
+CHAPTER 8
+
+•
+
+SEQUENCE LABELING FOR PARTS OF SPEECH AND NAMED ENTITIES
+
+8.4.5
+
+The Viterbi Algorithm
+
+The decoding algorithm for HMMs is the Viterbi algorithm shown in Fig. 8.10.
+
+Viterbi
+
+algorithm
+
+As an instance of dynamic programming, Viterbi resembles the dynamic program-
+
+ming minimum edit distance algorithm of Chapter 2.
+
+function VITERBI(observations of len T,state-graph of len N) returns best-path, path-prob
+
+create a path probability matrix viterbi[N,T]
+
+for each state s from 1 to N do
+
+; initialization step
+
+viterbi[s,1]←πs ∗ bs(o1)
+
+backpointer[s,1]←0
+
+for each time step t from 2 to T do
+
+; recursion step
+
+for each state s from 1 to N do
+
+viterbi[s,t]←
+
+N
+
+max
+
+s′=1 viterbi[s′,t −1] ∗ as′,s ∗ bs(ot)
+
+backpointer[s,t]←
+
+N
+
+argmax
+
+s′=1
+
+viterbi[s′,t −1] ∗ as′,s ∗ bs(ot)
+
+bestpathprob←
+
+N
+
+max
+
+s=1
+
+viterbi[s,T]
+
+; termination step
+
+bestpathpointer←
+
+N
+
+argmax
+
+s=1
+
+viterbi[s,T]
+
+; termination step
+
+bestpath←the path starting at state bestpathpointer, that follows backpointer[] to states back in time
+
+return bestpath, bestpathprob
+
+Figure 8.10
+
+Viterbi algorithm for ﬁnding the optimal sequence of tags. Given an observation sequence and
+
+an HMM λ = (A,B), the algorithm returns the state path through the HMM that assigns maximum likelihood
+
+to the observation sequence.
+
+The Viterbi algorithm ﬁrst sets up a probability matrix or lattice, with one col-
+
+umn for each observation ot and one row for each state in the state graph. Each col-
+
+umn thus has a cell for each state qi in the single combined automaton. Figure 8.11
+
+shows an intuition of this lattice for the sentence Janet will back the bill.
+
+Each cell of the lattice, vt( j), represents the probability that the HMM is in state
+
+j after seeing the ﬁrst t observations and passing through the most probable state
+
+sequence q1,...,qt−1, given the HMM λ. The value of each cell vt( j) is computed
+
+by recursively taking the most probable path that could lead us to this cell. Formally,
+
+each cell expresses the probability
+
+vt( j) =
+
+max
+
+q1,...,qt−1 P(q1...qt−1,o1,o2 ...ot,qt = j|λ)
+
+(8.18)
+
+We represent the most probable path by taking the maximum over all possible
+
+previous state sequences
+
+max
+
+q1,...,qt−1. Like other dynamic programming algorithms,
+
+Viterbi ﬁlls each cell recursively. Given that we had already computed the probabil-
+
+ity of being in every state at time t −1, we compute the Viterbi probability by taking
+
+the most probable of the extensions of the paths that lead to the current cell. For a
+
+given state qj at time t, the value vt(j) is computed as
+
+vt( j) =
+
+N
+
+max
+
+i=1 vt−1(i) aij bj(ot)
+
+(8.19)
+
+The three factors that are multiplied in Eq. 8.19 for extending the previous paths to
+
+compute the Viterbi probability at time t are
+
+
+8.4
+
+•
+
+HMM PART-OF-SPEECH TAGGING
+
+13
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+JJ
+
+NNP
+
+NNP
+
+NNP
+
+MD
+
+MD
+
+MD
+
+MD
+
+VB
+
+VB
+
+JJ
+
+JJ
+
+JJ
+
+NN
+
+NN
+
+RB
+
+RB
+
+RB
+
+RB
+
+DT
+
+DT
+
+DT
+
+DT
+
+NNP
+
+Janet
+
+will
+
+back
+
+the
+
+bill
+
+NN
+
+VB
+
+MD
+
+NN
+
+VB
+
+JJ
+
+RB
+
+NNP
+
+DT
+
+NN
+
+VB
+
+Figure 8.11
+
+A sketch of the lattice for Janet will back the bill, showing the possible tags (qi)
+
+for each word and highlighting the path corresponding to the correct tag sequence through the
+
+hidden states. States (parts of speech) which have a zero probability of generating a particular
+
+word according to the B matrix (such as the probability that a determiner DT will be realized
+
+as Janet) are greyed out.
+
+vt−1(i)
+
+the previous Viterbi path probability from the previous time step
+
+ai j
+
+the transition probability from previous state qi to current state qj
+
+bj(ot)
+
+the state observation likelihood of the observation symbol ot given
+
+the current state j
+
+8.4.6
+
+Working through an example
+
+Let’s tag the sentence Janet will back the bill; the goal is the correct series of tags
+
+(see also Fig. 8.11):
+
+(8.20) Janet/NNP will/MD back/VB the/DT bill/NN
+
+NNP
+
+MD
+
+VB
+
+JJ
+
+NN
+
+RB
+
+DT
+
+&lt;s&gt;
+
+0.2767
+
+0.0006
+
+0.0031 0.0453 0.0449 0.0510 0.2026
+
+NNP
+
+0.3777
+
+0.0110
+
+0.0009 0.0084 0.0584 0.0090 0.0025
+
+MD
+
+0.0008
+
+0.0002
+
+0.7968 0.0005 0.0008 0.1698 0.0041
+
+VB
+
+0.0322
+
+0.0005
+
+0.0050 0.0837 0.0615 0.0514 0.2231
+
+JJ
+
+0.0366
+
+0.0004
+
+0.0001 0.0733 0.4509 0.0036 0.0036
+
+NN
+
+0.0096
+
+0.0176
+
+0.0014 0.0086 0.1216 0.0177 0.0068
+
+RB
+
+0.0068
+
+0.0102
+
+0.1011 0.1012 0.0120 0.0728 0.0479
+
+DT
+
+0.1147
+
+0.0021
+
+0.0002 0.2157 0.4744 0.0102 0.0017
+
+Figure 8.12
+
+The A transition probabilities P(ti|ti−1) computed from the WSJ corpus with-
+
+out smoothing. Rows are labeled with the conditioning event; thus P(VB|MD) is 0.7968.
+
+Let the HMM be deﬁned by the two tables in Fig. 8.12 and Fig. 8.13. Figure 8.12
+
+lists the ai j probabilities for transitioning between the hidden states (part-of-speech
+
+tags). Figure 8.13 expresses the bi(ot) probabilities, the observation likelihoods of
+
+words given tags. This table is (slightly simpliﬁed) from counts in the WSJ corpus.
+
+So the word Janet only appears as an NNP, back has 4 possible parts of speech, and
+
+
+14
+
+CHAPTER 8
+
+•
+
+SEQUENCE LABELING FOR PARTS OF SPEECH AND NAMED ENTITIES
+
+Janet
+
+will
+
+back
+
+the
+
+bill
+
+NNP
+
+0.000032 0
+
+0
+
+0.000048 0
+
+MD
+
+0
+
+0.308431 0
+
+0
+
+0
+
+VB
+
+0
+
+0.000028 0.000672 0
+
+0.000028
+
+JJ
+
+0
+
+0
+
+0.000340 0
+
+0
+
+NN
+
+0
+
+0.000200 0.000223 0
+
+0.002337
+
+RB
+
+0
+
+0
+
+0.010446 0
+
+0
+
+DT
+
+0
+
+0
+
+0
+
+0.506099 0
+
+Figure 8.13
+
+Observation likelihoods B computed from the WSJ corpus without smoothing,
+
+simpliﬁed slightly.
+
+the word the can appear as a determiner or as an NNP (in titles like “Somewhere
+
+Over the Rainbow” all words are tagged as NNP).
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+π
+
+P(NNP|start) 
+
+= .28
+
+* P(MD|MD)
+
+= 0
+
+*  P(MD|NNP)
+
+.000009*.01  = 
+
+.9e-8 
+
+v1(2)=
+
+.0006 x 0 = 
+
+0
+
+v1(1) =
+
+ .28* .000032 
+
+= .000009
+
+t
+
+MD
+
+q2
+
+q1
+
+o1
+
+Janet
+
+bill
+
+will
+
+o2
+
+o3
+
+back
+
+VB
+
+JJ
+
+v1(3)=
+
+.0031 x 0 
+
+= 0
+
+v1(4)= .
+
+045*0=0
+
+o4
+
+  *  P(MD|VB) 
+
+= 0
+
+ * P(MD|JJ)
+
+= 0
+
+P(VB|start) 
+
+= .0031
+
+P(JJ |start) =
+
+.045
+
+backtrace
+
+q3
+
+q4
+
+the
+
+NN
+
+q5
+
+RB
+
+q6
+
+DT
+
+q7
+
+v2(2) =
+
+max * .308 =
+
+2.772e-8
+
+v2(5)=
+
+max * .0002 
+
+= .0000000001
+
+v2(3)=
+
+max * .000028 
+
+=     2.5e-13
+
+v3(6)=
+
+max * .0104
+
+v3(5)=
+
+max * .
+
+000223
+
+v3(4)=
+
+max * .00034
+
+v3(3)=
+
+max * .00067
+
+v1(5)
+
+v1(6)
+
+v1(7)
+
+v2(1)
+
+v2(4)
+
+v2(6)
+
+v2(7)
+
+backtrace
+
+* P(RB|NN)
+
+* P(NN|NN)
+
+start
+
+start
+
+start
+
+start
+
+start
+
+o5
+
+NNP
+
+P(MD|start) 
+
+= .0006
+
+Figure 8.14
+
+The ﬁrst few entries in the individual state columns for the Viterbi algorithm. Each cell keeps
+
+the probability of the best path so far and a pointer to the previous cell along that path. We have only ﬁlled out
+
+columns 1 and 2; to avoid clutter most cells with value 0 are left empty. The rest is left as an exercise for the
+
+reader. After the cells are ﬁlled in, backtracing from the end state, we should be able to reconstruct the correct
+
+state sequence NNP MD VB DT NN.
+
+Figure 8.14 shows a ﬂeshed-out version of the sketch we saw in Fig. 8.11, the
+
+Viterbi lattice for computing the best hidden state sequence for the observation se-
+
+quence Janet will back the bill.
+
+There are N = 5 state columns. We begin in column 1 (for the word Janet) by
+
+setting the Viterbi value in each cell to the product of the π transition probability
+
+(the start probability for that state i, which we get from the &lt;s&gt; entry of Fig. 8.12),
+
+
+8.5
+
+•
+
+CONDITIONAL RANDOM FIELDS (CRFS)
+
+15
+
+and the observation likelihood of the word Janet given the tag for that cell. Most of
+
+the cells in the column are zero since the word Janet cannot be any of those tags.
+
+The reader should ﬁnd this in Fig. 8.14.
+
+Next, each cell in the will column gets updated. For each state, we compute the
+
+value viterbi[s,t] by taking the maximum over the extensions of all the paths from
+
+the previous column that lead to the current cell according to Eq. 8.19. We have
+
+shown the values for the MD, VB, and NN cells. Each cell gets the max of the 7
+
+values from the previous column, multiplied by the appropriate transition probabil-
+
+ity; as it happens in this case, most of them are zero from the previous column. The
+
+remaining value is multiplied by the relevant observation probability, and the (triv-
+
+ial) max is taken. In this case the ﬁnal value, 2.772e-8, comes from the NNP state at
+
+the previous column. The reader should ﬁll in the rest of the lattice in Fig. 8.14 and
+
+backtrace to see whether or not the Viterbi algorithm returns the gold state sequence
+
+NNP MD VB DT NN.
+
+8.5
+
+Conditional Random Fields (CRFs)
+
+While the HMM is a useful and powerful model, it turns out that HMMs need a
+
+number of augmentations to achieve high accuracy. For example, in POS tagging
+
+as in other tasks, we often run into unknown words: proper names and acronyms
+
+unknown
+
+words
+
+are created very often, and even new common nouns and verbs enter the language
+
+at a surprising rate. It would be great to have ways to add arbitrary features to
+
+help with this, perhaps based on capitalization or morphology (words starting with
+
+capital letters are likely to be proper nouns, words ending with -ed tend to be past
+
+tense (VBD or VBN), etc.) Or knowing the previous or following words might be a
+
+useful feature (if the previous word is the, the current tag is unlikely to be a verb).
+
+Although we could try to hack the HMM to ﬁnd ways to incorporate some of
+
+these, in general it’s hard for generative models like HMMs to add arbitrary features
+
+directly into the model in a clean way. We’ve already seen a model for combining
+
+arbitrary features in a principled way: log-linear models like the logistic regression
+
+model of Chapter 5! But logistic regression isn’t a sequence model; it assigns a class
+
+to a single observation.
+
+Luckily, there is a discriminative sequence model based on log-linear models:
+
+the conditional random ﬁeld (CRF). We’ll describe here the linear chain CRF,
+
+CRF
+
+the version of the CRF most commonly used for language processing, and the one
+
+whose conditioning closely matches the HMM.
+
+Assuming we have a sequence of input words X = x1...xn and want to compute
+
+a sequence of output tags Y = y1...yn. In an HMM to compute the best tag sequence
+
+that maximizes P(Y|X) we rely on Bayes’ rule and the likelihood P(X|Y):
+
+ˆY = argmax
+
+Y
+
+p(Y|X)
+
+= argmax
+
+Y
+
+p(X|Y)p(Y)
+
+= argmax
+
+Y
+
+�
+
+i
+
+p(xi|yi)
+
+�
+
+i
+
+p(yi|yi−1)
+
+(8.21)
+
+In a CRF, by contrast, we compute the posterior p(Y|X) directly, training the CRF
+
+
+16
+
+CHAPTER 8
+
+•
+
+SEQUENCE LABELING FOR PARTS OF SPEECH AND NAMED ENTITIES
+
+to discriminate among the possible tag sequences:
+
+ˆY = argmax
+
+Y∈Y
+
+P(Y|X)
+
+(8.22)
+
+However, the CRF does not compute a probability for each tag at each time step. In-
+
+stead, at each time step the CRF computes log-linear functions over a set of relevant
+
+features, and these local features are aggregated and normalized to produce a global
+
+probability for the whole sequence.
+
+Let’s introduce the CRF more formally, again using X and Y as the input and
+
+output sequences. A CRF is a log-linear model that assigns a probability to an en-
+
+tire output (tag) sequence Y, out of all possible sequences Y , given the entire input
+
+(word) sequence X. We can think of a CRF as like a giant version of what multi-
+
+nomial logistic regression does for a single token. Recall that the feature function
+
+f in regular multinomial logistic regression can be viewed as a function of a tuple:
+
+a token x and a label y (page ??). In a CRF, the function F maps an entire input
+
+sequence X and an entire output sequence Y to a feature vector. Let’s assume we
+
+have K features, with a weight wk for each feature Fk:
+
+p(Y|X) =
+
+exp
+
+� K
+
+�
+
+k=1
+
+wkFk(X,Y)
+
+�
+
+�
+
+Y ′∈Y
+
+exp
+
+� K
+
+�
+
+k=1
+
+wkFk(X,Y ′)
+
+�
+
+(8.23)
+
+It’s common to also describe the same equation by pulling out the denominator into
+
+a function Z(X):
+
+p(Y|X) =
+
+1
+
+Z(X)exp
+
+� K
+
+�
+
+k=1
+
+wkFk(X,Y)
+
+�
+
+(8.24)
+
+Z(X) =
+
+�
+
+Y ′∈Y
+
+exp
+
+� K
+
+�
+
+k=1
+
+wkFk(X,Y ′)
+
+�
+
+(8.25)
+
+We’ll call these K functions Fk(X,Y) global features, since each one is a property
+
+of the entire input sequence X and output sequence Y. We compute them by decom-
+
+posing into a sum of local features for each position i in Y:
+
+Fk(X,Y) =
+
+n
+
+�
+
+i=1
+
+fk(yi−1,yi,X,i)
+
+(8.26)
+
+Each of these local features fk in a linear-chain CRF is allowed to make use of the
+
+current output token yi, the previous output token yi−1, the entire input string X (or
+
+any subpart of it), and the current position i. This constraint to only depend on
+
+the current and previous output tokens yi and yi−1 are what characterizes a linear
+
+chain CRF. As we will see, this limitation makes it possible to use versions of the
+
+linear chain
+
+CRF
+
+efﬁcient Viterbi and Forward-Backwards algorithms from the HMM. A general CRF,
+
+by contrast, allows a feature to make use of any output token, and are thus necessary
+
+for tasks in which the decision depend on distant output tokens, like yi−4. General
+
+CRFs require more complex inference, and are less commonly used for language
+
+processing.
+
+
+8.5
+
+•
+
+CONDITIONAL RANDOM FIELDS (CRFS)
+
+17
+
+8.5.1
+
+Features in a CRF POS Tagger
+
+Let’s look at some of these features in detail, since the reason to use a discriminative
+
+sequence model is that it’s easier to incorporate a lot of features.2
+
+Again, in a linear-chain CRF, each local feature fk at position i can depend on
+
+any information from: (yi−1,yi,X,i). So some legal features representing common
+
+situations might be the following:
+
+1{xi = the, yi = DET}
+
+1{yi = PROPN, xi+1 = Street, yi−1 = NUM}
+
+1{yi = VERB, yi−1 = AUX}
+
+For simplicity, we’ll assume all CRF features take on the value 1 or 0. Above, we
+
+explicitly use the notation 1{x} to mean “1 if x is true, and 0 otherwise”. From now
+
+on, we’ll leave off the 1 when we deﬁne features, but you can assume each feature
+
+has it there implicitly.
+
+Although the idea of what features to use is done by the system designer by hand,
+
+the speciﬁc features are automatically populated by using feature templates as we
+
+feature
+
+templates
+
+brieﬂy mentioned in Chapter 5. Here are some templates that only use information
+
+from (yi−1,yi,X,i):
+
+⟨yi,xi⟩,⟨yi,yi−1⟩,⟨yi,xi−1,xi+2⟩
+
+These templates automatically populate the set of features from every instance in
+
+the training and test set. Thus for our example Janet/NNP will/MD back/VB the/DT
+
+bill/NN, when xi is the word back, the following features would be generated and
+
+have the value 1 (we’ve assigned them arbitrary feature numbers):
+
+f3743: yi = VB and xi = back
+
+f156: yi = VB and yi−1 = MD
+
+f99732: yi = VB and xi−1 = will and xi+2 = bill
+
+It’s also important to have features that help with unknown words. One of the
+
+most important is word shape features, which represent the abstract letter pattern
+
+word shape
+
+of the word by mapping lower-case letters to ‘x’, upper-case to ‘X’, numbers to
+
+’d’, and retaining punctuation. Thus for example I.M.F. would map to X.X.X. and
+
+DC10-30 would map to XXdd-dd. A second class of shorter word shape features is
+
+also used. In these features consecutive character types are removed, so words in all
+
+caps map to X, words with initial-caps map to Xx, DC10-30 would be mapped to
+
+Xd-d but I.M.F would still map to X.X.X. Preﬁx and sufﬁx features are also useful.
+
+In summary, here are some sample feature templates that help with unknown words:
+
+xi contains a particular preﬁx (perhaps from all preﬁxes of length ≤ 2)
+
+xi contains a particular sufﬁx (perhaps from all sufﬁxes of length ≤ 2)
+
+xi’s word shape
+
+xi’s short word shape
+
+For example the word well-dressed might generate the following non-zero val-
+
+ued feature values:
+
+2
+
+Because in HMMs all computation is based on the two probabilities P(tag|tag) and P(word|tag), if
+
+we want to include some source of knowledge into the tagging process, we must ﬁnd a way to encode
+
+the knowledge into one of these two probabilities. Each time we add a feature we have to do a lot of
+
+complicated conditioning which gets harder and harder as we have more and more such features.
+
+
+18
+
+CHAPTER 8
+
+•
+
+SEQUENCE LABELING FOR PARTS OF SPEECH AND NAMED ENTITIES
+
+preﬁx(xi) = w
+
+preﬁx(xi) = we
+
+sufﬁx(xi) = ed
+
+sufﬁx(xi) = d
+
+word-shape(xi) = xxxx-xxxxxxx
+
+short-word-shape(xi) = x-x
+
+The known-word templates are computed for every word seen in the training
+
+set; the unknown word features can also be computed for all words in training, or
+
+only on training words whose frequency is below some threshold. The result of the
+
+known-word templates and word-signature features is a very large set of features.
+
+Generally a feature cutoff is used in which features are thrown out if they have count
+
+&lt; 5 in the training set.
+
+Remember that in a CRF we don’t learn weights for each of these local features
+
+fk. Instead, we ﬁrst sum the values of each local feature (for example feature f3743)
+
+over the entire sentence, to create each global feature (for example F3743). It is those
+
+global features that will then be multiplied by weight w3743. Thus for training and
+
+inference there is always a ﬁxed set of K features with K weights, even though the
+
+length of each sentence is different.
+
+8.5.2
+
+Features for CRF Named Entity Recognizers
+
+A CRF for NER makes use of very similar features to a POS tagger, as shown in
+
+Figure 8.15.
+
+identity of wi, identity of neighboring words
+
+embeddings for wi, embeddings for neighboring words
+
+part of speech of wi, part of speech of neighboring words
+
+presence of wi in a gazetteer
+
+wi contains a particular preﬁx (from all preﬁxes of length ≤ 4)
+
+wi contains a particular sufﬁx (from all sufﬁxes of length ≤ 4)
+
+word shape of wi, word shape of neighboring words
+
+short word shape of wi, short word shape of neighboring words
+
+gazetteer features
+
+Figure 8.15
+
+Typical features for a feature-based NER system.
+
+One feature that is especially useful for locations is a gazetteer, a list of place
+
+gazetteer
+
+names, often providing millions of entries for locations with detailed geographical
+
+and political information.3 This can be implemented as a binary feature indicating a
+
+phrase appears in the list. Other related resources like name-lists, for example from
+
+the United States Census Bureau4, can be used, as can other entity dictionaries like
+
+lists of corporations or products, although they may not be as helpful as a gazetteer
+
+(Mikheev et al., 1999).
+
+The sample named entity token L’Occitane would generate the following non-
+
+zero valued feature values (assuming that L’Occitane is neither in the gazetteer nor
+
+the census).
+
+3
+
+www.geonames.org
+
+4
+
+www.census.gov
+
+
+8.5
+
+•
+
+CONDITIONAL RANDOM FIELDS (CRFS)
+
+19
+
+preﬁx(xi) = L
+
+sufﬁx(xi) = tane
+
+preﬁx(xi) = L’
+
+sufﬁx(xi) = ane
+
+preﬁx(xi) = L’O
+
+sufﬁx(xi) = ne
+
+preﬁx(xi) = L’Oc
+
+sufﬁx(xi) = e
+
+word-shape(xi) = X’Xxxxxxxx
+
+short-word-shape(xi) = X’Xx
+
+Figure 8.16 illustrates the result of adding part-of-speech tags and some shape
+
+information to our earlier example.
+
+Words
+
+POS
+
+Short shape
+
+Gazetteer
+
+BIO Label
+
+Jane
+
+NNP
+
+Xx
+
+0
+
+B-PER
+
+Villanueva
+
+NNP
+
+Xx
+
+1
+
+I-PER
+
+of
+
+IN
+
+x
+
+0
+
+O
+
+United
+
+NNP
+
+Xx
+
+0
+
+B-ORG
+
+Airlines
+
+NNP
+
+Xx
+
+0
+
+I-ORG
+
+Holding
+
+NNP
+
+Xx
+
+0
+
+I-ORG
+
+discussed
+
+VBD
+
+x
+
+0
+
+O
+
+the
+
+DT
+
+x
+
+0
+
+O
+
+Chicago
+
+NNP
+
+Xx
+
+1
+
+B-LOC
+
+route
+
+NN
+
+x
+
+0
+
+O
+
+.
+
+.
+
+.
+
+0
+
+O
+
+Figure 8.16
+
+Some NER features for a sample sentence, assuming that Chicago and Vil-
+
+lanueva are listed as locations in a gazetteer. We assume features only take on the values 0 or
+
+1, so the ﬁrst POS feature, for example, would be represented as 1{POS = NNP}.
+
+8.5.3
+
+Inference and Training for CRFs
+
+How do we ﬁnd the best tag sequence ˆY for a given input X? We start with Eq. 8.22:
+
+ˆY = argmax
+
+Y∈Y
+
+P(Y|X)
+
+= argmax
+
+Y∈Y
+
+1
+
+Z(X)exp
+
+� K
+
+�
+
+k=1
+
+wkFk(X,Y)
+
+�
+
+(8.27)
+
+= argmax
+
+Y∈Y
+
+exp
+
+� K
+
+�
+
+k=1
+
+wk
+
+n
+
+�
+
+i=1
+
+fk(yi−1,yi,X,i)
+
+�
+
+(8.28)
+
+= argmax
+
+Y∈Y
+
+K
+
+�
+
+k=1
+
+wk
+
+n
+
+�
+
+i=1
+
+fk(yi−1,yi,X,i)
+
+(8.29)
+
+= argmax
+
+Y∈Y
+
+n
+
+�
+
+i=1
+
+K
+
+�
+
+k=1
+
+wk fk(yi−1,yi,X,i)
+
+(8.30)
+
+We can ignore the exp function and the denominator Z(X), as we do above, because
+
+exp doesn’t change the argmax, and the denominator Z(X) is constant for a given
+
+observation sequence X.
+
+How should we decode to ﬁnd this optimal tag sequence ˆy? Just as with HMMs,
+
+we’ll turn to the Viterbi algorithm, which works because, like the HMM, the linear-
+
+chain CRF depends at each timestep on only one previous output token yi−1.
+
+Concretely, this involves ﬁlling an N×T array with the appropriate values, main-
+
+taining backpointers as we proceed. As with HMM Viterbi, when the table is ﬁlled,
+
+we simply follow pointers back from the maximum value in the ﬁnal column to
+
+retrieve the desired set of labels.
+
+
+20
+
+CHAPTER 8
+
+•
+
+SEQUENCE LABELING FOR PARTS OF SPEECH AND NAMED ENTITIES
+
+The requisite changes from HMM Viterbi have to do only with how we ﬁll each
+
+cell. Recall from Eq. 8.19 that the recursive step of the Viterbi equation computes
+
+the Viterbi value of time t for state j as
+
+vt(j) =
+
+N
+
+max
+
+i=1
+
+vt−1(i)aij b j(ot); 1 ≤ j ≤ N,1 &lt; t ≤ T
+
+(8.31)
+
+which is the HMM implementation of
+
+vt( j) =
+
+N
+
+max
+
+i=1
+
+vt−1(i) P(sj|si) P(ot|sj) 1 ≤ j ≤ N,1 &lt; t ≤ T
+
+(8.32)
+
+The CRF requires only a slight change to this latter formula, replacing the a and b
+
+prior and likelihood probabilities with the CRF features:
+
+vt(j) =
+
+N
+
+max
+
+i=1
+
+vt−1(i)+
+
+K
+
+�
+
+k=1
+
+wk fk(yt−1,yt,X,t) 1 ≤ j ≤ N,1 &lt; t ≤ T (8.33)
+
+Learning in CRFs relies on the same supervised learning algorithms we presented
+
+for logistic regression. Given a sequence of observations, feature functions, and cor-
+
+responding outputs, we use stochastic gradient descent to train the weights to maxi-
+
+mize the log-likelihood of the training corpus. The local nature of linear-chain CRFs
+
+means that the forward-backward algorithm introduced for HMMs in Appendix A
+
+can be extended to a CRF version that will efﬁciently compute the necessary deriva-
+
+tives. As with logistic regression, L1 or L2 regularization is important.
+
+8.6
+
+Evaluation of Named Entity Recognition
+
+Part-of-speech taggers are evaluated by the standard metric of accuracy. Named
+
+entity recognizers are evaluated by recall, precision, and F1 measure. Recall that
+
+recall is the ratio of the number of correctly labeled responses to the total that should
+
+have been labeled; precision is the ratio of the number of correctly labeled responses
+
+to the total labeled; and F-measure is the harmonic mean of the two.
+
+To know if the difference between the F1 scores of two NER systems is a signif-
+
+icant difference, we use the paired bootstrap test, or the similar randomization test
+
+(Section ??).
+
+For named entity tagging, the entity rather than the word is the unit of response.
+
+Thus in the example in Fig. 8.16, the two entities Jane Villanueva and United Air-
+
+lines Holding and the non-entity discussed would each count as a single response.
+
+The fact that named entity tagging has a segmentation component which is not
+
+present in tasks like text categorization or part-of-speech tagging causes some prob-
+
+lems with evaluation. For example, a system that labeled Jane but not Jane Vil-
+
+lanueva as a person would cause two errors, a false positive for O and a false nega-
+
+tive for I-PER. In addition, using entities as the unit of response but words as the unit
+
+of training means that there is a mismatch between the training and test conditions.
+
+8.7
+
+Further Details
+
+In this section we summarize a few remaining details of the data and models for
+
+part-of-speech tagging and NER, beginning with data. Since the algorithms we have
+
+
+8.7
+
+•
+
+FURTHER DETAILS
+
+21
+
+presented are supervised, having labeled data is essential for training and testing. A
+
+wide variety of datasets exist for part-of-speech tagging and/or NER. The Universal
+
+Dependencies (UD) dataset (de Marneffe et al., 2021) has POS tagged corpora in
+
+over a hundred languages, as do the Penn Treebanks in English, Chinese, and Arabic.
+
+OntoNotes has corpora labeled for named entities in English, Chinese, and Arabic
+
+(Hovy et al., 2006). Named entity tagged corpora are also available in particular
+
+domains, such as for biomedical (Bada et al., 2012) and literary text (Bamman et al.,
+
+2019).
+
+8.7.1
+
+Rule-based Methods
+
+While machine learned (neural or CRF) sequence models are the norm in academic
+
+research, commercial approaches to NER are often based on pragmatic combina-
+
+tions of lists and rules, with some smaller amount of supervised machine learning
+
+(Chiticariu et al., 2013). For example in the IBM System T architecture, a user
+
+speciﬁes declarative constraints for tagging tasks in a formal query language that
+
+includes regular expressions, dictionaries, semantic constraints, and other operators,
+
+which the system compiles into an efﬁcient extractor (Chiticariu et al., 2018).
+
+One common approach is to make repeated rule-based passes over a text, starting
+
+with rules with very high precision but low recall, and, in subsequent stages, using
+
+machine learning methods that take the output of the ﬁrst pass into account (an
+
+approach ﬁrst worked out for coreference (Lee et al., 2017)):
+
+1. First, use high-precision rules to tag unambiguous entity mentions.
+
+2. Then, search for substring matches of the previously detected names.
+
+3. Use application-speciﬁc name lists to ﬁnd likely domain-speciﬁc mentions.
+
+4. Finally, apply supervised sequence labeling techniques that use tags from pre-
+
+vious stages as additional features.
+
+Rule-based methods were also the earliest methods for part-of-speech tagging.
+
+Rule-based taggers like the English Constraint Grammar system (Karlsson et al.
+
+1995, Voutilainen 1999) use a two-stage formalism invented in the 1950s and 1960s:
+
+(1) a morphological analyzer with tens of thousands of word stem entries returns all
+
+parts of speech for a word, then (2) a large set of thousands of constraints are applied
+
+to the input sentence to rule out parts of speech inconsistent with the context.
+
+8.7.2
+
+POS Tagging for Morphologically Rich Languages
+
+Augmentations to tagging algorithms become necessary when dealing with lan-
+
+guages with rich morphology like Czech, Hungarian and Turkish.
+
+These productive word-formation processes result in a large vocabulary for these
+
+languages: a 250,000 word token corpus of Hungarian has more than twice as many
+
+word types as a similarly sized corpus of English (Oravecz and Dienes, 2002), while
+
+a 10 million word token corpus of Turkish contains four times as many word types
+
+as a similarly sized English corpus (Hakkani-T¨ur et al., 2002). Large vocabular-
+
+ies mean many unknown words, and these unknown words cause signiﬁcant per-
+
+formance degradations in a wide variety of languages (including Czech, Slovene,
+
+Estonian, and Romanian) (Hajiˇc, 2000).
+
+Highly inﬂectional languages also have much more information than English
+
+coded in word morphology, like case (nominative, accusative, genitive) or gender
+
+(masculine, feminine). Because this information is important for tasks like pars-
+
+ing and coreference resolution, part-of-speech taggers for morphologically rich lan-
+
+
+22
+
+CHAPTER 8
+
+•
+
+SEQUENCE LABELING FOR PARTS OF SPEECH AND NAMED ENTITIES
+
+guages need to label words with case and gender information. Tagsets for morpho-
+
+logically rich languages are therefore sequences of morphological tags rather than a
+
+single primitive tag. Here’s a Turkish example, in which the word izin has three pos-
+
+sible morphological/part-of-speech tags and meanings (Hakkani-T¨ur et al., 2002):
+
+1. Yerdeki izin temizlenmesi gerek.
+
+iz + Noun+A3sg+Pnon+Gen
+
+The trace on the ﬂoor should be cleaned.
+
+2. ¨Uzerinde parmak izin kalmis¸.
+
+iz + Noun+A3sg+P2sg+Nom
+
+Your ﬁnger print is left on (it).
+
+3. Ic¸eri girmek ic¸in izin alman gerekiyor.
+
+izin + Noun+A3sg+Pnon+Nom
+
+You need permission to enter.
+
+Using a morphological parse sequence like Noun+A3sg+Pnon+Gen as the part-
+
+of-speech tag greatly increases the number of parts of speech, and so tagsets can
+
+be 4 to 10 times larger than the 50–100 tags we have seen for English. With such
+
+large tagsets, each word needs to be morphologically analyzed to generate the list
+
+of possible morphological tag sequences (part-of-speech tags) for the word. The
+
+role of the tagger is then to disambiguate among these tags. This method also helps
+
+with unknown words since morphological parsers can accept unknown stems and
+
+still segment the afﬁxes properly.
+
+8.8
+
+Summary
+
+This chapter introduced parts of speech and named entities, and the tasks of part-
+
+of-speech tagging and named entity recognition:
+
+• Languages generally have a small set of closed class words that are highly
+
+frequent, ambiguous, and act as function words, and open-class words like
+
+nouns, verbs, adjectives. Various part-of-speech tagsets exist, of between 40
+
+and 200 tags.
+
+• Part-of-speech tagging is the process of assigning a part-of-speech label to
+
+each of a sequence of words.
+
+• Named entities are words for proper nouns referring mainly to people, places,
+
+and organizations, but extended to many other types that aren’t strictly entities
+
+or even proper nouns.
+
+• Two common approaches to sequence modeling are a generative approach,
+
+HMM tagging, and a discriminative approach, CRF tagging. We will see a
+
+neural approach in following chapters.
+
+• The probabilities in HMM taggers are estimated by maximum likelihood es-
+
+timation on tag-labeled training corpora. The Viterbi algorithm is used for
+
+decoding, ﬁnding the most likely tag sequence
+
+• Conditional Random Fields or CRF taggers train a log-linear model that can
+
+choose the best tag sequence given an observation sequence, based on features
+
+that condition on the output tag, the prior output tag, the entire input sequence,
+
+and the current timestep. They use the Viterbi algorithm for inference, to
+
+choose the best sequence of tags, and a version of the Forward-Backward
+
+algorithm (see Appendix A) for training,
+
+
+BIBLIOGRAPHICAL AND HISTORICAL NOTES
+
+23
+
+Bibliographical and Historical Notes
+
+What is probably the earliest part-of-speech tagger was part of the parser in Zellig
+
+Harris’s Transformations and Discourse Analysis Project (TDAP), implemented be-
+
+tween June 1958 and July 1959 at the University of Pennsylvania (Harris, 1962),
+
+although earlier systems had used part-of-speech dictionaries. TDAP used 14 hand-
+
+written rules for part-of-speech disambiguation; the use of part-of-speech tag se-
+
+quences and the relative frequency of tags for a word preﬁgures modern algorithms.
+
+The parser was implemented essentially as a cascade of ﬁnite-state transducers; see
+
+Joshi and Hopely (1999) and Karttunen (1999) for a reimplementation.
+
+The Computational Grammar Coder (CGC) of Klein and Simmons (1963) had
+
+three components: a lexicon, a morphological analyzer, and a context disambigua-
+
+tor. The small 1500-word lexicon listed only function words and other irregular
+
+words. The morphological analyzer used inﬂectional and derivational sufﬁxes to as-
+
+sign part-of-speech classes. These were run over words to produce candidate parts
+
+of speech which were then disambiguated by a set of 500 context rules by relying on
+
+surrounding islands of unambiguous words. For example, one rule said that between
+
+an ARTICLE and a VERB, the only allowable sequences were ADJ-NOUN, NOUN-
+
+ADVERB, or NOUN-NOUN. The TAGGIT tagger (Greene and Rubin, 1971) used
+
+the same architecture as Klein and Simmons (1963), with a bigger dictionary and
+
+more tags (87). TAGGIT was applied to the Brown corpus and, according to Francis
+
+and Kuˇcera (1982, p. 9), accurately tagged 77% of the corpus; the remainder of the
+
+Brown corpus was then tagged by hand. All these early algorithms were based on
+
+a two-stage architecture in which a dictionary was ﬁrst used to assign each word a
+
+set of potential parts of speech, and then lists of handwritten disambiguation rules
+
+winnowed the set down to a single part of speech per word.
+
+Probabilities were used in tagging by Stolz et al. (1965) and a complete proba-
+
+bilistic tagger with Viterbi decoding was sketched by Bahl and Mercer (1976). The
+
+Lancaster-Oslo/Bergen (LOB) corpus, a British English equivalent of the Brown cor-
+
+pus, was tagged in the early 1980’s with the CLAWS tagger (Marshall 1983; Mar-
+
+shall 1987; Garside 1987), a probabilistic algorithm that approximated a simpliﬁed
+
+HMM tagger. The algorithm used tag bigram probabilities, but instead of storing the
+
+word likelihood of each tag, the algorithm marked tags either as rare (P(tag|word) &lt;
+
+.01) infrequent (P(tag|word) &lt; .10) or normally frequent (P(tag|word) &gt; .10).
+
+DeRose (1988) developed a quasi-HMM algorithm, including the use of dy-
+
+namic programming, although computing P(t|w)P(w) instead of P(w|t)P(w). The
+
+same year, the probabilistic PARTS tagger of Church 1988, 1989 was probably the
+
+ﬁrst implemented HMM tagger, described correctly in Church (1989), although
+
+Church (1988) also described the computation incorrectly as P(t|w)P(w) instead
+
+of P(w|t)P(w). Church (p.c.) explained that he had simpliﬁed for pedagogical pur-
+
+poses because using the probability P(t|w) made the idea seem more understandable
+
+as “storing a lexicon in an almost standard form”.
+
+Later taggers explicitly introduced the use of the hidden Markov model (Kupiec
+
+1992; Weischedel et al. 1993; Sch¨utze and Singer 1994). Merialdo (1994) showed
+
+that fully unsupervised EM didn’t work well for the tagging task and that reliance
+
+on hand-labeled data was important. Charniak et al. (1993) showed the importance
+
+of the most frequent tag baseline; the 92.3% number we give above was from Abney
+
+et al. (1999). See Brants (2000) for HMM tagger implementation details, includ-
+
+ing the extension to trigram contexts, and the use of sophisticated unknown word
+
+features; its performance is still close to state of the art taggers.
+
+
+24
+
+CHAPTER 8
+
+•
+
+SEQUENCE LABELING FOR PARTS OF SPEECH AND NAMED ENTITIES
+
+Log-linear models for POS tagging were introduced by Ratnaparkhi (1996),
+
+who introduced a system called MXPOST which implemented a maximum entropy
+
+Markov model (MEMM), a slightly simpler version of a CRF. Around the same
+
+time, sequence labelers were applied to the task of named entity tagging, ﬁrst with
+
+HMMs (Bikel et al., 1997) and MEMMs (McCallum et al., 2000), and then once
+
+CRFs were developed (Lafferty et al. 2001), they were also applied to NER (Mc-
+
+Callum and Li, 2003). A wide exploration of features followed (Zhou et al., 2005).
+
+Neural approaches to NER mainly follow from the pioneering results of Collobert
+
+et al. (2011), who applied a CRF on top of a convolutional net. BiLSTMs with word
+
+and character-based embeddings as input followed shortly and became a standard
+
+neural algorithm for NER (Huang et al. 2015, Ma and Hovy 2016, Lample et al.
+
+2016) followed by the more recent use of Transformers and BERT.
+
+The idea of using letter sufﬁxes for unknown words is quite old; the early Klein
+
+and Simmons (1963) system checked all ﬁnal letter sufﬁxes of lengths 1-5. The
+
+unknown word features described on page 17 come mainly from Ratnaparkhi (1996),
+
+with augmentations from Toutanova et al. (2003) and Manning (2011).
+
+State of the art POS taggers use neural algorithms, either bidirectional RNNs or
+
+Transformers like BERT; see Chapter 9 and Chapter 11. HMM (Brants 2000; Thede
+
+and Harper 1999) and CRF tagger accuracies are likely just a tad lower.
+
+Manning (2011) investigates the remaining 2.7% of errors in a high-performing
+
+tagger (Toutanova et al., 2003). He suggests that a third or half of these remaining
+
+errors are due to errors or inconsistencies in the training data, a third might be solv-
+
+able with richer linguistic models, and for the remainder the task is underspeciﬁed
+
+or unclear.
+
+Supervised tagging relies heavily on in-domain training data hand-labeled by
+
+experts. Ways to relax this assumption include unsupervised algorithms for cluster-
+
+ing words into part-of-speech-like classes, summarized in Christodoulopoulos et al.
+
+(2010), and ways to combine labeled and unlabeled data, for example by co-training
+
+(Clark et al. 2003; Søgaard 2010).
+
+See Householder (1995) for historical notes on parts of speech, and Sampson
+
+(1987) and Garside et al. (1997) on the provenance of the Brown and other tagsets.
+
+Exercises
+
+8.1
+
+Find one tagging error in each of the following sentences that are tagged with
+
+the Penn Treebank tagset:
+
+1. I/PRP need/VBP a/DT ﬂight/NN from/IN Atlanta/NN
+
+2. Does/VBZ this/DT ﬂight/NN serve/VB dinner/NNS
+
+3. I/PRP have/VB a/DT friend/NN living/VBG in/IN Denver/NNP
+
+4. Can/VBP you/PRP list/VB the/DT nonstop/JJ afternoon/NN ﬂights/NNS
+
+8.2
+
+Use the Penn Treebank tagset to tag each word in the following sentences
+
+from Damon Runyon’s short stories. You may ignore punctuation. Some of
+
+these are quite difﬁcult; do your best.
+
+1. It is a nice night.
+
+2. This crap game is over a garage in Fifty-second Street...
+
+3. ...Nobody ever takes the newspapers she sells ...
+
+4. He is a tall, skinny guy with a long, sad, mean-looking kisser, and a
+
+mournful voice.
+
+
+EXERCISES
+
+25
+
+5. ...I am sitting in Mindy’s restaurant putting on the geﬁllte ﬁsh, which is
+
+a dish I am very fond of, ...
+
+6. When a guy and a doll get to taking peeks back and forth at each other,
+
+why there you are indeed.
+
+8.3
+
+Now compare your tags from the previous exercise with one or two friend’s
+
+answers. On which words did you disagree the most? Why?
+
+8.4
+
+Implement the “most likely tag” baseline. Find a POS-tagged training set,
+
+and use it to compute for each word the tag that maximizes p(t|w). You will
+
+need to implement a simple tokenizer to deal with sentence boundaries. Start
+
+by assuming that all unknown words are NN and compute your error rate on
+
+known and unknown words. Now write at least ﬁve rules to do a better job of
+
+tagging unknown words, and show the difference in error rates.
+
+8.5
+
+Build a bigram HMM tagger. You will need a part-of-speech-tagged corpus.
+
+First split the corpus into a training set and test set. From the labeled training
+
+set, train the transition and observation probabilities of the HMM tagger di-
+
+rectly on the hand-tagged data. Then implement the Viterbi algorithm so you
+
+can decode a test sentence. Now run your algorithm on the test set. Report its
+
+error rate and compare its performance to the most frequent tag baseline.
+
+8.6
+
+Do an error analysis of your tagger. Build a confusion matrix and investigate
+
+the most frequent errors. Propose some features for improving the perfor-
+
+mance of your tagger on these errors.
+
+8.7
+
+Develop a set of regular expressions to recognize the character shape features
+
+described on page 17.
+
+8.8
+
+The BIO and other labeling schemes given in this chapter aren’t the only
+
+possible one. For example, the B tag can be reserved only for those situations
+
+where an ambiguity exists between adjacent entities. Propose a new set of
+
+BIO tags for use with your NER system. Experiment with it and compare its
+
+performance with the schemes presented in this chapter.
+
+8.9
+
+Names of works of art (books, movies, video games, etc.) are quite different
+
+from the kinds of named entities we’ve discussed in this chapter. Collect a
+
+list of names of works of art from a particular category from a Web-based
+
+source (e.g., gutenberg.org, amazon.com, imdb.com, etc.). Analyze your list
+
+and give examples of ways that the names in it are likely to be problematic for
+
+the techniques described in this chapter.
+
+8.10 Develop an NER system speciﬁc to the category of names that you collected in
+
+the last exercise. Evaluate your system on a collection of text likely to contain
+
+instances of these named entities.
+
+
+26
+
+Chapter 8
+
+•
+
+Sequence Labeling for Parts of Speech and Named Entities
+
+Abney, S. P., R. E. Schapire, and Y. Singer. 1999. Boosting
+
+applied to tagging and PP attachment. EMNLP/VLC.
+
+Bada, M., M. Eckert, D. Evans, K. Garcia, K. Shipley, D. Sit-
+
+nikov, W. A. Baumgartner, K. B. Cohen, K. Verspoor,
+
+J. A. Blake, and L. E. Hunter. 2012. Concept annotation
+
+in the craft corpus. BMC bioinformatics, 13(1):161.
+
+Bahl, L. R. and R. L. Mercer. 1976.
+
+Part of speech as-
+
+signment by a statistical decision algorithm. Proceedings
+
+IEEE International Symposium on Information Theory.
+
+Bamman, D., S. Popat, and S. Shen. 2019. An annotated
+
+dataset of literary entities. NAACL HLT.
+
+Bikel, D. M., S. Miller, R. Schwartz, and R. Weischedel.
+
+1997.
+
+Nymble: A high-performance learning name-
+
+ﬁnder. ANLP.
+
+Brants, T. 2000.
+
+TnT: A statistical part-of-speech tagger.
+
+ANLP.
+
+Broschart, J. 1997. Why Tongan does it differently. Linguis-
+
+tic Typology, 1:123–165.
+
+Charniak,
+
+E.,
+
+C.
+
+Hendrickson,
+
+N.
+
+Jacobson,
+
+and
+
+M. Perkowitz. 1993. Equations for part-of-speech tag-
+
+ging. AAAI.
+
+Chiticariu, L., M. Danilevsky, Y. Li, F. Reiss, and H. Zhu.
+
+2018. SystemT: Declarative text understanding for enter-
+
+prise. NAACL HLT, volume 3.
+
+Chiticariu, L., Y. Li, and F. R. Reiss. 2013. Rule-Based In-
+
+formation Extraction is Dead! Long Live Rule-Based In-
+
+formation Extraction Systems! EMNLP.
+
+Christodoulopoulos, C., S. Goldwater, and M. Steedman.
+
+2010. Two decades of unsupervised POS induction: How
+
+far have we come? EMNLP.
+
+Church, K. W. 1988. A stochastic parts program and noun
+
+phrase parser for unrestricted text. ANLP.
+
+Church, K. W. 1989. A stochastic parts program and noun
+
+phrase parser for unrestricted text. ICASSP.
+
+Clark, S., J. R. Curran, and M. Osborne. 2003. Bootstrapping
+
+POS-taggers using unlabelled data. CoNLL.
+
+Collobert,
+
+R.,
+
+J.
+
+Weston,
+
+L.
+
+Bottou,
+
+M.
+
+Karlen,
+
+K. Kavukcuoglu, and P. Kuksa. 2011. Natural language
+
+processing (almost) from scratch. JMLR, 12:2493–2537.
+
+DeRose, S. J. 1988. Grammatical category disambiguation
+
+by statistical optimization.
+
+Computational Linguistics,
+
+14:31–39.
+
+Evans, N. 2000.
+
+Word classes in the world’s languages.
+
+In G. Booij, C. Lehmann, and J. Mugdan, editors, Mor-
+
+phology: A Handbook on Inﬂection and Word Formation,
+
+pages 708–732. Mouton.
+
+Francis, W. N. and H. Kuˇcera. 1982. Frequency Analysis of
+
+English Usage. Houghton Mifﬂin, Boston.
+
+Garside, R. 1987. The CLAWS word-tagging system. In
+
+R. Garside, G. Leech, and G. Sampson, editors, The Com-
+
+putational Analysis of English, pages 30–41. Longman.
+
+Garside, R., G. Leech, and A. McEnery. 1997. Corpus An-
+
+notation. Longman.
+
+Gil, D. 2000. Syntactic categories, cross-linguistic variation
+
+and universal grammar. In P. M. Vogel and B. Comrie, ed-
+
+itors, Approaches to the Typology of Word Classes, pages
+
+173–216. Mouton.
+
+Greene, B. B. and G. M. Rubin. 1971. Automatic grammati-
+
+cal tagging of English. Department of Linguistics, Brown
+
+University, Providence, Rhode Island.
+
+Hajiˇc, J. 2000. Morphological tagging: Data vs. dictionaries.
+
+In NAACL.
+
+Hakkani-T¨ur, D., K. Oﬂazer, and G. T¨ur. 2002.
+
+Sta-
+
+tistical morphological disambiguation for agglutinative
+
+languages.
+
+Journal of Computers and Humanities,
+
+36(4):381–410.
+
+Harris, Z. S. 1962. String Analysis of Sentence Structure.
+
+Mouton, The Hague.
+
+Householder, F. W. 1995. Dionysius Thrax, the technai, and
+
+Sextus Empiricus. In E. F. K. Koerner and R. E. Asher,
+
+editors, Concise History of the Language Sciences, pages
+
+99–103. Elsevier Science.
+
+Hovy, E. H., M. P. Marcus, M. Palmer, L. A. Ramshaw,
+
+and R. Weischedel. 2006. OntoNotes: The 90% solution.
+
+HLT-NAACL.
+
+Huang, Z., W. Xu, and K. Yu. 2015. Bidirectional LSTM-
+
+CRF models for sequence tagging.
+
+arXiv preprint
+
+arXiv:1508.01991.
+
+Joshi, A. K. and P. Hopely. 1999. A parser from antiquity. In
+
+A. Kornai, editor, Extended Finite State Models of Lan-
+
+guage, pages 6–15. Cambridge University Press.
+
+Karlsson, F., A. Voutilainen, J. Heikkil¨a, and A. Anttila,
+
+editors. 1995.
+
+Constraint Grammar:
+
+A Language-
+
+Independent System for Parsing Unrestricted Text. Mou-
+
+ton de Gruyter.
+
+Karttunen, L. 1999. Comments on Joshi. In A. Kornai, edi-
+
+tor, Extended Finite State Models of Language, pages 16–
+
+18. Cambridge University Press.
+
+Klein, S. and R. F. Simmons. 1963. A computational ap-
+
+proach to grammatical coding of English words. Journal
+
+of the ACM, 10(3):334–347.
+
+Kupiec, J. 1992. Robust part-of-speech tagging using a hid-
+
+den Markov model.
+
+Computer Speech and Language,
+
+6:225–242.
+
+Lafferty, J. D., A. McCallum, and F. C. N. Pereira. 2001.
+
+Conditional random ﬁelds: Probabilistic models for seg-
+
+menting and labeling sequence data. ICML.
+
+Lample, G., M. Ballesteros, S. Subramanian, K. Kawakami,
+
+and C. Dyer. 2016. Neural architectures for named entity
+
+recognition. NAACL HLT.
+
+Lee, H., M. Surdeanu, and D. Jurafsky. 2017. A scaffolding
+
+approach to coreference resolution integrating statistical
+
+and rule-based models. Natural Language Engineering,
+
+23(5):733–762.
+
+Ma, X. and E. H. Hovy. 2016. End-to-end sequence labeling
+
+via bi-directional LSTM-CNNs-CRF. ACL.
+
+Manning, C. D. 2011. Part-of-speech tagging from 97% to
+
+100%: Is it time for some linguistics? CICLing 2011.
+
+Marcus, M. P., B. Santorini, and M. A. Marcinkiewicz. 1993.
+
+Building a large annotated corpus of English: The Penn
+
+treebank. Computational Linguistics, 19(2):313–330.
+
+de Marneffe, M.-C., C. D. Manning, J. Nivre, and D. Zeman.
+
+2021. Universal Dependencies. Computational Linguis-
+
+tics, 47(2):255–308.
+
+Marshall, I. 1983. Choice of grammatical word-class with-
+
+out global syntactic analysis: Tagging words in the LOB
+
+corpus. Computers and the Humanities, 17:139–150.
+
+
+Exercises
+
+27
+
+Marshall, I. 1987. Tag selection using probabilistic methods.
+
+In R. Garside, G. Leech, and G. Sampson, editors, The
+
+Computational Analysis of English, pages 42–56. Long-
+
+man.
+
+McCallum, A., D. Freitag, and F. C. N. Pereira. 2000. Max-
+
+imum entropy Markov models for information extraction
+
+and segmentation. ICML.
+
+McCallum, A. and W. Li. 2003.
+
+Early results for named
+
+entity recognition with conditional random ﬁelds, feature
+
+induction and web-enhanced lexicons. CoNLL.
+
+Merialdo, B. 1994. Tagging English text with a probabilistic
+
+model. Computational Linguistics, 20(2):155–172.
+
+Mikheev, A., M. Moens, and C. Grover. 1999. Named entity
+
+recognition without gazetteers. EACL.
+
+Oravecz, C. and P. Dienes. 2002. Efﬁcient stochastic part-
+
+of-speech tagging for Hungarian. LREC.
+
+Ramshaw, L. A. and M. P. Marcus. 1995. Text chunking
+
+using transformation-based learning. Proceedings of the
+
+3rd Annual Workshop on Very Large Corpora.
+
+Ratnaparkhi, A. 1996. A maximum entropy part-of-speech
+
+tagger. EMNLP.
+
+Sampson, G. 1987.
+
+Alternative grammatical coding sys-
+
+tems. In R. Garside, G. Leech, and G. Sampson, editors,
+
+The Computational Analysis of English, pages 165–183.
+
+Longman.
+
+Sch¨utze, H. and Y. Singer. 1994. Part-of-speech tagging us-
+
+ing a variable memory Markov model. ACL.
+
+Søgaard, A. 2010. Simple semi-supervised training of part-
+
+of-speech taggers. ACL.
+
+Stolz, W. S., P. H. Tannenbaum, and F. V. Carstensen. 1965.
+
+A stochastic approach to the grammatical coding of En-
+
+glish. CACM, 8(6):399–405.
+
+Thede, S. M. and M. P. Harper. 1999. A second-order hidden
+
+Markov model for part-of-speech tagging. ACL.
+
+Toutanova, K., D. Klein, C. D. Manning, and Y. Singer.
+
+2003. Feature-rich part-of-speech tagging with a cyclic
+
+dependency network. HLT-NAACL.
+
+Voutilainen, A. 1999. Handcrafted rules. In H. van Hal-
+
+teren, editor, Syntactic Wordclass Tagging, pages 217–
+
+246. Kluwer.
+
+Weischedel, R., M. Meteer, R. Schwartz, L. A. Ramshaw,
+
+and J. Palmucci. 1993. Coping with ambiguity and un-
+
+known words through probabilistic models.
+
+Computa-
+
+tional Linguistics, 19(2):359–382.
+
+Wu, S. and M. Dredze. 2019. Beto, Bentz, Becas: The sur-
+
+prising cross-lingual effectiveness of BERT. EMNLP.
+
+Zhou, G., J. Su, J. Zhang, and M. Zhang. 2005. Exploring
+
+various knowledge in relation extraction. ACL.
+

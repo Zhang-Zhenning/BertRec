@@ -1,0 +1,539 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Log in
+
+Sign up
+
+
+
+nbro
+
+37.6k
+
+12
+
+92
+
+166
+
+
+
+Theo Deep
+
+155
+
+1
+
+5
+
+What is the difference between a loss function and reward/penalty in Deep Reinforcement Learning?
+
+Asked 1 year, 1 month ago
+
+Modified 1 year, 1 month ago
+
+Viewed 4k times
+
+4
+
+ 
+
+ 
+
+In Deep Reinforcement Learning (DRL) I am having difficulties in understanding the difference between a Loss function, a reward/penalty and the integration of both in DRL.
+
+Loss function: Given an output of the model and the ground truth, it measures "how good" the output has been. And using it, the parameters of the model are adjusted. For instance, MAE. But if you were working in Computer
+
+Vision quality, you could use, for instance, SSIM.
+
+Reward: Given an agent (a model) and an environment, once the agent performs an action, the environment gives it a reward (or a penalty) to measure "how good" the action has been. Very simple rewards are +1 or -1.
+
+So I see both the loss function and the reward/penalty are the quantitative way of measuring the output/action and making the model to learn. Am I right?
+
+Now, as for DRL. I see the typical diagram where the agent is modelled using a Neural Network (NN).
+
+
+
+I am trying to interpret it, but I do not understand it.
+
+Is it the policy related the loss function somehow? Where is the loss function? How does the reward feed the NN? Is it a parameter for the loss function?
+
+Maybe my confusion has to do with identifying NN with supervised learning, or with not getting this with Q-learning or so.. Can anyone help?
+
+Share
+
+Improve this question
+
+edited Mar 30, 2022 at 13:31
+
+asked Mar 30, 2022 at 11:16
+
+2 Answers
+
+Sorted by:
+
+4
+
+ 
+
+1. Question: The difference between loss and reward/penalty
+
+You are partially right: You could interpret the negative reward as a loss that you want to minimize. But the model cannot learn from the reward directly. The reason for that is that you (usually) cannot formulate the reward as a
+
+differentiable function of the model parameters. Hence, you cannot compute a gradient purely from the reward. You need a second function - the loss - that is
+
+1. Differentiable and
+
+2. Depends on the parameters inside your model.
+
+Only then you can compute a gradient w.r.t. the model parameters and make the model learn. This already answers another question:
+
+Yes! The policy HAS to be a part of the loss function, otherwise you wouldn't be able to do gradient decent to optimize the model.
+
+A simple way to get from reward to the loss is implemented in the REINFORCE algorithm. To understand its loss term, you have to know that the model does not output definitive actions, but rather a probability distribution over
+
+all possible actions. Here is the loss function that REINFORCE uses to optimize the model:
+
+loss= −log_likelihood(action)�return
+
+As you can see, the loss is the product of the negative log likelihood of the action and the return. The return correlates with the reward (Return is the discounted reward which distributes the reward received at timestep t backwards to
+
+also reward actions that led to the reward). Intuitively this means that for a large reward, the model wants to be very certain about which action to take. So there you have it: The reward reflects how successful you are in the
+
+environment and the loss is the optimization objective maximizing the probability to take good actions.
+
+2. Question: The Schematic doesn't include the loss function
+
+The image you posted depicts how you collect the data which you use to optimize the model. You would run this loop of taking an action and receiving a reward until you have a full batch of data. On this batch you would then
+
+compute the loss and update the model. It's quite important for reinforcement learning to gather batches and not use single steps for optimization, because otherwise the resulting gradient would be very noisy and in most cases
+
+prevent proper optimization.
+
+The main issue why your gradient would be noisy is the credit assignment problem:
+
+Lets assume the environment is a grid world and the task is to walk forward for 7 steps. You start at S and you will get a reward as soon as you reach location G:
+
+Ask Question
+
+reinforcement-learning comparison
+
+deep-rl
+
+objective-functions rewards
+
+Follow
+
+
+
+
+
+Highest score (default)
+
+So I see both the loss function and the reward/penalty are the quantitative way of measuring the output/action and making the model to learn. Am I right?
+
+Is it the policy related the loss function somehow?
+
+
+
+
+Chillston
+
+1,352
+
+4
+
+10
+
+
+
+nbro
+
+37.6k
+
+12
+
+92
+
+166
+
+The reward will show you that you have done something right but multiple actions where responsible for getting the reward (not just the last step forward). However, you never exactly know which actions where the right actions and
+
+which actions where actually bad. You might have taken a very inefficient route to the goal.
+
+The problem that you don't know which actions contributed to getting the reward is called the credit assignment problem. And in fact you can only have a good heuristic to assign the reward. This has to be compensated by
+
+computing the model update on batches rather than single steps. One such heuristic is the general advantage estimate. This is a function that you apply to your reward before plugging it into the loss function.
+
+One major difference of supervised learning and reinforcement learning lies in the credit assignment problem: In supervised learning you input a sample and you know what should come out. In RL you only have a rough estimate on
+
+how good you where but you will (usually) never know what should come out of your model, because there are multiple possible ways to reach the goal.
+
+Hope this helps.
+
+Share
+
+Improve this answer
+
+edited Mar 31, 2022 at 11:39
+
+answered Mar 30, 2022 at 12:40
+
+2
+
+This all looks correct, but the focus on REINFORCE is adding a bit much IMO when the OP is considering the (IMO) conceptually simpler DQN. You also have the loss function wrong at the moment (it should be return, not
+
+reward used as multipler for log loss - you might use reward in a gradient bandit).
+
+– Neil Slater
+
+Mar 30, 2022 at 14:16 
+
+1
+
+Thanks for the feedback, I understand your points. You are right, I was a bit lazy putting reward in the formula and I will update this in my answer. I agree that the core concept of Q-Learning is more straight forward, although I
+
+find the loss of REINFORCE a bit easier to understand that's why I went with that. IMO it's also a bit more aligned with the RL concepts, but to be honest it's what I have been in contact with more than Q-learning - so I might be
+
+biased
+
+– Chillston
+
+Mar 31, 2022 at 11:35
+
+3
+
+ 
+
+ 
+
+Ultimately, in RL, the policy is what you want to find. It's the solution to the Markov Decision Process (MDP). But you don't want to find any policy, but the optimal policy, i.e. the one that will make the agent collect the highest
+
+amount of reward in the long run (i.e. the highest return), if followed.
+
+In deep RL, the policy might be represented by a neural network, which gets a state as input and produces a probability distribution over actions, which we can be denoted by π(a � s;θ), where θ is the parameter vector. If you change 
+
+θ, you also change the output of the policy.
+
+The reward function function tells how good the actions that the agent takes are. So, it can be defined as the function r:S ×A →R, where R � R is the reward space. So, r(s,a) is the reward that the agent receives for taking action a
+
+in state s. For example, in the game of chess, if you win the game, r could return 1, while, if you lose the game, it could return −1. The reward function is usually pre-defined, in the sense that it's part of the problem definition. You
+
+don't have to learn it, although you can learn reward functions with inverse RL techniques.
+
+So, the reward function is not the objective/loss function, but the objective function is usually defined in terms of the reward function, in the same way that the mean squared error (MSE) in supervised learning is defined in terms of
+
+the correct labels or targets.
+
+Now, what could be the loss function in RL? It depends on how you train the RL agent. For example, in DQN, the loss function is
+
+Li θi =Es,a�ρ(�)
+
+yi −Q s,a;θi
+
+2
+
+where
+
+yi =Es′�E
+
+r
+
+�
+
+Reward+γ
+
+max
+
+a′ Q s′,a′;θi−1 � s,a
+
+is the target value for Q s,a;θi , which is what we're trying to learn and it's represented by the neural network with parameters θi. Q is known as the value function, which is defined as the expected return, from which we can derive
+
+the policy. So, it gets as input a state and an action, not the reward. It produces an estimate of the expected return, which is defined as the sum of rewards.
+
+This answer should answer all your questions and doubts. See also this answer about the relationship between supervised learning and reinforcement learning.
+
+Share
+
+Improve this answer
+
+edited Mar 30, 2022 at 20:23
+
+answered Mar 30, 2022 at 13:18
+
+You must log in to answer this question.
+
+Not the answer you're looking for? Browse other questions tagged reinforcement-learning comparison
+
+deep-rl
+
+objective-functions rewards .
+
+Linked
+
+7
+
+Can supervised learning be recast as reinforcement learning problem?
+
+Related
+
+2
+
+Is there an analogy between client/server in web development and agent/environment in reinforcement learning?
+
+0
+
+When calculating the cost in deep Q-learning, do we use both the input and target states?
+
+2
+
+Reinforcement Learning algorithm with rewards dependent both on previous action and current action
+
+4
+
+What is the difference between a distribution model and a sampling model in Reinforcement Learning?
+
+1
+
+Is the policy gradient expression in Fundamentals of Deep Learning wrong?
+
+Hot Network Questions
+
+
+
+Are pyramids forbidden?
+
+
+
+How to combine several legends in one frame?
+
+Maybe my confusion has to do with identifying NN with supervised learning
+
+Follow
+
+
+
+
+
+( )
+
+[(
+
+(
+
+)) ]
+
+[
+
+(
+
+)
+
+]
+
+(
+
+)
+
+Follow
+
+
+
+Featured on Meta
+
+
+
+New blog post from our CEO Prashanth: Community is the future of AI
+
+
+
+Improving the copy in the close modal and post notices - 2023 edition
+
+
+ARTIFICIAL INTELLIGENCE
+
+Tour
+
+Help
+
+Chat
+
+Contact
+
+Feedback
+
+COMPANY
+
+Stack Overflow
+
+Teams
+
+Advertising
+
+Collectives
+
+Talent
+
+About
+
+Press
+
+Legal
+
+Privacy Policy
+
+Terms of Service
+
+Cookie Settings
+
+Cookie Policy
+
+STACK EXCHANGE NETWORK
+
+Technology
+
+Culture &amp; recreation
+
+Life &amp; arts
+
+Science
+
+Professional
+
+Business
+
+API
+
+Data
+
+Blog
+
+Facebook
+
+Twitter
+
+LinkedIn
+
+Instagram
+
+Site design / logo © 2023 Stack Exchange Inc; user contributions licensed under CC BY-SA. rev 2023.4.21.43403
+
+
+
+There exists an element in a group whose order is at most the number of conjugacy classes
+
+
+
+Adding EV Charger (100A) in secondary panel (100A) fed off main (200A)
+
+
+
+Embedded hyperlinks in a thesis or research paper
+
+more hot questions
+
+ Question feed
+
+Your privacy
+
+By clicking “Accept all cookies”, you agree Stack Exchange can store cookies on your device and disclose information in accordance with our Cookie Policy.
+
+ 
+
+Accept all cookies
+
+Necessary cookies only
+
+Customize settings
+

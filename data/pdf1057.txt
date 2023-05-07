@@ -1,0 +1,1162 @@
+
+A Gentle Tutorial on
+
+Information Theory and Learning
+
+Roni Rosenfeld
+
+Carnegie Mellon University
+
+
+
+Carnegie
+
+Mellon
+
+
+Outline
+
+• First part based very loosely on [Abramson 63].
+
+• Information theory usually formulated in terms of information
+
+channels and coding — will not discuss those here.
+
+1. Information
+
+2. Entropy
+
+3. Mutual Information
+
+4. Cross Entropy and Learning
+
+
+
+Carnegie
+
+Mellon
+
+2
+
+IT tutorial, Roni Rosenfeld, 1999
+
+
+Information
+
+• information ̸= knowledge
+
+Concerned with abstract possibilities, not their meaning
+
+• information: reduction in uncertainty
+
+Imagine:
+
+#1 you’re about to observe the outcome of a coin ﬂip
+
+#2 you’re about to observe the outcome of a die roll
+
+There is more uncertainty in #2
+
+Next:
+
+1. You observed outcome of #1 → uncertainty reduced to zero.
+
+2. You observed outcome of #2 → uncertainty reduced to zero.
+
+=⇒ more information was provided by the outcome in #2
+
+
+
+Carnegie
+
+Mellon
+
+3
+
+IT tutorial, Roni Rosenfeld, 1999
+
+
+Deﬁnition of Information
+
+(After [Abramson 63])
+
+Let E be some event which occurs with probability
+
+P(E). If we are told that E has occurred, then we
+
+say that we have received
+
+I(E) = log2
+
+1
+
+
+
+P(E)
+
+bits of information.
+
+• Base of log is unimportant — will only change the units
+
+We’ll stick with bits, and always assume base 2
+
+• Can also think of information as amount of ”surprise” in E
+
+(e.g. P(E) = 1, P(E) = 0)
+
+• Example: result of a fair coin ﬂip (log2 2 = 1 bit)
+
+• Example: result of a fair die roll (log2 6 ≈ 2.585 bits)
+
+
+
+Carnegie
+
+Mellon
+
+4
+
+IT tutorial, Roni Rosenfeld, 1999
+
+
+Information is Additive
+
+• I(k fair coin tosses) = log
+
+1
+
+
+
+1/2k = k bits
+
+• So:
+
+– random word from a 100,000 word vocabulary:
+
+I(word) = log 100, 000 = 16.61 bits
+
+– A 1000 word document from same source:
+
+I(document) = 16,610 bits
+
+– A 480x640 pixel, 16-greyscale video picture:
+
+I(picture) = 307, 200 · log 16 = 1, 228, 800 bits
+
+• =⇒ A (VGA) picture is worth (a lot more than) a 1000 words!
+
+• (In reality, both are gross overestimates.)
+
+
+
+Carnegie
+
+Mellon
+
+5
+
+IT tutorial, Roni Rosenfeld, 1999
+
+
+Entropy
+
+A Zero-memory information source S is a source that emits sym-
+
+bols from an alphabet {s1, s2, . . . , sk} with probabilities {p1, p2, . . . , pk},
+
+respectively, where the symbols emitted are statistically indepen-
+
+dent.
+
+What is the average amount of information in observing the
+
+output of the source S?
+
+Call this Entropy:
+
+H(S)
+
+=
+
+�
+
+i
+
+pi · I(si)
+
+=
+
+�
+
+i
+
+pi · log 1
+
+
+
+pi
+
+=
+
+EP [ log
+
+1
+
+
+
+p(s) ]
+
+*
+
+
+
+Carnegie
+
+Mellon
+
+6
+
+IT tutorial, Roni Rosenfeld, 1999
+
+
+Alternative Explanations of Entropy
+
+H(S)
+
+=
+
+�
+
+i
+
+pi · log 1
+
+
+
+pi
+
+1. avg amt of info provided per symbol
+
+2. avg amount of surprise when observing a symbol
+
+3. uncertainty an observer has before seeing the symbol
+
+4. avg # of bits needed to communicate each symbol
+
+(Shannon: there are codes that will communicate these sym-
+
+bols with eﬃciency arbitrarily close to H(S) bits/symbol;
+
+there are no codes that will do it with eﬃciency &lt; H(S)
+
+bits/symbol)
+
+
+
+Carnegie
+
+Mellon
+
+7
+
+IT tutorial, Roni Rosenfeld, 1999
+
+
+Entropy as a Function of a Probability Distribution
+
+Since the source S is fully characterized byP = {p1, . . . pk} (we
+
+don’t care what the symbols si actually are, or what they stand
+
+for), entropy can also be thought of as a property of a probability
+
+distribution function P: the avg uncertainty in the distribution.
+
+So we may also write:
+
+H(S)
+
+=
+
+H(P)
+
+=
+
+H(p1, p2, . . . , pk)
+
+=
+
+�
+
+i
+
+pi log 1
+
+
+
+pi
+
+(Can be generalized to continuous distributions.)
+
+
+
+Carnegie
+
+Mellon
+
+8
+
+IT tutorial, Roni Rosenfeld, 1999
+
+
+Properties of Entropy
+
+H(P)
+
+=
+
+�
+
+i
+
+pi · log 1
+
+
+
+pi
+
+1. Non-negative: H(P) ≥ 0
+
+2. Invariant wrt permutation of its inputs:
+
+H(p1, p2, . . . , pk) = H(pτ(1), pτ(2), . . . , pτ(k))
+
+3. For any other probability distribution {q1, q2, . . . , qk}:
+
+H(P)
+
+=
+
+�
+
+i
+
+pi · log 1
+
+
+
+pi
+
+&lt;
+
+�
+
+i
+
+pi · log 1
+
+
+
+qi
+
+4. H(P) ≤ log k, with equality iﬀ
+
+pi = 1/k ∀i
+
+5. The further P is from uniform, the lower the entropy.
+
+
+
+Carnegie
+
+Mellon
+
+9
+
+IT tutorial, Roni Rosenfeld, 1999
+
+
+Special Case: k = 2
+
+Flipping a coin with P(“head”)=p, P(“tail”)=1-p
+
+H(p) = p · log 1
+
+
+
+p + (1 − p) · log
+
+1
+
+
+
+1 − p
+
+Notice:
+
+• zero uncertainty/information/surprise at edges
+
+• maximum info at 0.5 (1 bit)
+
+• drops oﬀ quickly
+
+
+
+Carnegie
+
+Mellon
+
+10
+
+IT tutorial, Roni Rosenfeld, 1999
+
+
+Special Case: k = 2 (cont.)
+
+Relates to: ”20 questions” game strategy (halving the space).
+
+So a sequence of (independent) 0’s-and-1’s can provide up to 1
+
+bit of information per digit, provided the 0’s and 1’s are equally
+
+likely at any point. If they are not equally likely, the sequence
+
+provides less information and can be compressed.
+
+
+
+Carnegie
+
+Mellon
+
+11
+
+IT tutorial, Roni Rosenfeld, 1999
+
+
+The Entropy of English
+
+27 characters (A-Z, space).
+
+100,000 words (avg 5.5 characters each)
+
+• Assuming independence between successive characters:
+
+– uniform character distribution: log 27 = 4.75 bits/character
+
+– true character distribution:
+
+4.03 bits/character
+
+• Assuming independence between successive words:
+
+– unifrom word distribution: log 100, 000/6.5 ≈ 2.55 bits/character
+
+– true word distribution:
+
+9.45/6.5 ≈ 1.45 bits/character
+
+• True Entropy of English is much lower!
+
+
+
+Carnegie
+
+Mellon
+
+12
+
+IT tutorial, Roni Rosenfeld, 1999
+
+
+Two Sources
+
+Temperature T: a random variable taking on values t
+
+P(T=hot)=0.3
+
+P(T=mild)=0.5
+
+P(T=cold)=0.2
+
+=⇒ H(T)=H(0.3, 0.5, 0.2) = 1.48548
+
+huMidity M: a random variable, taking on values m
+
+P(M=low)=0.6
+
+P(M=high)=0.4
+
+=⇒ H(M) = H(0.6, 0.4) = 0.970951
+
+T, M not independent: P(T = t, M = m) ̸= P(T = t) · P(M = m)
+
+
+
+Carnegie
+
+Mellon
+
+13
+
+IT tutorial, Roni Rosenfeld, 1999
+
+
+Joint Probability, Joint Entropy
+
+
+
+
+
+
+
+cold
+
+
+
+mild
+
+
+
+hot
+
+
+
+
+
+
+
+
+
+low
+
+
+
+0.1
+
+
+
+0.4
+
+
+
+0.1
+
+
+
+0.6
+
+
+
+
+
+high
+
+
+
+0.2
+
+
+
+0.1
+
+
+
+0.1
+
+
+
+0.4
+
+
+
+
+
+
+
+
+
+0.3
+
+
+
+0.5
+
+
+
+0.2
+
+
+
+1.0
+
+
+
+
+
+• H(T) = H(0.3, 0.5, 0.2) = 1.48548
+
+• H(M) = H(0.6, 0.4) = 0.970951
+
+• H(T) + H(M) = 2.456431
+
+• Joint Entropy: consider the space of (t, m) events H(T, M) =
+
+�
+
+t,m P(T = t, M = m) · log
+
+1
+
+
+
+P(T=t,M=m)
+
+H(0.1, 0.4, 0.1, 0.2, 0.1, 0.1) = 2.32193
+
+Notice that H(T, M) &lt; H(T) + H(M) !!!
+
+
+
+Carnegie
+
+Mellon
+
+14
+
+IT tutorial, Roni Rosenfeld, 1999
+
+
+Conditional Probability, Conditional Entropy
+
+P(T = t|M = m)
+
+
+
+
+
+
+
+cold
+
+
+
+mild
+
+
+
+hot
+
+
+
+
+
+
+
+
+
+low
+
+
+
+1/6
+
+
+
+4/6
+
+
+
+1/6
+
+
+
+1.0
+
+
+
+
+
+high
+
+
+
+2/4
+
+
+
+1/4
+
+
+
+1/4
+
+
+
+1.0
+
+
+
+
+
+Conditional Entropy:
+
+• H(T|M = low) = H(1/6, 4/6, 1/6) = 1.25163
+
+• H(T|M = high) = H(2/4, 1/4, 1/4) = 1.5
+
+• Average Conditional Entropy (aka equivocation):
+
+H(T/M) = �
+
+m P(M = m) · H(T|M = m) =
+
+0.6 · H(T|M = low) + 0.4 · H(T|M = high) = 1.350978
+
+How much is M telling us on average about T?
+
+H(T) − H(T|M) = 1.48548 − 1.350978 ≈ 0.1345 bits
+
+
+
+Carnegie
+
+Mellon
+
+15
+
+IT tutorial, Roni Rosenfeld, 1999
+
+
+Conditional Probability, Conditional Entropy
+
+P(M = m|T = t)
+
+
+
+
+
+
+
+cold
+
+
+
+mild
+
+
+
+hot
+
+
+
+
+
+
+
+low
+
+
+
+1/3
+
+
+
+4/5
+
+
+
+1/2
+
+
+
+
+
+high
+
+
+
+2/3
+
+
+
+1/5
+
+
+
+1/2
+
+
+
+
+
+
+
+
+
+1.0
+
+
+
+1.0
+
+
+
+1.0
+
+
+
+
+
+Conditional Entropy:
+
+• H(M|T = cold) = H(1/3, 2/3) = 0.918296
+
+• H(M|T = mild) = H(4/5, 1/5) = 0.721928
+
+• H(M|T = hot) = H(1/2, 1/2) = 1.0
+
+• Average Conditional Entropy (aka Equivocation):
+
+H(M/T) = �
+
+t P(T = t) · H(M|T = t) =
+
+0.3 · H(M|T = cold) + 0.5 · H(M|T = mild) + 0.2 · H(M|T =
+
+hot) = 0.8364528
+
+How much is T telling us on average about M?
+
+H(M) − H(M|T) = 0.970951 − 0.8364528 ≈ 0.1345 bits
+
+
+
+Carnegie
+
+Mellon
+
+16
+
+IT tutorial, Roni Rosenfeld, 1999
+
+
+Average Mutual Information
+
+I(X; Y )
+
+=
+
+H(X) − H(X/Y )
+
+=
+
+�
+
+x
+
+P(x) · log
+
+1
+
+
+
+P(x) −
+
+�
+
+x,y
+
+P(x, y) · log
+
+1
+
+
+
+P(x|y)
+
+=
+
+�
+
+x,y
+
+P(x, y) · log P(x|y)
+
+
+
+P(x)
+
+=
+
+�
+
+x,y
+
+P(x, y) · log
+
+P(x, y)
+
+
+
+P(x)P(y)
+
+Properties of Average Mutual Information:
+
+• Symmetric (but H(X) ̸= H(Y ) and H(X/Y ) ̸= H(Y/X))
+
+• Non-negative (but H(X) − H(X/y) may be negative!)
+
+• Zero iﬀ X, Y independent
+
+• Additive (see next slide)
+
+
+
+Carnegie
+
+Mellon
+
+17
+
+IT tutorial, Roni Rosenfeld, 1999
+
+
+Mutual Information Visualized
+
+H(X, Y ) = H(X) + H(Y ) − I(X; Y )
+
+
+
+Carnegie
+
+Mellon
+
+18
+
+IT tutorial, Roni Rosenfeld, 1999
+
+
+Three Sources
+
+From Blachman:
+
+(”/” means ”given”. ”;” means ”between”. ”,” means ”and”.)
+
+• H(X, Y/Z) = H({X, Y } / Z)
+
+• H(X/Y, Z) = H(X / {Y, Z})
+
+• I(X; Y/Z) = H(X/Z) − H(X/Y, Z)
+
+•
+
+I(X; Y ; Z)
+
+=
+
+I(X; Y ) − I(X; Y/Z)
+
+=
+
+H(X, Y, Z) − H(X, Y ) − H(X, Z) − H(Y, Z) + H(X) + H(Y
+
+=⇒ Can be negative!
+
+• I(X; Y, Z) = I(X; Y ) + I(X; Z/Y ) (additivity)
+
+• But: I(X; Y ) = 0,I(X; Z) = 0 doesn’t mean I(X; Y, Z) = 0!!!
+
+
+
+Carnegie
+
+Mellon
+
+19
+
+IT tutorial, Roni Rosenfeld, 1999
+
+
+A Markov Source
+
+Order-k Markov Source: A source that ”remembers” the last k
+
+symbols emitted.
+
+Ie, the probability of emitting any symbol depends on the last k
+
+emitted symbols: P(sT=t|sT=t−1, sT=t−2, . . . , sT=t−k)
+
+So the last k emitted symbols deﬁne a state, and there are qk
+
+states.
+
+First-order markov source: deﬁned by qXq matrix: P(si|sj)
+
+Example: ST=t is position after t random steps
+
+
+
+Carnegie
+
+Mellon
+
+20
+
+IT tutorial, Roni Rosenfeld, 1999
+
+
+Approximating with a Markov Source
+
+A non-Markovian source can still be approximated by one.
+
+Examples: English characters: C = {c1, c2, . . .}
+
+1. Uniform: H(C) = log 27 = 4.75 bits/char
+
+2. Assuming 0 memory: H(C) = H(0.186, 0.064, 0.0127, . . .) =
+
+4.03 bits/char
+
+3. Assuming 1st order: H(C) = H(ci/ci−1) = 3.32 bits/char
+
+4. Assuming 2nd order: H(C) = H(ci/ci−1, ci−2) = 3.1 bits/char
+
+5. Assuming large order: Shannon got down to ≈ 1 bit/char
+
+
+
+Carnegie
+
+Mellon
+
+21
+
+IT tutorial, Roni Rosenfeld, 1999
+
+
+Modeling an Arbitrary Source
+
+Source D(Y ) with unknown distribution PD(Y )
+
+(recall H(PD) = EPD[log
+
+1
+
+
+
+PD(Y )] )
+
+Goal: Model (approximate) with learned distribution PM(Y )
+
+What’s a good model PM(Y )?
+
+1. RMS error over D’s parameters ⇒ but D is unknown!
+
+2. Predictive Probability: Maximize the expected log-likelihood
+
+the model assigns to future data from D
+
+
+
+Carnegie
+
+Mellon
+
+22
+
+IT tutorial, Roni Rosenfeld, 1999
+
+
+Cross Entropy
+
+M∗
+
+=
+
+arg max
+
+M
+
+ED[log PM(Y )]
+
+=
+
+arg min
+
+M
+
+ED[log
+
+1
+
+
+
+PM(Y )]
+
+=
+
+CH(PD; PM) ⇐= Cross Entropy
+
+The following are equivalent:
+
+1. Maximize Predictive Probability of PM
+
+2. Minimize Cross Entropy CH(PD; PM)
+
+3. Minimize the diﬀerence between PD and PM (in what sense?)
+
+
+
+Carnegie
+
+Mellon
+
+23
+
+IT tutorial, Roni Rosenfeld, 1999
+
+
+A Distance Measure Between Distributions
+
+Kullback-Liebler distance:
+
+KL(PD; PM)
+
+=
+
+CH(PD; PM) − H(PD)
+
+=
+
+EPD[log PD(Y )
+
+
+
+PM(Y )]
+
+Properties of KL distance:
+
+1. Non-negative. KL(PD; PM) = 0 ⇐⇒ PD = PM
+
+2. Generally non-symmetric
+
+The following are equivalent:
+
+1. Maximize Predictive Probability of PM for distribution D
+
+2. Minimize Cross Entropy CH(PD; PM)
+
+3. Minimize the distance KL(PD; PM)
+
+
+
+Carnegie
+
+Mellon
+
+24
+
+IT tutorial, Roni Rosenfeld, 1999
+

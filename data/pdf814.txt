@@ -1,0 +1,1644 @@
+
+
+
+LambdaMART in Depth
+
+LambdaMART in Depth
+
+
+
+J A NUA RY  
+
+
+
+1 7 T H,  
+
+
+
+2 0 2 2
+
+LambdaMART is a classic. It’s the endlessly tinkerable classic car of ranking algorithms. If you can grok the
+
+algorithm, you can play with the model architecture, coming up with your own variations on this learning to rank
+
+staple.
+
+Last time I went over the intuition behind how LambdaMART learns to ranks in pseudocode. Now Let’s develop a
+
+full, performant, end-to-end LambdaMART implementation in Python (w/ Pandas &amp; SkLearn).
+
+All the code for this notebook is in this collab notebook. So follow along! :)
+
+Quick Review: Shop Smart, Shop LambdaMART!
+
+Quick Review: Shop Smart, Shop LambdaMART!
+
+LambdaMART lets us plug-and-play how we optimize the relevance of the system. We can use ranking metrics
+
+familiar to a search or recommendations practitioners.
+
+Need to get just the top item right? Like in a search for an item by name? Then perhaps optimize the precision of
+
+the first position. In other words, forget all the other results, if the first position is right, the algorithm has done
+
+well. There’s no prize for second place!
+
+Or need to show the user a variety of relevant results? Like a user searching for ‘shoes’ seeing a variety of
+
+different products to compare/contrast? Then choosing a metric like Discounted Cumulative Gain (DCG)
+
+computed over the top 10 works best. In this case, a range of relevant results (with a bias towards top positions)
+
+captures what we want.
+
+The flexibility to optimize whatever we want, makes LambdaMART an enduring Information Retrieval algorithm.
+
+You can even invent metrics for your specific algorithm or needs - for example this blog post on optimizing user-
+
+product marketplaces.
+
+Reviewing the LambdaMART algorithm
+
+Reviewing the LambdaMART algorithm
+
+How does LambdaMART achieve such flexibility?
+
+Last time, I described how LambdaMART optimizes search relevance via a pairwise swapping. Zeroing in on
+
+each query, we swap each potential search result in the training data and look at the impact to a metric like DCG.
+
+For example, our ideal search results for a query rambo  might be something like
+
+Rank
+
+Movie
+
+Label (0-4)
+
+1
+
+Rambo
+
+Very Relevant (4)
+
+2
+
+First Blood
+
+Very Relevant (4)
+
+3
+
+Rambo III
+
+Very Relevant (4)
+
+…
+
+…
+
+…
+
+50
+
+Forrest Gump
+
+Very Irrelevant (0)
+
+Let’s say we computed DCG for this ideal ranking for the query, and it was DCG = 25
+
+We know in our training data that the movie Forrest Gump is not relevant for the rambo  query. So we can play
+
+“what if”. What if we didn’t achieve a perfect relevance ranking. What if instead Forrest Gump jumped to the top
+
+of the result set? We can perform this swap, and see the impact to DCG.
+
+
+
+ Doug Turnbull
+
+
+
+
+
+
+
+
+Rank
+
+Movie
+
+Label (0-4)
+
+1
+
+Rambo
+
+Very Irrelevant (4)
+
+2
+
+First Blood
+
+Very Relevant (4)
+
+3
+
+Forrest Gump
+
+Very Relevant (0)
+
+…
+
+…
+
+…
+
+50
+
+Rambo III
+
+Very Relevant (4)
+
+DCG = 19.9
+
+Ooof DCG got 5.1 worse with this scenario. We can track the positive / negative impact to that swap in a table.
+
+Query
+
+Result
+
+DCG Swap Impact
+
+rambo
+
+Rambo III
+
+5.1
+
+…
+
+rambo
+
+Forrest Gump
+
+5.1
+
+We can repeat this ‘what if’ swapping for every pair of labeled results for rambo . We accumulate these swaps in
+
+a value we call lambdas .
+
+Query
+
+Result
+
+Total DCG Swap Impact (aka ‘lambdas’)
+
+rambo
+
+Rambo III
+
+201.1
+
+…
+
+rambo
+
+Forrest Gump
+
+-50.1
+
+Of course, we don’t just do this on rambo! We build this table for every query in our training set, creating a table
+
+of lambdas for each row, by playing ‘what if’ within each query in our training set.
+
+Query
+
+Result
+
+Total DCG Swap Impact (aka ‘lambdas’)
+
+rambo
+
+Rambo III
+
+201.1
+
+…
+
+…
+
+…
+
+rambo
+
+Forrest Gump
+
+-50.1
+
+…
+
+…
+
+…
+
+rocky
+
+Rocky
+
+220.0
+
+…
+
+…
+
+…
+
+rocky
+
+Rocky &amp; Bullwinkle
+
+-21.5
+
+Along with each example, we also have a vector of features we think might predict relevance for this document.
+
+In our case, we use the Elasticsearch relevance scores for the Query column in the title  and overview fields. We
+
+can, and should, of course experiment with any and all features we might want to learn relevance on - but this is
+
+a blog post about the algo, not finding good features, so we’ll stick with these!
+
+Query Result
+
+Total DCG Swap Impact (aka
+
+‘lambdas’)
+
+Features [title,
+
+overview]
+
+rambo Rambo III
+
+201.1
+
+[20.6, 4.0]
+
+…
+
+…
+
+…
+
+
+
+
+
+
+rambo Forrest Gump
+
+-50.1
+
+[0.0, 0.0]
+
+…
+
+…
+
+…
+
+rocky
+
+Rocky
+
+220.0
+
+[21.0, 7.0]
+
+…
+
+…
+
+…
+
+rocky
+
+Rocky &amp;
+
+Bullwinkle
+
+-21.5
+
+[11.0, 3.0]
+
+Query Result
+
+Total DCG Swap Impact (aka
+
+‘lambdas’)
+
+Features [title,
+
+overview]
+
+We’d suppose that high title and overview scores correlate with search results that maximize DCG. But we have
+
+to express that mathematically of course. We need to connect it to the DCG swap impact we’ve seen to our
+
+proposed features.
+
+We need:
+
+f(X) ~ y
+
+Where X is our features (title, overview, whatever) and y are the lambdas we want to predict.
+
+We could use just about any model to make this prediction. Last time, we trained a decision tree using the
+
+lambdas as labels and the features as predictors. When we did this, we created a ranking function that could use
+
+features derived from a search system like Elasticsearch to approximate our chosen ranking metric like DCG.
+
+Adding in Gradient Boosting
+
+Adding in Gradient Boosting
+
+LambdaMART isn’t just pair-wise swapping and predicting though. It’s a lot more.
+
+LambdaMART is an ensemble model. This means the final prediction is a sum of little kiddy models. The final
+
+prediction is something like
+
+prediction = model1.predict(features) + model2.predict(features) + … + modelN.predict(features)
+
+How could this possibly work?
+
+We train modelN with knowledge on how well prediction = model1 + … + modelN-1  ranks relative to the ideal (as
+
+expressed by the lambdas). Round-by-round we predict NOT the lambdas, but something (in spirit) closer to
+
+last_prediction - expected_prediction.
+
+We don’t learn the lambdas, but the error in the current model’s prediction.
+
+Of course, the lambdas still matter. In the very first round, that’s all we have to go on! So the ‘error’ really is the
+
+lambdas themselves!
+
+We call this iterative technique gradient boosting. An ensemble of models where each round we learn to
+
+compensate for the error in the sum of the previous rounds. Gradient boosting is an extremely powerful technique
+
+used extensively throughout the industry. It’s crucial to me to deeply understand it and its power, especially when
+
+it comes to ranking and relevance.
+
+Sound abstract? Let’s dive in
+
+LambdaMART with Python and Pandas
+
+LambdaMART with Python and Pandas
+
+OK ok, to the code already. First we set up what we need.
+
+We will assume we ran the loading steps in the notebook. Those steps load a movie corpus into Elasticsearch
+
+
+
+
+
+
+(thanks to TheMovieDB!) with a simple toy training set and features (remember title and overview Elasticsearch
+
+relevance scores).
+
+Let’s quickly inspect the starting training set dataframe, judgments , we’re starting with:
+
+judgments
+
+uid
+
+qid keywords
+
+docId
+
+grade
+
+features
+
+0
+
+1_7555
+
+1
+
+rambo
+
+7555
+
+4
+
+[11.657399, 10.083591]
+
+1
+
+1_1370
+
+1
+
+rambo
+
+1370
+
+3
+
+[9.456276, 13.265001]
+
+2
+
+1_1369
+
+1
+
+rambo
+
+1369
+
+3
+
+[6.036743, 11.113943]
+
+3
+
+1_13258
+
+1
+
+rambo
+
+13258
+
+2
+
+[0.0, 6.869545]
+
+4
+
+1_1368
+
+1
+
+rambo
+
+1368
+
+4
+
+[0.0, 11.113943]
+
+...
+
+...
+
+...
+
+...
+
+...
+
+...
+
+...
+
+1385
+
+40_37079
+
+40
+
+star wars
+
+37079
+
+0
+
+[0.0, 0.0]
+
+1386
+
+40_126757
+
+40
+
+star wars
+
+126757
+
+0
+
+[0.0, 0.0]
+
+You see in the output that:
+
+We have search keywords, doc id, and a grade (the label for relevance for this query, from 0-4 with 0
+
+meaning completely irrelevant, 4 very relevant)
+
+Each query has a unique id qid
+
+Each example has its own unique id uid
+
+A feature vector, holding title and overview we’ll use to predict on each round of the ensemble
+
+Next, we’ll copy this dataframe and perform some initialization. Most importantly, we need to
+
+1. Set up the last round’s model prediction (at first 0.0 )
+
+2. Sort by this prediction within each query - (important to do this with a stable sort so we avoid seeing the
+
+impact swapping equivalent results)
+
+lambdas_per_query = judgments.copy()
+
+lambdas_per_query['last_prediction'] = 0.0
+
+lambdas_per_query.sort_values(['qid', 'last_prediction'], ascending=[True, False], kind='stable')
+
+uid
+
+qid keywords docId
+
+grade features
+
+last_prediction
+
+0
+
+1_7555
+
+1
+
+rambo
+
+7555
+
+4
+
+[11.657399,
+
+10.083591]
+
+0.0
+
+1
+
+1_1370
+
+1
+
+rambo
+
+1370
+
+3
+
+[9.456276,
+
+13.265001]
+
+0.0
+
+2
+
+1_1369
+
+1
+
+rambo
+
+1369
+
+3
+
+[6.036743,
+
+11.113943]
+
+0.0
+
+3
+
+1_13258
+
+1
+
+rambo
+
+13258
+
+2
+
+[0.0, 6.869545]
+
+0.0
+
+4
+
+1_1368
+
+1
+
+rambo
+
+1368
+
+4
+
+[0.0, 11.113943]
+
+0.0
+
+...
+
+...
+
+...
+
+...
+
+...
+
+...
+
+...
+
+...
+
+1385 40_37079
+
+40
+
+star wars
+
+37079
+
+0
+
+[0.0, 0.0]
+
+0.0
+
+
+
+
+
+
+1386 40_126757 40
+
+star wars
+
+126757 0
+
+[0.0, 0.0]
+
+0.0
+
+1387 40_39797
+
+40
+
+star wars
+
+39797
+
+0
+
+[0.0, 0.0]
+
+0.0
+
+1388 40_18112
+
+40
+
+star wars
+
+18112
+
+0
+
+[0.0, 0.0]
+
+0.0
+
+1389 40_43052
+
+40
+
+star wars
+
+43052
+
+0
+
+[0.0, 0.0]
+
+0.0
+
+uid
+
+qid keywords docId
+
+grade features
+
+last_prediction
+
+We next compute statistics specific to DCG:
+
+display_rank  - what rank the document would appear for this query if sorted by the model’s current relevance
+
+score (ie last_prediction)
+
+discount - the weight of this position (positions on the top of the page matter more)
+
+gain - the importance of this result as a function of the relevance grade ( 2^grade - 1  here)
+
+lambdas_per_query.sort_values(['qid', 'last_prediction'], ascending=[True, False], kind='stable')
+
+# DCG stats
+
+lambdas_per_query['display_rank'] = lambdas_per_query.groupby('qid').cumcount()
+
+lambdas_per_query['discount'] = 1 / np.log2(2 + lambdas_per_query['display_rank'])
+
+lambdas_per_query['gain'] = (2**lambdas_per_query['grade'] - 1)
+
+lambdas_per_query[['qid', 'display_rank', 'discount', 'grade', 'gain']]
+
+Output
+
+qid
+
+display_rank
+
+discount
+
+grade
+
+gain
+
+0
+
+1
+
+0
+
+1.000000
+
+4
+
+15
+
+1
+
+1
+
+1
+
+0.630930
+
+3
+
+7
+
+2
+
+1
+
+2
+
+0.500000
+
+3
+
+7
+
+3
+
+1
+
+3
+
+0.430677
+
+2
+
+3
+
+4
+
+1
+
+4
+
+0.386853
+
+4
+
+15
+
+...
+
+...
+
+...
+
+...
+
+...
+
+...
+
+1385
+
+40
+
+25
+
+0.210310
+
+0
+
+0
+
+1386
+
+40
+
+26
+
+0.208015
+
+0
+
+0
+
+1387
+
+40
+
+27
+
+0.205847
+
+0
+
+0
+
+1388
+
+40
+
+28
+
+0.203795
+
+0
+
+0
+
+1389
+
+40
+
+29
+
+0.201849
+
+0
+
+0
+
+We compute display_rank  here by first sorting on the model’s score ( last_prediction) then using Pandas cumcount
+
+which simply assigns a counter to each row in each query, with items sorted first receiving a lower value.
+
+Computing Pairwise Deltas
+
+Computing Pairwise Deltas
+
+LambdaMART works by accumulating the impact to our ranking metric when a query’s potential result X is
+
+swapped with query result Y.
+
+To compute pairwise deltas, you might imagine we need to visit each query and loop over each labeled result,
+
+then within that result loop again to do a swap.
+
+Something like this mangled psuedocode:
+
+
+
+
+
+
+for query_judgments in judgments.groupby('qid'):
+
+ for result_x in query_judgments:
+
+ for result_y in query_judgments:
+
+             dcg_x += swap(result_x, result_y)
+
+But pandas let’s us be cleverer and more efficient than that.
+
+In just two lines of Pandas we can compute the DCG impact of swapping a given position with every other
+
+position. We do this by joining the dataframe with itself! Recall your relational joins, an outer join joins every
+
+instance with every-other instance.
+
+# each query’s result paired with every other result
+
+swaps = lambdas_per_query.merge(lambdas_per_query, on='qid', how='outer')
+
+# Compute impact of x swapped with y
+
+swaps['delta'] = np.abs((swaps['discount_x'] - swaps['discount_y']) * (swaps['gain_x'] - swaps['gain_y']))
+
+swaps[['qid', 'display_rank_x', 'display_rank_y', 'delta']]
+
+qid
+
+display_rank_x
+
+display_rank_y
+
+delta
+
+0
+
+1
+
+0
+
+0
+
+0.000000
+
+1
+
+1
+
+0
+
+1
+
+2.952562
+
+2
+
+1
+
+0
+
+2
+
+4.000000
+
+3
+
+1
+
+0
+
+3
+
+6.831881
+
+4
+
+1
+
+0
+
+4
+
+0.000000
+
+...
+
+...
+
+...
+
+...
+
+...
+
+49019
+
+40
+
+29
+
+25
+
+0.000000
+
+49020
+
+40
+
+29
+
+26
+
+0.000000
+
+49021
+
+40
+
+29
+
+27
+
+0.000000
+
+49022
+
+40
+
+29
+
+28
+
+0.000000
+
+49023
+
+40
+
+29
+
+29
+
+0.000000
+
+A lot happens is these two lines:
+
+1. Self-join of our judgments on qid  using an outer  join. Every x’th position for a query is now paired with every
+
+y’th position
+
+2. Deltas computed - After the swap the _x version of each value has the higher grade. It turns out the impact
+
+of the swap on DCG is (discount_x - discount_y) * (gain_x - gain_y) .
+
+Note that it’s not entirely self evident that the DCG swap impact is (discount_x - discount_y) * (gain_x - gain_y) . But if you
+
+work out the math behind DCG, you’ll see that indeed this would be the impact of DCG_x minus DCG_y.
+
+Luckily, the Ranklib Learning to Rank library has conveniently figured out how to compute the swap impact of
+
+supported ranking statistics as an optimization. For example, you can find ERR’s here.
+
+Important to note, we haven’t accumulated anything yet!* *We’re still in a pairwise space with every potential
+
+query result paired with every other one. This dataframe’s delta  shows the component of every accumulated
+
+DCG change for a given x. Recall we need to accumulate back each xth rows total ‘DCG swap impact’ aka the
+
+lambdas.
+
+In this space, we also need to examine another important variable - how wrong the model is. AKA, how well
+
+last_prediction predicts the correct ordering between two potential search results. We do that next.
+
+
+
+
+
+
+Rho rho rho your boat - computing the model’s current error
+
+Rho rho rho your boat - computing the model’s current error
+
+In the previous blog post, we focused on just the pairwise swapping trick to compute labels. We just computed
+
+our swaps in Python above with a cute Pandas outer-join.
+
+Of course we know now, reality is more complex. LambdaMART is an ensemble model. An ensemble model sums
+
+the predictions of each of its constituent models. In other words, we actually rank not by a single decision tree,
+
+but by summing all the little kiddy models together:
+
+ # relevance scores for this query relative to a doc
+
+features = compute_features(query, document) 
+
+prediction = 0.0
+
+for model in ensemble:
+
+    prediction += model(features)
+
+At each round of training, we already have a set of models that have been trained.
+
+But these are bad models on Santa’s Naughty List. Our next model will be nice, right? Can it compensate for all
+
+those disappointing ones?
+
+To compensate, we don’t learn the deltas directly, but learn the error between the naughty list of existing models
+
+and the ground-truth ranking. In other words, we only care about each pairwise delta in proportion to it’s error in
+
+the current model.
+
+A value rho  computes how well (or not well!) the existing, naughty models predict the current pair’s relative
+
+relevance. If the xth result appears to be more relevant than the yth, and the model predicts it as so, then we’re
+
+good. Otherwise, the existing naughty models get a demerit, and we have to try to make up for their negligence.
+
+We do this by weighing each delta by rho  which computes the model’s current error. Then we use rho * delta
+
+instead of delta. Instead of the DCG delta of swapping these two positions, its DCG delta * how far prediction is
+
+from capturing that DCG delta.
+
+Luckily rho isn’t hard to know, it’s simply the difference between prediction at x and prediction - y. But rho
+
+dresses up fancy by wrapping itself in a function scaling it to between 0-1: 1 / (1 + e^(prediction_x - prediction_y)) .
+
+Let’s walk through this step-by-step to make it clearer.
+
+swaps['rho'] = 1 / (1 + np.exp(swaps['last_prediction_x'] - swaps['last_prediction_y']))
+
+swaps[['qid', 'display_rank_x', 'display_rank_y', 'delta', 'last_prediction_x', 'last_prediction_y', 'rho']]
+
+qid display_rank_x display_rank_y delta
+
+last_prediction_x last_prediction_y rho
+
+0
+
+1
+
+0
+
+0
+
+0.000000 0.0
+
+0.0
+
+0.5
+
+1
+
+1
+
+0
+
+1
+
+2.952562 0.0
+
+0.0
+
+0.5
+
+2
+
+1
+
+0
+
+2
+
+4.000000 0.0
+
+0.0
+
+0.5
+
+3
+
+1
+
+0
+
+3
+
+6.831881 0.0
+
+0.0
+
+0.5
+
+4
+
+1
+
+0
+
+4
+
+0.000000 0.0
+
+0.0
+
+0.5
+
+...
+
+...
+
+...
+
+...
+
+...
+
+...
+
+...
+
+...
+
+49019 40
+
+29
+
+25
+
+0.000000 0.0
+
+0.0
+
+0.5
+
+49020 40
+
+29
+
+26
+
+0.000000 0.0
+
+0.0
+
+0.5
+
+49021 40
+
+29
+
+27
+
+0.000000 0.0
+
+0.0
+
+0.5
+
+49022 40
+
+29
+
+28
+
+0.000000 0.0
+
+0.0
+
+0.5
+
+49023 40
+
+29
+
+29
+
+0.000000 0.0
+
+0.0
+
+0.5
+
+
+
+
+
+
+Starting out, because all the predictions are 0.0 ( 1 / (1 + e^0) == 0.5 ), every rho is equal. This means, we’ll first try to
+
+directly learn the deltas computed in the previous section.
+
+In subsequent rounds, things get more interesting!
+
+Consider what it means if the naughty model actually predicts the relationship between potential search results x
+
+and y correctly: last_prediction_x &gt;&gt; last_predction_y.
+
+1 / (1 + e^100) -&gt; approaches 0
+
+Here because rho approaches 0, the new, nice model will not attempt to not impact the previous model’s score.
+
+The model’s already correct, no need to compensate any for this particular pair.
+
+But what if the model is waaay off for this pair last_prediction_x &lt;&lt; last_predction_y?
+
+1 / (1 + e^-100) -&gt; approaches 1
+
+For this pair of search results, the delta will be weighted much higher. The next model in the ensemble will attempt
+
+to predict delta, thus compensating for the error in previous rounds.
+
+With this code in place, we can compute the lambdas for this round. What the decision tree predicts.
+
+swaps['lambda'] = 0
+
+# Only look at places where x &gt; y
+
+slice_x_better =swaps[swaps['grade_x'] &gt; swaps['grade_y']]
+
+swaps.loc[swaps['grade_x'] &gt; swaps['grade_y'], 'lambda'] = slice_x_better['delta'] * slice_x_better['rho']
+
+swaps[['qid', 'display_rank_x', 'display_rank_y', 'delta', 'last_prediction_x', 'last_prediction_y', 'rho', 'lambda']]
+
+qid display_rank_x display_rank_y delta
+
+last_prediction_x last_prediction_y rho lambda
+
+0
+
+1
+
+0
+
+0
+
+0.000000 0.0
+
+0.0
+
+0.5 0.000000
+
+1
+
+1
+
+0
+
+1
+
+2.952562 0.0
+
+0.0
+
+0.5 1.476281
+
+2
+
+1
+
+0
+
+2
+
+4.000000 0.0
+
+0.0
+
+0.5 2.000000
+
+3
+
+1
+
+0
+
+3
+
+6.831881 0.0
+
+0.0
+
+0.5 3.415941
+
+4
+
+1
+
+0
+
+4
+
+0.000000 0.0
+
+0.0
+
+0.5 0.000000
+
+...
+
+...
+
+...
+
+...
+
+...
+
+...
+
+...
+
+...
+
+...
+
+49019 40
+
+29
+
+25
+
+0.000000 0.0
+
+0.0
+
+0.5 0.000000
+
+49020 40
+
+29
+
+26
+
+0.000000 0.0
+
+0.0
+
+0.5 0.000000
+
+49021 40
+
+29
+
+27
+
+0.000000 0.0
+
+0.0
+
+0.5 0.000000
+
+49022 40
+
+29
+
+28
+
+0.000000 0.0
+
+0.0
+
+0.5 0.000000
+
+49023 40
+
+29
+
+29
+
+0.000000 0.0
+
+0.0
+
+0.5 0.000000
+
+Note the slice_x_better  line. We actually only care about cases where x &gt; y. This is an optimization, but also avoids
+
+the values canceling each other out. The important line has slice_x_better['delta'] * slice_x_better['rho']
+
+Accumulate lambdas and train!
+
+Accumulate lambdas and train!
+
+We’re still with a dataframe dealing with each pair. Each delta has been computed, reflecting the impact of that
+
+swap to DCG. We’ve also weighed each swap according to how far off the current model predicts that value.
+
+But remember this psuedocode?
+
+for query_judgments in judgments.groupby(‘qid’):
+
+
+
+
+
+
+
+
+
+
+ for result_x in query_judgments:
+
+ for result_y in query_judgments:
+
+             dcg_x += swap(result_x, result_y)
+
+We done the swap  part. But we haven’t done the += part - we need to accumulate all these back to dcg_x
+
+We do this by merging in the difference: lambas_x - lambas_y
+
+# Better minus worse
+
+lambdas_x = swaps.groupby(['qid', 'display_rank_x'])['lambda'].sum().rename('lambda')
+
+lambdas_y = swaps.groupby(['qid', 'display_rank_y'])['lambda'].sum().rename('lambda')
+
+lambdas = lambdas_x - lambdas_y
+
+lambdas_per_query = lambdas_per_query.merge(lambdas, left_on=['qid', 'display_rank'], right_on=['qid', 'display_rank_x'], how='left')
+
+lambdas_per_query[['qid', 'docId', 'grade', 'features', 'lambda']]
+
+This captures the rho-weighted impact of each pairwise swap.
+
+As with a great deal of machine learning, the actual line of code that trains a model gets attention, but in reality is
+
+perhaps the least interesting:
+
+features = lambdas_per_query['features'].tolist()
+
+tree = DecisionTreeRegressor()
+
+tree.fit(features, lambdas_per_query['lambda']) 
+
+We add this back to our ensemble
+
+ensemble.append(tree)
+
+Rinse and Repeat!
+
+Rinse and Repeat!
+
+We next recompute last_prediction for each row (simply by accumulating in this next model’s prediction). Then we
+
+go back to the top of this article to recompute everything! We iterate until we reach diminishing returns.
+
+Remember at search time evaluating each model in the ensemble for every candidate result will add time! So you
+
+have to decide a good model size.
+
+I encourage you to walk through the full loop in the collab notebook.
+
+Learning Rate
+
+Learning Rate
+
+I left out a few (I feel minor or easy to learn) details of LambdaMART. You can inspect the notebook to learn
+
+more.
+
+But I’ll quickly mention that in reality there’s a learning rate - we actually don’t take the existing models as the
+
+current model’s ranking when computing last_prediction, but temper it down by multiplying it my learning_rate . This
+
+helps us more gradually learn the error and prevents overfitting
+
+Get in touch!
+
+Get in touch!
+
+As always, please get in touch and teach me what I’m missing. As I’m lame and old, the easiest place to find me
+
+is LinkedIn! And I’d love to work with you at Shopify - please consider applying as a relevance engineer on our
+
+team. We’ve got a great deal of search and recommendation problems at pretty intense WebScale™.
+
+Special Thanks to Simon Eskildsen for reviewing this post and giving substantive edits and feedback!
+
+
+
+Doug Turnbull
+
+Doug Turnbull
+
+ More from Doug
+
+ Doug's ML Powered Search course 
+
+ Doug's articles at OpenSource Connections | Shopify Eng Blog
+
+
+© 2023 Doug Turnbull
+
+© 2023 Doug Turnbull
+

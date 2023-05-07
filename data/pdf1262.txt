@@ -1,0 +1,588 @@
+
+
+
+Home
+
+CHIRAG GOYAL — Published On April 16, 2021
+
+Beginner Machine Learning Maths Probability
+
+
+
+Improve Naive Bayes Text classifier using Laplace Smoothing
+
+
+
+
+
+
+
+
+
+This article was published as a part of the Data Science Blogathon.
+
+Introduction
+
+Introduction
+
+During the pandemic, a significant increase in the number of followers on “Twitter” 
+
+“Twitter” was noticed as compared to
+
+months before it. This clearly shows how “Twitter”
+
+“Twitter” has gained its importance and trust across the globe. Many
+
+pieces of research imply that citizens are interested in being informed about emergencies through social network
+
+platforms like Twitter, and government officials should also use them.
+
+While working on a classification problem (Natural Language Processing
+
+Natural Language Processing) in which tweets (along with other
+
+features) were to be predicted, as to whether they were tweeted during the COVID-19
+
+COVID-19 pandemic or not. Even after
+
+using the “Naive Bayes algorithm”
+
+Naive Bayes algorithm” as my suitable model, during testing, the predictions were somewhat
+
+suspicious. “The cause of such a problem was a zero probability problem for the test data”.
+
+The cause of such a problem was a zero probability problem for the test data”. The most reliable
+
+solution to this problem is to use a smoothing technique, more particularly Laplace Smoothing
+
+Laplace Smoothing.
+
+This article is built upon the assumption that you have a basic understanding of Naïve Bayes.
+
+
+
+What was so suspicious about the results?
+
+What was so suspicious about the results?
+
+Example-1,
+
+Example-1,
+
+Consider an Amazon Inc. dataset
+
+Amazon Inc. dataset, in which given reviews (text) has to be classified to be either positive or negative.
+
+This type of real-life problem holds a lot of significance in deciding the future strategy for a giant multinational like
+
+Amazon.
+
+
+With the help of the present training set, we build a likelihood table. However, when likelihood values are used for
+
+predicting the test dataset some words occur only in the test dataset but not in the training set.
+
+For example, a test query has form,
+
+Query review= x1x2x’ 
+
+Query review= x1x2x’ 
+
+Let, a test sample have three words, where we assume x1 and x2 are present in the training data but not x’. So we
+
+have the likelihood for these two words. To predict whether the review is positive or negative, we compare
+
+P(positive/review) and P(negative/review) and choose the maximum probability out of the two to our prediction for
+
+review.
+
+We use the Bayes theorem to calculate these probabilities. While calculating these probabilities, we don’t involve
+
+the evidence for our calculations since evidence remains constant for all the classes. So, now probability equation
+
+becomes,
+
+P(positive/review) = K*P(x1/positive)*P(x2/positive)*P(x’/positive)*P(positive)
+
+P(positive/review) = K*P(x1/positive)*P(x2/positive)*P(x’/positive)*P(positive)
+
+Similarly,
+
+P(negative/review) = K*P(x1/negative)*P(x2/negative)*P(x’/negative)*P(negative)
+
+P(negative/review) = K*P(x1/negative)*P(x2/negative)*P(x’/negative)*P(negative)
+
+Here k is the proportionality constant.
+
+In the likelihood table, the value of P(x1/positive), P(x2/positive) and P(positive) are present but P(x’/positive) is not
+
+present since x’ is not present in our training data. As we have no value for this probability. Now, we are unable to be
+
+sure about the prediction and our model performed poorly. So, the question is what should we do?
+
+Idea-1: Ignore the term P(x’/positive)
+
+Idea-1: Ignore the term P(x’/positive)
+
+Ignoring the terms P(x’/positive) is analogous to replacing its probability value to 1 which implies we have the same
+
+probability of P(x’/positive) and P(x’/negative). As x’ is now present when we are calculating probabilities, we are
+
+eventually able to make a decision. However, this approach seems logically incorrect.
+
+Idea-2: In a bag of words model, we count the occurrence of words. If occurrences of word x’ in training are 0.
+
+Idea-2: In a bag of words model, we count the occurrence of words. If occurrences of word x’ in training are 0.
+
+According to that
+
+According to that
+
+P(x’|positive)=0 and P(x’|negative)=0, but this will make both P(positive|review) and P(negative|review) equal to 0.
+
+This is the problem of zero probability. So, how to deal with this problem? 
+
+This is the problem of zero probability. So, how to deal with this problem? 
+
+ 
+
+Let’s see one more example.
+
+Example-2,
+
+Example-2,
+
+Say there are two classes PP and QQ with features or attributes  XX, Y,Y, and ZZ, as follows:
+
+P: X=5, Y=2, Z=0
+
+P: X=5, Y=2, Z=0
+
+(In the class PP, XX appears 5 times and YY appears 2 times)
+
+Q: X=0, Y=3, Z=4
+
+Q: X=0, Y=3, Z=4
+
+
+(In the class Q,
+
+Q, ZZ appears 4 times and YY appears 3 times)
+
+Let’s see what happens when you throw away features that appear zero
+
+zero times.
+
+Idea-1: Throw Away Features that Appear Zero Times In Any Class
+
+Idea-1: Throw Away Features that Appear Zero Times In Any Class
+
+If you throw away features XX and ZZ because they appear zero
+
+zero times in any
+
+any of the classes, then you are only left with
+
+feature YY to classify documents with.
+
+And losing that information is a bad thing as described below!
+
+If you’re presented with a test document as follows:
+
+Y=1, Z=3
+
+Y=1, Z=3
+
+(It contains Y once and Z three times)
+
+Now, since you’ve discarded the features XX and YY, you won’t be able to tell whether the above document belongs to
+
+class PP or class QQ.
+
+So, losing any feature information is a bad thing!
+
+Idea-2: Throw Away Features That Appear Zero Times In All Classes
+
+Idea-2: Throw Away Features That Appear Zero Times In All Classes
+
+Is it possible to get around this problem by discarding only
+
+only those features that appear zero
+
+zero times in all
+
+all of the
+
+classes?
+
+No, because that would create its own specific difficulties!
+
+The following test document illustrates what would happen if we did that:
+
+X=3, Y=1, Z=1
+
+X=3, Y=1, Z=1
+
+The probability of PP and QQ would both become zero (because we did not throw away the zero probability of XX in
+
+class QQ and the zero probability of ZZ in class PP).
+
+Idea-3: Don’t Throw Anything Away – Use Smoothing Instead
+
+Idea-3: Don’t Throw Anything Away – Use Smoothing Instead
+
+Smoothing allows you to classify both the above documents correctly because:
+
+You do not lose count of information in classes where such information is available.
+
+You do not have to contend with zero counts.
+
+ 
+
+From both of these examples, you will see that smoothing is the best technique to solve the problem of
+
+From both of these examples, you will see that smoothing is the best technique to solve the problem of
+
+zero 
+
+zero probability error.
+
+probability error.
+
+We now introduce Laplace smoothing
+
+Laplace smoothing, a technique for smoothing categorical data.
+
+1. A small-sample correction, or pseudo-count, will be incorporated in every probability estimate.
+
+2. Consequently, no probability will be zero.
+
+3. This is a way of regularizing Naive Bayes
+
+regularizing Naive Bayes, and when the pseudo-count is zero, it is called Laplace smoothing.
+
+4. While in the general case it is often called Lidstone smoothing
+
+Lidstone smoothing.
+
+
+Note:
+
+Note: In statistics, additive smoothing
+
+additive smoothing, also called Laplace smoothing or Lidstone smoothing, is a technique used to
+
+smooth categorical data.
+
+Laplace smoothing
+
+Laplace smoothing
+
+It is introduced to solve the problem of zero probability i.e. when a query point contains a new observation, which
+
+when a query point contains a new observation, which
+
+is not yet seen in training data while calculating probabilities
+
+is not yet seen in training data while calculating probabilities.
+
+The idea behind Laplace Smoothing:
+
+The idea behind Laplace Smoothing:  To ensure that our posterior probabilities are never zero, we add 1 to the
+
+numerator, and we add k to the denominator. So, in the case that we don’t have a particular ingredient in our training
+
+set, the posterior probability comes out to 1 / N + k instead of zero. Plugging this value into the product doesn’t kill
+
+our ability to make a prediction as plugging in a zero does.
+
+Now, we will see the mathematical formulation of Laplace smoothing,
+
+Using Laplace smoothing, we can represent P(x’|positive) as,
+
+Here, alpha(α) represents the smoothing parameter,
+
+K represents the dimensions(no of features) in the data,
+
+N represents the number of reviews with target_outcome=positive
+
+If we choose a value of α!=0 (not equal to 0), the probability will no longer be zero even if a word is not present in the
+
+training dataset but If we choose α value as zero, then there is no smoothing happens and the problem is not solved
+
+yet.
+
+What happens if we change the value of alpha?
+
+What happens if we change the value of alpha?
+
+Let’s say the occurrence of word x is 3 with target_outcome=positive in training data. Assuming we have 4 features
+
+in our dataset, i.e., K=4 and N=200 (total number of positive reviews). Then,
+
+P(x’/positive)= 3 + 
+
+P(x’/positive)= 3 + α / 200+4*
+
+ / 200+4*α
+
+Case 1- 
+
+Case 1- when alpha=1
+
+P(x’|positive) = 4/204
+
+Case 2- 
+
+Case 2- when alpha = 100
+
+P(x’|positive) = 103/600
+
+Case 3- 
+
+Case 3- when alpha=1000
+
+P(x’|positive) = 1003/4200
+
+Case 4-
+
+Case 4- when alpha=5000
+
+P(x’|positive) = 5003/20200
+
+Conclusion:
+
+Conclusion: As alpha increases, the likelihood probability drives towards uniform distribution i.e. the probability
+
+"
+
+P(x’/positive)= (number of reviews with x’ and target_outcome=positive + 
+
+P(x’/positive)= (number of reviews with x’ and target_outcome=positive + α) / (N+ 
+
+/ (N+ α*k)
+
+*k)
+
+
+value will be 0.5 (Using higher alpha values will push the likelihood towards a value of 0.5, i.e., the probability of a
+
+word equal to 0.5 for both the positive and negative reviews). Most of the time, alpha = 1 is being used to resolve the
+
+problem of zero probability in the Naive Bayes algorithm.
+
+NOTE:
+
+NOTE: Sometimes Laplace smoothing technique is also known as “AAdd one smoothing”
+
+dd one smoothing”. In Laplace smoothing, 1
+
+(one) is added to all the counts, and thereafter, the probability is calculated. This is one of the most trivial smoothing
+
+techniques out of all the techniques.
+
+Precautions while choosing the value of 
+
+Precautions while choosing the value of alpha:
+
+alpha:
+
+‘α’ should not disturb the uniform probabilities that are assigned to unknown data/new observations.
+
+Finding Optimal ‘
+
+Finding Optimal ‘α’:’:
+
+Here, alpha is a hyper-parameter and you have to tune it. The basic methods fortune it is as follows:
+
+11. Using elbow plot
+
+elbow plot, try plotting ‘performance metric’ v/s ‘α’ hyper-parameter.
+
+2.2. In most cases, the best way to determine optimal values of alpha is through a grid search over possible parameter
+
+values, using cross-validation to evaluate the performance of the model on your data at each value.
+
+End Notes
+
+End Notes
+
+In this post, you learned about a smoothing technique used in Natural Language Processing(NLP)
+
+Natural Language Processing(NLP). It is not the only
+
+smoothing technique but in this article, we learned only theoretical concepts and mathematical formulation of
+
+Laplace Smoothing. You should try to implement it in real-life projects.
+
+Thanks for reading!
+
+I hope all the things explained in this article are clear to you.
+
+Please don’t forget to share your thoughts on this with me
+
+Please don’t forget to share your thoughts on this with me.
+
+If you have any queries, please ask them in the comments below and I will do my best to resolve them.
+
+About the Author
+
+About the Author
+
+Chirag Goyal
+
+Chirag Goyal
+
+Currently, I pursuing my Bachelor of Technology (B.Tech) in Computer Science and Engineering from the Indian
+
+ the Indian
+
+Institute of Technology Jodhpur(IITJ). 
+
+Institute of Technology Jodhpur(IITJ). I am very enthusiastic about Machine learning, Deep Learning, and Artificial
+
+Intelligence. If you want to connect with me here is the link to my Linkedin profile.
+
+If you are interested to read my other articles also, here is the link.
+
+The media shown in this article are not owned by Analytics Vidhya and is used at the Author’s discretion. 
+
+The media shown in this article are not owned by Analytics Vidhya and is used at the Author’s discretion. 
+
+ 
+
+Related
+
+
+blogathon
+
+Laplace Smoothing
+
+Naive Bayes
+
+
+
+
+
+
+
+About the Author
+
+CHIRAG GOYAL
+
+I am currently pursuing my Bachelor of Technology (B.Tech) in Computer Science and Engineering from the Indian Institute of
+
+Technology Jodhpur(IITJ). I am very enthusiastic about Machine learning, Deep Learning, and Artificial Intelligence. Feel free to
+
+connect with me on Linkedin.
+
+
+
+
+
+Our Top Authors
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+view more
+
+
+Leave a Reply
+
+Your email address will not be published. Required fields are marked *
+
+ Notify me of follow-up comments by email.
+
+ Notify me of new posts by email.
+
+
+
+Submit
+
+Top Resources
+
+Download Analytics Vidhya App for the Latest blog/Article
+
+Next Post
+
+Introduction to Neural Radiance Field or NeRF
+
+
+
+Comment
+
+
+
+Name*
+
+
+
+Email*
+
+
+
+Website
+
+
+
+
+
+
+
+
+© Copyright 2013-2023 Analytics Vidhya.
+
+Privacy &amp; Cookies Policy
+
+
+
+
+
+Make Money While Sleeping: Side Hustles to Generate Passive Income..
+
+Aayush Tyagi - APR 27, 2023
+
+
+
+
+
+From Zero to Millionaire: Generate Passive Income using ChatGPT
+
+Aravindpai Pai - APR 17, 2023
+
+
+
+
+
+FreedomGPT: Personal, Bold and Uncensored Chatbot Running Locally on Your..
+
+K.sabreena - APR 08, 2023
+
+
+
+
+
+Understand Random Forest Algorithms With Examples (Updated 2023)
+
+Sruthi E R - JUN 17, 2021
+
+Privacy Policy Terms of Use Refund Policy
+

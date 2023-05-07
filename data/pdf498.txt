@@ -1,0 +1,1076 @@
+
+Web Search and Text Mining
+
+Lecture 23: Hidden Markov Models
+
+
+Markov Models
+
+• Observable states: 1, 2, . . . , N (discrete states)
+
+• Observed sequence: X1, X2, . . . , XT (discrete time)
+
+• Markov assumption,
+
+P(Xt = i|Xt−1 = j, Xt−2 = k, . . .) = P(Xt = i|Xt−1 = j)
+
+dependence on preceding time not any before that.
+
+• Stationarity, probability law is time-invariant (homogeneous).
+
+P(Xt = i|Xt−1 = j) = P(Xt+l = i|Xt+l−1 = j)
+
+
+Probability law can be characterized by a state transition matrix,
+
+A = [aij]N
+
+i,j=1 with
+
+aij = P(Xt = j|Xt−1 = i)
+
+Constraints on aij,
+
+aij ≥ 0
+
+N
+
+�
+
+j=1
+
+aij = 1
+
+
+Example
+
+Modeling weather with three states:
+
+1. Rainy (R) 2. Cloudy (C) 3. Sunny (S)
+
+State transition matrix,
+
+
+
+
+
+0.4
+
+0.3
+
+0.3
+
+0.2
+
+0.6
+
+0.2
+
+0.1
+
+0.1
+
+0.8
+
+
+
+
+
+
+State Transition Diagram
+
+Weather predictor example of a Markov model
+
+State 1:
+
+rain
+
+State 2:
+
+cloud
+
+State 3:
+
+sun
+
+1
+
+2
+
+3
+
+0.4
+
+0.6
+
+0.8
+
+0.1
+
+0.3
+
+0.2
+
+0.3
+
+0.2
+
+0.1
+
+State-transition probabilities,
+
+A =
+
+�
+
+aij
+
+�
+
+=
+
+
+
+
+
+0.4 0.3 0.3
+
+0.2 0.6 0.2
+
+0.1 0.1 0.8
+
+
+
+
+
+(12)
+
+Sequence of observations, X1, X2, . . .
+
+
+Compute the probability of observing the sequence,
+
+SSRRSCS
+
+given that today is S.
+
+Product rule
+
+P(AB) = P(A|B)P(A)
+
+The Markov chain rule
+
+P(X1, X2, . . . , XT) = P(XT|X1, X2, . . . , XT−1)P(X1, X2, . . . , XT−1) =
+
+P(XT|XT−1)P(X1, X2, . . . , XT−1) =
+
+P(XT|XT−1)P(XT1|XT−2) · · · P(X2|X1)P(X1)
+
+
+The observation sequence
+
+O = [S, S, R, R, S, C, S]
+
+Using the chain rule we have,
+
+P(O|model) = P(S)P(S|S)2P(R|S)P(R|R)P(S|R)P(C|S)P(S|C)
+
+= π3a2
+
+33a31a11a13a32a23 = 1.53 × 10−4
+
+We used the prior probability (state distribution at time 1)
+
+πi = P(X1 = i)
+
+
+A Warm-Up Example
+
+Suppose we want to compute P(XT = i), (brute-force)
+
+P(XT = i) =
+
+�
+
+O ends with i
+
+P(O)
+
+sum over all sequences ending with state i
+
+Complexity, O(TNT). But notice
+
+P(Xt+1 = i) =
+
+N
+
+�
+
+i=j
+
+P(Xt+1 = i, Xt = j)
+
+=
+
+N
+
+�
+
+i=j
+
+P(Xt = j)P(Xt+1 = i|Xt = j) =
+
+N
+
+�
+
+i=j
+
+P(Xt = j)aji
+
+Complexity, O(TN2). (same idea applied to many other calculations)
+
+
+s) ? Clever answer
+
+time t
+
+ition
+
+•
+
+Computation is simple.
+
+•
+
+Just fill in this table in this
+
+order:
+
+wise
+
+state
+
+tart 
+
+$
+
+)
+
+$
+
+$ s
+
+q
+
+P
+
+s
+
+)
+
+(
+
+)
+
+(
+
+N
+
+i
+
+p
+
+a
+
+)
+
+(
+
+tfinal
+
+:
+
+1
+
+0
+
+1
+
+0
+
+0
+
+pt(N)
+
+…
+
+pt(2)
+
+pt(1)
+
+t
+
+pt(i) = P(Xt = i) (Andrew Moore)
+
+
+Hidden Markov Models
+
+• States are not observable
+
+• Observations are probabilistic functions of state
+
+• State transitions are still probabilistic
+
+
+Occasionally Dishonest Casinos
+
+Use a fair die most of the time but occasionally switch to a
+
+loaded die. Loaded die: 6/.5, 1-5/.1.
+
+Transition matrix (between fair die/loaded die)
+
+�
+
+0.95
+
+0.05
+
+0.1
+
+0.9
+
+�
+
+The observations is a sequence of rolls (1-6), and which die is
+
+used is hidden.
+
+
+Hidden Markov Models
+
+• Hidden states: 1, 2, . . . , N (discrete states)
+
+• Observable symbols: 1, 2, . . . , M (discrete observations)
+
+• Hidden state sequence: X1, X2, . . . , XT
+
+• Observed sequence: Y1, Y2, . . . , YT
+
+• State transition matrix A = [aij]N
+
+i,j=1,
+
+aij = P(Xt = j|Xt−1 = i)
+
+
+• Observation probability distribution (time-invariant)
+
+Bj(k) = P(Yt = k|Xt = j),
+
+k = 1, . . . , M
+
+• Initial state distribution
+
+πi = P(X1 = i),
+
+i = 1, . . . , N
+
+
+Joint Probability
+
+
+
+P(X, Y ) = P(X1, . . . , XT, Y1, . . . , YT) = P(X)P(Y |X) =
+
+= P(XT|XT−1) · · · P(X2|X1)P(X1)P(Y1|X1) . . . P(YT|XT)
+
+
+Three Fundamental Problems in HMMs
+
+1. Evaluate P(O) for a given observation sequence O
+
+2. Find the most probable state sequence for a given observa-
+
+tion sequence O
+
+3. Estimate the HMM model parameters given observation se-
+
+quence(s).
+
+
+Problem I
+
+Let the observation be O = y1, y2, . . . , yT.
+
+Again using brute
+
+force,
+
+P(O) =
+
+�
+
+x1,...,xT
+
+P(x1, . . . , xT, y1, y2, . . . , yT)
+
+Summing over NT terms.
+
+Forward-Backward Procedure
+
+Consider forward variable,
+
+αt(i) = P(y1, y2, . . . , yt, Xt = i),
+
+t = 1, . . . , T, i = 1, . . . , N
+
+
+1. Initialization
+
+α1(i) = πiBi(y1),
+
+i = 1, . . . , N
+
+2. Induction
+
+αt+1(j) =
+
+
+
+
+
+N
+
+�
+
+i=1
+
+αt(i)aij
+
+
+
+ Bj(yt+1)
+
+3. Termination,
+
+P(O) =
+
+N
+
+�
+
+i=1
+
+αT(i)
+
+
+Similarly, deﬁne the backward variables,
+
+βt(i) = P(yt+1, . . . , yT|Xt = i)
+
+1. Initialization βT(i) = 1
+
+2. Induction
+
+βt(i) =
+
+N
+
+�
+
+j=1
+
+aijBj(yt+1)βt+1(j)
+
+
+Most Probable State Path: Viterbi Algorithm
+
+Given an observation sequence, choose the most likely state se-
+
+quence.
+
+{x1, . . . , xT} = argmax P({x1, . . . , xT}, {y1, . . . , yT})
+
+One solution, optimal individual state,
+
+γt(i) = P(Xt = i|O) =
+
+αt(i)βt(i)
+
+�N
+
+i=1 αt(i)βt(i)
+
+Then choose
+
+x∗t = argmax1≤i≤N γt(i)
+
+Why not a good idea?
+
+
+Solution by DP. Deﬁne
+
+vt(i) =
+
+max
+
+x1,...,xt−1 P(x1, . . . , xt−1, xt = i, y1, . . . , yt)
+
+Highest probability path ending at state i at time t.
+
+Notice that
+
+P(x1, . . . , xt+1, y1, . . . , yt+1)
+
+= P(x1, . . . , xt, y1, . . . , yt)P(xt+1|xt)P(yt+1|xt+1)
+
+Then
+
+vt+1(j) = max
+
+x1,...,xt P(x1, . . . , xt, xt+1 = j, y1, . . . , yt+1)
+
+= max
+
+i
+
+(vt(i)aij)Bj(yt+1)
+
+
+Viterbi Algorithm
+
+Initialization
+
+v1(i) = πiBi(y1),
+
+i = 1, . . . , N
+
+ψ1(i) = 0,
+
+i = 1, . . . , N
+
+Recursion
+
+vt+1(j) = max
+
+j
+
+(vt(i)aij)Bj(yt+1)
+
+ψt(j) = argmaxi (vt(i)aij)
+
+Termination P ∗ = maxi vT(i),
+
+x∗
+
+T = argmaxi vT(i)
+
+x∗t = ψt+1(x∗
+
+t+1)
+
+
+Word Segmentation
+
+Icanreadwordswithoutspaces
+
+I can read words without spaces
+
+For position i in the string,
+
+1) best[i] the probability of the most probable segmentation from
+
+start to i.
+
+2) words[i], the word ending at i with the best probability
+
+
+Viterbi Word Segmentation
+
+For a string text with length n + 1
+
+for i = 0 to n do
+
+for j = 0 to i-1 do
+
+word = text[j:i]
+
+w = length(word)
+
+if P(word)*best[i-w] &gt; best[i] then
+
+best[i] = P(word)*best[i-w]
+
+words[i] = word
+
+Last word is words[n], and let k = length(words[n]), and next to
+
+the last is words[n-k], etc.
+
+
+Outline
+
+Recall: HMM PoS tagging
+
+Viterbi decoding
+
+Trigram PoS tagging
+
+Summary
+
+Bigram PoS tagger
+
+ˆtN
+
+1 = arg max
+
+tn
+
+1
+
+P(tN
+
+1 |w N
+
+1 )
+
+∼
+
+N
+
+�
+
+i=1
+
+P(wi|ti)P(ti|ti−1)
+
+
+
+
+
+
+
+
+
+
+
+
+
+ti−1
+
+ti+1
+
+wi+1
+
+wi−1
+
+wi
+
+ti
+
+P(ti|ti−1)
+
+P(ti+1|ti)
+
+P(wi|ti)
+
+P(wi−1|ti−1)
+
+P(wi+1|ti+1)
+
+Steve Renals s.renals@ed.ac.uk
+
+Part-of-speech tagging (3)
+
+(S. Renals)
+
+
+Outline
+
+Recall: HMM PoS tagging
+
+Viterbi decoding
+
+Trigram PoS tagging
+
+Summary
+
+Transition and observation probabilities
+
+Transition probabilities: P(ti|ti−1)
+
+VB
+
+TO
+
+NN
+
+PPSS
+
+start
+
+0.019
+
+0.0043
+
+0.041
+
+0.067
+
+VB
+
+0.0038
+
+0.0345
+
+0.047
+
+0.070
+
+TO
+
+0.83
+
+0
+
+0.00047
+
+0
+
+NN
+
+0.0040
+
+0.016
+
+0.087
+
+0.0045
+
+PPSS
+
+0.23
+
+0.00079
+
+0.0012
+
+0.00014
+
+Observation likelihoods: P(wi|ti)
+
+I
+
+want
+
+to
+
+race
+
+VB
+
+0
+
+0.0093
+
+0
+
+0.00012
+
+TO
+
+0
+
+0
+
+0.99
+
+0
+
+NN
+
+0
+
+0.000054
+
+0
+
+0.00057
+
+PPSS
+
+0.37
+
+0
+
+0
+
+0
+
+Steve Renals s.renals@ed.ac.uk
+
+Part-of-speech tagging (3)
+
+
+Named Entity Extraction
+
+Mr. Jones eats.
+
+Mr. &lt;ENAMEX TYPE=PERSON&gt;Jones&lt;/ENAMEX&gt; eats.
+
+Probability computation,
+
+Pr(NOT-A-NAME | START-OF-SENTENCE, +end+) *
+
+Pr(Mr. | NOT-A-NAME, START-OF-SENTENCE) *
+
+Pr(+end+ | Mr., NOT-A-NAME) *
+
+Pr(PERSON | NOT-A-NAME, Mr.) *
+
+Pr(Jones | PERSON, NOT-A-NAME) *
+
+Pr(+end+ | Jones, PERSON) *
+
+Pr(NOT-A-NAME | PERSON, Jones) *
+
+Pr(eats | NOT-A-NAME, PERSON) *
+
+Pr(. | eats, NOT-A-NAME) *
+
+Pr(+end+ | ., NOT-A-NAME) *
+
+Pr(END-OF-SENTENCE | NOT-A-NAME, .)
+
+
+Algorithms for NER
+
+Decision trees
+
+Hidden Markov models
+
+Maximum entropy models
+
+SVM
+
+Boosting
+
+Conditional random ﬁelds
+
+
+Generative Model
+
+Generation of words and name-classes:
+
+1. Select a name-class NC, conditioning on the previous name-
+
+class and the previous word.
+
+2. Generate the ﬁrst word inside that name-class, conditioning
+
+on the current and previous name-classes.
+
+3. Generate all subsequent words inside the current name-class,
+
+where each subsequent word is conditioned on its immediate
+
+predecessor.
+
+
+Top-level Model
+
+1. The probability for generating the ﬁrst word of a name-class,
+
+P(NC|NC−1, w−1)P([w, f]first|NC, NC−1)
+
+2. Generating all but the ﬁrst word in a name-class,
+
+P([w, f]|[w, f]−1, NC)
+
+3. Distinguished +end+ word, the ﬁnal word of its name-class,
+
+P([ + end+, other]|[w, f]fina, NC)
+
+
+Dealing with low-frequency words
+
+• Split words into two sets: 1) frequent words and rare words;
+
+• Map rare words to a small, ﬁnite set
+
+
+features in Table 3.1.
+
+•! semantic classes can be defined by lists of words having a semantic feature.
+
+•! special character sets such as the ones used for transliterating names in Chinese or
+
+in Japanese can be identified.
+
+Throughout most of the model, we consider words to be ordered pairs (or two-
+
+element vectors), composed of word and word-feature, denoted w f,
+
+.  The word feature is a
+
+simple, deterministic computation performed on each word as it is added to or looked up in
+
+the vocabulary.  It produces one of the fourteen values in Table 3.1.
+
+Table 3.1 Word features, examples and intuition behind them.2
+
+Word Feature
+
+Example Text
+
+Intuition
+
+twoDigitNum
+
+90
+
+Two-digit year
+
+fourDigitNum
+
+1990
+
+Four digit year
+
+containsDigitAndAlpha
+
+A8956-67
+
+Product code
+
+containsDigitAndDash
+
+09-96
+
+Date
+
+containsDigitAndSlash
+
+11/9/89
+
+Date
+
+containsDigitAndComma
+
+23,000.00
+
+Monetary amount
+
+containsDigitAndPeriod
+
+1.00
+
+Monetary amount, percentage
+
+otherNum
+
+456789
+
+Other number
+
+allCaps
+
+BBN
+
+Organization
+
+capPeriod
+
+M.
+
+Person name initial
+
+firstWord
+
+first word of
+
+sentence
+
+No useful capitalization
+
+information
+
+initCap
+
+Sally
+
+Capitalized word
+
+lowerCase
+
+can
+
+Uncapitalized word
+
+other
+
+,
+
+Punctuation marks, all other words
+
+These values are computed in the order listed, so that in the case of non-disjoint
+
+feature-classes, such as containsDigitAndAlpha and containsDigitAndDash,
+
+the former will take precedence.  The first eight features arise from the need to distinguish
+
+and annotate monetary amounts, percentages, times and dates.  The rest of the features
+
+distinguish types of capitalization and all other words (such as punctuation marks, which are
+
+separate tokens).  In particular, the firstWord feature arises from the fact that if a word is
+
+capitalized and is the first word of the sentence, we have no good information as to why it is
+
+
+Dealing with Low-Frequency Words: An Example
+
+Proﬁ ts/NA soared/NA at/NA Boeing/SC Co./CC ,/NA easily/NA topping/NA
+
+forecasts/NA on/NA Wall/SL Street/CL ,/NA as/NA their/NA CEO/NA Alan/SP
+
+Mulally/CP announced/NA ﬁ rst/NA quarter/NA results/NA ./NA
+
+⇓
+
+firstword/NA soared/NA at/NA initCap/SC Co./CC ,/NA easily/NA
+
+lowercase/NA forecasts/NA on/NA initCap/SL Street/CL ,/NA as/NA
+
+their/NA CEO/NA Alan/SP initCap/CP announced/NA ﬁ rst/NA quarter/NA
+
+results/NA ./NA
+
+NA
+
+= No entity
+
+SC
+
+= Start Company
+
+CC
+
+= Continue Company
+
+SL
+
+= Start Location
+
+CL
+
+= Continue Location
+
+. . .
+
+20
+
+(Regina Barzilay)
+

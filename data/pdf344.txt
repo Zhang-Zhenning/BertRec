@@ -1,0 +1,4108 @@
+
+
+
+
+
+ECE 645: Estimation Theory
+
+Spring 2015
+
+Instructor: Prof. Stanley H. Chan
+
+
+
+Lecture 10: Expectation-Maximization Algorithm
+
+(LaTeX prepared by Shaobo Fang)
+
+May 4, 2015
+
+This lecture note is based on ECE 645 (Spring 2015) by Prof. Stanley H. Chan in the School of Electrical
+
+and Computer Engineering at Purdue University.
+
+1
+
+Motivation
+
+Consider a set of data points with their classes labeled, and assume that each class is a Gaussian as shown
+
+in Figure 1(a). Given this set of data points, ﬁnding the means of two Gaussian can be done easily by
+
+estimating the sample mean, as the class labels are known.
+
+Now imagine that the classes are not labeled as shown in Figure 1(b). How should we determine the
+
+mean for each of the classes then? In order to solve this problem, we could use an iterative approach: ﬁrst
+
+make a guess of the class label for each data point, then compute the means and update the guess of the
+
+class labels again. We repeat until the means converge.
+
+The problem of estimating parameters in the absence of labels is known as unsupervised learning. There
+
+are many unsupervised learning methods. We will focus on the Expectation Maximization (EM) algorithm.
+
+−1
+
+0
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+−10
+
+−8
+
+−6
+
+−4
+
+−2
+
+0
+
+2
+
+4
+
+6
+
+8
+
+Class Labelled
+
+ 
+
+ 
+
+Class 1
+
+Class 2
+
+−1
+
+0
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+−10
+
+−8
+
+−6
+
+−4
+
+−2
+
+0
+
+2
+
+4
+
+6
+
+8
+
+Class Unlabelled
+
+Figure 1: Estimation of parameters becomes trivial given the labelled classes
+
+2
+
+The EM-algorithm
+
+Notations
+
+1. Y , y observations. Y = random variable; y = realization of Y .
+
+2. X, x complete data.
+
+3. Z, z, missing data. Note that X = (Y , Z).
+
+4. θ: unknown deterministic parameter. θ(t): tth estimate of the θ in the EM iteration.
+
+5. f(y|θ) is the distribution of Y given θ.
+
+
+6. f(X|θ) is a random variable taking value of f(X|θ) (Remember: f(·|θ) is a function and thus we can
+
+put any argument into f(·|θ) and evaluate its output.)
+
+7. EX|y,θ[g(X)] =
+
+�
+
+g(x)fX|y,θ(x|y, θ)dx is the conditional expectation of g(X) given Y = y and θ.
+
+8. ℓ(θ) = log f(y|θ) is the log-likelihood. Note that ℓ(θ) depends on y.
+
+EM Steps
+
+The EM-algorithm consists of two steps:
+
+1. E-step: Given y and pretending for the moment that θ(t) is correct, formulate the distribution for
+
+the complete data x:
+
+f(x|y, θ(t)).
+
+Then, we calculate the Q-function:
+
+Q(θ|θ(t))
+
+def
+
+= EX|y,θ(t)[log f(X|θ)]
+
+=
+
+�
+
+log f(x|θ)f(x|y, θ(t))dx
+
+2. M-step: Maximize Q(θ|θ(t)) with regard to θ:
+
+θ(t+1) = argmax
+
+θ
+
+Q(θ|θ(t))
+
+Properties of Q(θ|θ(t))
+
+1. Ideally, if we have the distribution of the complete data x, then ﬁnding the parameter can be done
+
+by maximizing f(x|θ). However, the complete data is only a virtual thing we created to solved the
+
+problem. In reality we never know x. All we know is its distribution f(x|θ), which depends on what
+
+we know about x. So one way to handle this uncertainty is to compute the average. This average is
+
+the Q-function.
+
+2. Another way of looking at Q(θ|θ(t)). We can treat log f(X|θ) as a function of two variables h(X, θ).
+
+Maximizing over θ is problematic because it depends on X. So by taking expectation EX[h(X, θ)] we
+
+can eliminate the dependency on X.
+
+3. Q(θ|θ(t)) can be thought of a local approximation of the log-likelihood function ℓ(θ): Here, by ‘local’
+
+we meant that Q(θ|θ(t)) stays close to its previous estimate θ(t). In fact if Q(θ|θ(t)) ≥ Q(θ(t)|θ(t)),
+
+then ℓ(θ) ≥ ℓ(θ(t)).
+
+3
+
+Estimating Mean with Partial Observation
+
+Let us consider the ﬁrst example of the EM algorithm. Suppose that we generated a sequence of n random
+
+variables Yi ∼ N(θ, σ2) for i = 1, . . . , n. Imagine that we have only observed Y = [Y1, Y2, . . . , Ym] where
+
+m &lt; n. How should we estimate θ based on Y ?
+
+Intuitively, the estimated θ should be the sample mean of the m observations �θ = 1
+
+
+
+m
+
+�m
+
+i=1 Yi. However,
+
+in this example we would like to derive the EM algorithm and see if the EM algorithm would match with
+
+our intuition.
+
+Solution: To start the EM algorithm, we ﬁrst need to specify the missing data and the complete data. In
+
+this problem, the missing data is Z = [Ym+1, . . . , Yn], and the complete data is X = [Y , Z]. The distribution
+
+of X is:
+
+log f(X|θ) = −n
+
+
+
+2 log(2πσ2) −
+
+n
+
+�
+
+i=1
+
+(Yi − θ)2
+
+
+
+2σ2
+
+.
+
+(1)
+
+2
+
+
+Therefore, the Q function is
+
+Q(θ|θ(t))
+
+def
+
+= EX|Y ,θ(t)[log f(X|θ)]
+
+= EX|Y ,θ(t)
+
+�
+
+−n
+
+
+
+2 log(2πσ2) −
+
+m
+
+�
+
+i=1
+
+(Yi − θ)2
+
+
+
+2σ2
+
+−
+
+n
+
+�
+
+i=m+1
+
+(Yi − θ)2
+
+
+
+2σ2
+
+�
+
+= −n
+
+
+
+2 log(2πσ2) −
+
+m
+
+�
+
+i=1
+
+(yi − θ)2
+
+
+
+2σ2
+
+−
+
+n
+
+�
+
+i=m+1
+
+EX|Y ,θ(t)[(Yi − θ)2]
+
+
+
+2σ2
+
+.
+
+The last expectation can be evaluated as
+
+EYi|Y ,θ(t)[(Yi − θ)2] = EYi|Y ,θ(t)[Y 2
+
+i − 2Yiθ + θ2]
+
+= [(θ(t))2 + σ2 − 2θ(t)θ + θ2].
+
+Therefore, the Q function is
+
+Q(θ|θ(t)) = −n
+
+
+
+2 log(2πσ2) −
+
+m
+
+�
+
+i=1
+
+(yi − θ)2
+
+
+
+2σ2
+
+− n − m
+
+
+
+2σ2 [(θ(t))2 + σ2 − 2θ(t)θ + θ2].
+
+In the M-step, we need to maximize the Q-function. To this end, we set
+
+∂
+
+
+
+∂θQ(θ|θ(t)) = 0,
+
+which yields that
+
+θ(t+1) =
+
+�m
+
+i=1 yi + (n − m)θ(t)
+
+
+
+n
+
+.
+
+It is not diﬃcult to show that as t → ∞, θ(t) → θ(∞). Hence,
+
+θ(∞) =
+
+�m
+
+i=1 yi
+
+
+
+n
+
++
+
+�
+
+1 − m
+
+
+
+n
+
+�
+
+θ(∞),
+
+which yields
+
+θ(∞) = 1
+
+
+
+m
+
+m
+
+�
+
+i=1
+
+yi.
+
+This result says that as the EM algorithm converges, the estimated parameter converges to the sample mean
+
+using the available m samples, which is quite intuitive.
+
+4
+
+Gaussian Mixture With Known Mean And Variance
+
+Our next example of the EM algorithm to estimate the mixture weights of a Gaussian mixture with known
+
+mean and variance. A Gaussian mixture is deﬁned as
+
+f(y | θ) =
+
+k
+
+�
+
+i=1
+
+θiN(y | µi, σ2
+
+i ),
+
+(2)
+
+where θ = [θ1, . . . , θk] is called the mixture weight. The mixture weight satisﬁes the condition that
+
+k
+
+�
+
+i=1
+
+θi = 1.
+
+Our goal is to derive the EM-algorithm for θ.
+
+3
+
+
+Solution: We ﬁrst need to deﬁne the missing data. For this problem, we observe that the observed data is
+
+Y = [y1, y2, · · · , yn]. The missing data can be deﬁned as the label for each yj, so that Z = [Z1, Z2, . . . , Zn],
+
+with Zj ∈ {1, . . . , k}. Consequently, the complete data is X = [X1, X2, · · · , Xn], where Xj = (yj, Zj).
+
+The distribution of the complete data can be computed as
+
+f(xj|θ) = f(yj, zj|θ) = θzjN(yj | µzj, σ2
+
+zj),
+
+Thus, the Q function is
+
+Q(θ | θ(t)) = EX |, Y ,θ(t) {log f(X |, θ)}
+
+= EZ |, y,θ(t) {log f(Z, y |, θ)}
+
+= EZ |, y,θ(t)
+
+
+
+
+
+log
+
+n
+
+�
+
+j=1
+
+θzjN(yj |, µzj, σ2
+
+zj)
+
+
+
+
+
+
+
+=
+
+n
+
+�
+
+j=1
+
+EZj|yj,θ(t)
+
+�
+
+log θzj + log N(yj |, µzj, σ2
+
+zj)
+
+�
+
+.
+
+The expectation can be evaluated as
+
+EZj|yj,θ(t){log θzj} =
+
+�
+
+zj
+
+log θzjP(Zj = zj|yj, θ(t))
+
+=
+
+k
+
+�
+
+i=1
+
+log θi P(Zj = i|yj, θ(t))
+
+�
+
+
+
+��
+
+
+
+�
+
+def
+
+= γ(t)
+
+ij
+
+.
+
+By summing over all j’s, we can further deﬁne
+
+γ(t)
+
+i
+
+=
+
+n
+
+�
+
+j=1
+
+γ(t)
+
+ij
+
+=
+
+n
+
+�
+
+j=1
+
+P(Zj = i | yj, θ(t))
+
+=
+
+n
+
+�
+
+j=1
+
+θ(t)
+
+i N(yj | µi, σ2
+
+i )
+
+
+
+�k
+
+i=1 θ(t)
+
+i N(yj | µi, σ2
+
+i )
+
+Therefore, the Q function becomes
+
+Q(θ | θ(t)) =
+
+n
+
+�
+
+j=1
+
+k
+
+�
+
+i=1
+
+log γ(t)
+
+ij θi + C
+
+=
+
+k
+
+�
+
+i=1
+
+log γ(t)
+
+i θi + C,
+
+for some constant C independent of θ. Maximizing over θ yields
+
+θ(t+1) = argmax
+
+θ
+
+k
+
+�
+
+i=1
+
+γ(t)
+
+i
+
+log θi
+
+=
+
+γ(t)
+
+i
+
+
+
+�k
+
+i=1 γ(t)
+
+i
+
+,
+
+where the last equality is due to Gibbs inequality. To summarize the EM algorithm is given in the algorithm
+
+below.
+
+4
+
+
+Data: Gaussian Mixture with known mean and variance
+
+Result: Estimated θ
+
+for t = 1, · · · do
+
+
+
+γ(t)
+
+i
+
+=
+
+n
+
+�
+
+j=1
+
+θ(t)
+
+i N(yj|µi, σ2
+
+i )
+
+
+
+�k
+
+i=1 θ(t)
+
+i N(yj|µi, σ2
+
+i )
+
+θ(t)
+
+i
+
+=
+
+γ(t)
+
+i
+
+
+
+�k
+
+i=1 γ(t)
+
+i
+
+end
+
+Remark: To solve argmax
+
+θ
+
+�k
+
+i=1 γ(t)
+
+i
+
+log θi, we use the Gibbs inequality. Gibbs inequality states that for
+
+all α and β such that �n
+
+i=1 αi = 1, �n
+
+i=1 βi = 1, 0 ≤ αi ≤ 1 and 0 ≤ βi ≤ 1, it holds that
+
+n
+
+�
+
+i=1
+
+αi log βi ≤
+
+n
+
+�
+
+i=1
+
+αi log αi,
+
+(3)
+
+with the equality holds when αi = βi for all i. The proof of Gibbs inequality is due to the non-negativity of
+
+the KL-divergence which we will skip. What we want to show is that if we let
+
+αi =
+
+γ(t)
+
+i
+
+
+
+�k
+
+i=1 γ(t)
+
+i
+
+,
+
+βi = θi,
+
+then the equality holds when:
+
+θi =
+
+γ(t)
+
+i
+
+
+
+�k
+
+i=1 γ(t)
+
+i
+
+,
+
+which is the result we want.
+
+5
+
+Gaussian Mixture
+
+Previously we have been working on Gaussian Mixtures with known mean and variance. However for most
+
+of the time it is likely neither mean nor variance is available for us. Thus, we are interested in deriving an
+
+EM-algorithm that would generally apply for any Gaussian mixture model with only observations available.
+
+Recall that a Gaussian mixture is deﬁned as
+
+f(yi|θ) =
+
+k
+
+�
+
+i=1
+
+πiN(yi|µi, Σi),
+
+(4)
+
+where θ
+
+def
+
+= {(πiµiΣi)}k
+
+i=1 is the parameter, with �k
+
+i=1 πi = 1. Our goal is to derive the EM algorithm for
+
+learning θ.
+
+Solution. We ﬁrst specify the following data:
+
+� Observed Data: Y = [Y 1, · · · , Y n] with realizations y = [y1, · · · , yn];
+
+� Missing Data: Z = [Z1, · · · , Zn] with realizations z = [z1, · · · , zn], where zj ∈ {1, · · · , k};
+
+� Complete Data: X = [X1, · · · , Xn] with realizations x = [x1, · · · , xn] and xj = (yj, zj).
+
+Accordingly, the distribution of the complete data is
+
+f(yj, zj|θ) = πzjN(yj|µzj, Σzj)
+
+5
+
+
+Therefore, we can show that
+
+P(Zj = i|yj, θ(t)) =
+
+π(t)
+
+i N(yj|µ(t)
+
+i , Σ(t)
+
+i )
+
+
+
+�k
+
+i=1 π(t)
+
+i N(yi|µ(t)
+
+i , Σ(t)
+
+i )
+
+.
+
+The Q function is
+
+Q(θ, θ(t)) = EX|y,θ(t){log f(X|θ)}
+
+= EZ|y,θ(t){log f(Z, y|θ)}
+
+= EZ|y,θ(t){log(
+
+n
+
+�
+
+j=1
+
+πzjN(yj|µzj, Σzj))}
+
+=
+
+n
+
+�
+
+j=1
+
+EZj|yj,θ(t){log πzj − 1
+
+
+
+2 log |Σzj| − 1
+
+
+
+2(yj − µzj)T Σ−1
+
+zj (yj − µzj)} + C
+
+=
+
+n
+
+�
+
+j=1
+
+k
+
+�
+
+i=1
+
+P(Zj = i|yi, θ(t)){log πi − 1
+
+
+
+2 log |Σi| − 1
+
+
+
+2(yj − µi)T Σ−1
+
+i (yj − µi)} + C
+
+=
+
+n
+
+�
+
+j=1
+
+k
+
+�
+
+i=1
+
+γ(t)
+
+ij {log πi − 1
+
+
+
+2 log |Σi| − 1
+
+
+
+2(yj − µi)T Σ−1
+
+i (yj − µi)} + C,
+
+where C is a constant independent of θ.
+
+The Maximization step is to solve the following optimization problem
+
+maximize
+
+θ
+
+Q(θ|θ(t))
+
+subject to
+
+�k
+
+i=1 πi = 1,
+
+πi &gt; 0,
+
+Σi ≻ 0.
+
+(5)
+
+For πi, the maximization is
+
+maximize
+
+π
+
+�k
+
+i=1
+
+�n
+
+j=1 γ(t)
+
+ij log πi
+
+subject to
+
+�k
+
+i=1 πi = 1,
+
+πi &gt; 0
+
+(6)
+
+The solution of this problem is
+
+π(t+1)
+
+i
+
+=
+
+�n
+
+j=1 γ(t)
+
+ij
+
+
+
+�k
+
+i=1
+
+�n
+
+j=1 γ(t)
+
+ij
+
+=
+
+�n
+
+j=1 γ(t)
+
+ij
+
+
+
+n
+
+.
+
+(7)
+
+For µi, the maximization can be reduced to solving the equation
+
+∂
+
+
+
+∂µi
+
+Q(θ|θ(t)) = 0.
+
+(8)
+
+The left hand side is
+
+∂
+
+
+
+∂µi
+
+Q(θ|θ(t)) =
+
+∂
+
+
+
+∂µi
+
+{
+
+n
+
+�
+
+j=1
+
+k
+
+�
+
+i=1
+
+γ(t)
+
+ij (yj − µi)T Σ−1
+
+i (yj − µi)}
+
+= Σ−1
+
+i (
+
+n
+
+�
+
+j=1
+
+γ(t)
+
+ij yj −
+
+n
+
+�
+
+j=1
+
+γ(t)
+
+ij µi).
+
+Therefore,
+
+µ(t+1)
+
+i
+
+=
+
+�n
+
+j=1 γ(t)
+
+ij yi
+
+
+
+�n
+
+j=1 γ(t)
+
+ij
+
+(9)
+
+6
+
+
+For Σi, the maximization is equivalent to solving
+
+∂
+
+
+
+∂Σi
+
+(θ|θ(t)) = 0.
+
+(10)
+
+The left hand side is
+
+∂
+
+
+
+∂Σi
+
+(θ|θ(t)) = −1
+
+
+
+2(Σn
+
+j=1γ(t)
+
+ij )∂ log |Σi|
+
+
+
+∂Σi
+
+− 1
+
+
+
+2
+
+n
+
+�
+
+j=1
+
+γ(t)
+
+ij
+
+∂
+
+
+
+∂Σi
+
+{(yj − µi)T Σ−1
+
+i
+
+(yj − µi)}
+
+= −1
+
+
+
+2(
+
+n
+
+�
+
+i=1
+
+γt
+
+ij)Σ−1
+
+i
+
++ 1
+
+
+
+2
+
+n
+
+�
+
+j=1
+
+γ(t)
+
+ij Σ−1
+
+i (yj − µi)(yj − µi)T Σ−1
+
+i .
+
+Therefore,
+
+Σt+1
+
+i
+
+=
+
+�n
+
+j=1 γ(t)
+
+ij (yj − µ(t+1)
+
+i
+
+)(yj − µ(t+1)
+
+i
+
+)T
+
+
+
+�n
+
+i=1 γt
+
+ij
+
+.
+
+(11)
+
+6
+
+Bernoulli Mixture
+
+Our next example is to consider a Bernoulli mixture model. To motivate this problem, let us imagine that we
+
+have a dataset of various items. Our goal is to see whether there is any relationship between the presence or
+
+absence of these items. For example, if the object ‘A’ (e.g. a tree) was presented, there is some probability
+
+that the object ‘B’ (e.g. a ﬂower) is also presented. However if given certain object ‘C’ (e.g. a dinosaur)
+
+presented it is unlikely to see the object ‘D’ (e.g. a car, unless you are in Jurassic Park!)
+
+To setup the problem let us ﬁrst deﬁne some notations. We use Y 1, · · · , Y N to denote N images we
+
+have observed. In each image, there are at most M items, so that Y n = [Y n
+
+1 , · · · , Y n
+
+M] for n = 1, . . . , N.
+
+Each entry in this vector is a Bernoulli random variable. Moreover, we deﬁne
+
+P (Y n
+
+i = 1 | Y n
+
+k = 1)
+
+def
+
+= θki.
+
+(12)
+
+Therefore, the goal is to estimate the matrix
+
+Θ =
+
+
+
+
+
+θ11
+
+. . .
+
+θ1M
+
+...
+
+...
+
+...
+
+θM1
+
+. . .
+
+θMM
+
+
+
+
+
+(13)
+
+from the observations Y 1, . . . , Y N.
+
+The general problem of estimating Θ from Y 1, . . . , Y N is very diﬃcult. Therefore, it is necessary to pose
+
+some assumptions on the problem. The assumption we make here is “semi-valid” from our daily experience.
+
+It is not completely true, but they are simple enough to provide us some computational solutions.
+
+Assumption 1. Conditional Independence
+
+We assume that the observations follow the conditional independence structure:
+
+P(Y n
+
+i = 1 ∩ Y n
+
+j = 1 | Y n
+
+k = 1) = P(Y n
+
+i = 1 | Y n
+
+k = 1) · P(Y n
+
+j = 1 | Y n
+
+k = 1).
+
+(14)
+
+
+
+
+
+
+
+
+
+Remark: Conditional independence is not the same as independence. For example, we let A be the event
+
+that a puppy breaks a toy, B be the event that a mother yells, and C be the event that a child cries. Without
+
+knowing the relationship, it could be that the child cries because the mother yells. However, if we assume
+
+the conditional independence of B and C given A, then we know that the crying of the child and the yelling
+
+of the mother are both triggered by the dog, but not by each other.
+
+7
+
+
+Individual Model
+
+In order to understand the EM algorithm of Bernoulli Mixture, let us set n ﬁxed. Consequently,
+
+P(Y n = yn) =
+
+M
+
+�
+
+m=1
+
+P(Y n = yn|‘item m is active’) P(‘item m is active’)
+
+�
+
+
+
+��
+
+
+
+�
+
+def
+
+= πm
+
+.
+
+Furthermore,
+
+P(Y n = yn | ‘item m is active’) =
+
+M
+
+�
+
+i=1
+
+θyn
+
+i
+
+mi(1 − θmi)1−yn
+
+i
+
+def
+
+= fm(yn | θm),
+
+where θm = [θm1, · · · , θmM] is the mth row of Θ. Therefore,
+
+P(Y n = yn) =
+
+M
+
+�
+
+m=1
+
+πm fm(yn | θm).
+
+(15)
+
+EM Algorithm
+
+Now, we will derive EM algorithm to estimate {π1, · · · , πM} and Θ. To start with, let us deﬁne the following
+
+types of data:
+
+� Observed Data: Y 1, · · · , Y N;
+
+� Missing Data: Z1, · · · , ZN with realizations z1, · · · , zN and zn ∈ R1×N;
+
+� Complete Data: X1, · · · , XN, accordingly xn = (yn, zn).
+
+The distribution of the complete data is
+
+P(Y n = yn, Zn = zn | Θ) = πmfm(yn|θm).
+
+The distribution of the missing data conditioned on the observed data is
+
+P(Zn = m | Y n = yn, Θ(t)) =
+
+π(t)
+
+m fm(yn | θ(t)
+
+m )
+
+
+
+�M
+
+m=1 π(t)
+
+m fm(yn|θ(t)
+
+m )
+
+.
+
+The nth Q function is
+
+Qn(Θ|Θ(t))
+
+def
+
+= EZn | yn,Θ(t)[log f(Xn|Θ)]
+
+= EZn | yn,Θ(t)[log f(Zn, yn|Θ)]
+
+=
+
+M
+
+�
+
+m=1
+
+log(πmfm(yn|θ(t)
+
+m )) P(Zn = m | yn, Θ(t))
+
+�
+
+
+
+��
+
+
+
+�
+
+def
+
+= γ(t)
+
+ij
+
+=
+
+M
+
+�
+
+m=1
+
+γ(t)
+
+nm log(πmfm(yn|θ(t)
+
+m )),
+
+where we can show that
+
+log(πmfm(yn | θ(t)
+
+m )) = log πm + log
+
+M
+
+�
+
+i=1
+
+θyn
+
+i
+
+mi(1 − θmi)1−yn
+
+i
+
+= log πm +
+
+M
+
+�
+
+i=1
+
+yn
+
+i log θmi + (1 − yn
+
+i ) log(1 − θmi).
+
+8
+
+
+Therefore, overall Q-function is
+
+Q(Θ|Θ(t) =
+
+M
+
+�
+
+n=1
+
+M
+
+�
+
+m=1
+
+γ(t)
+
+nm
+
+�
+
+log πm +
+
+M
+
+�
+
+i=1
+
+yn
+
+i log θmi + (1 − yn
+
+i ) log(1 − θmi)
+
+�
+
+.
+
+(16)
+
+To maximize the Q function, we solve
+
+Θ(t=1) = argmax
+
+Θ
+
+Q(Θ | Θ(t)).
+
+(17)
+
+For a ﬁxed m and i, we have
+
+∂
+
+
+
+∂θmi
+
+Q(Θ|Θ(t)) =
+
+N
+
+�
+
+n=1
+
+γ(t)
+
+nm
+
+� yn
+
+i
+
+
+
+θmi
+
+− 1 − yn
+
+i
+
+
+
+1 − θmi
+
+�
+
+.
+
+Setting this to zero yields
+
+�N
+
+n=1 γ(t)
+
+nmyn
+
+i
+
+
+
+θmi
+
+=
+
+�N
+
+n=1 γ(t)
+
+nm(1 − yn
+
+i )
+
+
+
+1 − θmi
+
+,
+
+which is
+
+θ(t+1)
+
+mi
+
+=
+
+�N
+
+n=1 γ(t)
+
+nmyi
+
+
+
+�N
+
+n=1 γ(t)
+
+nm
+
+.
+
+(18)
+
+Data: EM Algorithm for Bernoulli Mixture Model
+
+Result: Estimated Θ and πm
+
+for t = 1, · · · do
+
+
+
+γ(t)
+
+nm =
+
+π(t)
+
+m fm(yn|θ(t)
+
+m )
+
+
+
+�M
+
+m=1 π(t)
+
+m fm(yn|θ(t)
+
+m )
+
+θ(t+1)
+
+mi
+
+=
+
+�N
+
+n=1 γ(t)
+
+nmyn
+
+i
+
+
+
+�N
+
+n=1 γ(t)
+
+nm
+
+π(t+1)
+
+m
+
+=
+
+γ(t)
+
+nm
+
+
+
+�N
+
+n=1 γ(t)
+
+nm
+
+end
+
+7
+
+Convergence of EM
+
+The convergence of EM algorithm is known to be local. What it means is that as the EM algorithm iterates,
+
+θ(t+1) will never be less likely than θ(t). This property is called the monotonicity of EM, which is the result
+
+of the following theorem.
+
+Theorem 1.
+
+Let X and Y be two random variables with parametric distribution controlled by a parameter θ ∈ Λ.
+
+Suppose that:
+
+1. X does not depend on θ;
+
+2. There exists a Markov relationship
+
+θ → X → Y
+
+i.e. f(y | x, θ) = f(y|x) for all θ ∈ Λ and x ∈ X, y ∈ Y.
+
+Then, for θ ∈ Λ and y ∈ Y such that X(y) ̸= ∅, we have:
+
+ℓ(θ) ≥ ℓ(θ(t)) if Q(θ|θ(t)) ≥ Q(θ(t)|θ(t)).
+
+(19)
+
+
+
+
+
+
+
+
+
+9
+
+
+Proof.
+
+ℓ(θ) = log f(y | θ) (by deﬁnition)
+
+= log
+
+�
+
+X (y)
+
+f(x, y|θ)dx (marginalization, i.e., total probability)
+
+= log
+
+�
+
+X (y)
+
+f(x, y|θ)
+
+
+
+f(x|y, θ(t))
+
+f(x|y, θ(t))dx
+
+= log EX|y,θ(t)
+
+�f(X, y|θ)
+
+
+
+f(X|y, θ)
+
+�
+
+≥ EX|y,θ(t)
+
+�
+
+log f(X, y|θ)
+
+
+
+f(X|y, θ)
+
+�
+
+(Jensen’s Inequality)
+
+= EX|y,θ(t)
+
+
+
+log f(y|X, θ)f(X|θ)
+
+
+
+f(y|X,θ(t))f(X|θ(t))
+
+
+
+f(y|θ(t))
+
+
+
+
+
+(Baye’s Rule)
+
+= EX|y,θ(t)
+
+�
+
+log f(y|X)f(X|θ)f(y|θ(t))
+
+
+
+f(y|X)f(X|θ(t))
+
+�
+
+(assumption 2)
+
+= EX|y,θ(t)
+
+�
+
+log f(X|θ)f(y|θ(t))
+
+
+
+f(X|θ(t))
+
+�
+
+= EX|y,θ(t) [log f(X|θ)] − EX|y,θ(t)
+
+�
+
+log f(X|θ(t))
+
+�
+
++ EX|y,θ(t)
+
+�
+
+log f(y|θ(t))
+
+�
+
+= Q(θ|θ(t)) − Q(θ(t)|θ(t)) + log f(y|θ(t))
+
+�
+
+
+
+��
+
+
+
+�
+
+= ℓ(θ(t))
+
+Thus, ℓ(θ) − ℓ(θ(t)) ≥ Q(θ|θ(t)) − Q(θ(t)|θ(t)). Hence if Q(θ|θ(t)) ≥ Q(θ(t)|θ(t)), then ℓ(θ) ≥ ℓ(θ(t)).
+
+✷
+
+8
+
+Using Prior with EM
+
+The EM algorithm can fail due to singularity of the log-likelihood function. For example, when learning a
+
+GMM with 10 components, the algorithm may decide that the most likely solution is for one of the Gaussians
+
+to only have one data point assigned to it. This could yield some bad result of having zero covariance.
+
+To alleviate this problem, one can use the prior information about θ. In this case, we can modify the
+
+EM setp as
+
+� E-step:
+
+Q(θ|θ(t)) = EX|y,θ(t)[log f(X|θ)];
+
+� M-step:
+
+θ(t+1) = argmax
+
+θ
+
+Q(θ|θ(t)) + log f(θ)
+
+�
+
+
+
+��
+
+
+
+�
+
+prior
+
+.
+
+Example
+
+Assume that we have a GMM of k-components:
+
+f(yj|θ) =
+
+k
+
+�
+
+i=1
+
+wiN(yj|µi, σ2).
+
+(20)
+
+10
+
+
+Let us consider a constraint on µi:
+
+µi = µ + (i − 1)∆µ,
+
+for i = 1, · · · , k,
+
+i.e. the means are equally spaced. (For details please refer to section 3.3 of Gupta and Chen.
+
+Priors:
+
+We assume the following priors:
+
+1.
+
+σ2 ∼ inverse-gamma
+
+�v
+
+
+
+2, ǫ2
+
+
+
+2
+
+�
+
+.
+
+That is,
+
+f(σ2) = ( ξ2
+
+
+
+2 )
+
+v
+
+
+
+2
+
+
+
+Γ( v
+
+
+
+2) (σ2)− v
+
+
+
+2 −1 exp
+
+�
+
+− ξ2
+
+
+
+2σ2
+
+�
+
+∝ (σ2)− v+3
+
+
+
+2 exp
+
+�
+
+− ξ2
+
+
+
+2σ2
+
+�
+
+.
+
+2.
+
+∆µ | σ2 ∼ N
+
+�
+
+η, σ
+
+
+
+ρ
+
+�
+
+.
+
+That is,
+
+f(∆µ | σ2) ∝ exp
+
+�
+
+−(∆µ − η)2
+
+
+
+2( σ2
+
+
+
+ρ )
+
+�
+
+.
+
+Therefore, the joint distribution of the prior is:
+
+f(∆µ, σ2) ∝ (σ2)− v+3
+
+
+
+2 exp
+
+�
+
+−ξ2 + l(∆ − η)2
+
+
+
+2σ2
+
+�
+
+.
+
+(21)
+
+Parameters: θ = (w1, · · · , wk, µ, ∆µ, σ2). Our goal is to estimate θ.
+
+EM algorithm:
+
+First of all, we let
+
+γ(t)
+
+ij =
+
+w(t)
+
+i N(yj|µ(t)
+
+i , σ2(t))
+
+
+
+�k
+
+i=1 w(t)
+
+i N(yj|µ(t)
+
+i , σ2(t))
+
+.
+
+(22)
+
+The EM steps can be derived as follows.
+
+The Expectation Step
+
+Q(θ|θ(t)) =
+
+n
+
+�
+
+j=1
+
+k
+
+�
+
+i=1
+
+γ(t)
+
+ij log(wiN(yj|µi, σ2))
+
+=
+
+n
+
+�
+
+j=1
+
+k
+
+�
+
+i=1
+
+γ(t)
+
+ij log(wiN(yj|µ + (i − 1)∆µ, σ2))
+
+=
+
+n
+
+�
+
+j=1
+
+k
+
+�
+
+i=1
+
+γ(t)
+
+ij log wi − n
+
+
+
+2 log(2π) − n
+
+
+
+2 log(σ2) −
+
+1
+
+
+
+2σ2
+
+n
+
+�
+
+j=1
+
+k
+
+�
+
+i=1
+
+γ(t)
+
+ij (yj − µ − (i − 1)∆µ)2
+
+11
+
+
+The Maximization Step
+
+θ(t+1) = argmax
+
+θ
+
+Q(θ|θ(t)) + log f(θ)
+
+= argmax
+
+θ
+
+n
+
+�
+
+j=1
+
+k
+
+�
+
+i=1
+
+γ(t)
+
+ij log wi − n + v + 3
+
+
+
+2
+
+log σ2 − ξ + l(∆µ − η)2
+
+
+
+2σ2
+
+−
+
+1
+
+
+
+2σ2
+
+n
+
+�
+
+j=1
+
+k
+
+�
+
+i=1
+
+γ(t)
+
+ij (yj − µ − (i − 1)∆µ)2 + C
+
+Thus,
+
+w(t+1)
+
+i
+
+=
+
+�n
+
+j=1 γ(t)
+
+ij
+
+
+
+�k
+
+i=1
+
+�n
+
+j=1 γ(t)
+
+ij
+
+,
+
+and
+
+�
+
+∂
+
+
+
+∂µ[Q(θ|θ(t)) + log f(θ)] = 0
+
+∂
+
+
+
+∂∆µ[Q(θ|θ(t)) + log f(θ)] = 0
+
+⇒
+
+�
+
+1
+
+�k−1
+
+i=1 w(t+1)
+
+i+1 i
+
+�k−1
+
+i=1 w(t+1)
+
+i+1 i
+
+�k−1
+
+i=1 w(t+1)
+
+i+1 i2 + l
+
+
+
+n
+
+� � µ
+
+∆µ
+
+�
+
+=
+
+�
+
+1
+
+
+
+n
+
+�n
+
+j=1 yj
+
+ρη
+
+
+
+n + 1
+
+
+
+n
+
+�n
+
+j=1
+
+�k
+
+i=2 γ(t)
+
+ij (i − 1)yj
+
+�
+
+.
+
+The solution of µ and ∆µ can be obtained by solving the linear system. Finally,
+
+∂
+
+
+
+∂σ2
+
+�
+
+Q(θ|θ(t)) + log f(θ)
+
+�
+
+= 0
+
+⇒ σ2(t+1) =
+
+ξ2 + l(∆µ(t+1) − η)2 + �n
+
+j=1
+
+�k
+
+i=1 γ(t)
+
+ij (yj − µ(t+1)
+
+i
+
+)2
+
+
+
+n + v + 3
+
+.
+
+9
+
+MALAB Demo: EM Algorithm for Bernoulli Mixture
+
+9.1
+
+Synthesize The Data
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+1
+
+function [ data
+
+
+
+rand] = MakeData( DS, u
+
+
+
+vec, p
+
+
+
+mat )
+
+
+
+
+
+2
+
+
+
+
+
+3
+
+cnt = 0;
+
+
+
+
+
+4
+
+for ii = 1:1:length(u
+
+
+
+vec)
+
+
+
+
+
+5
+
+N = DS*u
+
+
+
+vec(ii);
+
+
+
+
+
+6
+
+p
+
+
+
+vec = p
+
+
+
+mat(ii,:);
+
+
+
+
+
+7
+
+%%
+
+
+
+
+
+8
+
+for m = 1:1:length(p
+
+
+
+vec)
+
+
+
+
+
+9
+
+data
+
+
+
+vec = randperm(N);
+
+
+
+
+
+10
+
+th = N*p
+
+
+
+mat(ii,m);
+
+
+
+
+
+11
+
+for n = 1:1:N
+
+
+
+
+
+12
+
+if data
+
+
+
+vec(n) &gt; th
+
+
+
+
+
+13
+
+data
+
+
+
+vec(n)= 0;
+
+
+
+
+
+14
+
+else
+
+
+
+
+
+15
+
+data
+
+
+
+vec(n) = 1;
+
+
+
+
+
+16
+
+end
+
+
+
+
+
+17
+
+end
+
+
+
+
+
+18
+
+data(cnt+1:cnt+N, m) = data
+
+
+
+vec';
+
+
+
+
+
+19
+
+end
+
+
+
+
+
+20
+
+cnt = cnt + N;
+
+
+
+
+
+21
+
+end
+
+
+
+
+
+22
+
+
+
+
+
+23
+
+%% Now randomly permutate the rows of the matrix
+
+
+
+
+
+24
+
+[row, column] = size(data);
+
+
+
+
+
+25
+
+row
+
+
+
+vec = randperm(row);
+
+12
+
+
+
+
+
+
+26
+
+for ii = 1:1:row
+
+
+
+
+
+27
+
+randtemp = row
+
+
+
+vec(ii);
+
+
+
+
+
+28
+
+data
+
+
+
+rand(ii,:) = data(randtemp,:);
+
+
+
+
+
+29
+
+end
+
+
+
+
+
+30
+
+
+
+
+
+31
+
+end
+
+
+
+
+
+
+
+
+
+
+
+9.2
+
+Estimate the probability of a Vector Given Bernoulli Distribution
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+1
+
+function [ p
+
+
+
+b ] = Bernoulli
+
+
+
+vec( p
+
+
+
+vec, y
+
+
+
+vec )
+
+
+
+
+
+2
+
+%% Calculate the probability of using the current Bernoulli Mixture
+
+
+
+
+
+3
+
+p
+
+
+
+b = 1;
+
+
+
+
+
+4
+
+for ii = 1:1:length(p
+
+
+
+vec)
+
+
+
+
+
+5
+
+p
+
+
+
+b = p
+
+
+
+b*(p
+
+
+
+vec(ii)ˆ(y
+
+
+
+vec(ii)))*((1-p
+
+
+
+vec(ii))ˆ(1-y
+
+
+
+vec(ii)));
+
+
+
+
+
+6
+
+end
+
+
+
+
+
+7
+
+
+
+
+
+8
+
+end
+
+
+
+
+
+
+
+
+
+
+
+9.3
+
+The Main Function for EM with Bernoulli Mixture
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+1
+
+close all
+
+
+
+
+
+2
+
+clear all
+
+
+
+
+
+3
+
+clc
+
+
+
+
+
+4
+
+DS = input('Eneter the synthetized data size:');
+
+
+
+
+
+5
+
+u
+
+
+
+vec = [1/4, 1/2, 1/4]
+
+
+
+
+
+6
+
+p
+
+
+
+mat = [1, 0.4, 0.05;
+
+
+
+
+
+7
+
+0.2, 1, 0.8;
+
+
+
+
+
+8
+
+0.3, 0.7, 1]
+
+
+
+
+
+9
+
+data
+
+
+
+rand = MakeData(DS, u
+
+
+
+vec, p
+
+
+
+mat);
+
+
+
+
+
+10
+
+T = input('Enter the desired number of iterations:');
+
+
+
+
+
+11
+
+
+
+
+
+12
+
+%% Pick Initialization of parameters
+
+
+
+
+
+13
+
+u
+
+
+
+initial = [1/4, 1/8, 5/8];
+
+
+
+
+
+14
+
+p
+
+
+
+initial = [0.3, 0.2, 0.8;
+
+
+
+
+
+15
+
+0.1, 0.8, 0.7;
+
+
+
+
+
+16
+
+0.5, 0.15, 0.6];
+
+
+
+
+
+17
+
+
+
+
+
+18
+
+M = length(u
+
+
+
+initial);
+
+
+
+
+
+19
+
+N = size(data
+
+
+
+rand, 1);
+
+
+
+
+
+20
+
+% Initiliaze the parameters
+
+
+
+
+
+21
+
+u = u
+
+
+
+initial;
+
+
+
+
+
+22
+
+p = p
+
+
+
+initial;
+
+
+
+
+
+23
+
+
+
+
+
+24
+
+u
+
+
+
+history = zeros(M,T);
+
+
+
+
+
+25
+
+p
+
+
+
+history = zeros(M,M,T);
+
+
+
+
+
+26
+
+
+
+
+
+27
+
+for t = 1:1:T
+
+
+
+
+
+28
+
+for m = 1:1:M
+
+
+
+
+
+29
+
+pi
+
+
+
+m = u(m);
+
+
+
+
+
+30
+
+p
+
+
+
+vec = p(m,:);
+
+
+
+
+
+31
+
+for n= 1:1:N
+
+
+
+
+
+32
+
+y
+
+
+
+vec = data
+
+
+
+rand(n,:);
+
+
+
+
+
+33
+
+%% Find the Hidden Variable, lambda
+
+
+
+
+
+34
+
+numerator = pi
+
+
+
+m*Bernoulli
+
+
+
+vec(p
+
+
+
+vec, y
+
+
+
+vec); % Modle the Bernoulli Process
+
+
+
+
+
+35
+
+denom = 0;
+
+
+
+
+
+36
+
+for mm = 1:1:M
+
+
+
+
+
+37
+
+p
+
+
+
+vec
+
+
+
+tmp = p(mm,:);
+
+
+
+
+
+38
+
+denom = denom + u(mm)*Bernoulli
+
+
+
+vec(p
+
+
+
+vec
+
+
+
+tmp, y
+
+
+
+vec);
+
+
+
+
+
+39
+
+end
+
+
+
+
+
+40
+
+lambda(m,n) = numerator/denom;
+
+
+
+
+
+41
+
+end
+
+13
+
+
+
+
+
+
+42
+
+end
+
+
+
+
+
+43
+
+
+
+
+
+44
+
+sum
+
+
+
+lambda = sum(sum(lambda));
+
+
+
+
+
+45
+
+
+
+
+
+46
+
+%% Update mu
+
+
+
+
+
+47
+
+for m = 1:1:M
+
+
+
+
+
+48
+
+u(m) = sum(lambda(m,:))/sum
+
+
+
+lambda;
+
+
+
+
+
+49
+
+end
+
+
+
+
+
+50
+
+
+
+
+
+51
+
+%% Update P matrix
+
+
+
+
+
+52
+
+for i = 1:1:M
+
+
+
+
+
+53
+
+for m = 1:1:M
+
+
+
+
+
+54
+
+p(m,i) = (sum(lambda(m,:).*data
+
+
+
+rand(:,i)'))/(sum(lambda(m,:)));
+
+
+
+
+
+55
+
+end
+
+
+
+
+
+56
+
+end
+
+
+
+
+
+57
+
+
+
+
+
+58
+
+%% Save in history for each iteration to plot
+
+
+
+
+
+59
+
+u
+
+
+
+history(:,t) = u;
+
+
+
+
+
+60
+
+p
+
+
+
+history(:,:,t) = p;
+
+
+
+
+
+61
+
+end
+
+
+
+
+
+62
+
+disp('updated p and u:')
+
+
+
+
+
+63
+
+p
+
+
+
+
+
+64
+
+u
+
+
+
+
+
+65
+
+
+
+
+
+66
+
+figure
+
+
+
+
+
+67
+
+hold on
+
+
+
+
+
+68
+
+grid on
+
+
+
+
+
+69
+
+for m = 1:1:M
+
+
+
+
+
+70
+
+plot(u
+
+
+
+history(m,:));
+
+
+
+
+
+71
+
+end
+
+
+
+
+
+72
+
+ylabel('Estimated \mu value', 'FontSize', 20)
+
+
+
+
+
+73
+
+xlabel('Iterations', 'FontSize', 20)
+
+
+
+
+
+74
+
+title('Convergence of \mu estimated for Mixture Number = 3', 'FontSize', 20)
+
+
+
+
+
+75
+
+for m = 1:1:M
+
+
+
+
+
+76
+
+stem(T, u
+
+
+
+vec(m));
+
+
+
+
+
+77
+
+end
+
+
+
+
+
+78
+
+
+
+
+
+79
+
+
+
+
+
+80
+
+figure
+
+
+
+
+
+81
+
+hold on
+
+
+
+
+
+82
+
+grid on
+
+
+
+
+
+83
+
+for ii = 1:1:M
+
+
+
+
+
+84
+
+for jj = 1:1:M
+
+
+
+
+
+85
+
+for t = 1:1:T
+
+
+
+
+
+86
+
+tmp = p
+
+
+
+history(ii,jj,t);
+
+
+
+
+
+87
+
+plot
+
+
+
+vec(t) = tmp;
+
+
+
+
+
+88
+
+end
+
+
+
+
+
+89
+
+plot(plot
+
+
+
+vec)
+
+
+
+
+
+90
+
+end
+
+
+
+
+
+91
+
+end
+
+
+
+
+
+92
+
+ylabel('Estimated P matrix values', 'FontSize', 20)
+
+
+
+
+
+93
+
+xlabel('Iterations', 'FontSize', 20)
+
+
+
+
+
+94
+
+title('Convergence of P matrix estimated for Mixture Number = 3', 'FontSize', 20)
+
+
+
+
+
+95
+
+for m = 1:1:M
+
+
+
+
+
+96
+
+for n = 1:1:M
+
+
+
+
+
+97
+
+stem(T, p
+
+
+
+mat(m,n));
+
+
+
+
+
+98
+
+end
+
+
+
+
+
+99
+
+end
+
+
+
+
+
+100
+
+
+
+
+
+101
+
+for m = 1:1:M
+
+
+
+
+
+102
+
+one
+
+
+
+loc = find(abs(p(m,:) - 1) == min(abs(p(m,:) - 1)))
+
+
+
+
+
+103
+
+p
+
+
+
+final(one
+
+
+
+loc,:) = p(m,:);
+
+
+
+
+
+104
+
+u
+
+
+
+final(one
+
+
+
+loc) = u(m);
+
+
+
+
+
+105
+
+end
+
+
+
+
+
+106
+
+
+
+
+
+107
+
+disp('After Automatic Sorting Based on Diagnals:')
+
+
+
+
+
+108
+
+p
+
+
+
+final
+
+
+
+
+
+109
+
+u
+
+
+
+final
+
+
+
+
+
+
+
+
+
+
+
+14
+

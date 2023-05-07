@@ -1,0 +1,2085 @@
+
+
+
+
+
+CS6200: Information Retrieval
+
+Slides by: Jesse Anderton
+
+Language Models
+
+
+Vector Space Models work reasonably well, but have a few problems: 
+
+• They are based on bag-of-words, so they ignore grammatical 
+
+context and suffer from term mismatch. 
+
+• They don’t adapt to the user or collection, but ideal term weights are 
+
+user- and domain-speciﬁc. 
+
+• They are heuristic-based, and don’t have much explanatory power.
+
+What’s wrong with VSMs?
+
+
+We can address these problems by moving to probabilistic models, 
+
+such as language models: 
+
+• We can take grammatical context into account, and trade off 
+
+between using more context and performing faster inference. 
+
+• The model can be trained from a particular collection, or conditioned 
+
+based on user- and domain-speciﬁc features. 
+
+• The model is interpretable, and makes concrete predictions about 
+
+query and document relevance.
+
+Probabilistic Modeling
+
+
+1. Ranking as a probabilistic classiﬁcation task 
+
+2. Some speciﬁc probabilistic models for classiﬁcation 
+
+3. Smoothing: estimating model parameters from sparse data 
+
+4. A probabilistic approach to pseudo-relevance feedback
+
+In this Module…
+
+
+Imagine we have a function that gives us the probability that a document D is 
+
+relevant to a query Q, P(R=1|D, Q). We call this function a probabilistic model, 
+
+and can rank documents by decreasing probability of relevance. 
+
+There are many useful models, which differ by things like: 
+
+• Sensitivity to different document properties, like grammatical context 
+
+• Amount of training data needed to train the model parameters 
+
+• Ability to handle noise in document data or relevance labels 
+
+For simplicity here, we will hold the query constant and consider P(R=1|D).
+
+Ranking with Probabilistic Models
+
+
+Suppose we have documents and 
+
+relevance labels, and we want to 
+
+empirically measure P(R=1|D). 
+
+Each document has only one 
+
+relevance label, so every probability is 
+
+either 0 or 1. Worse, there is no way to 
+
+generalize to new documents. 
+
+Instead, we estimate the probability of 
+
+documents given relevance labels,   
+
+P(D|R=1).
+
+The Flaw in our Plan
+
+
+
+D=1 
+
+R=1
+
+
+
+D=3 
+
+R=0
+
+
+
+D=4 
+
+R=0
+
+
+
+D=5 
+
+R=0
+
+�(� = �|�) = �
+
+D=1
+
+D=2
+
+D=3
+
+D=4
+
+D=5
+
+P(D|R=1)
+
+1/2
+
+1/2
+
+0
+
+0
+
+0
+
+P(D|R=0)
+
+0
+
+0
+
+1/3
+
+1/3
+
+1/3
+
+
+
+D=2 
+
+R=1
+
+�(� = �|�) = �
+
+
+We can estimate P(D|R=1), not P(R=1|D), 
+
+so we apply Bayes’ Rule to estimate 
+
+document relevance. 
+
+• P(D|R=1) gives the probability that a 
+
+relevant document would have the 
+
+properties encoded by the random 
+
+variable D. 
+
+• P(R=1) is the probability that a 
+
+randomly-selected document is 
+
+relevant.
+
+Bayes’ Rule
+
+�(� = �|�) = �(�|� = �)�(� = �)
+
+�(�)
+
+=
+
+�(�|� = �)�(� = �)
+
+�
+
+� �(�|� = �)�(� = �)
+
+
+Starting from Bayes’ Rule, we can easily build a classiﬁer to tell us whether documents 
+
+are relevant. We will say a document is relevant if: 
+
+!
+
+!
+
+!
+
+!
+
+We can estimate P(D|R=1) and P(D|R=0) using a language model, and P(R=0) and P(R=1) 
+
+based on the query, or using a constant. Note that for large web collections, P(R=1) is 
+
+very small for virtually any query.
+
+Bayesian Classiﬁcation
+
+�(� = �|�) &gt; �(� = �|�)
+
+=� �(�|� = �)�(� = �)
+
+�(�)
+
+&gt; �(�|� = �)�(� = �)
+
+�(�)
+
+=� �(�|� = �)
+
+�(�|� = �) &gt; �(� = �)
+
+�(� = �)
+
+
+In order to put this together, we need a language model to estimate 
+
+P(D|R). 
+
+Let’s start with a model based on the bag-of-words assumption. We’ll 
+
+represent a document as a collection of independent words 
+
+(“unigrams”).
+
+Unigram Language Model
+
+� = (��, ��, . . . , ��)
+
+�(�|�) = �(��, ��, . . . , ��|�)
+
+= �(��|�)�(��|�, ��)�(��|�, ��, ��) . . . �(��|�, ��, . . . , ����)
+
+= �(��|�)�(��|�) . . . �(��|�)
+
+=
+
+��
+
+�=�
+
+�(��|�)
+
+
+Let’s consider querying a collection of ﬁve short documents with a 
+
+simpliﬁed vocabulary: the only words are apple, baker, and crab.
+
+Example
+
+Document
+
+Rel? apple? baker? crab?
+
+apple apple crab!
+
+1
+
+1
+
+0
+
+1
+
+crab baker crab
+
+0
+
+0
+
+1
+
+1
+
+apple baker baker
+
+1
+
+1
+
+1
+
+0
+
+crab crab apple
+
+0
+
+1
+
+0
+
+1
+
+baker baker crab
+
+0
+
+0
+
+1
+
+1
+
+�(� = �) = �/�
+
+�(� = �) = �/�
+
+Term
+
+# Rel
+
+# Non Rel P(w|R=1)
+
+P(w|R=0)
+
+apple
+
+2
+
+1
+
+2/2
+
+1/3
+
+baker
+
+1
+
+2
+
+1/2
+
+2/3
+
+crab
+
+1
+
+3
+
+1/2
+
+3/3
+
+
+Is “apple baker crab” relevant?
+
+Example
+
+Term
+
+P(w|R=1)
+
+P(w|R=0)
+
+apple
+
+1
+
+1/3
+
+baker
+
+1/2
+
+2/3
+
+crab
+
+1/2
+
+1
+
+�(� = �) = �/�
+
+�(� = �) = �/�
+
+�(�|� = �)
+
+�(�|� = �)
+
+?&gt; �(� = �)
+
+�(� = �)
+
+�
+
+� �(��|� = �)
+
+�
+
+� �(��|� = �)
+
+?&gt; �(� = �)
+
+�(� = �)
+
+�(����� = �|� = �)�(����� = �|� = �)�(���� = �|� = �)
+
+�(����� = �|� = �)�(����� = �|� = �)�(���� = �|� = �)
+
+?&gt; �.�
+
+�.�
+
+� · �.� · �.�
+
+�.¯� · �.¯� · �
+
+?&gt; �.�
+
+�.�
+
+�.��� &lt; �.�
+
+
+So far, we’ve focused on language models like P(D = w1, w2, …, wn). Where’s the query? 
+
+Remember the key insight from vector space models: we want to represent queries and 
+
+documents in the same way. The query is just a “short document:” a sequence of 
+
+words. There are three obvious approaches we can use for ranking: 
+
+1. Query likelihood: Train a language model on a document, and estimate the query’s 
+
+probability. 
+
+2. Document likelihood: Train a language model on the query, and estimate the 
+
+document’s probability. 
+
+3. Model divergence: Train language models on the document and the query, and 
+
+compare them.
+
+Retrieval With Language Models
+
+
+Suppose that the query speciﬁes a 
+
+topic. We want to know the probability 
+
+of a document being generated from 
+
+that topic, or P(D|Q). 
+
+However, the query is very small, and 
+
+documents are long: document 
+
+language models have less variance. 
+
+In the Query Likelihood Model, we use 
+
+Bayes' Rule to rank documents based 
+
+on the probability of generating the 
+
+query from the documents’ language 
+
+models.
+
+Query Likelihood Retrieval
+
+Assuming uniform prior
+
+Naive Bayes unigram model
+
+�(�|�)
+
+����
+
+= �(�|�)�(�)
+
+= �(�|�)
+
+=
+
+�
+
+���
+
+�(�|�)
+
+����
+
+=
+
+�
+
+���
+
+log �(�|�) Numerically stable version
+
+
+Example: Query Likelihood
+
+Wikipedia: WWI
+
+World War I (WWI or WW1 or World War One), 
+
+also known as the First World War or the 
+
+Great War, was a global war centred in Europe 
+
+that began on 28 July 1914 and lasted until 11 
+
+November 1918. More than 9 million 
+
+combatants and 7 million civilians died as a 
+
+result of the war, a casualty rate exacerbated 
+
+by the belligerents' technological and industrial 
+
+sophistication, and tactical stalemate. It was 
+
+one of the deadliest conﬂicts in history, paving 
+
+the way for major political changes, including 
+
+revolutions in many of the nations involved.
+
+Query: “deadliest war in history”
+
+Term
+
+P(w|D)
+
+log P(w|D)
+
+deadliest
+
+1/94 = 0.011
+
+-1.973
+
+war
+
+6/94 = 0.063
+
+-1.195
+
+in
+
+3/94 = 0.032
+
+-1.496
+
+history
+
+1/94 = 0.011
+
+-1.973
+
+Π = 2.30e-7
+
+Σ = -6.637
+
+
+Example: Query Likelihood
+
+Wikipedia: Taiping Rebellion
+
+The Taiping Rebellion was a massive civil 
+
+war in southern China from 1850 to 1864, 
+
+against the ruling Manchu Qing dynasty. It 
+
+was a millenarian movement led by Hong 
+
+Xiuquan, who announced that he had 
+
+received visions, in which he learned that he 
+
+was the younger brother of Jesus. At least 20 
+
+million people died, mainly civilians, in one of 
+
+the deadliest military conﬂicts in history.
+
+Query: “deadliest war in history”
+
+Term
+
+P(w|D)
+
+log P(w|D)
+
+deadliest
+
+1/56 = 0.017
+
+-1.748
+
+war
+
+1/56 = 0.017
+
+-1.748
+
+in
+
+2/56 = 0.035
+
+-1.447
+
+history
+
+1/56 = 0.017
+
+-1.748
+
+Π = 2.56e-8
+
+Σ = −6.691
+
+
+There are many ways to move beyond this basic model. 
+
+• Use n-gram or skip-gram probabilities, instead of unigrams. 
+
+• Model document probabilities P(D) based on length, authority, genre, 
+
+etc. instead of assuming a uniform probability. 
+
+• Use the tools from the VSM slides: stemming, stopping, etc. 
+
+Next, we’ll see how to ﬁx a major issue with our probability estimates: 
+
+what happens if a query term doesn’t appear in the document?
+
+Summary: Language Model
+
+
+There are three obvious ways to perform retrieval using language models: 
+
+1. Query Likelihood Retrieval trains a model on the document and 
+
+estimates the query’s likelihood. We’ve focused on these so far. 
+
+2. Document Likelihood Retrieval trains a model on the query and 
+
+estimates the document’s likelihood. Queries are very short, so these 
+
+seem less promising. 
+
+3. Model Divergence Retrieval trains models on both the document and 
+
+the query, and compares them.
+
+Retrieval With Language Models
+
+
+The most common way to compare 
+
+probability distributions is with 
+
+Kullback-Liebler (“KL”) Divergence. 
+
+This is a measure from Information 
+
+Theory which can be interpreted as 
+
+the expected number of bits you 
+
+would waste if you compressed data 
+
+distributed along p as if it was 
+
+distributed along q. 
+
+If p = q, DKL(p||q) = 0.
+
+Comparing Distributions
+
+���(���) =
+
+�
+
+�
+
+�(�) log �(�)
+
+�(�)
+
+
+Model Divergence Retrieval works as 
+
+follows: 
+
+1. Choose a language model for the 
+
+query, p(w|q). 
+
+2. Choose a language model for the 
+
+document, p(w|d). 
+
+3. Rank by –DKL(p(w|q) || p(w|d)) – more 
+
+divergence means a worse match. 
+
+This can be simpliﬁed to a cross-entropy 
+
+calculation, as shown to the right.
+
+Divergence-based Retrieval
+
+���(�(�|�)��(�|�))
+
+=
+
+�
+
+�
+
+�(�|�) log �(�|�)
+
+�(�|�)
+
+=
+
+�
+
+�
+
+�(�|�) log �(�|�) �
+
+�
+
+�
+
+�(�|�) log �(�|�)
+
+����
+
+= �
+
+�
+
+�
+
+�(�|�) log �(�|�)
+
+
+Model Divergence Retrieval 
+
+generalizes the Query and Document 
+
+Likelihood models, and is the most 
+
+ﬂexible of the three. 
+
+Any language model can be used for 
+
+the query or document. They don’t 
+
+have to be the same. It can help to 
+
+smooth or normalize them differently. 
+
+If you pick the maximum likelihood 
+
+model for the query, this is equivalent 
+
+to the query likelihood model.
+
+Retrieval Flexibility
+
+Equivalence to Query Likelihood Model
+
+���� �(�|�) := ���,�
+
+|�| = �
+
+|�|
+
+���(�(�|�)��(�|�))
+
+����
+
+= �
+
+�
+
+�
+
+�(�|�) log �(�|�)
+
+= �
+
+�
+
+�
+
+�
+
+|�| log �(�|�)
+
+
+We make the following model choices: 
+
+• p(w|q) is Dirichlet-smoothed with a 
+
+background of words used in 
+
+historical queries. 
+
+• p(w|d) is Dirichlet-smoothed with a 
+
+background of words used in 
+
+documents from the corpus. 
+
+• Σw qfw = 500,000 
+
+• Σw cfw = 1,000,000,000
+
+Example: Model Divergence Retrieval
+
+��� ��� := �����(���� � �� ����� ���)
+
+�(�|�, � = �) =
+
+���,� + � �
+
+���
+
+�
+
+� ���
+
+|�| + �
+
+�(�|�, � = ����) =
+
+���,� + �, ��� �
+
+���
+
+�
+
+� ���
+
+|�| + �, ���
+
+���(�(�|�)��(�|�))
+
+����
+
+= �
+
+�
+
+�
+
+�(�|�) log �(�|�)
+
+= �
+
+�
+
+�
+
+���,� + � �
+
+���
+
+�
+
+� ���
+
+|�| + �
+
+log
+
+���,� + �, ��� �
+
+���
+
+�
+
+� ���
+
+|�| + �, ���
+
+Ranking by (negative) KL-Divergence provides a very ﬂexible and theoretically-sound retrieval system.
+
+
+Example: Model Divergence Retrieval
+
+Wikipedia: WWI
+
+World War I (WWI or WW1 or World War 
+
+One), also known as the First World War or 
+
+the Great War, was a global war centred in 
+
+Europe that began on 28 July 1914 and 
+
+lasted until 11 November 1918. More than 
+
+9 million combatants and 7 million civilians 
+
+died as a result of the war, a casualty rate 
+
+exacerbated by the belligerents' 
+
+technological and industrial sophistication, 
+
+and tactical stalemate. It was one of the 
+
+Query: “world war one”
+
+qf
+
+cf
+
+p(w|q) p(w|d) Score
+
+world
+
+2,500
+
+90,000
+
+0.202
+
+0.002 -1.891
+
+war
+
+2,000
+
+35,000
+
+0.202
+
+0.003 -1.700
+
+one
+
+6,000
+
+5E+07
+
+0.205
+
+0.049 -0.893
+
+-4.484
+
+�
+
+�
+
+���,� + � �
+
+���
+
+�
+
+� ���
+
+|�| + �
+
+log
+
+���,� + �, ��� �
+
+���
+
+�
+
+� ���
+
+|�| + �, ���
+
+
+Example: Model Divergence Retrieval
+
+Wikipedia: Taiping Rebellion
+
+The Taiping Rebellion was a massive civil 
+
+war in southern China from 1850 to 1864, 
+
+against the ruling Manchu Qing dynasty. It 
+
+was a millenarian movement led by Hong 
+
+Xiuquan, who announced that he had 
+
+received visions, in which he learned that he 
+
+was the younger brother of Jesus. At least 20 
+
+million people died, mainly civilians, in one of 
+
+Query: “world war one”
+
+qf
+
+cf
+
+p(w|q)
+
+p(w|d)
+
+Score
+
+world
+
+2,500
+
+90,000
+
+0.202
+
+8.75E-05 -2.723
+
+war
+
+2,000
+
+35,000
+
+0.202
+
+0.001
+
+-2.199
+
+one
+
+6,000
+
+5E+07
+
+0.205
+
+0.049
+
+-0.890
+
+-5.812
+
+�
+
+�
+
+���,� + � �
+
+���
+
+�
+
+� ���
+
+|�| + �
+
+log
+
+���,� + �, ��� �
+
+���
+
+�
+
+� ���
+
+|�| + �, ���
+
+
+Although the bag of words model works very well for text classiﬁcation, it is intuitively 
+
+unsatisfying – it assumes the words in a document are independent, given the relevance 
+
+label, and nobody believes this. 
+
+What could we replace it with? 
+
+• A “bag of paragraphs” wouldn’t work – too many paragraphs are unique in the 
+
+collection, so we can’t do meaningful statistics without subdividing them. 
+
+• A “bag of sentences” is better, but not much – many sentences are unique, and two 
+
+documents expressing the same thought are unlikely to choose exactly the same 
+
+sentence. We need similar documents to have similar features. 
+
+• We’ll use sets of words, called n-grams, and consider sets of different sizes to balance 
+
+between good probability estimates (for small n) and semantic nuance (for large n).
+
+Modeling Language
+
+
+Maximum likelihood probability 
+
+estimates assign zero probability to 
+
+terms missing from the training data. 
+
+This is catastrophic for a Naive Bayes 
+
+retrieval model: any document that 
+
+doesn’t contain all query terms will get 
+
+a matching score of zero. 
+
+Many other probabilistic models have 
+
+similar problems. Only truly impossible 
+
+events should have zero probability.
+
+Probability Estimation
+
+Query Likelihood Model
+
+Query: “world war one”
+
+0
+
+0.013
+
+0.025
+
+0.038
+
+0.05
+
+P(world | D)
+
+P(war | D)
+
+P(one | D)
+
+0.00
+
+0.05
+
+0.03
+
+�(�|�)
+
+����
+
+=
+
+�
+
+���
+
+�(�|�)
+
+= �.�� · �.�� · �
+
+
+The solution is to adjust our probability estimates by taking some probability away from the 
+
+most-likely events, and moving it to the less-likely events. 
+
+!
+
+!
+
+!
+
+!
+
+!
+
+This makes the probability distribution less spiky, or “smoother.” The probabilities all move 
+
+just a little toward the mean.
+
+Smoothing
+
+Maximum Likelihood Estimate
+
+0
+
+0.013
+
+0.025
+
+0.038
+
+0.05
+
+P(world | D)
+
+P(war | D)
+
+P(one | D)
+
+0.00
+
+0.05
+
+0.03
+
+Smoothed Estimate
+
+0
+
+0.013
+
+0.025
+
+0.038
+
+0.05
+
+P(world | D)
+
+P(war | D)
+
+P(one | D)
+
+0.0010
+
+0.0495
+
+0.0295
+
+
+Smoothing is important for many reasons. 
+
+• Assigning zero probability to possible events is incorrect. 
+
+• Maximum likelihood estimates from your data don’t generalize perfectly 
+
+to new data, so a Bayesian update from some kind of prior works better. 
+
+However, uniform smoothing doesn’t work very well for language 
+
+modeling. Next, we’ll see why that is, and how we can do better. 
+
+Chengxiang Zhai and John Lafferty. 2004. A study of smoothing methods for language models applied to 
+
+information retrieval.
+
+Smoothing
+
+
+Laplace Smoothing, aka “add-one 
+
+smoothing,” smooths maximum likelihood 
+
+estimates by adding one count to each 
+
+event. 
+
+!
+
+!
+
+!
+
+!
+
+This is equivalent to a Bayesian posterior 
+
+with a uniform prior, as we'll see.
+
+Laplace Smoothing
+
+
+
+
+
+Pierre-Simon Laplace (1745-1827)
+
+Image from Wikipedia
+
+�(�) =
+
+�����(�) + �
+
+�
+
+�������� (�����(�) + �)
+
+�(�|�) = ���,� + �
+
+|�| + |�|
+
+
+If we assume nothing about a 
+
+document’s vocabulary distribution, 
+
+we will use uniform probabilities for all 
+
+terms. 
+
+When we observe the terms in a 
+
+document, the Bayesian update of 
+
+these probabilities yields Laplace 
+
+smoothing. 
+
+This Bayesian posterior is our 
+
+smoothed estimate of the vocabulary 
+
+distribution for the document’s topic.
+
+Deriving Laplace Smoothing
+
+�(�|�) �� ���������(�|��, . . . , ��) �
+
+�
+
+�
+
+�=�
+
+�����
+
+�
+
+�(�|�) �� �����������(�) �
+
+�
+
+�
+
+�=�
+
+����,�
+
+�
+
+�(�|�) � �(�|�)�(�|�) =
+
+�
+
+�
+
+�=�
+
+����,�+����
+
+�
+
+�� ���������(�|�� + ���,�, . . . , �� + ���,�)
+
+E[�(�|�)|� = �] = ���,� + �
+
+|�| + �
+
+
+Laplace smoothing can be 
+
+generalized from add-one smoothing 
+
+to add-� smoothing, for � ∈ (0, 1]. 
+
+This lets you tune the amount of 
+
+smoothing you want to use: smaller 
+
+values of � are closer to the maximum 
+
+likelihood estimate.
+
+Add-� Smoothing
+
+�(�) =
+
+�����(�) + �
+
+�
+
+�������� (�����(�) + �)
+
+�(�|�) = ���,� + �
+
+|�| + �|�|
+
+
+Uniform smoothing assigns the same probability to all unseen words, 
+
+which isn’t realistic. This is easiest to see for n-gram models: 
+
+!
+
+We strongly believe that “house” is more likely to follow “the white” 
+
+than “effortless” is, even if neither trigram appears in our training data. 
+
+Our bigram counts should help: “white house” probably appears more 
+
+often than “white effortless.” We can use bigram probabilities as a 
+
+background distribution to help smooth our trigram probabilities.
+
+Limits of Uniform Smoothing
+
+�(�����|���, �����) &gt; �(����������|���, �����)
+
+
+One way to combine foreground and background distributions is to take their 
+
+linear combination. This is the simplest form of Jelinek-Mercer Smoothing. 
+
+!
+
+For instance, you can smooth n-grams with (n-1)-gram probabilities. 
+
+!
+
+You can also smooth document estimates with corpus-wide estimates. 
+
+Jelinek-Mercer Smoothing
+
+ˆ�(�) = ����(�) + (� � �)���(�), � &lt; � &lt; �
+
+ˆ�(��|��, . . . , ����) = ��(��|��, . . . , ����) + (� � �)�(��|��, . . . , ����)
+
+ˆ�(�|�) = � ���,�
+
+|�| + (� � �)
+
+���
+
+�
+
+� ���
+
+
+Most smoothing techniques amount to 
+
+ﬁnding a particular value for λ in 
+
+Jelinek-Mercer smoothing. 
+
+For instance, add-one smoothing is 
+
+Jelinek-Mercer smoothing with a 
+
+uniform background distribution and a 
+
+particular value of λ.
+
+Relationship to Laplace Smoothing
+
+���� � =
+
+|�|
+
+|�| + |�|
+
+ˆ�(�|�) = � ���,�
+
+|�| + (� � �) �
+
+|�|
+
+=
+
+�
+
+|�|
+
+|�| + |�|
+
+� ���,�
+
+|�| +
+
+�
+
+|�|
+
+|�| + |�|
+
+� �
+
+|�|
+
+=
+
+���,�
+
+|�| + |�| +
+
+�
+
+|�| + |�|
+
+= ���,� + �
+
+|�| + |�|
+
+
+TF-IDF is also closely related to 
+
+Jelinek-Mercer smoothing. 
+
+If you smooth the query likelihood 
+
+model with a corpus-wide background 
+
+probability, the resulting scoring 
+
+function is proportional to TF and 
+
+inversely proportional to DF.
+
+Relationship to TF-IDF
+
+log �(�|�) =
+
+�
+
+���
+
+log
+
+�
+
+� ���,�
+
+|�| + (� � �)���
+
+|�|
+
+�
+
+=
+
+�
+
+���:���,�&gt;�
+
+log
+
+�
+
+� ���,�
+
+|�| + (� � �)���
+
+|�|
+
+�
+
++
+
+�
+
+���:���,�=�
+
+log(� � �)���
+
+|�|
+
+=
+
+�
+
+���:���,�&gt;�
+
+log
+
+�
+
+� ���,�
+
+|�| + (� � �) ���
+
+|�|
+
+(� � �) ���
+
+|�|
+
+�
+
++
+
+�
+
+���
+
+log(� � �)���
+
+|�|
+
+����
+
+=
+
+�
+
+���:���,�&gt;�
+
+log
+
+�
+
+� ���,�
+
+|�|
+
+(� � �) ���
+
+|�|
+
++ �
+
+�
+
+
+Dirichlet Smoothing is the same as 
+
+Jelinek-Mercer smoothing, picking λ 
+
+based on document length and a 
+
+parameter μ – an estimate of the 
+
+average doc length. 
+
+!
+
+The scoring function to the right is the 
+
+Bayesian posterior using a Dirichlet 
+
+prior with parameters: 
+
+Dirichlet Smoothing
+
+� = � �
+
+�
+
+|�| + �
+
+�
+
+�
+
+����
+
+�
+
+� ���
+
+, . . . , �
+
+����
+
+�
+
+� ���
+
+�
+
+ˆ�(�|�) =
+
+���,� + �
+
+���
+
+�
+
+� ���
+
+|�| + �
+
+log �(�|�) =
+
+�
+
+���
+
+log
+
+���,� + �
+
+���
+
+�
+
+� ���
+
+|�| + �
+
+
+Example: Dirichlet Smoothing
+
+Query: “president lincoln”
+
+tf
+
+15
+
+cf
+
+160,000
+
+tf
+
+25
+
+cf
+
+2,400
+
+|d|
+
+1,800
+
+Σ
+
+10
+
+μ
+
+2,000
+
+log �(�|�) =
+
+�
+
+���
+
+log
+
+���,� + �
+
+���
+
+�
+
+� ���
+
+|�| + �
+
+= log �� + �, ��� � (���, ���/���)
+
+�, ��� + �, ���
+
++ log �� + �, ��� � (�, ���/���)
+
+�, ��� + �, ���
+
+= log(��.��/�, ���) + log(��.���/�, ���)
+
+= � �.�� + ��.��
+
+= � ��.��
+
+
+Dirichlet Smoothing is a good choice for 
+
+many IR tasks. 
+
+• As with all smoothing techniques, it never 
+
+assigns zero probability to a term. 
+
+• It is a Bayesian posterior which considers 
+
+how the document differs from the corpus. 
+
+• It normalizes by document length, so 
+
+estimates from short documents and long 
+
+documents are comparable. 
+
+• It runs quickly, compared to many more 
+
+exotic smoothing techniques.
+
+Eﬀect of Dirichlet Smoothing
+
+tf
+
+tf
+
+ML Score Smoothed 
+
+Score
+
+15
+
+25
+
+-3.937
+
+-10.53
+
+15
+
+1
+
+-5.334
+
+-13.75
+
+15
+
+0
+
+N/A
+
+-19.05
+
+1
+
+25
+
+-5.113
+
+-12.99
+
+0
+
+25
+
+N/A
+
+-14.4
+
+
+Dirichlet Smoothing is the same as 
+
+Jelinek-Mercer smoothing, picking λ 
+
+based on  
+
+ 
+
+* doc length |d| 
+
+ 
+
+* doc vocabulary |V| (number of 
+
+unique terms in document) 
+
+!
+
+Witten-Bell Smoothing
+
+� =
+
+|d|
+
+|d| + |V |
+
+
+An n-gram is an ordered set of n 
+
+contiguous words, usually found within 
+
+a single sentence. Special cases are n 
+
+= 1 (unigrams), n = 2 (bigrams), and n = 
+
+3 (trigrams). 
+
+Skip-grams are more “relaxed” – they 
+
+can appear in any order, and need not 
+
+be adjacent. They are an unordered 
+
+set of n words that appear within a 
+
+ﬁxed window of k words.
+
+N-grams and Skip-grams
+
+The quick brown fox jumped over the lazy dog.
+
+Sentence
+
+Trigrams (n = 3)
+
+the quick brown 
+
+quick brown fox 
+
+brown fox jumped 
+
+…
+
+Skip-grams (n = 3, k = 5)
+
+quick brown fox 
+
+fox jumped quick 
+
+lazy dog jumped 
+
+…
+
+
+We typically construct a generative 
+
+model of n-grams using Markov chains 
+
+– what is the probability distribution over 
+
+the next word in the n-gram, given the n 
+
+– 1 words we’ve seen so far? 
+
+P(wn|w1, w2, …, wn-1) 
+
+This assumes that words are 
+
+independent, given the relevance label 
+
+and the preceding n – 1 words. 
+
+We use a special token, like $, for words 
+
+“before” the beginning of the sentence.
+
+Markov Chains
+
+The quick brown fox jumped over the lazy dog.
+
+Sentence
+
+Trigram Sentence Probability
+
+�(���|$, $) · �(�����|$, ���) · �(�����|���, �����)
+
+·�(���|�����, �����) · �(������|�����, ���)
+
+·�(����|���, ������) · �(���|������, ����)
+
+·�(����|����, ���) · �(���|���, ����)
+
+
+How many n-grams do we expect to see, as a 
+
+function of the vocabulary size v and n-gram 
+
+size n? 
+
+• At ﬁrst glance, you’d expect to see 
+
+!
+
+• However, most possible n-grams will never 
+
+appear (like “correct horse battery 
+
+staple?”), and n-grams are limited by 
+
+typical sentence lengths. 
+
+• As n increases, the number of distinct 
+
+observed n-grams peaks around n = 4 and 
+
+then decreases.
+
+Number of n-grams in a Corpus
+
+��
+
+�
+
+�
+
+= �(��)
+
+Web 1T 5-gram Corpus
+
+0M
+
+350M
+
+700M
+
+1,050M
+
+1,400M
+
+n=1
+
+n=2
+
+n=3
+
+n=4
+
+n=5
+
+1.18E+09
+
+1.31E+09
+
+9.77E+08
+
+3.15E+08
+
+1.36E+07
+
+Total tokens: 1,024,908,267,229 
+
+Vocabulary size: 13,588,391
+
+
+The best n-gram size to use depends on a variance-bias tradeoff: 
+
+• Smaller values of n have more training data: infrequent n-grams will 
+
+appear more often, reducing the variance of your probability estimates. 
+
+• Larger values of n take more context into account: they have more 
+
+semantic information, reducing the bias of your probability estimates. 
+
+The best n-gram size is the largest value your data will support. Common 
+
+choices are n = 3 for millions of words, or n = 2 for smaller corpora.
+
+Choosing n-gram Size
+
+
+Using n-grams and skip-grams allows us to include some linguistic 
+
+context in our retrieval models. This helps disambiguate word senses 
+
+and improve retrieval performance. 
+
+Larger values of n are beneﬁcial, if you have the data to support them. 
+
+The number of n-grams does not grow exponentially in n, so the index 
+
+size can be manageable. 
+
+Next, we’ll see how to use an n-gram language model for retrieval.
+
+Wrapping Up
+

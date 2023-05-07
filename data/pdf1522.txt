@@ -1,0 +1,917 @@
+
+ 
+
+ 
+
+1
+
+NLP Programming Tutorial 1 – Unigram Language Model
+
+
+
+
+
+NLP Programming Tutorial 1 -
+
+Unigram Language Models
+
+Graham Neubig
+
+Nara Institute of Science and Technology (NAIST)
+
+
+ 
+
+ 
+
+2
+
+NLP Programming Tutorial 1 – Unigram Language Model
+
+
+
+
+
+Language Model Basics
+
+
+ 
+
+ 
+
+3
+
+NLP Programming Tutorial 1 – Unigram Language Model
+
+
+
+
+
+Why Language Models?
+
+● We have an English speech recognition system, which
+
+answer is better?
+
+Speech
+
+W1 = speech recognition
+
+system
+
+W2 = speech cognition
+
+system
+
+W4 = スピーチ が 救出 ストン
+
+W3 = speck podcast
+
+histamine
+
+
+ 
+
+ 
+
+4
+
+NLP Programming Tutorial 1 – Unigram Language Model
+
+
+
+
+
+Why Language Models?
+
+● We have an English speech recognition system, which
+
+answer is better?
+
+Speech
+
+W1 = speech recognition
+
+system
+
+W2 = speech cognition
+
+system
+
+W4 = スピーチ が 救出 ストン
+
+W3 = speck podcast
+
+histamine
+
+● Language models tell us the answer!
+
+
+ 
+
+ 
+
+5
+
+NLP Programming Tutorial 1 – Unigram Language Model
+
+
+
+
+
+Probabilistic Language Models
+
+● Language models assign a probability to each
+
+sentence
+
+W1 = speech recognition
+
+system
+
+W2 = speech cognition
+
+system
+
+W4 = スピーチ が 救出 ストン
+
+W3 = speck podcast
+
+histamine
+
+P(W1) = 4.021 * 10-3
+
+P(W2) = 8.932 * 10-4
+
+P(W3) = 2.432 * 10-7
+
+P(W4) = 9.124 * 10-23
+
+● We want P(W1) &gt; P(W2) &gt; P(W3) &gt; P(W4)
+
+● (or P(W4) &gt; P(W1), P(W2), P(W3) for Japanese?)
+
+
+ 
+
+ 
+
+6
+
+NLP Programming Tutorial 1 – Unigram Language Model
+
+
+
+
+
+Calculating Sentence Probabilities
+
+● We want the probability of 
+
+● Represent this mathematically as:
+
+W = speech recognition system
+
+P(|W| = 3, w1=”speech”, w2=”recognition”, w3=”system”)
+
+
+ 
+
+ 
+
+7
+
+NLP Programming Tutorial 1 – Unigram Language Model
+
+
+
+
+
+Calculating Sentence Probabilities
+
+● We want the probability of 
+
+● Represent this mathematically as (using chain rule):
+
+W = speech recognition system
+
+P(|W| = 3, w1=”speech”, w2=”recognition”, w3=”system”) =
+
+P(w1=“speech” | w0 = “&lt;s&gt;”)
+
+* P(w2=”recognition” | w0 = “&lt;s&gt;”, w1=“speech”)
+
+* P(w3=”system” | w0 = “&lt;s&gt;”, w1=“speech”, w2=”recognition”)
+
+* P(w4=”&lt;/s&gt;” | w0 = “&lt;s&gt;”, w1=“speech”, w2=”recognition”, w3=”system”)
+
+NOTE:
+
+sentence start &lt;s&gt; and end &lt;/s&gt; symbol
+
+NOTE:
+
+P(w0 = &lt;s&gt;) = 1
+
+
+ 
+
+ 
+
+8
+
+NLP Programming Tutorial 1 – Unigram Language Model
+
+
+
+
+
+Incremental Computation
+
+● Previous equation can be written:
+
+● How do we decide probability? 
+
+P(W )=∏i=1
+
+∣W∣+ 1 P(wi∣w0…wi−1)
+
+P(wi∣w0…wi−1)
+
+
+ 
+
+ 
+
+9
+
+NLP Programming Tutorial 1 – Unigram Language Model
+
+
+
+
+
+Maximum Likelihood Estimation
+
+● Calculate word strings in corpus, take fraction
+
+P(wi∣w1…wi−1)= c(w1…wi)
+
+c(w1…wi−1)
+
+i live in osaka . &lt;/s&gt;
+
+i am a graduate student . &lt;/s&gt;
+
+my school is in nara . &lt;/s&gt;
+
+P(am | &lt;s&gt; i) = c(&lt;s&gt; i am)/c(&lt;s&gt; i) = 1 / 2 = 0.5
+
+P(live | &lt;s&gt; i) = c(&lt;s&gt; i live)/c(&lt;s&gt; i) = 1 / 2 = 0.5
+
+
+ 
+
+ 
+
+10
+
+NLP Programming Tutorial 1 – Unigram Language Model
+
+
+
+
+
+Problem With Full Estimation
+
+● Weak when counts are low:
+
+i live in osaka . &lt;/s&gt;
+
+i am a graduate student . &lt;/s&gt;
+
+my school is in nara . &lt;/s&gt;
+
+Training:
+
+P(W=&lt;s&gt; i live in nara . &lt;/s&gt;) = 0
+
+&lt;s&gt; i live in nara . &lt;/s&gt;
+
+P(nara|&lt;s&gt; i live in) = 0/1 = 0
+
+Test:
+
+
+ 
+
+ 
+
+11
+
+NLP Programming Tutorial 1 – Unigram Language Model
+
+
+
+
+
+Unigram Model
+
+● Do not use history:
+
+P(wi∣w1…wi−1)≈P(wi)=
+
+c(wi)
+
+∑ ̃w c( ̃w)
+
+P(nara) = 1/20 = 0.05
+
+i live in osaka . &lt;/s&gt;
+
+i am a graduate student . &lt;/s&gt;
+
+my school is in nara . &lt;/s&gt;
+
+P(i)       = 2/20 = 0.1
+
+P(&lt;/s&gt;) = 3/20 = 0.15
+
+P(W=i live in nara . &lt;/s&gt;) =
+
+   0.1 * 0.05 * 0.1 * 0.05 * 0.15 * 0.15 = 5.625 * 10-7
+
+
+ 
+
+ 
+
+12
+
+NLP Programming Tutorial 1 – Unigram Language Model
+
+
+
+
+
+Be Careful of Integers!
+
+● Divide two integers, you get an integer (rounded down)
+
+$ ./my-program.py
+
+0
+
+$ ./my-program.py
+
+0.5
+
+● Convert one integer to a float, and you will be OK
+
+
+
+
+
+
+ 
+
+ 
+
+13
+
+NLP Programming Tutorial 1 – Unigram Language Model
+
+
+
+
+
+What about Unknown Words?!
+
+● Simple ML estimation doesn't work
+
+● Often, unknown words are ignored (ASR)
+
+● Better way to solve
+
+● Save some probability for unknown words (λunk = 1-λ1)
+
+● Guess total vocabulary size (N), including unknowns
+
+i live in osaka . &lt;/s&gt;
+
+i am a graduate student . &lt;/s&gt;
+
+my school is in nara . &lt;/s&gt;
+
+P(nara) = 1/20 = 0.05
+
+P(i)       = 2/20 = 0.1
+
+P(kyoto) = 0/20 = 0
+
+P(wi)=λ1 PML(wi)+ (1−λ1) 1
+
+N
+
+
+ 
+
+ 
+
+14
+
+NLP Programming Tutorial 1 – Unigram Language Model
+
+
+
+
+
+Unknown Word Example
+
+● Total vocabulary size: N=106
+
+● Unknown word probability: λunk=0.05 (λ1 = 0.95)
+
+P(nara)  = 0.95*0.05 + 0.05*(1/106) = 0.04750005
+
+P(i)         = 0.95*0.10 + 0.05*(1/106) = 0.09500005
+
+P(wi)=λ1 PML(wi)+ (1−λ1) 1
+
+N
+
+P(kyoto) = 0.95*0.00 + 0.05*(1/106)  = 0.00000005
+
+
+ 
+
+ 
+
+15
+
+NLP Programming Tutorial 1 – Unigram Language Model
+
+
+
+
+
+Evaluating Language Models
+
+
+ 
+
+ 
+
+16
+
+NLP Programming Tutorial 1 – Unigram Language Model
+
+
+
+
+
+Experimental Setup
+
+● Use training and test sets
+
+i live in osaka
+
+i am a graduate student
+
+my school is in nara
+
+...
+
+i live in nara
+
+i am a student
+
+i have lots of homework
+
+…
+
+Training Data
+
+Testing Data
+
+Train
+
+Model
+
+Model
+
+Test
+
+Model
+
+Model Accuracy
+
+Likelihood
+
+Log Likelihood
+
+Entropy
+
+Perplexity
+
+
+ 
+
+ 
+
+17
+
+NLP Programming Tutorial 1 – Unigram Language Model
+
+
+
+
+
+Likelihood
+
+● Likelihood is the probability of some observed data 
+
+(the test set Wtest), given the model M
+
+i live in nara
+
+i am a student
+
+my classes are hard
+
+P(w=”i live in nara”|M) = 
+
+2.52*10-21 
+
+P(w=”i am a student”|M) = 
+
+3.48*10-19 
+
+P(w=”my classes are hard”|M) = 2.15*10-34 
+
+P(W test∣M)=∏w∈W test P(w∣M )
+
+1.89*10-73
+
+x
+
+x
+
+=
+
+
+ 
+
+ 
+
+18
+
+NLP Programming Tutorial 1 – Unigram Language Model
+
+
+
+
+
+Log Likelihood
+
+● Likelihood uses very small numbers=underflow
+
+● Taking the log resolves this problem
+
+i live in nara
+
+i am a student
+
+my classes are hard
+
+log P(w=”i live in nara”|M) = 
+
+-20.58 
+
+log P(w=”i am a student”|M) = 
+
+-18.45 
+
+log P(w=”my classes are hard”|M) = -33.67 
+
+log P(W test∣M )=∑w∈W test log P(w∣M )
+
+-72.60
+
++
+
++
+
+=
+
+
+ 
+
+ 
+
+19
+
+NLP Programming Tutorial 1 – Unigram Language Model
+
+
+
+
+
+Calculating Logs
+
+● Python's math package has a function for logs
+
+$ ./my-program.py
+
+4.60517018599
+
+2.0
+
+
+
+
+ 
+
+ 
+
+20
+
+NLP Programming Tutorial 1 – Unigram Language Model
+
+
+
+
+
+Entropy
+
+● Entropy H is average negative log2 likelihood per word
+
+H (W test∣M)=
+
+1
+
+|W test | ∑w ∈W test−log2P(w∣M )
+
+i live in nara
+
+ 
+
+i am a student
+
+ 
+
+my classes are hard
+
+log2 P(w=”i live in nara”|M)= 
+
+    ( 68.43
+
+log2 P(w=”i am a student”|M)= 
+
+61.32
+
+log2 P(w=”my classes are hard”|M)= 111.84 )
+
++
+
++
+
+/
+
+12
+
+=
+
+20.13
+
+# of words=
+
+* note, we can also count &lt;/s&gt; in # of words (in which case it is 15)
+
+
+ 
+
+ 
+
+21
+
+NLP Programming Tutorial 1 – Unigram Language Model
+
+
+
+
+
+Perplexity
+
+● Equal to two to the power of per-word entropy
+
+● (Mainly because it makes more impressive numbers)
+
+● For uniform distributions, equal to the size of
+
+vocabulary
+
+PPL=2
+
+H
+
+H=−log2
+
+1
+
+5
+
+V=5
+
+PPL=2
+
+H=2
+
+−log2 1
+
+5=2
+
+log25=5
+
+
+ 
+
+ 
+
+22
+
+NLP Programming Tutorial 1 – Unigram Language Model
+
+
+
+
+
+Coverage
+
+● The percentage of known words in the corpus
+
+a   bird   a   cat   a   dog   a   &lt;/s&gt;
+
+“dog” is an unknown word
+
+Coverage: 7/8 *
+
+* often omit the sentence-final symbol → 6/7
+
+
+ 
+
+ 
+
+23
+
+NLP Programming Tutorial 1 – Unigram Language Model
+
+
+
+
+
+Exercise
+
+
+ 
+
+ 
+
+24
+
+NLP Programming Tutorial 1 – Unigram Language Model
+
+
+
+
+
+Exercise
+
+● Write two programs
+
+● train-unigram: Creates a unigram model
+
+● test-unigram: Reads a unigram model and calculates
+
+entropy and coverage for the test set
+
+● Test them test/01-train-input.txt test/01-test-input.txt
+
+● Train the model on data/wiki-en-train.word
+
+● Calculate entropy and coverage on data/wiki-en-
+
+test.word
+
+● Report your scores next week
+
+
+ 
+
+ 
+
+25
+
+NLP Programming Tutorial 1 – Unigram Language Model
+
+
+
+
+
+train-unigram Pseudo-Code
+
+create a map counts
+
+create a variable total_count = 0
+
+for each line in the training_file
+
+ split line into an array of words
+
+ append “&lt;/s&gt;” to the end of words
+
+ for each word in words
+
+ add 1 to counts[word]
+
+ add 1 to total_count
+
+open the model_file for writing
+
+for each word, count in counts
+
+ probability = counts[word]/total_count
+
+ print word, probability to model_file
+
+
+ 
+
+ 
+
+26
+
+NLP Programming Tutorial 1 – Unigram Language Model
+
+
+
+
+
+test-unigram Pseudo-Code
+
+λ1 = 0.95,  λunk = 1-λ1, V = 1000000,  W = 0, H = 0
+
+create a map probabilities
+
+for each line in model_file
+
+ split line into w and P
+
+ set probabilities[w] = P
+
+for each line in test_file
+
+ split line into an array of words
+
+ append “&lt;/s&gt;” to the end of words
+
+ for each w in words
+
+ add 1 to W
+
+ set P = λunk / V
+
+ if probabilities[w] exists
+
+ set P += λ1 * probabilities[w]
+
+ else
+
+ add 1 to unk
+
+ add -log2 P to H
+
+print “entropy = ”+H/W
+
+print “coverage = ” + (W-unk)/W
+
+Load Model
+
+Test and Print
+
+
+ 
+
+ 
+
+27
+
+NLP Programming Tutorial 1 – Unigram Language Model
+
+
+
+
+
+Thank You!
+

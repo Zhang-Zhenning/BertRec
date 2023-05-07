@@ -1,0 +1,498 @@
+
+
+
+ML Wiki
+
+Smoothing for Language Models
+
+Contents
+
+Contents
+
+1 Smoothing for Language Models
+
+2 Parameter Estimation
+
+3 Interpolation Smoothing
+
+3.1 Additive Smoothing
+
+3.2 Collection Smoothing
+
+3.2.1 Collection LM
+
+3.2.2 Smoothing with Collection LM
+
+3.3 Jelinek-Mercer Smoothing
+
+3.4 Dirichlet Prior Smoothing
+
+3.5 Absolute Discounting Smoothing
+
+4 Backoff
+
+5 Other Smoothing Methods
+
+5.1 Good-Turing Smoothing
+
+6 Smoothing vs TF-IDF
+
+7 Other Smoothing Ideas
+
+7.1 Clustering / KNN Smoothing
+
+8 References
+
+9 Sources
+
+Smoothing for Language Models
+
+It's a form of Regularization for Statistical Language Models
+
+Parameter Estimation
+
+Suppose θ is a Unigram Statistical Language Model
+
+so θ follows Multinomial Distribution
+
+D is a document consisting of words: D = {w1,  . . .  , wm}
+
+V is the vocabulary of the model: V = {w1,  . . .  , wM}
+
+By the unigram model, each word is independent, so
+
+P(D � θ) = ∏iP(wi � θ) = ∏w�VP(w � θ)c(w,D)
+
+where c(w, D) is the term frequency: how many times w occurs in D (see also TF-IDF)
+
+how do we estimate P(w � θ)?
+
+With MLE, we have:
+
+ˆpML(w � θ) =
+
+c(w,D)
+
+∑w�Vc(w,D) =
+
+c(w,D)
+
+|D|
+
+No smoothing
+
+Smoothing
+
+ 
+
+Go
+
+
+
+Search
+
+Home
+
+ Page Info
+
+Log in
+
+
+
+Search
+
+
+MLE may overfit the data: it will assign 0 probabilities to words it hasn't seen
+
+What to do with it?
+
+Bayesian Parameter Estimation can both maximize the data likelihood and incorporate the prior belief to "smooth" the
+
+estimate
+
+use MAP: Maximum A Posteriori Estimation:
+
+ˆθ = arg maxθP(θ � D) = arg maxθP(D � θ)P(θ)
+
+so we can define some prior P(θ), and depending on the choice of prior, we'd have different estimators
+
+if the prior prefers models that don't assign 0 probability to any w, then at the end we won't have 0 entries
+
+adjusting MLE to avoid 0 probability is called "smoothing" - it's a form of regularization
+
+Interpolation Smoothing
+
+Discount some probability mass of seen words
+
+then discounted probability is shared between all words: seen and unseen
+
+so it's some sort of interpolation between LME probabilities and prior/collection model
+
+Additive Smoothing
+
+Laplace Smoothing (or Additive Smoothing):
+
+ˆpλ(w � θ) =
+
+c(w,D) +λ
+
+∑w�Vc(w,D) =
+
+c(w,D)
+
+|D| +λ |V|
+
+so it gives the same probability mass 
+
+λ
+
+|D| +λ |V| to all unseen words
+
+If λ = 1 then we have "+1 Smoothing"
+
+Collection Smoothing
+
+Additive smoothing gives the same probability mass 
+
+λ
+
+|D| +λ |V| to all unseen words
+
+it may not be what we want: maybe we want to give more or less weight to certain words
+
+so the idea is to have some reference language model
+
+if we have a corpus, then we can use this corpus to learn the LM on the entire corpus
+
+such corpus LM is called "Collection LM" or "Background LM"
+
+Collection LM
+
+There are two ways of building the Collection LM:
+
+let P(w � C) denote the collection LM
+
+1) Each word contributes equally
+
+P(w � C) =
+
+∑D�Cc(w,D)
+
+∑D�C|D|
+
+it's the same as if we concatenated all documents in C into one
+
+"Macro-averaging"
+
+2) Each document contribute equally
+
+
+P(w � C) =
+
+1
+
+N∑D�C
+
+c(w,D)
+
+|D|
+
+average contribution of each doc
+
+"Micro-averaging"
+
+Approach (1) is more popular than (2)
+
+Smoothing with Collection LM
+
+Once we learned the Collection LM, we can use it to smooth the probabilities:
+
+P(w � ˆθ) = Pλ(w � θ)
+
+ if w � D
+
+α � P(w � C)
+
+ else 
+
+Where
+
+Pλ(w � θ) smoothed probabilities (with Laplace Smoothing)
+
+α coefficient that controls how much prob. mass is assigned to unseen words
+
+One way: α =
+
+1 − ∑w: c(w,D)&gt;0Pλ(w � θ)
+
+1 − ∑w: c(w,D)&gt;0P(w � θ)
+
+When we're doing Laplace smoothing, we take some probability mass from each seen words and re-distribute it evenly
+
+here we distribute it according to Collection LM
+
+Jelinek-Mercer Smoothing
+
+Or "Fixed Coefficient Interpolation"
+
+Interpolate MLE with the collection LM
+
+use some coefficient of interpolation β
+
+Pβ(w � ˆθ) = (1 − β)
+
+c(w,D)
+
+|D| + βP(w � C)
+
+Dirichlet Prior Smoothing
+
+It's a Bayesian Smoothing with special prior: Dirichlet Distribution
+
+Dir(θ � α) =
+
+Γ ∑iαi
+
+∏iΓ(α1) � ∏iθαi−1
+
+i
+
+params: α = (α1,  . . .  , α|V|)
+
+let αi = μ � P(wi � C), μ - param, P(wi � C)
+
+Dirichlet is a Conjugate Prior for Multinomial Distribution
+
+it means that the prior has the same functional form as the likelihood
+
+Posterior:
+
+P(θ � D) � ∏w�VP(w � θ)c(w,D)+μP(w�C)−1
+
+posterior is also Dirichlet distribution with αi = c(wi, D) + μP(w � C)
+
+Dirichlet Smoothing:
+
+{
+
+(
+
+)
+
+
+Pμ(w � ˆθ) =
+
+c(w,D) +μP(w � C)
+
+|D| +μ
+
+=
+
+|D|
+
+|D| +μ �
+
+c(w,D)
+
+|D| +
+
+μ
+
+μ + |D| � P(w � C)
+
+Compare with Jelinek-Mercer: same if β =
+
+μ
+
+μ + |D|
+
+"Eventually, data overrides the prior":
+
+for a fixed μ longer documents will get less smoothing
+
+as |D| → ∞, smoothing → 0
+
+Notes:
+
+the smoothing adds a pseudo count μP(w � C) to each word
+
+thus Additive Smoothing is a special case of Dirichlet smoothing with uniform Collection LM
+
+Absolute Discounting Smoothing
+
+Pδ(w � ˆθ) =
+
+max (c(w,D) −δ,0)
+
+∑w′ �Vc(w′,D)
+
++ σP(w � C)
+
+δ � [0, 1] discounting factor
+
+σ = δ
+
+|D|U
+
+|D|  where |D|U is number of unique terms in D and |D| is total word count
+
+Backoff
+
+Interpolation:
+
+discount some probability mass from seen words, reassing it to both seen and unseen
+
+problem with this approach: some words may end up with counts even higher than the original
+
+for example, if a word is frequent in the collection LM
+
+Alternative Strategy: Back Off
+
+trust MLE for high count words
+
+but discount and redistribute probability mass for less common terms
+
+popular in Speech Recognition, but less popular in Information Retrieval
+
+Other Smoothing Methods
+
+Good-Turing Smoothing
+
+Idea:
+
+# of unseen events = # of "singletons": words that occur only once
+
+let ˆc(w, D) be the adjusted count of w
+
+then P(w � ˆθ) =
+
+ˆc(w,D)
+
+|D|
+
+What is ˆc(w, D)?
+
+let nr denote # of words that occur r times in D
+
+then the adjusted is done via:
+
+
+ˆc(w, D)nc(w,D) = (c(w, D) + 1)nc(w,D)+1
+
+Intuition
+
+let's pretend that none of the singletones were observed
+
+use this to estimate the total # of unseen words
+
+Improvements:
+
+Gale, William, and Geoffrey Sampson. "Good-Turing smoothing without tears." 1995. [1]
+
+Smoothing vs TF-IDF
+
+Smoothing and TF-IDF are connected
+
+also see probabilistic justification for TF-IDF in
+
+Hiemstra, Djoerd. "A probabilistic justification for using tf× idf term weighting in information retrieval." 2000. [2]
+
+Let's derive a query retrieval function using the smoothed log likelihood:
+
+Q is a query
+
+assuming the general smoothing scheme: (comparing Q with each D)
+
+logP(Q � θ) = ∑w�Vc(w, Q)logP(w � θ) = ∑w�Dc(w, Q)logPS(w � θ) + ∑w�Dc(w, Q)αlogP(w � θ)
+
+∑w�Dc(w, Q)αlogP(w � θ) = ∑w�Vc(w, Q)αlogP(w � θ) − ∑w�Dc(w, Q)αlogP(w � θ):
+
+words that are not in the document = all words - words that are in the document
+
+let's regroup it:
+
+logP(Q � θ) = ∑w�Dc(w, Q)log
+
+PS(w � θ)
+
+αP(w � C) + |Q| logα + ∑w�Vc(w, Q)αlogP(w � θ) =  . . .
+
+can ignore the last term ∑w�Vc(w, Q)αlogP(w � θ) because it will not affect the ranking
+
+thus we're left with
+
+logP(Q � θ)
+
+rank
+
+= ∑w�Dc(w, Q)log
+
+PS(w � θ)
+
+αP(w � C) + |Q| logα
+
+Observe:
+
+form of this smoothed retrieval function is similar to TF-IDF:
+
+first term: ∑w�Dc(w, Q)log
+
+PS(w � θ)
+
+αP(w � C)
+
+it sums over all matched terms - ones with c(w, Q) &gt; 0
+
+PS(w � θ) would be larger for words with high TF ( ≈  TF heuristic)
+
+frequent items in collection would have high P(w � C) and thus smaller overall weight ( ≈  IDF heuristic)
+
+Other Smoothing Ideas
+
+Clustering / KNN Smoothing
+
+Smoothing all documents from C with the same collection LM may be not the most optimal approach
+
+maybe need to try more "individual" approaches
+
+Can try:
+
+cluster all documents prior indexing, build a cluster LM for each cluster, and then smooth documents using their
+
+associated cluster LM
+
+
+
+
+
+
+
+
+
+
+find KNN docs, and then smooth using them
+
+References
+
+Chen, Stanley F., and Joshua Goodman. "An empirical study of smoothing techniques for language modeling." 1996 [3]
+
+and 1999 [4].
+
+Sources
+
+Zhai, ChengXiang. "Statistical language models for information retrieval." 2008.
+
+Categories: NLP Information Retrieval Regularization
+
+This page was last modified on 27 June 2015, at 13:52.
+
+Machine Learning Bookcamp: learn machine learning by doing projects (get 40% off with code "grigorevpc")
+
+2012 – 2023 by Alexey Grigorev
+
+Powered by MediaWiki. TyrianMediawiki Skin, with Tyrian design by Gentoo.
+
+Privacy policy About ML Wiki Disclaimers
+
+Loading [MathJax]/jax/output/HTML-CSS/fonts/TeX/fontdata.js
+

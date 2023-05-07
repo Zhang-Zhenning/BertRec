@@ -1,0 +1,1160 @@
+
+PLSA-based Image Auto-Annotation: Constraining the
+
+Latent Space
+
+Florent Monay
+
+monay@idiap.ch
+
+Daniel Gatica-Perez
+
+gatica@idiap.ch
+
+IDIAP Research Institute
+
+Rue du Simplon 4, CP 592
+
+1920 Martigny, Switzerland
+
+ABSTRACT
+
+We address the problem of unsupervised image auto-annot-
+
+ation with probabilistic latent space models. Unlike most
+
+previous works, which build latent space representations as-
+
+suming equal relevance for the text and visual modalities, we
+
+propose a new way of modeling multi-modal co-occurrences,
+
+constraining the deﬁnition of the latent space to ensure its
+
+consistency in semantic terms (words), while retaining the
+
+ability to jointly model visual information. The concept is
+
+implemented by a linked pair of Probabilistic Latent Seman-
+
+tic Analysis (PLSA) models. On a 16000-image collection,
+
+we show with extensive experiments that our approach sig-
+
+niﬁcantly outperforms previous joint models.
+
+Categories and Subject Descriptors
+
+H.3.1 [Information Storage and Retrieval]:
+
+Content
+
+Analysis and Indexing—Indexing methods
+
+General Terms
+
+Algorithms, Theory, Languages
+
+Keywords
+
+Automatic Annotation of Images, Semantic Indexing, PLSA
+
+1.
+
+INTRODUCTION
+
+The potential value of large image collections can be fully
+
+realized only when eﬀective methods for access and search
+
+exist. Image users often prefer to formulate intuitive text-
+
+based queries to retrieve relevant images [1], which requires
+
+the annotation of each image in the collection. Automatic
+
+image annotation has thus emerged as one of the key re-
+
+search areas in multimedia information retrieval [3, 4, 2], as
+
+an alternative to costly, labor-intensive manual captioning.
+
+Motivated by the success of latent space models in text
+
+analysis, generative probabilistic models for auto-annotation
+
+have been proposed, including variations of PLSA [5], and
+
+Permission to make digital or hard copies of all or part of this work for
+
+personal or classroom use is granted without fee provided that copies are
+
+not made or distributed for proﬁt or commercial advantage and that copies
+
+bear this notice and the full citation on the ﬁrst page. To copy otherwise, to
+
+republish, to post on servers or to redistribute to lists, requires prior speciﬁc
+
+permission and/or a fee.
+
+MM’04, October 10-16, 2004, New York, New York, USA.
+
+Copyright 2004 ACM 1-58113-893-8/04/0010 ...$5.00.
+
+Latent Dirichlet Allocation (LDA) [2]. Such models use a
+
+latent variable representation for unsupervised learning of
+
+co-occurrences between image features and words in an an-
+
+notated image collection, and later employ the learned mod-
+
+els to predict words for unlabeled images [4, 2, 6]. The latent
+
+space representation can capture high-level relations within
+
+and across the textual and visual modalities.
+
+Speciﬁc assumptions introduce variations in the ways in
+
+which co-occurrence information is captured. However, with
+
+a few exceptions [2], most previous works assume that words
+
+and visual features should have the same importance in
+
+deﬁning the latent space [4, 6]. There are limitations with
+
+this view. First, the semantic level of words is much higher
+
+than the one of visual features extracted even by state-of-
+
+the-art methods.
+
+Second, in practice, visual feature co-
+
+occurrences across images often do not imply a semantic re-
+
+lation between them. This results in a severe degree of visual
+
+ambiguity that in general cannot be well handled by existing
+
+joint models. For auto-annotation, we are ultimately inter-
+
+ested in deﬁning a latent space that is consistent in semantic
+
+terms, while able to capture multimodal co-occurrences.
+
+We present a novel approach to achieve the above goal,
+
+based on a linked pair of PLSA models. We constrain the
+
+deﬁnition of the latent space by focusing on textual features
+
+ﬁrst, and then learning visual variations conditioned on the
+
+space learned from text.
+
+Our model consistently outper-
+
+forms previous latent space models [6], while retaining the
+
+elegant formulation of annotation as probabilistic inference.
+
+The paper is organized as follows.
+
+Section 2 describes
+
+our representation of annotated images. Section 3 presents
+
+the key PLSA concepts. Section 4 introduces our approach,
+
+motivated by the limitations of previous models. Section 5
+
+presents experiments. Section 6 concludes the paper.
+
+2.
+
+DATA REPRESENTATION
+
+Annotated images are documents combining two comple-
+
+mentary modalities, each one referring to the other: while an
+
+image potentially illustrates hundreds of words, its caption
+
+speciﬁes the context. Both textual and visual modalities are
+
+represented in a discrete vector-space form.
+
+Caption.
+
+The set of captions of an annotated image
+
+collection deﬁnes a keywords vector-space of dimension W,
+
+where each component indexes a particular keyword w that
+
+occurs in an image caption. The textual modality of a par-
+
+ticular document d is thus represented as a vector td =
+
+(td1, . . . , tdw, . . . , tdW ) of size W, where each element tw is
+
+the count of the corresponding word w in document d.
+
+
+Image. We use two common image representations.
+
+RGB [6]: 6∗6∗6 RGB histograms are computed from three
+
+distinct regions in the image, and only values higher than a
+
+threshold value are kept. This amounts at keeping only the
+
+dominant colors. The RGB vector-space is then built from
+
+the bin values found in the whole image set with respect
+
+to the three regions. The visual modality of document d is
+
+then vd = (vd1, . . . , vdb, . . . , vdB), a vector of size B = 63 ∗3.
+
+Blobs [3] : The normalized cut segmentation algorithm
+
+is applied to the image set, and the resulting regions are
+
+represented by color, texture, shape, size, and position de-
+
+scriptors. The K-means clustering algorithm is applied to all
+
+the computed descriptors, quantizing the image regions into
+
+a B-dimensional blob vector-space (same notation as RGB).
+
+3.
+
+THE PLSA MODEL
+
+In a collection of discrete data such as the annotated
+
+image dataset described in Section 2, a fundamental prob-
+
+lem might occur: diﬀerent elements from the vector-space
+
+can express the same concept (synonymy) and one element
+
+might have diﬀerent meanings depending on the context
+
+(polysemy). If this semantic issue is well known for text,
+
+visual data share similar ambiguities: one color might have
+
+diﬀerent meanings if occurring with diﬀerent sets of color
+
+and two colors could represent the same concept.
+
+When this ambiguities occur, a disambiguate latent space
+
+representation could potentially be extracted from the data,
+
+which is the goal of PLSA [5]. This model assumes the exis-
+
+tence of a latent variable z (aspect) in the generative process
+
+of each element xj in a particular document di. Given this
+
+unobserved variable, each occurence xj is independent from
+
+the document it was generated from, which corresponds to
+
+the following joint probability: P(xj, zk, di) = P(di)P(zk |
+
+di)P(xj | zk). The joint probability of the observed variables
+
+is obtained by marginalization over the K latent aspects zk,
+
+P(xj, di) = P(di)
+
+K
+
+X
+
+k
+
+P(zk | di)P(xj | zk).
+
+(1)
+
+Model parameters. The PLSA parameters are the two
+
+conditional distributions in equation 1, and are computed by
+
+an Expectation-Maximization algorithm on a set of training
+
+documents [5]. For a vector-space representation of size N,
+
+P(x | z) is a N-by-K table that stores the parameters of the
+
+K multinomial distributions P(x | zk). To give an intuition
+
+of P(x | z), Figure 3 (b) shows the posterior distribution of
+
+the 10 most probable words for a given aspect, for a model
+
+trained on a set of image captions. The keywords distribu-
+
+tion refers to a people and costume-related set of keywords.
+
+P(x | z) characterizes the aspect, and is valid for documents
+
+out of the training set [5].
+
+On the contrary, the other K-by-M table P(z | d) is only
+
+relative to the M training documents. Storing the param-
+
+eters of the M multinomial distributions P(z | di), it does
+
+not carry any a priori information about the probability of
+
+aspect zk beeing expressed in any unseen document.
+
+Learning. The standard Expectation-Maximization ap-
+
+proach is used to compute the model parameters P(x | z)
+
+and P(z | d) by maximizing the data likelihood.
+
+L =
+
+M
+
+Y
+
+i
+
+N
+
+Y
+
+j
+
+P(di)
+
+K
+
+X
+
+k
+
+P(zk | di)P(xj | zk)n(di,xj),
+
+(2)
+
+where n(di, xj) is the count of element xj in document di.
+
+E-step : P(z | d, x), the probabilities of latent aspects given
+
+the observations are computed from the previous esti-
+
+mate of the model parameters (randomly initialized).
+
+M-step : The parameters P(x | z) and P(z | d) are up-
+
+dated with the new expected values P(z | d, x).
+
+Inference: PLSA of a new document. For an unseen
+
+document dnew, the conditional distribution over aspects
+
+P(z | dnew) has to be computed.
+
+The method proposed
+
+in [5] consist in maximizing the likelihood of the document
+
+dnew with a partial version of the EM algorithm described
+
+above, where P(x | z) is kept ﬁxed (not updated at each
+
+M-step). In doing so, P(z | dnew) maximizes the likelihood
+
+of document dnew with respect to the previously trained
+
+P(x | z) parameters.
+
+4.
+
+PLSA-BASED ANNOTATION
+
+PLSA has been recently proposed as a model for auto-
+
+matic image annotation [6]. Referred here as PLSA-mixed,
+
+it somewhat showed surprisingly poor annotation perfor-
+
+mance with respect to very basic non probabilistic meth-
+
+ods [6].
+
+We propose here a new application of PLSA to
+
+automatic image annotation and motivate our approach by
+
+an analysis of PLSA-mixed, which then leads to the new
+
+method.
+
+4.1
+
+PLSA-mixed
+
+The PLSA-mixed system applies a standard PLSA on
+
+a concatenated representation of the textual and the visual
+
+modalities of a set of annotated images d: xd = (td, vd).
+
+Using a training set of captioned images, P(x | z) is learned
+
+for both textual and visual co-occurrences, which is an at-
+
+tempt to capture simultaneous occurrence of visual features
+
+(regions or dominant colors) and words. Once P(x | z) has
+
+been learned, those parameters can be used for the auto-
+
+annotation of a new image.
+
+The new image dnew is represented in the concatenated
+
+vector space, where all keywords elements are zero (no an-
+
+notation):
+
+xnew = (0, vnew).
+
+The multinomial distribu-
+
+tion over aspects given the new image P(z | dnew) is then
+
+computed with the partial PLSA steps described in Sec-
+
+tion 3, and allows the computation of P(x | dnew). From
+
+P(x | dnew), the marginal distribution over the keyword
+
+vector-space P(t | dnew) is easily extracted. The annotation
+
+of dnew results from this distribution, either by selecting
+
+a predeﬁned number of the most probable keywords or by
+
+thresholding the distribution P(t | dnew).
+
+4.2
+
+Problems with PLSA-mixed
+
+Using a concatenated representation, PLSA-mixed at-
+
+tempts to simultaneously model visual and textual modal-
+
+ities with PLSA. It means that intrinsically, PLSA-mixed
+
+assumes that the two modalities have an equivalent impor-
+
+tance in deﬁning the latent space.
+
+This has traditionally
+
+been the assumption in most previous work [4]. However, an
+
+analysis of the captions and the image features in the Corel
+
+dataset (described in Section 5) emphasizes the diﬀerence
+
+between the keywords and the visual features occurrences.
+
+Figure 1 shows two similarity matrices for a set of annotated
+
+images ordered by topics, as in human-based CD organiza-
+
+tion provided by Corel. They represent the cosine similarity
+
+between each document in the keyword space (left), and the
+
+
+visual feature space (Right). The keywords similarity ma-
+
+trix has sharp block-diagonal structure, each corresponding
+
+to a consistent cluster of images, while the second similarity
+
+matrix (visual features) consist in a less contrasted pattern.
+
+
+
+100
+
+200
+
+300
+
+400
+
+500
+
+600
+
+100
+
+200
+
+300
+
+400
+
+500
+
+600
+
+
+
+100
+
+200
+
+300
+
+400
+
+500
+
+600
+
+100
+
+200
+
+300
+
+400
+
+500
+
+600
+
+Figure 1: Similarity matrices for a set of manually
+
+ordered documents (9 CDs from Corel).
+
+The left
+
+matrix is the textual modality, the right matrix is
+
+the visual modality (Blobs features are used).
+
+Of course, Figure 1 does not prove that no latent represen-
+
+tation exists for the visual features, but it strongly suggests
+
+that in general, two PLSA separately applied on each modal-
+
+ity would deﬁne two distinct latent representations of the
+
+same document. For example, color co-occurrence happens
+
+across images, but does not necessarily mean that the cor-
+
+responding images are semantically related. PLSA-mixed
+
+thus might model aspects mainly based on visual features,
+
+which results in a prediction of almost random keywords if
+
+these aspects have high probabilities given the image to an-
+
+notate. Moreover, assuming that no particular importance
+
+is given to any modality, the amount of visual and textual
+
+information need to be balanced in the concatenate repre-
+
+sentation of an annotated image. This constrains the size
+
+of the visual representation, as the number of keywords per
+
+image is usually limited (an average of 3 for the data we
+
+used). A typical aspect from PLSA-mixed where images
+
+are relatively consistent in terms of visual features, but not
+
+semantically (dominant colors: green, red, yellow, black) is
+
+shown in Figure 2.
+
+(a)
+
+(b)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+0
+
+0.05
+
+0.1
+
+0.15
+
+0.2
+
+0.25
+
+reefs
+
+tree
+
+people
+
+water
+
+horse
+
+head
+
+snake
+
+display
+
+designs
+
+fish
+
+P(t | z=55)
+
+Figure 2: One semantically meaningless aspect from
+
+PLSA-MIXED: the 9 most probable images in the
+
+training set and the 10 most probable keywords with
+
+their corresponding probability P(t | z).
+
+4.3
+
+Our approach: PLSA-words
+
+Given the above observations, we propose to model a set of
+
+documents d with two linked PLSA models sharing the same
+
+distribution over aspects P(z | d).
+
+Contrarily to PLSA-
+
+mixed, this formulation allows to treat each modality dif-
+
+ferently and give more importance to the captions in the
+
+latent space deﬁnition. The idea is to capture meaningful
+
+aspects in the data and use those for annotation. Both pa-
+
+rameters estimation and annotation inference involve two
+
+linked PLSA steps1.
+
+1Computational complexity is discussed at
+
+www.idiap.ch/∼monay/acmm04/
+
+Learning parameters
+
+1. A ﬁrst PLSA model is completely trained on the set of
+
+image captions to learn both P(t | z) and P(z | d) param-
+
+eters. Figure 3 illustrates one aspect automatically learned
+
+on the textual modality, with its most probable training im-
+
+ages (a ) and their corresponding distribution over keywords
+
+P(t | z) (b ). This example2 shows that this ﬁrst PLSA can
+
+capture meaningful aspects from the data.
+
+2 . We then consider that the aspects have been observed
+
+for this set of documents d and train a second PLSA on the
+
+visual modality to compute P(v | z), keeping P(z | d) from
+
+above ﬁxed. Note that this technique is very similar to the
+
+process described in Section 3, where P(x | z) was kept ﬁxed
+
+and P(z | d) was computed by likelihood maximization.
+
+(a)
+
+(b)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+0
+
+0.1
+
+0.2
+
+0.3
+
+0.4
+
+0.5
+
+people
+
+costume
+
+street
+
+fence
+
+flowers
+
+kauai
+
+village
+
+statues
+
+city
+
+ice
+
+P(t | z=66)
+
+Figure 3: One aspect from PLSA learned on words:
+
+the 9 most probable images in the training set (from
+
+P(z | d)) and the 10 most probable keywords with
+
+their corresponding probability P(t | z).
+
+Annotation by inference
+
+1.
+
+Given new visual features vnew and the previously
+
+calculated P(v | z) parameters, P(z | dnew) is computed for
+
+a new image dnew using the standard PLSA procedure for a
+
+new document (Section 3).
+
+2. The posterior probability of keywords given this new
+
+image is then inferred by:
+
+P(t | dnew) =
+
+K
+
+X
+
+k
+
+P(t | zk) ∗ P(zk | dnew)
+
+(3)
+
+If a new image has a high probability of belonging to one
+
+aspect, then a consistent set of keywords will be predicted.
+
+The PLSA-words method thus automatically builds a kind
+
+of language model for the set of training images, which is
+
+then applied for auto-annotation. It is also interesting to
+
+notice that PLSA is applied here on very small textual doc-
+
+uments, given that each annotation is about 3 words long.
+
+5.
+
+PERFORMANCE EVALUATION
+
+5.1
+
+Data
+
+The data used for experiments are comprised of roughly
+
+16000 Corel images split in 10 overlapping subsets, each de-
+
+vided in training (∼5200 images) and testing sets (∼1800
+
+images). The average vocabulary size per subset is 150 key-
+
+words, and the average caption size is 3. Both RGB and
+
+Blobs features described in Section 2 are tested. Blob fea-
+
+tures were downloaded from Kobus Barnard’s website [4].
+
+2Find more examples at www.idiap.ch/∼monay/acmm04/
+
+
+5.2
+
+Performance measures
+
+No commonly agreed image auto-annotation measure ex-
+
+ists. We evaluated our method on three diﬀerent measures,
+
+but restrict the discussion to the two measures described
+
+below for space reasons3.
+
+Annotation accuracy : When predicting exactly the
+
+same number of keywords as the ground truth, the annota-
+
+tion accuracy for one image is deﬁned as Acc = r/n, where
+
+r is the number of correctly predicted keywords and n is the
+
+size of the ground truth caption. The average annotation
+
+accuracy is computed over a set of images.
+
+Normalized Score [4] : Sharing the same r and n values
+
+with the above deﬁnition, the normalized score is deﬁned as:
+
+Nscore = r/n−(p−r)/(N −n), where N is the vocabulary
+
+size and p is the number of predicted keywords. The aver-
+
+age normalized score is computed over a set of images for a
+
+varying number of predicted keywords and the maximum is
+
+reported here.
+
+5.3
+
+Results
+
+We compare the two PLSA-based methods described in
+
+Section 4.1 and 4.3, and three other methods : Empirical,
+
+LSA and PLSA-split. Empirical simply uses the empir-
+
+ical keywords distribution from the training set to predict
+
+the same set of keywords regardless of the image content;
+
+LSA was the best method reported in [6] in term of normal-
+
+ized score, better than PLSA-mixed; and PLSA-split is
+
+the unlinked equivalent of PLSA-words, for which two dis-
+
+tinct sets of parameters Pt(z | d) and Pv(z | d) are learned
+
+for each modality. The latent space dimensionality K = 100
+
+has been used for all the reported results (except Empiri-
+
+cal). The average annotation accuracy results are presented
+
+in Table 1 and Table 2 contains the maximum normalized
+
+scores values. All results are averaged over the 10 subsets.
+
+Method
+
+BLOBS
+
+RGB
+
+Empirical
+
+0.191 (0.012)
+
+0.191 (0.012)
+
+LSA
+
+0.140 (0.009)
+
+0.178 (0.009)
+
+PLSA-split
+
+0.113 (0.017)
+
+0.121 (0.019)
+
+PLSA-mixed
+
+0.221 (0.011)
+
+0.217 (0.024)
+
+PLSA-words
+
+0.292 (0.011)
+
+0.288 (0.014)
+
+Table 1:
+
+Average annotation accuracy computed
+
+over the 10 subsets.
+
+These values correspond to
+
+an average number of 3.1 predicted keywords per
+
+image. The variance is given in parantheses.
+
+The RGB and Blobs features give similar annotation per-
+
+formance for both measures. This suggests that the blob
+
+representation is equivalent to the much simpler RGB fea-
+
+tures when applied to this annotation task. One explanation
+
+could be that the k-means algorithm applied on the concate-
+
+nated color and texture representation of the image regions
+
+converges to a color-only driven clustering.
+
+As originally reported [6], the PLSA-mixed maximum
+
+normalized score is lower than the non-probabilistic LSA
+
+one, while PLSA shows better performance than LSA for
+
+textual data modeling [5]. Annotation accuracy, which mea-
+
+sures the quality of smaller but more realistic annotation,
+
+gives PLSA-mixed as the best performing method.
+
+The ranking of the three PLSA-based methods emphasizes
+
+the importance of a well deﬁned link between textual and
+
+visual modalities. PLSA-split naively assumes no link be-
+
+tween captions and images and models them separately. No
+
+3Prec./Recall measures at www.idiap.ch/∼monay/acmm04/
+
+match between the two latent space deﬁnitions exist, which
+
+explains why PLSA-split performs worse than the simplest
+
+Empirical method. The PLSA-mixed method introduces
+
+a determining yet unclear interaction between text and im-
+
+age by concatenating the two modalities. This connexion
+
+translates in signiﬁcant improvement over PLSA-split in
+
+both annotation and normalized score measures.
+
+PLSA-words outperforms both PLSA-split and PLSA-
+
+mixed, therefore justiﬁng its design. PLSA-words makes
+
+an explicit link between visual features and keywords, learn-
+
+ing the latent aspects distribution in the keywords space and
+
+ﬁxing these parameters to learn the distribution of visual
+
+features. This results in the deﬁnition of semantically mean-
+
+ingfull clusters, and forces the system to predict consistent
+
+sets of keywords.
+
+Performing signiﬁcantly better than all
+
+the other methods for all the measures, it improves the per-
+
+formance of the PLSA-mixed and LSA methods for both
+
+normalized score and annotation accuracy measures. The
+
+relative annotation accuracy improvement for the Blobs fea-
+
+tures is 108% with respect to LSA and 32% with respect to
+
+PLSA-mixed (respectively 66% and 33% for the RGB case).
+
+Method
+
+BLOBS
+
+RGB
+
+Empirical
+
+0.427 (0.016) [36.2]
+
+0.427 (0.016) [36.2]
+
+LSA
+
+0.521 (0.013) [40.6]
+
+0.540 (0.011) [37.9]
+
+PLSA-split
+
+0.273 (0.020) [43.8]
+
+0.298 (0.022) [36.3]
+
+PLSA-mixed
+
+0.463 (0.018) [37.2]
+
+0.473 (0.020) [36.4]
+
+PLSA-words
+
+0.570 (0.013) [31.2]
+
+0.571 (0.013) [31.3]
+
+Table 2: Average maximum normalized score value
+
+over the 10 subsets. The variance is given in paran-
+
+theses and the corresponding average number of
+
+keywords predicted is in brackets.
+
+6.
+
+CONCLUSION
+
+We proposed a new PLSA-based image auto-annotation
+
+system, which uses two linked PLSA models to represent the
+
+textual and visual modalites of an annotated image. This
+
+allows a diﬀerent processing of each modality while learning
+
+the parameters and makes a truely semantic latent space
+
+deﬁnition possible. We compared this method to previously
+
+proposed systems using diﬀerent performance measures and
+
+showed that this new latent space modeling signiﬁcantly im-
+
+proves the previous latent space methods based on a con-
+
+catenated textual+visual representation.
+
+Acknowledgments
+
+This research has been carried out in the framework of the
+
+Swiss NCCR project (IM)2.
+
+7.
+
+REFERENCES
+
+[1] L. H. Armitage and P. G. Enser. Analysis of user need in
+
+image archives. Journal of Information Science,
+
+23(4):287–299, 1997.
+
+[2] D. M. Blei and M. I. Jordan. Modeling annotated data. In
+
+Proc. ACM Int. Conf. on Research and Development in
+
+Information Retrieval (ACM SIGIR), Aug 2003.
+
+[3] P. Duygulu, K. Barnard, N. Freitas, and D. Forsyth. Object
+
+recognition as machine translation: Learning a lexicon for
+
+a ﬁxed image vocabulary. In Proc. ECCV, May 2002.
+
+[4] P. Duygulu, K. Barnard, N. Freitas, D. Forsyth, D. Blei,
+
+and M. I. Jordan. Matching words and pictures. Journal of
+
+Machine Learning Research, 3:1107–1135, 2003.
+
+[5] T. Hofmann. Unsupervised learning by probabilistic latent
+
+semantic analysis. Machine Learning, 42:177–196, 2001.
+
+[6] F. Monay and D. Gatica-Perez. On image auto-annotation
+
+with latent space models. In Proc. ACM Int. Conf. on
+
+Multimedia (ACM MM), Nov 2003.
+

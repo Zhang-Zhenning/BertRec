@@ -1,0 +1,3317 @@
+
+NEURAL RANKING MODELS FOR DOCUMENT RETRIEVAL
+
+Mohamed Trabelsi
+
+Computer Science and Engineering
+
+Lehigh University, Bethlehem, PA, USA
+
+mot218@lehigh.edu
+
+Zhiyu Chen
+
+Computer Science and Engineering
+
+Lehigh University, Bethlehem, PA, USA
+
+zhc415@lehigh.edu
+
+Brian D. Davison
+
+Computer Science and Engineering
+
+Lehigh University, Bethlehem, PA, USA
+
+davison@cse.lehigh.edu
+
+Jeff Heﬂin
+
+Computer Science and Engineering
+
+Lehigh University, Bethlehem, PA, USA
+
+heflin@cse.lehigh.edu
+
+ABSTRACT
+
+Ranking models are the main components of information retrieval systems. Several approaches to
+
+ranking are based on traditional machine learning algorithms using a set of hand-crafted features.
+
+Recently, researchers have leveraged deep learning models in information retrieval. These models are
+
+trained end-to-end to extract features from the raw data for ranking tasks, so that they overcome the
+
+limitations of hand-crafted features. A variety of deep learning models have been proposed, and each
+
+model presents a set of neural network components to extract features that are used for ranking. In
+
+this paper, we compare the proposed models in the literature along different dimensions in order to
+
+understand the major contributions and limitations of each model. In our discussion of the literature,
+
+we analyze the promising neural components, and propose future research directions. We also show
+
+the analogy between document retrieval and other retrieval tasks where the items to be ranked are
+
+structured documents, answers, images and videos.
+
+Keywords Document Retrieval · Learning to rank · Neural Ranking Models · Information Retrieval
+
+1
+
+Introduction
+
+Recent advances in neural networks enable the improvement in the performance of multiple ﬁelds including computer
+
+vision, natural language processing, machine translation, speech recognition, etc. The main neural components that led
+
+to the breakthrough in multiple ﬁelds are convolutional and recurrent neural networks. Information retrieval (IR) also
+
+beneﬁts from deep neural network models leading to state-of-the-art results in multiple tasks.
+
+Retrieval models take as input a user’s query, and then present a set of documents that are relevant to the query. In
+
+order to return a useful set of documents to the user, the retrieval model should be able to rank documents based on
+
+the given query. This means that the model ranks the documents using features from both the query and documents.
+
+Traditional ranking models for text data might utilize OKAPI/BM25 (Robertson et al. 1994) which computes the score
+
+of matching between the query and document based in part on the presence of query terms in each document. Machine
+
+learning algorithms can learn ranking models, and the input to these models are a set of often hand-crafted features.
+
+This setting is known as learning to rank (LTR) using hand-crafted features. These features are domain speciﬁc and
+
+time-consuming in terms of deﬁning, extracting, and validating a set of speciﬁc features for a given task. In order to
+
+overcome the limitations of using hand-crafted features, researchers proposed deep ranking models that accept raw text
+
+data as an input and learn suitable representations for inputs and ranking functions.
+
+A key feature in information retrieval models is the relevance judgement. A ranking model with a sufﬁcient capacity is
+
+needed to capture the matching signals, and map document-query pairs to accurate prediction of a real-valued relevance
+
+score. Deep neural networks are known for their ability to capture complex patterns in both feature extraction and
+
+model building phases. Due to the advantages of deep neural networks, researchers have focused on designing neural
+
+ranking models to learn both features and model simultaneously.
+
+arXiv:2102.11903v1  [cs.IR]  23 Feb 2021
+
+
+Neural ranking models have many challenges to address in information retrieval tasks. First, the queries and documents
+
+have different lengths: the query is usually a short text that typically consists of a few keywords, and the document
+
+is long with both relevant and irrelevant parts to the query. Second, in many cases, the query and documents have
+
+different terms, so exact matching models cannot be used to accurately rank documents; a neural matching model
+
+should be designed to capture semantic matching signals to predict the relevance score. The semantic similarity is
+
+context dependent, and another challenge for the neural ranking model is to understand the context of both query and
+
+documents in order to generalize across multiple domains.
+
+Many neural ranking models have been proposed primarily to solve information retrieval tasks. Other neural models are
+
+proposed for text matching tasks, and they are used in ad hoc retrieval because understanding the semantic similarity
+
+between sentences in text matching can enhance retrieval results mainly for sentence or passage level document retrieval
+
+scenarios. So, in addition to the neural ranking models that are introduced speciﬁcally for retrieval tasks, we will review
+
+multiple text matching-based neural models that can be applied to document retrieval. Existing surveys on neural
+
+ranking models focus on the embedding layer that maps tokens to embedding vectors known as word embeddings. Onal
+
+et al. (2017) classiﬁed existing publications based on the IR tasks. For each task, the authors discussed how to integrate
+
+word embeddings in neural ranking models. In particular, the authors proposed two categories based on how the word
+
+embedding is used. For the ﬁrst category, the neural ranking models use a pre-trained word embedding to aggregate
+
+embeddings with average or sum of word embeddings, or to compute cosine similarities between word embeddings.
+
+The second category includes end-to-end neural ranking models where the word embedding is learned or updated while
+
+training the neural ranking model. Mitra and Craswell (2017) presented a tutorial for document retrieval with a focus
+
+on traditional word embedding techniques such as Latent Semantic Analysis (LSA) (Deerwester et al. 1990), word2vec
+
+(Mikolov et al. 2013), Glove (Pennington et al. 2014), and paragraph2vec (Le and Mikolov 2014). The authors reviewed
+
+multiple neural toolkits as part of the tutorial and a few deep neural models for IR. Guo et al. (2019) reviewed the
+
+learning strategies and the major architectures of neural ranking models. The objective of our survey is to summarize
+
+the current progress, and compare multiple neural architectures using different dimensions. Our comparison is more
+
+ﬁne-grained than existing surveys in terms of grouping and decomposing neural ranking models into important neural
+
+components and architecture designs. The detailed comparison of multiple neural ranking models can help researchers
+
+to identify the common neural components that are used in the document retrieval task, understand the main beneﬁts
+
+from using a given neural component, and investigate the promising neural components in future research to improve
+
+document retrieval results.
+
+We expect readers to be familiar with deep learning terminology and techniques such as Convolutional Neural Networks
+
+(CNN), Recurrent Neural Networks (RNN), Long Short-Term Memory (LSTM) (Hochreiter and Schmidhuber 1997),
+
+Gated Recurrent Units (GRU) (Cho et al. 2014), word embedding techniques (Wang et al. 2020), attention mechanism
+
+(Bahdanau et al. 2015), deep contextualized language models (Peters et al. 2018; Devlin et al. 2019), and knowledge
+
+graphs (Wang et al. 2017). We will be referring to these neural components when discussing the different neural ranking
+
+models in the literature.
+
+2
+
+Document Retrieval
+
+Information retrieval is a broad research area that covers a variety of content types and tasks. In this survey, we focus
+
+on the document retrieval and ranking task and propose detailed descriptions and groupings of multiple neural ranking
+
+models in the document retrieval. In terms of scope, we focus on text-based document retrieval, where the input to the
+
+neural ranking model is raw text, and the output is a ranked list of documents. There are two advantages from retrieving
+
+documents using text-based neural ranking models. First, the textual input form for the query and document can be used
+
+directly by the neural ranking model, so that text-based ranking models generalize better than traditional hand-crafted
+
+models which need speciﬁc features. Second, text-based ranking models provide additional signals such as semantic
+
+and relevance matching signals to accurately predict the relevance score.
+
+Ranking and retrieving documents that are relevant to a user’s query is a classic information retrieval task. Given a
+
+query, the ranking model outputs a ranked list of documents so that the top ranked items should be more relevant to the
+
+user’s query. Search engines are examples of systems that implement ad-hoc retrieval where the possible number of
+
+queries, that are continually submitted to the system, is huge. The general ﬂowchart of document retrieval with neural
+
+ranking models is illustrated in Figure 1. A large collection of documents is indexed for a fast retrieval. A user enters a
+
+text-based query which goes through a query processing step consisting of a query reformulation and expansion (Azad
+
+and Deepak 2019). Many neural ranking models have complex architectures, therefore computing the query-document
+
+relevance score using the neural ranking model for every document in the initial large collection of documents leads
+
+to a signiﬁcant increase in the latency for obtaining a ranked list of documents from the user’s side. So, the neural
+
+ranking component is usually used as a re-ranking step that takes two inputs which are the candidate documents and the
+
+processed query. The candidate documents are obtained from an unsupervised ranking stage, such as BM25, which
+
+2
+
+
+takes as inputs the initial set of indexed documents and the processed query. During the unsupervised ranking, recall is
+
+more important than precision to cover all possible relevant documents and forward a set of candidate documents, that
+
+has both relevant and irrelevant documents, to the neural based re-ranking stage. The output of the ranking model is a
+
+set of relevant documents to the user’s query which are returned to the user in a particular order.
+
+
+
+Query
+
+Query 
+
+Processing
+
+Indexing 
+
+Neural Ranking 
+
+Model
+
+Relevant
+
+docs
+
+Neural ranking component
+
+User
+
+Return 
+
+Relevant docs
+
+Unsupervised 
+
+ranking 
+
+Candidate 
+
+docs
+
+Figure 1: Overview of the ﬂowchart of the neural ranking based document retrieval. The neural ranking component
+
+is highlighted within the red box. The inputs to the neural ranking model are the processed query and the candidate
+
+documents that are obtained from the traditional ranking phase. The ﬁnal output of the neural ranking model is a
+
+ranking of relevant documents to the user’s query.
+
+The inputs to neural ranking models consist of queries and documents with variable lengths in which the ranking
+
+model usually faces a short query with keywords, and long documents from different authors with a large vocabulary.
+
+Although exact matching is an important signal in retrieval tasks, ranking models also need to semantically match
+
+queries and documents in order to accommodate vocabulary mismatch. In ad-hoc retrieval, features can be extracted
+
+from documents, queries, and document-query interactions. Some document features go beyond text content and can
+
+include number of incoming links, page rank, metadata, etc. A challenging scenario for a ranking model is to predict the
+
+relevance score by only using the document’s textual content, because there is no guarantee to have additional features
+
+when ranking documents. Neural ranking models have been used to extract feature representations for query and
+
+document using text data. For example, a deep neural network model can be used to map the query and documents to
+
+feature vectors independently, and then a relevance score is calculated using the extracted features. For query-document
+
+interaction, classic information retrieval models like BM25 can be considered as a query-document feature. For neural
+
+ranking models with a textual input for query and document, features are extracted from the local interactions between
+
+query and document.
+
+3
+
+Task formulation
+
+For ranking tasks, the objective is to output a ranked list of documents given a query representing an information need.
+
+Neural ranking models are trained using the LTR framework. Thus, here we present the LTR formulation for retrieval
+
+tasks.
+
+The LTR framework starts with a phase to train a model to predict the relevance score from a given query-document
+
+pair. During the training phase, a set of queries Q = {q1, q2, . . . , q|Q|} and a large collection of documents D are
+
+provided. Without loss of generality, we suppose that the number of tokens in a given query is n, and the number of
+
+tokens in a given document is m. The groundtruth relevance scores for query-document pairs are needed to train the
+
+neural ranking model. In the general setting, for a given query, the groundtruth relevance scores are only known for a
+
+subset of documents from the large collection of documents D. So, we formally deﬁne that each query qi is associated
+
+with a subset of documents di = (di
+
+1, di
+
+2, . . . , di
+
+li) from D, where di
+
+j denotes the jth document for the ith query, and li
+
+is the size of di. Each list of documents di is associated with a list of relevance scores yi = (yi
+
+1, yi
+
+2, . . . , yi
+
+li) where
+
+yi
+
+j denotes the relevance score of document di
+
+j with respect to query qi. The objective is to train a function fw, with
+
+parameters w, that is used to predict the relevance score zi
+
+j = fw(qi, di
+
+j) of a given query-document pair (qi, di
+
+j).
+
+3
+
+
+The function fw is trained by minimizing a loss function L(w). In LTR, the learning categories are grouped into three
+
+groups based on their training objectives: the pointwise, pairwise, and listwise approaches. In the next section, we will
+
+brieﬂy describe these three learning categories.
+
+In general, fw is considered as the composition of two functions M and F, with F is a feature extractor function, and
+
+M is a ranking model. So for a given query-document pair (qi, di
+
+j), zi
+
+j is given by:
+
+zi
+
+j = fw(qi, di
+
+j) = M ◦ F(qi, di
+
+j)
+
+(1)
+
+In traditional ranking models, the function F represents a set of hand-crafted features. The set of hand-crafted features
+
+include query, document, and query-document features. A ranking model M is trained to map the feature vector
+
+F(qi, di
+
+j) into a real-valued relevance score such that the most relevant documents to a given query are scored higher to
+
+maximize a rank-based metric.
+
+In recently proposed ranking models, deep learning architectures are leveraged to learn both feature vectors and models
+
+simultaneously. The features are extracted from query, document, and query-document interactions. The neural ranking
+
+models are trained using ground truth relevance of query-document pairs. The main objective of this article is to discuss
+
+the deep neural architectures that are proposed for the document retrieval task. To describe the overall steps of training
+
+neural ranking models, in the next section, we give a brief overview about the different learning strategies before
+
+presenting the existing neural ranking models.
+
+4
+
+Categories of strategies for learning for ad-hoc retrieval
+
+Liu (2009) divided LTR approaches into three categories based on their training objectives. In the pointwise category,
+
+each query-document pair is associated with a real-valued relevance score, and the objective of the training is to make a
+
+prediction of the exact relevance score using existing classiﬁcation (Gey 1994; Li et al. 2007) or regression models
+
+(Cossock and Zhang 2006; Fuhr 1989). However, predicting the exact relevance score may not be necessary because
+
+the ﬁnal objective is to produce a ranked list of documents.
+
+In the pairwise category, the ranking model does not try to accurately predict the exact real-valued relevance score of a
+
+query-document pair; instead, the objective of the training is to focus on the relative order between two documents
+
+for a given query. So, by training using the pairwise category, the ranking model tries to produce a ranked list of
+
+documents. In the pairwise approach, ranking is reduced to a binary classiﬁcation to predict which of two documents
+
+is more relevant to a given query. Many pairwise approaches are proposed in the literature including methods that
+
+are based on support vector machines (Herbrich et al. 2000; Joachims 2002), neural networks (Burges et al. 2005),
+
+Boosting (Freund et al. 1998), and other machine learning algorithms (Zheng et al. 2007; Zheng et al. 2008). For a
+
+given query, the number of pairs is quadratic, which means that if there is an imbalance in the relevance judgments
+
+where more groundtruth relevance scores are available for a particular query, this imbalance will be magniﬁed by the
+
+pairwise approach. In addition, the pairwise method is more sensitive to noise than the pointwise method because a
+
+noisy relevance score for a single query-document pair leads to multiple mislabeled document pairs.
+
+The third learning category for ad-hoc retrieval is known as the listwise category, proposed by Cao et al. (2007). In the
+
+listwise category, the input to the ranking model is the entire set of documents that are associated with a given query in
+
+the training data. Listwise approaches can be divided into two types. In the ﬁrst, the loss function is directly related to
+
+evaluation measures (Chakrabarti et al. 2008; Chapelle and Wu 2009; Qin et al. 2009). So, they directly optimize for
+
+a ranking metric such as NDCG, which is more challenging because these metrics are often not differentiable with
+
+respect to the model parameters. Therefore, these metrics are relaxed by approximation to make computation efﬁcient.
+
+For the second type, the loss function is differentiable, but it is not directly related to the evaluation measures (Cao
+
+et al. 2007; Huang and Frey 2008; Volkovs and Zemel 2009). For example, in ListNet (Cao et al. 2007), the probability
+
+distribution of permutations is used to deﬁne the loss function. Since a ranking list can be seen as a permutation of
+
+documents associated with a given query, a model representing the probability distribution of permutations, like the
+
+Plackett-Luce (Plackett 1975) model, can be applied for ranking in ListNet.
+
+5
+
+Model categories
+
+We discuss neural ranking models that are proposed in the document retrieval literature based on multiple dimensions.
+
+These dimensions capture the neural components and design of the proposed methods in order to better understand the
+
+beneﬁts of each design principle.
+
+4
+
+
+5.1
+
+Representation-focused models vs. Interaction-focused models
+
+When extracting features from a query-document pair, the feature extractor F can be applied separately to the query
+
+and document, or it can be applied to the interaction between the query and document.
+
+5.1.1
+
+Representation-focused models
+
+The general framework of representation-focused models is shown in Figure 2. In representation-focused models, two
+
+independent neural network models NN Q and NND map the query q and the document d, respectively, into feature
+
+vectors NNQ(q) and NND(d). Thus the feature extractor F for a query-document pair is given by:
+
+F(q, d) = (NNQ(q), NND(d))
+
+(2)
+
+In the particular case where NN Q and NND are identical, the neural architecture is considered to be Siamese (Bromley
+
+et al. 1993).
+
+The relevance score of the query-document pair is calculated using a simple M function like cosine similarity, or a
+
+Multi-Layer Perceptron (MLP) between the representations of query and document:
+
+M(q, d) = cosine(NNQ(q), NND(d)); or
+
+M(q, d) = MLP([NNQ(q); NND(d)])
+
+𝑁𝑁𝐷
+
+𝑁𝑁𝑄
+
+M(𝑞, 𝑑)
+
+Feature vector of 𝒅
+
+Feature vector of 𝒒
+
+Relevance 
+
+score
+
+𝐈𝐝𝐞𝐧𝐭𝐢𝐜𝐚𝐥 𝐢𝐧 𝐒𝐢𝐚𝐦𝐞𝐬𝐞
+
+𝐚𝐫𝐜𝐡𝐢𝐭𝐞𝐜𝐭𝐮𝐫𝐞
+
+Document 𝒅
+
+(𝒎 tokens)
+
+Query 𝒒
+
+(𝒏 tokens)
+
+Figure 2: Overview of the general architecture of representation-focused models. Two deep neural networks are used to
+
+map the query and document to feature vectors. A ranking function M is used to map the feature vectors of the query
+
+and document to a real-valued relevance score.
+
+The representation-focused model extracts a good feature representation for an input sequence of tokens using deep
+
+neural networks. Huang et al. (2013) proposed the ﬁrst deep neural ranking model for web search using query-title pairs.
+
+The proposed model, called Deep Structured Semantic Model (DSSM), is based on the Siamese architecture (Bromley
+
+et al. 1993), which is composed of a deep neural network model that extracts features from query and document
+
+independently. The deep model is composed of multiple fully connected layers that are used to map high-dimensional
+
+textual sparse features into low-dimensional dense features in a semantic space.
+
+In order to capture local context in a given window, Shen et al. (2014b) proposed a Convolutional Deep Structured
+
+Semantic Model (C-DSSM) in which a CNN is used instead of feed-forward networks in the Siamese architecture. The
+
+5
+
+
+feature extractor F is composed of a CNN that is applied to a letter-trigram input representation, then a max-pooling
+
+layer is used to form a global feature vector, while M is the cosine similarity function. CNN have also been used in
+
+ARC-I (Hu et al. 2014) to extract feature representations of the query and document. Each layer of ARC-I contains
+
+convolutional ﬁlters and max-pooling. The input to ARC-I is any pre-trained word embedding. In order to decrease the
+
+dimension of representation, and to ﬁlter low signals, a max-pooling of size two is applied for each feature map. After
+
+applying several layers of CNN ﬁlters and max-pooling, ARC-I forms a ﬁnal feature vector NNQ(q) and NND(d) for
+
+query and document, respectively (NNQ and NND are identical because ARC-I follows the Siamese architecture).
+
+NNQ(q) and NND(d) are concatenated and fed to a MLP to predict the relevance score. CNN is also the main
+
+component in the deep neural networks introduced in Convolutional Neural Tensor Network (Qiu and Huang 2015) and
+
+Convolutional Latent Semantic Model (Shen et al. 2014a).
+
+Recurrent neural networks (RNN), especially the Long Short-Term Memory (LSTM) model (Hochreiter and Schmid-
+
+huber 1997), have been successful in learning to represent each sentence as a ﬁxed-length feature vector. Mueller
+
+and Thyagarajan (2016) proposed Manhattan LSTM (MaLSTM) which is composed of two LSTM models as feature
+
+extractors. M is a simple similarity measure. LSTM-RNN (Palangi et al. 2016) is also composed of two LSTM, where
+
+M is the cosine similarity function. In order to capture richer context, bidirectional LSTM (bi-LSTM) (Schuster and
+
+Paliwal 1997) utilizes both previous and future contexts by processing the sequence data from two directions using
+
+two LSTM. Bi-LSTM is used in MV-LSTM (Wan et al. 2016a) to capture the semantic matching in each position of
+
+the document and query by generating positional sentence representations. The next step in MV-LSTM is to model
+
+the interactions between the generated features using the tensor layer (Socher et al. 2013a,b). The matching between
+
+query and document is usually captured by extracting the strongest signals. Therefore, k-max pooling (Kalchbrenner
+
+et al. 2014) is used to extract the top k strongest interactions in the tensor layer. Then, a MLP is used to calculate the
+
+relevance score.
+
+5.1.2
+
+Interaction-focused models
+
+Models in the representation-focused group defer the interaction between two inputs until extracting individual features,
+
+so that there is a risk of missing important matching signals in the document retrieval task. The interaction-based
+
+models start by building local interactions for a query-document pair using simple representations, then train a deep
+
+model to extract the important interaction patterns between the query and document. The general framework for
+
+interaction-focused models is shown in Figure 3. The interaction-based models capture matching signals between query
+
+and document in an early stage.
+
+In interaction-focused models, F captures the interactions between query and document. For example, Guo et al. (2016)
+
+introduced a Deep Relevance Matching Model (DRMM) to perform term matching using histogram-based features. The
+
+interaction matrix between query and document is computed using pairwise cosine similarities between the embeddings
+
+of query tokens and document tokens. DRMM builds a histogram-based feature to extract matching patterns from
+
+different levels of interaction signals rather than different positions. In order to control the contribution of each query
+
+token to the ﬁnal relevance score, the authors propose a term gating network with a softmax function.
+
+The histogram feature in DRMM (Guo et al. 2016) is computed based on a hard assignment of cosine similarities
+
+between a given query token and the document tokens. This histogram-based feature counts the total number of
+
+document tokens with a similarity to the query token that falls within the predeﬁned bin’s range of the histogram. The
+
+histogram-based representation is not differentiable for the purpose of updating the ranking model parameters in the
+
+back-propagation phase, and not computationally efﬁcient. To solve this problem, kernel pooling for soft-match signals
+
+is used in K-NRM (Xiong et al. 2017b). Pairwise cosine similarities are compared against a set of K kernels, where
+
+each kernel represents a normal distribution with a mean and standard deviation. Then, kernel pooling is applied to
+
+summarize the cosine similarities into a soft-matching feature vector of dimension K; intuitively, this vector represents
+
+the probabilities that the similarities came from the distribution speciﬁed by each kernel. The ﬁnal feature vector is
+
+computed by summing the soft-matching feature vectors of query tokens.
+
+Cosine similarity interaction matrix is also used in Hierarchical Neural maTching model (HiNT) (Fan et al. 2018),
+
+aNMM (Yang et al. 2016), MatchPyramid (Pang et al. 2016b,a), and DeepRank (Pang et al. 2017). In addition to
+
+cosine similarity, other forms of similarities include dot product and indicator function which are used in HiNT and
+
+MatchPyramid, and Gaussian Kernel that is introduced in the study of MatchPyramid (Pang et al. 2016a) using multiple
+
+interaction matrices.
+
+Different architectures are used for feature extractor F to build the query-document interactions, and for the ranking
+
+model M to extract matching signals from interactions of query and document tokens.
+
+LSTM-based ranking models: As in representation-based models, LSTM is used in multiple neural ranking models
+
+(Fan et al. 2018; He and Lin 2016; Jaech et al. 2017). He and Lin (2016) use bi-LSTMs for context modelling of text
+
+6
+
+
+𝑰𝒏𝒕𝒆𝒓𝒂𝒄𝒕𝒊𝒐𝒏
+
+𝑭𝒖𝒏𝒄𝒕𝒊𝒐𝒏
+
+M(𝑞, 𝑑)
+
+Relevance 
+
+score
+
+𝑭(𝒒, 𝒅)
+
+Document 𝒅
+
+(𝒎 tokens)
+
+Query 𝒒
+
+(𝒏 tokens)
+
+𝑰𝒏𝒕𝒆𝒓𝒂𝒄𝒕𝒊𝒐𝒏
+
+𝑶𝒖𝒕𝒑𝒖𝒕
+
+Figure 3: Overview of the general architecture of interaction-focused models. An interaction function is used to map
+
+the query and document to an interaction output. A ranking function M is used to map the interaction output to a
+
+real-valued relevance score.
+
+inputs. So, each input is encoded to hidden states using weight-shared bi-LSTMs. In the ranking model proposed by
+
+Jaech et al. (2017), two independent bi-LSTMs without weight sharing are used to map query and document to hidden
+
+states. The query and document have different sequential structures and vocabulary which motivates encoding each
+
+sequence with independent LSTM. Fan et al. (2018) proposed a variant of the HiNT model that accumulates the signals
+
+from each passage in the document sequentially. In order to achieve that, the feature vectors of all passages are fed to
+
+an LSTM model to generate a hidden state for each passage. Then, a dimension-wise k-max pooling layer is applied to
+
+select top-k signals.
+
+GRU-based ranking models: Gated Recurrent Units (GRU) (Cho et al. 2014) have shown good performance in
+
+multiple tasks such as machine translation (Cho et al. 2014). Similar to LSTM, GRU is used for sequence-based tasks
+
+to capture long-term dependencies. However, unlike LSTM, GRU does not have separate memory cells. A 2-D GRU
+
+is an extension of GRU for two-dimensional data such as an interaction matrix. It scans the input data from top-left
+
+to bottom-right (and bottom-right to top-left in case of bidirectional 2D-GRU) recursively. A 2-D GRU is used in
+
+Match-SRNN (Wan et al. 2016b) to accumulate the matching signals.
+
+In the neural ranking model that is proposed by Fan et al. (2018), given query-document interaction tensors representing
+
+semantic and exact matching signals, a spatial GRU is used to extract the relevance matching evidence. GRU is applied
+
+to multiple passages in a document in order to form the matching signal feature vectors. Then, k-max pooling extracts
+
+the strongest signals from all passages of a document.
+
+As in Match-SRNN (Wan et al. 2016b) and MatchPyramid (Pang et al. 2016b,a), DeepRank (Pang et al. 2017) has
+
+an input interaction tensor between query and document. The input tensor is fed to the GRU network to compute a
+
+query-centric feature vector.
+
+CNN-based ranking models: A CNN is used in multiple interaction focused models including (Dai et al. 2018; Hui
+
+et al. 2017; Jaech et al. 2017; Lan and Xu 2018; McDonald et al. 2018; Nie et al. 2018; Pang et al. 2016b; Tang and
+
+Yang 2019). Hu et al. (2014) presented ARC-II which is an interaction-based method. ARC-II lets the query and
+
+document meet before their feature vectors are fully developed by operating directly on the interaction matrix. Given a
+
+sliding window k1 that scans both query and document by taking overlapping sub-sequences of tokens with length k1, a
+
+1−D convolution is applied to all sequences that are formed by concatenating tokens from the sliding window of query
+
+and document. The next layers are composed of a 2 × 2 non-overlapping max-pooling and 2−D convolution. Several
+
+max-pooling and CNN layers can be added to the model, and the ﬁnal feature vector is fed to a MLP to predict the
+
+query-document relevance score.
+
+Hui et al. (2017) argued that retrieval methods are based on unigram term matches, and they ignore position-dependent
+
+information such as proximity and term dependencies. The authors proposed a Position-Aware Convolutional Recurrent
+
+Relevance (PACRR) matching model to capture information about the position of a query term and how it interacts with
+
+7
+
+
+tokens from a document. In order to extract local matching patterns from the cosine similarity interaction matrix, the
+
+authors applied CNN ﬁlters with multiple kernel sizes. A max-pooling is then applied over the depth channel (number
+
+of CNN ﬁlters) of the feature maps. This operation assumes that only one matching pattern from all ﬁlters is important
+
+for a given kernel size representing a query and document n-gram size. The ﬁnal feature vector is computed using a
+
+second k-max pooling over the query dimension in order to keep the strongest signals for each query token.
+
+McDonald et al. (2018) proposed a model called PACRR-DRMM that adapts a PACRR model for DRMM architecture
+
+in order to incorporate contextual information of each query token. A PACRR-based document-aware query token
+
+encoding is used instead of the histogram-based feature of DRMM. Then, like in DRMM, each PACRR-based feature is
+
+passed through a MLP to independently score each query encoding. Finally, the resulting scores are aggregated using a
+
+linear layer. Unlike DRMM, PACRR-DRMM does not include a term gating network that outputs a weight for each
+
+query token, because the PACRR-based feature already includes inverse document frequency (IDF) scoring for each
+
+query token.
+
+Jaech et al. (2017) designed a neural ranking model called Match-Tensor that explores multiple channel representation
+
+for the interaction tensor to capture rich signals when computing query-document relevance scores. The similarity
+
+between query and document is computed for each channel. Two bi-LSTMs are used to encode the word embedding-
+
+based representation of the query and document into LSTM states. The encoded sequences capture the sequential
+
+structure of query and document. A 3-D tensor (query, document, and channel dimensions) is then calculated by
+
+point-wise product for each query term representation and each document term representation to produce multiple
+
+match channels. A set of convolutional ﬁlters is then applied to the 3-D tensor in order to predict the query-document
+
+relevance score.
+
+The idea of n-gram soft matching is further investigated by Dai et al. (2018) in the Conv-KNRM model. CNN ﬁlters are
+
+used to compose n-grams from query and document. This leads to an embedding for each n-gram in the query and
+
+document. The n-gram embeddings are then fed to a cross-match layer in order to calculate the cosine similarities
+
+between query and document n-grams. Similar to Xiong et al. (2017b), kernel pooling is used to build soft matching
+
+feature vectors from the cosine similarity matrices.
+
+MLP-based ranking models: The objective of ranking models is to predict a real-valued relevance score for a given
+
+query-document pair. So, most of the proposed neural architectures contain a MLP layer that is used to map the ﬁnal
+
+feature vector into a real-valued score. In general, the MLP used in neural ranking architectures is a nonlinear function.
+
+5.1.3
+
+Representation+Interaction models
+
+Retrieval models can beneﬁt from both representation and interaction deep architectures in a combined model. In DUET
+
+(Mitra et al. 2017), an interaction-based network, called the local model, and a representation-based network, called the
+
+distributed model, are combined in a single deep learning architecture. Figure 4 shows the overview of the combined
+
+representation and interaction models for DUET. The local model takes the interaction matrix of query and document,
+
+based on patterns of exact matches of query terms in the document, as input. Then, the interaction matrix is passed
+
+through a CNN. The output of the convolutional layer is passed through two fully connected layers, a dropout layer, and
+
+a ﬁnal fully connected layer that produces a ﬁnal relevance score. The distributed model learns a lower-dimensional
+
+feature vector for the query and document. A word embedding-based representation is used to encode each query
+
+term and document term. A series of nonlinear transformations is then applied to the embedded input. The matching
+
+between query and document representations is calculated using element-wise product. The ﬁnal score under the DUET
+
+architecture is the sum of scores from the local and the distributed networks.
+
+Recently in representation and interaction models, there are more proposed architectures in the interaction-focused
+
+category than the representation-focused category. Nie et al. (2018) show in their empirical study that the interaction-
+
+based neural architectures generally lead to better results than the representation-focused architectures in information
+
+retrieval tasks. Although the representation-focused models offer the advantage of efﬁcient computation by having the
+
+same feature vector for a document in all tasks, a static feature representation is unable to capture the matching signals
+
+in different tasks and datasets. On the other hand, the interaction-focused neural networks can be computationally
+
+expensive, as they require pairwise similarities between embeddings of query and document tokens, but they have the
+
+advantage of learning the matching signals from the interaction of two inputs at the very beginning stages.
+
+5.2
+
+Context aware-based representation
+
+As suggested by Wu et al. (2007), if there is some relevant information in a document, the relevant information is
+
+located around the query terms in the document, which is known as the query-centric assumption. An example of the
+
+query-centric assumption is shown in Figure 5. The query-centric assumption is closely related to human judgement of
+
+relevance which consists of three steps (Wu et al. 2007). The ﬁrst step consists of ﬁnding candidate locations in the
+
+8
+
+
+Retrieval score
+
+Document 𝒅
+
+(𝒎 tokens)
+
+Query 𝒒
+
+(𝒏 tokens)
+
+Interaction 
+
+model
+
+Representation 
+
+model
+
+Figure 4: Overview of the framework of Representation+Interaction model for DUET. An interaction model and a
+
+representation model are used to compute the interaction and representation scores, respectively for a query-document
+
+pair. The ﬁnal score under the DUET is the sum of scores from the interaction and representation models.
+
+document for relevant information to the query. Then the objective of the second step is to judge the local relevance of
+
+the candidate locations. Finally, the third step consists of aggregating local relevance information to assess the overall
+
+relevance of the document to the query.
+
+Inspired by human judgment of relevance, the DeepRank (Pang et al. 2017) architecture considers two information
+
+retrieval principles. The ﬁrst principle is query term importance: a user expresses his request via query terms and some
+
+terms are more important than others (Fang et al. 2004). The second principle is the diverse matching requirement
+
+of query-centric contexts, which indicates that the distribution of matching signals can be different in a collection
+
+of relevant documents. In this context, there are two hypotheses as described by Robertson et al. (1993). The ﬁrst
+
+hypothesis is known as the scope hypothesis which contains long documents with several short and unrelated documents
+
+concatenated together. The second hypothesis is known as the verbosity hypothesis, where each document covers a
+
+similar topic, but it uses more words to describe the given topic. From the neural architecture perspective, the relevance
+
+matching of the verbosity hypothesis category is global because the document contains a single topic. On the contrary,
+
+the relevance matching of scope hypothesis can be located at any part of the document, and it only requires a passage
+
+of a document to be relevant to a query. A neural architecture should be able to capture local matching patterns.
+
+Also, a neural ranking model should incorporate query context into the ranking model in order to solve the ambiguity
+
+problem. For example, the query “river bank” should have a lower relevance score with a sentence or passage containing
+
+“withdrawal from the bank” despite having the word “bank” in common.
+
+For the ﬁrst step of the query-centric assumption, DeepRank assumes that the relevance occurs around the exact
+
+matching positions of query tokens in a document as shown in Figure 5. The local relevance signal in the second
+
+step is measured using CNN ﬁlters with all possible combinations of widths and heights that are applied to the local
+
+interaction tensor. DeepRank encodes the position of the query-centric context using the document location that a query
+
+token matches exactly; this feature is appended to the CNN feature map to obtain the query-centric feature vector for
+
+each exact matching position. Finally, in the third step, DeepRank aggregates the local relevance in two phases. In
+
+the ﬁrst phase, query-centric features of a given query token are passed through LSTM or GRU to obtain a relevance
+
+representation for each query token. Then, in the second phase, a Term Gating Network is used to globally aggregate
+
+relevance representations of query tokens as in DRMM. DeepRank only considers query context for tokens that have an
+
+exact match in a given document, so it ignores query tokens that have similar meaning to a word in a document.
+
+Co-PACRR (Hui et al. 2018) is an alternative to DeepRank that computes the context of each word in a document
+
+by averaging the word embeddings of a window around the word, and the meaning of a query by averaging all word
+
+embeddings of the query. So, in order to decrease the number of false signals in Co-PACRR due to ambiguity, the
+
+extracted matching signals at a given position in a document are adjusted using the similarity between query meaning
+
+and context vector of a token in the document. Co-PACRR uses a cascade k-max pooling instead of k-max pooling,
+
+which consists of applying k-max pooling at multiple positions of a document in order to capture the information about
+
+the locations of matches for documents in the scope hypothesis category. Although the location of matching signals in a
+
+document is important, the sequential order of query tokens is ignored in Co-PACRR. It shufﬂes the feature map with
+
+respect to query tokens before feeding the ﬂattened result to dense layers. Shufﬂing enables the model to avoid learning
+
+a signal related to the query term position after extracting n-gram matching patterns. For example, we mentioned in
+
+Section 3 that the number of tokens in a given query is n which indicates that for models that only support ﬁxed size
+
+inputs, short queries are padded to n tokens. Therefore, without shufﬂing, a model can learn that query tokens at the tail
+
+9
+
+
+Document
+
+Query: Machine learning applications
+
+It involves computers learning from data provided so
+
+numerous uses in teaching and learning but can be used
+
+for many businesses, applications for employment can be filled
+
+It has applications in ranking, recommendation systems
+
+wide variety of applications, such as email filtering
+
+Machine readable data is a data format
+
+algorithms telling the machine how to execute
+
+✓
+
+✓
+
+✓
+
+X
+
+X
+
+X
+
+✓
+
+Query-Centric 
+
+contexts
+
+Relevance 
+
+score
+
+Figure 5: Query-centric assumption. The sentences that are used in this example are extracted from Wikipedia. Each
+
+query token is shown with a different color that corresponds to the query-centric context in the document. A binary
+
+judgement is shown to indicate the relevance between the query and the query-centric context, where red cross denotes
+
+not relevant assessment, and the green check mark denotes relevant assessment. The ﬁnal relevance score is the
+
+aggregation of the query-centric relevance scores.
+
+are not important because of padding of short queries, and this leads to ignoring some relevant tokens when calculating
+
+relevance score for longer queries.
+
+More coarse-grained context than the sliding window strategy can be used to capture local relevance matching signals
+
+in the scope hypothesis category, where a system can divide a long document into passages and collect signals from the
+
+passages in order to make a ﬁnal relevance assessment on the whole document. Callan (1994) discussed how passages
+
+should be deﬁned, and how they are incorporated in the ranking process of the entire document. The HiNT (Fan et al.
+
+2018) model is based on matching query and passages of a given document, and then it aggregates the passage-level
+
+matching signals using either k-max pooling or bi-LSTM or both.
+
+We can distinguish two types of matches between query and document tokens. The ﬁrst type is the context-free match
+
+where the similarity between a given document token and query token is computed regardless of the context of the
+
+tokens. Examples of the context-free match are the cosine similarity between a query token embedding and a document
+
+token embedding, and exact matching. The second type is the context-sensitive match where the context of a given
+
+document token is matched against the context of a query token. In order to capture contextual information of a given
+
+token in document and query when calculating the matching similarity, a context-sensitive word embedding can be
+
+used to encode tokens. When a query has many context-sensitive matches with a given document, it is likely that the
+
+document is relevant to the query. The idea of context-sensitive matching is incorporated into the neural ranking model
+
+which is proposed by McDonald et al. (2018) to extend the DRMM model by using bi-LSTM to obtain context-sensitive
+
+embedding, and to capture signals of high density context-sensitive matches.
+
+Matching the contexts can be in two directions: matching overall context of a query against each token of a document,
+
+and matching the overall context of a document against each token of a query. To match the contextual representation
+
+of the query and document in the two directions, a neural ranking model deﬁnes a matching function to compute the
+
+similarity between contexts. Wang et al. (2017) proposed a Bilateral Multi-Perspective Matching (BiMPM) model to
+
+match contexts of two sentences. After encoding each token in a given sentence using the bi-LSTM network, four
+
+matching strategies are used to compare the contextual information. The proposed matching strategies differ on how to
+
+aggregate the contextual information of the ﬁrst input, which is matched against each time step of the second input
+
+(and vice versa). The four matching strategies generate eight vectors in each time step (there is forward and backward
+
+contextual information) which are concatenated and fed to a second bi-LSTM model to extract two feature vectors
+
+from the last time step of forward and backward LSTM. The whole process is repeated to match contexts in the inverse
+
+direction and extract two additional feature vectors. The four ﬁnal feature vectors are concatenated and fed to a fully
+
+connected network to predict a real-valued score.
+
+10
+
+
+5.3
+
+Attention-based representation
+
+The attention mechanism was ﬁrst proposed by Bahdanau et al. (2015) for neural machine translation. The original
+
+Seq2Seq model (Sutskever et al. 2014) used an LSTM to encode a sentence from its source language and another LSTM
+
+to decode the sentence into a target language. However, this approach was unable to capture long-term dependencies.
+
+In order to solve this problem, Bahdanau et al. (2015) proposed to simultaneously learn to align and translate the text.
+
+They learn attention weights which can produce context vectors that focus on a set of positions in a source sentence
+
+when predicting a target word. The attention vector is computed using a weighted sum of all the hidden states of an
+
+input sequence, where a given attention weight indicates the importance of a token from the source sequence in the
+
+attention vector of a token from the output sequence. Although introduced for machine translation, attention mechanism
+
+has been a useful tool in many tasks, including document retrieval.
+
+McDonald et al. (2018) proposed a model, called Attention-Based ELement-wise DRMM (ABEL-DRMM), that
+
+takes advantage of the context-sensitive embedding and attention weights. Any similarity measure between the term
+
+encodings of the query and document tokens already captures contextual information due to the context-sensitive
+
+embedding. In ABEL-DRMM, the ﬁrst step is to calculate attention weights for each query token against document
+
+tokens using softmax of cosine similarities. Then, the attention-based representation of a document is calculated using
+
+the attention weights and the embedding of document tokens. The document-aware query token encoding is then
+
+computed using element-wise multiplication between the query token embedding and the attention-based representation
+
+of a document. Finally, in order to compute the relevance score, the document-aware query token encodings of all query
+
+tokens are fed to the DRMM model.
+
+A symmetric attention mechanism or co-attention can focus on the set of important positions in both textual inputs. Kim
+
+et al. (2019) incorporate the attention mechanism in Densely-connected Recurrent and Co-attentive neural Network
+
+(DRCN). DRCN uses residual connections (He et al. 2016), like in Densenet (Huang et al. 2017), in order to build
+
+higher level feature vectors without exploding or vanishing gradient problems. When building feature vectors, the
+
+concatenation operator is used to preserve features from previous layers for ﬁnal prediction. The co-attentive network
+
+uses the attention mechanism to focus on the relevant tokens of each text input in each RNN layer. Then, the co-attentive
+
+feature vectors are concatenated with the RNN feature vectors of every token in order to form the DRCN representation.
+
+The idea of concatenating feature vectors from previous layers before calculating attention weights is also explored by
+
+Zhang et al. (2019) in their proposed model DRr-Net. DRr-Net includes an attention stack-GRU unit to compute an
+
+attention-based representation for both inputs that capture the most relevant parts. It also has a Dynamic Re-read (DRr)
+
+unit that can focus on the most important word at each step, taking into consideration the learned information. The
+
+selection of important words in the DRr unit is also based on attention weights.
+
+Using multiple attention functions in matching with a word-by-word attention (Rocktäschel et al. 2016) can better
+
+capture the interactions between the two inputs. Multiple attention functions are proposed in the literature: e.g., bilinear
+
+attention function (Chen et al. 2016) and concatenated attention function (Rocktäschel et al. 2016). The bilinear
+
+attention is based on computing the attention score between the representations of two tokens using the bilinear function.
+
+The concatenated attention starts by summing the two words’ representations, and then uses vector multiplication to
+
+compute attention weight. Tan et al. (2018) propose a Multiway Attention Network (MwAN) using multiple attention
+
+functions for semantic matching. In addition to the bilinear and concatenated attention functions, MwAN uses two other
+
+attention functions which are the element-wise dot product and difference of two vectors. The matching signals from
+
+multiple attention functions are aggregated using a bi-directional GRU network and a second concatenated attention
+
+mechanism to combine the four representations. The prediction layer is composed of two attention layers to output the
+
+ﬁnal feature vector that is fed to a MLP in order to obtain the ﬁnal relevance score.
+
+The use of multiple functions in attention is not limited to the calculation of attention weights. Multiple functions
+
+can be used to compare the embedding of a given token with its context generated using attention mechanism. Wang
+
+and Jiang (2017) use several comparison methods in order to match the embedding of a token and its context. These
+
+comparison methods include neural network layer, neural tensor network (Socher et al. 2013c), Euclidean distance,
+
+cosine similarity, and element-wise operations for vectors.
+
+In addition to being used in LSTM models, the attention mechanism has been beneﬁcial to CNN models. Yin et al.
+
+(2015) proposed an Attention Based Convolutional Neural Network (ABCNN) that incorporates the attention mechanism
+
+on both the input layer and the feature maps obtained from CNN ﬁlters. ABCNN computes attention weights on the
+
+input embedding in order to improve the feature map computed by CNN ﬁlters. Then, ABCNN computes attention
+
+weights on the output of CNN ﬁlters in order to reweight feature maps for the attention-based average pooling.
+
+11
+
+
+5.4
+
+External knowledge and feedback
+
+Large scale general domain knowledge bases (KB), like Freebase (Bollacker et al. 2008) and DBpedia (Lehmann et al.
+
+2015), contain rich semantics that can be used to improve the results of multiple tasks in natural language processing. In
+
+addition, knowledge bases are also good sources for information retrieval. Knowledge bases contain human knowledge
+
+about entities, classes, relations, and descriptions. Many methods have been developed to incorporate knowledge bases
+
+into retrieval components. For example, the description of entities can be used to have better term expansion (Xu et al.
+
+2009), or to expand queries to have better ranking features (Dalton et al. 2014). Queries and documents are connected
+
+through entities in the knowledge base to build a probabilistic model for document ranking based on the similarity to
+
+entity descriptions (Liu and Fang 2015). Other researchers have extended bag-of-word language models to include
+
+entities (Raviv et al. 2016; Xiong et al. 2016).
+
+Knowledge bases can be incorporated in neural ranking models in multiple ways. The AttR-Duet system (Xiong
+
+et al. 2017a) uses the knowledge base to compute an additional entity representation for document and query tokens.
+
+There are four possible interactions between word-based feature vectors and entity-based feature vectors based on
+
+the inter- and intra-space matching signals. The textual attributes of entities such as the description and names are
+
+used in inter-space interactions of entities and words. AttR-Duet learns entity embeddings from the knowledge graph
+
+(Wang et al. 2017) and uses a similarity measure on these embeddings to determine intra-space interactions of entities.
+
+The ranking model combines the four types of interactions with attention weights to reduce the effect of entity linking
+
+mistakes on the ranking score.
+
+Knowledge graph semantics can be incorporated into interaction-based neural ranking models as proposed by Liu et al.
+
+(2018). The authors propose combining three representations for an entity in a knowledge graph: entity embedding,
+
+description embedding, and type embedding. The ﬁnal entity representation is integrated into kernel pooling-based
+
+ranking models, such as K-NRM (Xiong et al. 2017b) and Conv-KNRM (Dai et al. 2018), with word-level interaction
+
+matrices to compute the ﬁnal relevance score of a query-document pair. Shen et al. (2018) develop a knowledge-aware
+
+attentive neural-ranking model which learns both context-based and knowledge-based sentence representations. The
+
+proposed method leverages external knowledge from the KB using an entity mention step for tokens in the inputs.
+
+A bi-LSTM computes a context-aware embedding matrix, which is then used to compute context-guided knowledge
+
+vectors. These knowledge vectors are multiplied by the attention weights to compute the ﬁnal context-guided embedding
+
+for each token.
+
+Inspired by traditional ranking techniques that use Pseudo Relevance Feedback (PRF) (Hedin et al. 2009) to improve
+
+retrieval results, PRF can be integrated in neural ranking models as in the model proposed by Li et al. (2018). The
+
+authors introduce a Neural framework for Pseudo Relevance Feedback (NPRF) that uses two ranking models. The ﬁrst
+
+model computes a query-based relevance score between the query and document corpus and extracts the top candidate
+
+documents for a given query. Then, the second model computes a document-based relevance score between the target
+
+document and the candidate documents. Finally, the query-based and document-based relevance scores are combined to
+
+compute the ﬁnal relevance score for a query-document pair.
+
+5.5
+
+Deep contextualized language model-based representations
+
+Recent research has shown that pre-trained language models, such as ELMo (Peters et al. 2018) and BERT (Devlin
+
+et al. 2019) which are trained on large amounts of unlabeled data, achieve high performance in multiple NLP tasks.
+
+BERT is a deep contextualized language model that contains multiple layers of transformer (Vaswani et al. 2017) blocks.
+
+Each block has a multi-head self-attention structure followed by a feed-forward network, and it outputs contextualized
+
+embeddings for each token in the input. BERT is trained on large collections of unlabeled data over two pre-training
+
+tasks which are next sentence prediction and the masked language model. After the pre-training phase, BERT can
+
+be used for downstream tasks on single text or text pairs using special tokens ([SEP] and [CLS]) that are added into
+
+the input. For single text classiﬁcation, [CLS] and [SEP] are added to the beginning and the end of the sequence,
+
+respectively. For text pairs-based applications, BERT encodes the text pairs using bidirectional cross attention between
+
+the two sentences. In this case, the text pair is concatenated using [SEP], and then BERT treats the concatenated text as
+
+a single text.
+
+The sentence pair classiﬁcation setting is used to solve multiple tasks in information retrieval including document
+
+retrieval (Dai and Callan 2019; Nogueira et al. 2019; Yang et al. 2019a), passage re-ranking (Nogueira and Cho 2019),
+
+frequently asked question retrieval (Sakata et al. 2019), table retrieval (Chen et al. 2020b), and semantic labeling
+
+(Trabelsi et al. 2020a). The single sentence setting is used for text classiﬁcation (Sun et al. 2019; Yu et al. 2019). BERT
+
+takes the ﬁnal hidden state hθ of the ﬁrst token [CLS] as the representation of the whole input sequence, where θ
+
+denotes the parameters of BERT. Then, a simple softmax layer, with parameters W, is added on top of BERT to predict
+
+12
+
+
+the probability of a given label l:
+
+p(l | hθ) = softmax(Whθ)
+
+(3)
+
+The parameters of BERT, denoted by θ, and the softmax layer parameters W are ﬁne-tuned by maximizing the log-
+
+probability of the true label. The overview of BERT for the document retrieval is shown in Figure 6. In general, the
+
+input sequence to BERT is composed of the query q and selected tokens sd from the document d: [[CLS], q, [SEP], sd,
+
+[SEP]]. The selected tokens can be the whole document, sentences, passages, or individual tokens. The hidden state of
+
+the [CLS] token is used for the ﬁnal retrieval score prediction.
+
+CLS
+
+𝑞1
+
+𝑞2
+
+𝑞𝑛
+
+SEP
+
+𝑑1
+
+𝑑2
+
+𝑑𝑚
+
+SEP
+
+…
+
+…
+
+…
+
+…
+
+…
+
+…
+
+… …
+
+…
+
+…
+
+…
+
+…
+
+MLP
+
+Retrieval score
+
+Figure 6: Overview of BERT model for document retrieval. The input sequence to BERT is composed of the query
+
+q = q1q2 . . . qn (shown with orange color in the ﬁrst layer) and selected tokens sd = d1d2 . . . dm (shown with dark
+
+blue color in the ﬁrst layer) from the document d. The BERT-based model is formed of multiple layers of Transformer
+
+blocks where each token attends to all tokens in the input sequence for all layers. From the second to the last layer,
+
+each cell represents the hidden state of the corresponding token which is obtained from the Transformer. The query
+
+and document tokens are concatenated using [SEP] token, and [CLS] is added to the beginning of the concatenated
+
+sequence. The hidden state of [CLS] token is used as input to MLP in order to predict the relevance score.
+
+While BERT has been successfully applied to Question-answering (QA), applying BERT to ad-hoc retrieval of
+
+documents comes with the challenge of having signiﬁcantly longer documents than BERT allows (BERT cannot take
+
+input sequences longer than 512 tokens). Yang et al. (2019a) proposed to address the length limit challenge by dividing
+
+documents into sentences and applying BERT to each of these sentences. The sentence-level representation of a
+
+document is motivated by recent work (Zhang et al. 2018) which shows that a single excerpt of a document is better
+
+than a full document for high recall in retrieval. In addition, using sentence-level representation is related to research in
+
+passage-level document ranking (Liu and Croft 2002). For each document, its relevance to the query can be predicted
+
+using the maximum relevance of its component sentences which is denoted as the best sentence. Yang et al. (2019a)
+
+generalize the best sentence concept by choosing the top-k sentences from each document based on the retrieval score
+
+calculated by BERT for sentence pair classiﬁcation setting. A weighted sum of the top-k sentence-level scores, which
+
+are computed by BERT, is then applied to predict the retrieval score of the query-document pair. In the training phase,
+
+BERT is ﬁne-tuned on microblog data or QA data, and the results show that training on microblog is more effective
+
+than QA data for ad hoc document retrieval (Yang et al. 2019a). The hidden state of the [CLS] token is also used by
+
+Nogueira and Cho (2019) to rank candidate passages.
+
+For long document tasks such as document retrieval on ClueWeb09-B (Dai et al. 2018), XLNet (Yang et al. 2019b) uses
+
+TransformerXL (Dai et al. 2019) instead of BERT. TransformerXL uses a relative positional encoding and segment
+
+13
+
+
+recurrence mechanism to capture longer-term dependency. XLNet (Yang et al. 2019b) results in a performance gain
+
+around 1.87% for NDCG@20 compared to BERT-based model.
+
+Qiao et al. (2019) explore multiple ways to ﬁne-tune BERT on two retrieval tasks: TREC Web Track ad hoc document
+
+ranking and MS MARCO (Nguyen et al. 2016) passage re-ranking. Four BERT-based ranking models are proposed
+
+which are related to both representation and interaction based models using the [CLS] embedding, and also the
+
+embeddings of each token in the query and document. The authors show that BERT works better with pairs of texts that
+
+are semantically close. However, as mentioned before, queries and documents can be very different, especially in their
+
+lengths and can beneﬁt from relevance matching techniques.
+
+BERT contains multiple transformers layers, where the deeper the layer, the more contextual information is captured.
+
+BERT can be used in the embedding layer to extract tensor contextualized embeddings for both query and document.
+
+Then, the interactions between query and document is captured by computing an interaction tensor from the embedding
+
+tensors of both the query and document. Finally, a ranking function maps the interaction tensor to a real-valued
+
+relevance score. The overview of the BERT model that is used as an embedding layer is shown in Figure 7.
+
+BERT
+
+BERT
+
+𝟑𝑫 tensor
+
+(𝒏 × 𝒅 × 𝑳)
+
+𝟑𝑫 tensor
+
+(𝒎 × 𝒅 × 𝑳)
+
+3D tensor
+
+(𝒏 × 𝒎 × 𝑳)
+
+Ranking 
+
+function
+
+Relevance
+
+score
+
+Document 𝒅
+
+(𝒎 tokens)
+
+Query 𝒒
+
+(𝒏 tokens)
+
+Figure 7: Overview of BERT model used as an embedding layer for document retrieval. L is the number of transformer
+
+layers in BERT. Pairwise cosine similarities are computed per layer to obtain a 3D interaction tensor.
+
+In order to capture both relevance and semantic matching, MacAvaney et al. (2019) propose a joint model that
+
+incorporates the representation of [CLS] from the query-document pair into existing neural ranking models (DRMM
+
+(Guo et al. 2016), PACCR (Hui et al. 2017), and K-NRM (Xiong et al. 2017b)). The overview of a simple example of a
+
+joint model is shown in Figure 8. The representation of the [CLS] token provides a strong semantic matching signal
+
+given that BERT is pretrained on the next-sentence prediction. As we explained previously, some of the neural ranking
+
+models, like DRMM, capture relevance matching for each query term based on the similarities with the document
+
+tokens. For ranking models, MacAvaney et al. (2019) use pretrained contextual language representations as input,
+
+instead of the conventional pretrained word vectors to produce a context-aware representation for each token from the
+
+query and document.
+
+𝑪𝑳𝑺 + 𝒒 + 𝑺𝑬𝑷 + 𝒅 + 𝑺𝑬𝑷
+
+BERT
+
+Ranking 
+
+model
+
+Semantic 
+
+Feature 
+
+Relevance 
+
+Feature 
+
+Ranking 
+
+function
+
+Relevance
+
+score
+
+Document 𝒅
+
+(𝒎 tokens)
+
+Query 𝒒
+
+(𝒏 tokens)
+
+Figure 8: Overview of a possible joint model for document retrieval that incorporates both the semantic and relevance
+
+matching. BERT is used as a semantic matching component, where the embedding of the [CLS] token is considered
+
+as a semantic feature. An existing relevance-based neural ranking model extracts the relevance feature from a query-
+
+document pair.
+
+Dai and Callan (2019) augment the BERT-based ranking model with the search knowledge obtained from search
+
+logs. The authors show that BERT beneﬁts from tuning on the rich search knowledge, in addition to the language
+
+understanding knowledge which is obtained from training BERT on query-document pairs.
+
+14
+
+
+Nogueira et al. (2019) propose a multi-stage ranking architecture. The ﬁrst stage consists of extracting the candidate
+
+documents using BM25. In this stage, recall is more important than precision to cover all possible relevant documents.
+
+The irrelevant documents can be discarded in the next stages. The second stage, called monoBERT, uses a pointwise
+
+ranking strategy to ﬁlter the candidate documents from the ﬁrst stage. The classiﬁcation setting of BERT with sentence
+
+pairs is used to compute the relevance scores. The third stage, called duoBERT, is a pairwise learning strategy that
+
+computes the probability of a given document being more relevant than another candidate document. Documents from
+
+the second stage are ranked using duoBERT relevance scores in order to obtain the ﬁnal ranked list of documents. The
+
+input to duoBERT is the concatenation of query, ﬁrst document, and second document, where [SEP] is added between
+
+the sentences, and [CLS] is added to the beginning of the concatenated sentence.
+
+As explained earlier, exact matching is an important matching signal in traditional IR models, and relevance matching-
+
+based neural ranking models incorporate the exact matching signal to improve retrieval results. In order to directly
+
+incorporate exact matching signal in the sentence pair classiﬁcation setting of BERT for document retrieval, Boualili
+
+et al. (2020) proposed to mark the start and end of exact matching query tokens in a document with special markers.
+
+6
+
+Neural Ranking Models Features
+
+To summarize the neural models from the ﬁve categories, we propose nine features that are frequently presented in the
+
+neural ranking models.
+
+1. Symmetric: We describe a neural ranking architecture as symmetric if the relevance score does not change if
+
+we change the order of inputs (query-document or document-query pairs). In other words, for a given query
+
+and document, there are no special computation that are applied only to the query or document.
+
+2. Attention: This dimension characterizes neural ranking models that have any type of attention mechanisms.
+
+3. Ordered tokens: The sequential order of tokens is preserved for both query and document when computing the
+
+interaction tensors between query and document, and the ﬁnal feature vector representing the query-document
+
+pair.
+
+4. Representation: This feature characterizes neural ranking models that extract features from the query and
+
+document separately, and defer the interactions between the features to the ranking function.
+
+• Without weights sharing (W): Two independent deep neural networks without weights sharing are used to
+
+extract features from queries and documents.
+
+• With weights sharing or Siamese (S): The neural ranking model has Siamese architecture as described by
+
+Bromley et al. (1993), where the same deep neural network is used to extract features from both query
+
+and document.
+
+5. Interaction: This feature characterizes neural ranking models that build local interactions between query
+
+and document in an early stage, so it can be considered as the mutually exclusive category of representation
+
+models.
+
+6. Injection of contextual information: Depending on when to inject contextual information, we can distinguish
+
+two cases.
+
+• Early injection of contextual information (E): Some neural ranking models incorporate contextual
+
+information in the embedding phase by considering context-sensitive embeddings (for example the
+
+embedding that is computed using LSTM).
+
+• Late injection of contextual information (L): Some neural ranking models defer injecting the contextual
+
+information until computing the interaction tensors (for example, applying n-gram convolutions on the
+
+interaction tensor to incorporate contextual information).
+
+7. Exact matching: This feature means that the neural ranking model includes the exact matching signal when
+
+calculating relevance score.
+
+8. Incorporate external knowledge bases (KB): This feature characterizes neural ranking models that incorporate
+
+external knowledge bases to predict query-document relevance score.
+
+9. Deep language models (LM): This feature refers to the use of deep contextualized language models to compute
+
+query-document relevance scores. We can distinguish two cases for deep LM.
+
+• Deep LM in embedding layer (Em): Deep contextualized language models are used as a context-sensitive
+
+embedding to compute a word embedding tensor (because Deep LM have multiple layers) for both query
+
+and document. Such models necessarily have the early injection of contextual information property.
+
+15
+
+
+• Deep LM as a semantic matching component (Se): Deep contextualized language models are used as a
+
+semantic matching component in a neural ranking model. For example, BERT is pretrained on the next
+
+sentence prediction so that it captures semantic matching signal. The same for ELMo which is pretrained
+
+on the next token prediction.
+
+Table 1 shows the main IR features of each neural ranking model from all proposed categories. The neural ranking
+
+models are sorted in chronological order based on the publication year. Unsurprisingly, in recent years, there have been
+
+more proposed neural ranking models that are based on BERT because deep contextualized language models achieve
+
+state-of-the-art results in multiple tasks for NLP and IR. Later in the discussion part, we will discuss more research
+
+directions to reduce the time and memory complexity of BERT-based ranking models. Except for DUET (Mitra et al.
+
+2017), all the neural ranking models have either the interaction or representation feature.
+
+Recent proposed methods are interaction-based ranking models that prefer building the interactions between query and
+
+document in an early stage to capture matching signals. As mentioned in Section 5, DUET combines a representation-
+
+based model without weights sharing, with an interaction-based model to predict the ﬁnal query-document relevance
+
+score.
+
+Given the recent advances in the embedding layer for deep learning models, early injection of contextual information is
+
+a common design choice for multiple neural ranking models. The contextual information is incorporated from the ﬁrst
+
+stage which consists of an embedding layer either by using traditional neural recurrent components such as LSTM or
+
+more advanced deep contextualized representations, such as the Transformer.
+
+In general, the models that are proposed primarily for text matching tasks are symmetric because the inputs are
+
+homogeneous. On the other hand, many models that are proposed primarily for the document retrieval are not
+
+symmetric because there are special computations that are applied only to the query or the document. For example,
+
+kernel pooling is used in Conv-KNRM (Dai et al. 2018) to summarize the similarities between a given query token and
+
+all document tokens. So, this can be seen as a query-level operation that breaks the symmetric property. An example of
+
+a document level operation that leads to an asymmetric architecture is included in ABEL-DRMM (McDonald et al.
+
+2018). The attention weights are only computed for each document token against a given query token to produce the
+
+attention-based representation of the document. So, the attention mechanism is only applied in the document level,
+
+and therefore the neural ranking model is asymmetric. The asymmetric property of some BERT-based ranking models
+
+comes from multiple facts. First, BERT is applied to the sentence or passage level of a long document (Yang et al.
+
+2019a; Nogueira and Cho 2019; Dai and Callan 2019; Zhan et al. 2020), so that there are some preprocessing steps that
+
+are applied only to the document. Second, some BERT-based models, such as MacAvaney et al. (2019), are combined
+
+with existing relevance-based ranking models that are asymmetric, and others, such as Nogueira et al. (2019), include a
+
+component for pairwise comparison of documents, so that the joint model is asymmetric in both cases. Third, Boualili
+
+et al. (2020) include the exact matching of query tokens into the ranking model which leads to an overall asymmetric
+
+architecture. In the case of short documents where BERT can accept the full document and only the BERT-based model
+
+is used for ranking, the ranking model is symmetric.
+
+7
+
+Beyond document retrieval
+
+The idea of using neural ranking models to rank documents given a user’s query can generalize to other retrieval tasks,
+
+with different objects to query and rank. In this section, we discuss the analogy between other forms of retrieval
+
+tasks and document retrieval. In particular, we describe four retrieval tasks which are: structured document retrieval,
+
+Question-Answering, image retrieval, and Ad-hoc video search.
+
+7.1
+
+Structured document retrieval
+
+The information retrieval ﬁeld has presented multiple methods to incorporate the internal organization of a given
+
+document into indexing and retrieval steps. The progress in document design and storage has resulted in new
+
+representations for documents, known as structured documents (Chiaramella 2000), such as HTML and XML, where
+
+the document has multiple ﬁelds. Considering the structure of a document when designing retrieval models can usually
+
+improve retrieval results (Wilkinson 1994). It has been shown that combining similarities and rankings of multiple
+
+sections can improve retrieval performance (Wilkinson 1994). Zamani et al. (2018) proposed a neural ranking model
+
+that extracts the document representation from the aggregation of ﬁeld-level representations and then uses a matching
+
+network to predict the ﬁnal relevance score.
+
+Beyond Web pages, a table itself can also be considered as a structured document. Zhang and Balog (2018) propose a
+
+semantic matching method for table retrieval where various embedding features are used. Chen et al. (2020a) ﬁrst learn
+
+the embedding representations of table headers and generate new headers with embedding features and curated features
+
+16
+
+
+Table 1: Overview of Neural Ranking Models
+
+Method
+
+symmetric
+
+attention
+
+ordered
+
+tokens
+
+representation
+
+interaction
+
+injection
+
+of CI
+
+exact
+
+matching
+
+KB
+
+Deep LM
+
+DSSM(Huang et al. 2013)
+
+S
+
+C-DSSM(Shen et al. 2014b)
+
+S
+
+E
+
+ARC-I(Hu et al. 2014)
+
+S
+
+E
+
+ARC-II(Hu et al. 2014)
+
+L
+
+ABCNN-2(Yin et al. 2015)
+
+S
+
+E
+
+MV-LSTM(Wan et al. 2016a)
+
+E
+
+MaLSTM(Mueller and Thyagarajan 2016)
+
+S
+
+E
+
+DRMM(Guo et al. 2016)
+
+Hybrid of ConvNet and bi-LSTM(He and Lin 2016)
+
+E
+
+MatchPyramid(Pang et al. 2016b)
+
+L
+
+DUET(Mitra et al. 2017)
+
+W
+
+L
+
+Compare-Aggregate network(Wang and Jiang 2017)
+
+E
+
+K-NRM(Xiong et al. 2017b)
+
+Match-Tensor(Jaech et al. 2017)
+
+E
+
+AttR-Duet (Xiong et al. 2017a)
+
+PACRR(Hui et al. 2017)
+
+L
+
+DeepRank(Pang et al. 2017)
+
+L
+
+BiMPM(Wang et al. 2017)
+
+E
+
+Co-PACRR(Hui et al. 2018)
+
+E
+
+Inter-2D-2L(Nie et al. 2018)
+
+L
+
+Conv-KNRM(Dai et al. 2018)
+
+E
+
+MwAN(Tan et al. 2018)
+
+E
+
+POSIT-DRMM(McDonald et al. 2018)
+
+E
+
+HiNT(Fan et al. 2018)
+
+L
+
+PACRR-DRMM(McDonald et al. 2018)
+
+L
+
+ABEL-DRMM(McDonald et al. 2018)
+
+EDRM(Liu et al. 2018)
+
+E
+
+KABLSTM(Shen et al. 2018)
+
+E
+
+NPRF (Li et al. 2018)
+
+DeepTileBars(Tang and Yang 2019)
+
+L
+
+DRCN (Kim et al. 2019)
+
+E
+
+DRr-Net(Zhang et al. 2019)
+
+E
+
+BERT (sentence pair classiﬁcation)(Yang et al. 2019a)
+
+E
+
+Se
+
+BERT as a passage re-ranker(Nogueira and Cho 2019)
+
+E
+
+Se
+
+BERT (Term-Trans)(Qiao et al. 2019)
+
+E
+
+Em
+
+Joint BERT(MacAvaney et al. 2019)
+
+E
+
+Se
+
+Contextualized similarity tensors (MacAvaney et al. 2019)
+
+E
+
+Em
+
+Augmented BERT(Dai and Callan 2019)
+
+E
+
+Se
+
+monoBERT+duoBERT (Nogueira et al. 2019)
+
+E
+
+Se
+
+TKL (Hofstätter et al. 2020)
+
+E
+
+MarkedBERT (Boualili et al. 2020)
+
+E
+
+Se
+
+BERT-based ranking model (Zhan et al. 2020)
+
+E
+
+Se
+
+ColBERT (Khattab and Zaharia 2020)
+
+E
+
+Em
+
+(Chen et al. 2018) for data tables. They show that the generated headers can be combined with the original ﬁelds of the
+
+table in order to accurately predict the relevance score of a query-table pair, and improve ranking performance. Trabelsi
+
+et al. (2019) proposed a new word embedding of the tokens of table attributes, called MCON, using the contextual
+
+information of every table. Different formulations for contexts are proposed to create the embeddings of attributes
+
+tokens. The authors argued that the different types of contexts should not all be treated uniformly and showed that
+
+data values are useful in creating a meaningful semantic representation of the attribute. In addition to computing word
+
+embeddings, the model can predict additional contexts of each table and use the predicted contexts in a mixed ranking
+
+model to compute the query-table relevance score. Using multiple and differentiated contexts leads to more useful
+
+attribute embeddings for the table retrieval task.
+
+Shraga et al. (2020) use different neural networks to learn different unimodal representations of a table which are com-
+
+bined into a multimodal representation. The ﬁnal table-query relevance is estimated based on the query representation
+
+and multimodal representation. Chen et al. (2020b) ﬁrst select the most salient items of a table to construct the BERT
+
+representation for the table search, where different types of table items and salient signals are tested.
+
+17
+
+
+7.2
+
+Question-answering
+
+Question-answering (QA) (Diefenbach et al. 2018; Lai et al. 2018; Wu et al. 2019) is the task that focuses on retrieving
+
+texts that answer a given user’s question. The extracted answers can have different lengths, and vary from short text,
+
+passage, paragraph or document. QA also includes choosing between multiple choices, and synthesizing answers from
+
+multiple resources in case the question looks for multiple pieces of information.
+
+The QA problem presents multiple challenges. The question is expressed in natural language, and the objective is to
+
+search for short answers in a document. So only the parts that are relevant to the question should be extracted. The
+
+second challenge is the different vocabulary used in questions and answers. So, a QA model needs to capture matching
+
+signals based on the intents of the question in order to extract an accurate answer. The third challenge is to gather
+
+responses from multiple sources to compose an answer. As in document retrieval, multiple neural ranking models are
+
+proposed to retrieve answers that are relevant to a given user’s question (Guo et al. 2019; Abbasiyantaeb and Momtazi
+
+2020; Huang et al. 2020). The neural ranking models for QA cover all ﬁve proposed categories for document retrieval
+
+with a focus on the semantic matching signal between questions and answers.
+
+7.3
+
+Image retrieval
+
+Image retrieval (Zhou et al. 2017) is the task of retrieving images that are relevant to a user’s query. Image retrieval has
+
+been studied from two directions: text-based and content-based methods. Text-based image retrieval uses annotations,
+
+such as the metadata, descriptions and keywords, that are manually added to the image to retrieve images that are
+
+relevant to a keyword-based query. The objective of the annotations is to describe the content of the image so that a large
+
+collection of images can be organized and indexed for retrieval. Text-based image retrieval is treated as a text-based
+
+information retrieval. With the large increase of image datasets and repositories, describing each image content with
+
+textual features becomes more difﬁcult, which has led to low precision for text-based image retrieval. In general, it is
+
+hard to accurately describe an image using only a few keywords, and it is common to have inconsistencies between
+
+image annotations and a user’s query.
+
+In order to overcome the limitations of text-based methods, content-based image retrieval (CBIR) (Dharani and
+
+Aroquiaraj 2013; Wan et al. 2015; Zhou et al. 2017) methods retrieve relevant images based on the actual content of
+
+the image. In other words, CBIR consists of retrieving similar images to the user’s query image. This is known as
+
+the query-by-example setting. An example of a search engine for CBIR is the reverse image search introduced by
+
+Google. As in representation-focused models for document retrieval, many CBIR neural ranking models (Wiggers
+
+et al. 2019; Chung and Weng 2017) use a deep neural network as a feature extractor to map both the query image and
+
+a given candidate from the image collection into ﬁxed-length representations. So, these neural ranking models have
+
+the Siamese feature. Then, a simple ranking function, such as cosine similarity, is used to predict the relevance score
+
+of a query-image pair. The Siamese architecture is used in multiple CBIR domains such as retrieving aerial images
+
+from satellites (Khokhlova et al. 2020) and content-based medical image retrieval (CBMIR) (Chung and Weng 2017).
+
+CBMIR helps clinicians in the diagnosis by exploring similar cases in medical databases. Retrieving similar images for
+
+diagnosis requires extracting content-based feature vectors from medical images, such as MRI data, and then identifying
+
+the most similar images to a given query image by comparing the extracted features using similarity metrics.
+
+7.4
+
+Ad-hoc video search
+
+Ad-hoc video search (Awad et al. 2016) consists of retrieving video frames from a large collection of videos where
+
+the retrieved videos are relevant to the user’s query. Similar to document retrieval, text-based video retrieval using the
+
+ﬁlename, text surrounding the video, etc, has achieved high performance for the video retrieval with a simple query that
+
+has few keywords (Snoek and Worring 2009). Recently, researchers have focused on scenarios where the query is more
+
+complex and deﬁned as natural language text. In this case, a cross-modal semantic matching between the textual query
+
+and the video is captured to retrieve a set of relevant videos.
+
+Two categories are deﬁned for existing methods on complex query-based video retrieval: concept-based (Snoek and
+
+Worring 2009; Yuan et al. 2011; Nguyen et al. 2017) and embedding-based (Li et al. 2019; Cao et al. 2019; Miech et al.
+
+2018, 2019) categories. In concept-based methods, visual concepts are used to describe the content of a video. Then,
+
+the user’s query is mapped to related visual concepts which are used to retrieve a set of videos by aggregating matching
+
+signals from the visual concepts. This approach works well for queries where related visual concepts are accurately
+
+extracted. However, capturing semantic similarity between videos and long queries by aggregating visual concepts is
+
+not accurate because these queries contain complex semantic meaning. In addition, extracting visual concepts for a
+
+video and query is done independently. Embedding-based methods propose to map queries and videos into a common
+
+space, where the similarity between the embeddings is computed using distance functions, such as cosine similarity.
+
+18
+
+
+As in document retrieval, many video retrieval models are representation-focused models where the only difference is
+
+the cross-modal characteristic of the neural ranking model: one deep neural network for video embedding and another
+
+deep neural network for text embedding. For example, Yang et al. (2020) propose a text-video joint embedding learning
+
+for complex-query video retrieval. The text-based network which is used to embed the query has a context-sensitive
+
+embedding with LSTM for an early injection of contextual information as in the document retrieval. Consecutive frames
+
+in a video have the temporal dependence feature. So, as in textual input, LSTM can be used to capture the contextual
+
+information of frames after extracting frame-based features using pretrained CNN. As in BERT where the self-attention
+
+is used to capture token interactions, Yang et al. (2020) introduce a multi-head self-attention for video frames. So,
+
+this neural ranking model for video retrieval covers multiple proposed categories for the document retrieval which
+
+are: representation-focused models, context-aware based representation, and attention-based representation (with both
+
+attention and self-attention).
+
+8
+
+Discussion
+
+In this section, we summarize the important signals and neural components that are incorporated into the neural ranking
+
+models, and we discuss potential research ideas for document retrieval. In addition, we discuss one particular task
+
+related to structured document retrieval which is ad hoc table retrieval, and we point to potential research ideas in table
+
+retrieval.
+
+8.1
+
+What are the important matching signals in document retrieval?
+
+The neural ranking models that are previously described present two important matching techniques: semantic matching
+
+and relevance matching (Guo et al. 2016). Semantic matching is introduced in multiple text matching tasks, such
+
+as natural language inference, and paraphrase identiﬁcation. Semantic matching, which aims to model the semantic
+
+similarity between the query and the document, assumes that the input texts are homogeneous. Semantic matching
+
+captures composition and grammar information to match two input texts which are compared in their entirety. In
+
+information retrieval, the QA task is a good scenario for semantic matching, where semantic and syntactic features are
+
+important to compute the relevance score. On the other hand, semantic matching is not enough for document retrieval,
+
+because a typical scenario is to have a query that contains keywords. In such cases, the relevance matching is needed to
+
+achieve better retrieval results.
+
+Relevance matching is introduced by Guo et al. (2016) to solve the case of heterogeneous query and document in
+
+ad hoc document retrieval. The query can be expressed by keywords, so a semantic signal is less informative in this
+
+case because the composition and grammar of a keyword-based query are not well deﬁned. In addition, the position
+
+of a given token in a query has less importance than the strength of the similarity signal, so some neural ranking
+
+models, like DRMM (Guo et al. 2016), do not preserve the position information when computing the query-document
+
+feature vector. An important signal in the relevance matching is the exact matching of query and document tokens. In
+
+traditional retrieval models, like BM25, exact matching is primarily used to rank a set of documents, and the model
+
+works reasonably well as an initial ranker. Incorporating exact matching into neural ranking models can improve the
+
+retrieval performance mainly in terms of recall for keyword-based queries because as in traditional ad hoc document
+
+retrieval, the document has more content than the query and the presence of query keywords in a document is an initial
+
+indicator of relevance.
+
+From the review of many neural ranking models, we can conclude that both semantic and relevance matching signals
+
+are important to cover multiple scenarios of ad hoc retrieval tasks. This is empirically justiﬁed by achieving signiﬁcant
+
+improvements in retrieval results when using neural ranking models that guarantee both matching signals. For example,
+
+the joint model, proposed by MacAvaney et al. (2019), combines the representation of [CLS] from BERT and existing
+
+relevance-based neural ranking models. This model has a semantic matching signal from [CLS] because BERT is
+
+pretrained on the next sentence prediction, and a relevance matching signal from existing neural ranking models. The
+
+disadvantage of using the BERT model as a semantic matching component is the length limit of BERT which causes
+
+difﬁculties in both training and inference. In general, the length of a document exceeds the maximum length limit of
+
+BERT, so that the document is divided into sentences or passages. Splitting the document and then aggregating the
+
+relevance scores increases the training and inference time.
+
+8.2
+
+Choice of embedding: how to compute query and document representations?
+
+In addition to semantic and relevance matching signals, the context-sensitive embedding was shown to have better
+
+retrieval results than traditional pretrained embeddings like Glove. A part of using context-sensitive embedding is
+
+to incorporate the query context into the ranking model to improve the precision of ad hoc retrieval. Recent neural
+
+19
+
+
+ranking models use deep contextualized pre-trained language models to compute a contextual representation for each
+
+token. There are mainly two advantages from using these models; ﬁrst, they are bidirectional language representations,
+
+in contrast to only left-to-right or right-to-left language models so that every token can attend to previous and next
+
+tokens to incorporate the context from both directions. Second, they contain the attention mechanism which becomes an
+
+important component of sequence representations in multiple tasks, especially the Transformer’s self-attention which
+
+captures long-range dependencies better than the recurrent architectures (Vaswani et al. 2017). So, this contextual
+
+representation covers both the context-aware representation and the attention-based representation. The expensive
+
+computation is still a limitation when incorporating the pre-trained language models. For example, the large BERT
+
+model has 340M parameters consisting of 24 layers of Transformer blocks, 16 self-attention heads per layer and a
+
+hidden size of 1024. Zhan et al. (2020) analyzed the performance of BERT in document retrieval using the model
+
+proposed by Nogueira and Cho (2019). The analysis showed that the [CLS], [SEP], and periods are distributed with a
+
+large proportion of attention because they appear in all inputs. BERT has multiple layers, and the authors showed that
+
+there is different behavior in different layers. The ﬁrst layers are representation-focused, and extract representations for
+
+a query and a document. The intermediate layers learn contextual representations using the interaction signals between
+
+the query and document. Finally, for the last layers, the relevance score is predicted based on the interactions between
+
+the high-level representations of a given query-document pair.
+
+External knowledge bases and graphs are incorporated into neural ranking models to provide additional embeddings for
+
+the query and document. Knowledge graphs contain human knowledge and can be used in neural ranking models to
+
+better understand queries and documents. In general, the entity-based representation, that is computed from knowledge
+
+bases, is combined with the word-based representation. In addition, the knowledge graph semantics, such as the
+
+description and type of entity, provide additional signals that can be incorporated into the neural ranking model to
+
+improve retrieval results and generalize to multiple scenarios.
+
+The existing methods, that incorporate knowledge graphs into the ranking models, leverage mainly entities and
+
+knowledge graph semantics. However, knowledge graphs often provide rich axiomatic knowledge that can be explored
+
+in future research to improve retrieval results.
+
+8.3
+
+How to reduce the complexity of the neural ranking architectures that use deep contextualized language
+
+models?
+
+After summarizing multiple existing neural ranking models, we can conclude that a potential future research direction
+
+is the design of more efﬁcient neural ranking models that are able to incorporate semantic and relevance matching
+
+signals. Using BERT as a semantic matching component comes with the disadvantage of BERT length limit where
+
+the number of allowed tokens in BERT is signiﬁcantly smaller than the typical length of a document. So, a possible
+
+future research direction is the study of selection techniques for sentences or passages with a trade-off between high
+
+retrieval results and low computation time. Ranking documents of length m using Transformers, which are the main
+
+components of BERT, requires O(m2) memory and time complexity (Kitaev et al. 2020). In particular, for very long
+
+documents, applying self-attention of Transformers is not feasible. So, BERT-based ranking models have a large
+
+increase in computational cost and memory complexity over the existing traditional and neural ranking models. A
+
+current research direction is the design of efﬁcient and effective deep language model-based ranking architectures. For
+
+example, Khattab and Zaharia (2020) presented a ranking model that is based on contextualized late interaction over
+
+BERT (ColBERT). The proposed model reduces computation time by extracting BERT-based document representations
+
+ofﬂine, and delays the interaction between query and document representations. In the same direction of reducing
+
+the ranking model complexity, Hofstätter et al. (2020) reduced the time and memory complexity of Transformers by
+
+considering the local self-attention where a given token can only attend to tokens in the same sliding window. In the
+
+particular case of non-overlapping sliding windows of size w &lt;&lt; m, the time and memory complexity is reduced from
+
+O(m2) to O(m×w). Recently, Kitaev et al. (2020) improved the efﬁciency of Transformers and proposed the Reformer
+
+which is efﬁcient in terms of memory and runs faster for long sequences by reducing the complexity from O(m2) to
+
+O(m × log(m)). The Reformer presents new opportunities to achieve the trade-off between high retrieval results and
+
+low computation time. ElMo provides deep contextualized embeddings without the length limit constraint and can
+
+be used as a semantic matching component as it is pre-trained on the next word prediction. A possible multi-stage
+
+ranking architecture, that has a trade-off between retrieval results and computation time, can be composed of a ﬁrst
+
+stage that re-ranks a set of candidate documents obtained from BM25 using an ElMo-based semantic and relevance
+
+model (example of relevance models: K-NRM, Conv-KNRM, DRMM, etc). Then, for the second stage, the top ranked
+
+documents from the ﬁrst stage are re-ranked using a BERT-based semantic and relevance model. This multi-stage model
+
+has the potential to reduce the number of documents that should be ranked with BERT.
+
+20
+
+
+8.4
+
+Structured document retrieval: what are the challenges and the research directions?
+
+Structured document retrieval presents new challenges and research opportunities. In particular, there is a vast amount
+
+of information that is stored in a tabular form so that the task of ad-hoc table retrieval has received more attention
+
+recently. As we mentioned in Section 7.1, table retrieval consists of accurately retrieving data tables that are relevant to a
+
+user’s query. As in document retrieval, both semantic and relevance matching are important signals in the table retrieval.
+
+In particular, data values contain rich information that can be used to match a query and table, where some queries
+
+depend on the presence of speciﬁc columns, speciﬁc rows, or multiple cell values. The order of rows and columns of
+
+data values is arbitrary in many data tables, so incorporating data values into the neural ranking model is challenging.
+
+Chen et al. (2020b) selected data values based on the relevance to the query. The proposed content selection technique
+
+improves the performance of ad-hoc table retrieval. On the other hand, using the queries to select the table content can
+
+lead to a signiﬁcant increase in the processing time because extracting data table representations cannot be performed
+
+ofﬂine. To reduce computation time, it is possible to include summary vectors about the contents of the table, both in
+
+terms of values in each column and values in selected rows (Trabelsi et al. 2020b). The summary vectors compress each
+
+row and each column into a ﬁxed length feature vector using word embedding of data values. There are two advantages
+
+from using summary vectors. First, it reduces the computation time compared to embedding and incorporating all data
+
+values into the neural ranking model. For example, given a table t with nr rows and nc columns, and a word embedding
+
+of dimension d, with summary vectors, the representation of t is reduced from nr × nc × d to (nr + nc) × d. Second,
+
+computing the summary vectors is independent of the query, so that extracting the table representation is performed
+
+ofﬂine. When the summary vectors are used in interaction-focused models with an n token query, the time and space
+
+complexities are reduced from a factor of O(nr × nc × n × d) to a factor of O((nr + nc) × n × d).
+
+Existing knowledge graphs are used to improve the results of the document retrieval. Recently, researchers have
+
+explored a new direction called graph neural networks (Cai et al. 2017) to solve multiple tasks (Zhou et al. 2018). Graph
+
+neural networks capture rich relational structures between nodes in a graph using message passing and encode the
+
+global structure of a graph in low dimensional feature vectors known as graph embeddings. The Graph Convolutional
+
+Network (GCN) (Kipf and Welling 2017) can capture high order neighborhood information to learn representations of
+
+nodes in a graph. Inspired by recent progress of transfer learning on graph neural networks, a future research direction
+
+for ad-hoc table retrieval consists of representing a large collection of data tables using graphs (Trabelsi et al. 2020c).
+
+In particular, a knowledge graph representation using fact triples &lt;subject, predicate, object&gt; indicates the relations
+
+between entities, then an extension of GCN for knowledge graphs, such as R-GCN (Schlichtkrull et al. 2018), can be
+
+applied on knowledge graphs to learn representations for graph nodes and relations.
+
+9
+
+Summary
+
+An end-to-end LTR architecture for ad hoc document retrieval consists of extracting features from a query-document
+
+pair using a feature extractor, and mapping the extracted features to a real-valued relevance score using a ranking
+
+function. A core component of such a system is a neural ranking model, and in this survey, we have presented several
+
+such models. We began by presenting the document retrieval ﬁeld in Section 1 and Section 2. The objective of the
+
+document ranking and retrieval is to retrieve a set of documents where the top ranked documents are more relevant to
+
+the user’s query.
+
+After formulating the document ranking task using the LTR framework in Section 3, we reviewed the three learning
+
+to rank approaches used in ad-hoc retrieval in Section 4 namely, pointwise, pairwise, and listwise approaches. We
+
+summarized several techniques from each to address the advantages and drawbacks of each approach. In Section 5,
+
+we summarized the neural ranking models in ad hoc retrieval, and we proposed placing the neural ranking models
+
+into ﬁve groups, where each group has unique neural components and architectures. In Section 6, we discussed the
+
+features of neural ranking models. In particular, we proposed nine features that are frequently presented in neural
+
+ranking models. These features are used for an in-depth overview of several neural ranking models that are proposed in
+
+the literature. This overview gives a global view for the current state of neural ranking models in addition to the work
+
+that has been done during the last several years. In Section 7, we showed that neural ranking models can generalize
+
+beyond the document retrieval. In particular, we described four related retrieval tasks: structured document retrieval,
+
+question-answering, image retrieval, and ad-hoc video search. Finally, in Section 8, we discussed the important signals
+
+in neural ranking models which are the semantic and relevance matching. In addition, we focused on a research direction
+
+that studies the trade-off between high quality retrieval results and fast computation mainly for ranking models with
+
+deep contextualized language models. We ﬁnished our discussion by showing that researchers have focused recently
+
+on structured document retrieval, such as ad hoc table retrieval, using neural ranking models. This task presents new
+
+challenges and research opportunities in both retrieval results and computation time.
+
+21
+
+
+By grouping the neural ranking models, we analyzed the main features of each proposed model, and pointed to future
+
+research directions based on the important signals of the ad hoc retrieval. In particular, we reviewed the design principles
+
+of neural ranking models that are used to extract the representation of a given query-document pair. The number of
+
+proposed neural ranking architectures is increasing, and this survey can help researchers by providing an overview
+
+about the current progress, and suggesting some potential directions to improve neural ranking models for document
+
+and table retrieval in both retrieval results and computation time.
+
+Acknowledgment
+
+This material is based upon work supported by the National Science Foundation under Grant No. IIS-1816325.
+
+References
+
+Z. Abbasiyantaeb and S. Momtazi. Text-based question answering from information retrieval and deep neural network
+
+perspectives: A survey. ArXiv, abs/2002.06612, 2020.
+
+G. Awad, J. Fiscus, D. Joy, M. Michel, A. Smeaton, W. Kraaij, G. Quénot, M. Eskevich, R. Aly, R. Ordelman, M. Ritter,
+
+G. Jones, B. Huet, and M. Larson. Trecvid 2016: Evaluating video search, video event detection, localization, and
+
+hyperlinking. In TRECVID, 2016.
+
+H. K. Azad and A. Deepak. Query expansion techniques for information retrieval: A survey. Inf. Process. Manag., 56
+
+(5):1698–1735, 2019.
+
+D. Bahdanau, K. Cho, and Y. Bengio. Neural machine translation by jointly learning to align and translate. In 3rd
+
+International Conference on Learning Representations, ICLR 2015, San Diego, CA, USA, May 7-9, 2015, Conference
+
+Track Proceedings, 2015.
+
+K. D. Bollacker, C. Evans, P. Paritosh, T. Sturge, and J. Taylor. Freebase: a collaboratively created graph database for
+
+structuring human knowledge. In Proceedings of the ACM SIGMOD International Conference on Management of
+
+Data, SIGMOD 2008, Vancouver, BC, Canada, June 10-12, 2008, pages 1247–1250. ACM, 2008.
+
+L. Boualili, J. G. Moreno, and M. Boughanem. Markedbert: Integrating traditional ir cues in pre-trained language
+
+models for passage retrieval. In Proceedings of the 43rd International ACM SIGIR Conference on Research and
+
+Development in Information Retrieval, page 1977–1980, New York, NY, USA, 2020. Association for Computing
+
+Machinery.
+
+J. Bromley, J. Bentz, L. Bottou, I. Guyon, Y. LeCun, C. Moore, E. Sackinger, and R. Shah. Signature veriﬁcation using
+
+a "siamese" time delay neural network. International Journal of Pattern Recognition and Artiﬁcial Intelligence, 7:25,
+
+08 1993.
+
+C. J. C. Burges, T. Shaked, E. Renshaw, A. Lazier, M. Deeds, N. Hamilton, and G. N. Hullender. Learning to rank
+
+using gradient descent. In Machine Learning, Proceedings of the Twenty-Second International Conference (ICML
+
+2005), Bonn, Germany, August 7-11, 2005, volume 119 of ACM International Conference Proceeding Series, pages
+
+89–96. ACM, 2005.
+
+H. Cai, V. Zheng, and K. Chang. A comprehensive survey of graph embedding: Problems, techniques and applications.
+
+IEEE Transactions on Knowledge and Data Engineering, 09 2017.
+
+J. P. Callan. Passage-level evidence in document retrieval. In Proceedings of the 17th Annual International ACM
+
+SIGIR Conference on Research and Development in Information Retrieval, page 302–310, Berlin, Heidelberg, 1994.
+
+Springer-Verlag.
+
+D. Cao, Z. Yu, H. ling Zhang, J. Fang, L. Nie, and Q. Tian. Video-based cross-modal recipe retrieval. Proceedings of
+
+the 27th ACM International Conference on Multimedia, 2019.
+
+Z. Cao, T. Qin, T. Liu, M. Tsai, and H. Li. Learning to rank: from pairwise approach to listwise approach. In Machine
+
+Learning, Proceedings of the Twenty-Fourth International Conference (ICML 2007), Corvallis, Oregon, USA, June
+
+20-24, 2007, volume 227 of ACM International Conference Proceeding Series, pages 129–136. ACM, 2007.
+
+S. Chakrabarti, R. Khanna, U. Sawant, and C. Bhattacharyya. Structured learning for non-smooth ranking losses. In
+
+Proceedings of the 14th ACM SIGKDD International Conference on Knowledge Discovery and Data Mining, Las
+
+Vegas, Nevada, USA, August 24-27, 2008, pages 88–96. ACM, 2008.
+
+O. Chapelle and M. Wu. Gradient descent optimization of smoothed information retrieval metrics. Information Retrieval,
+
+13:216–235, 2009.
+
+D. Chen, J. Bolton, and C. D. Manning. A thorough examination of the CNN/daily mail reading comprehension task. In
+
+Proceedings of the 54th Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers),
+
+pages 2358–2367, Berlin, Germany, Aug. 2016. Association for Computational Linguistics.
+
+22
+
+
+Z. Chen, H. Jia, J. Heﬂin, and B. D. Davison. Generating schema labels through dataset content analysis. In Companion
+
+Proceedings of the The Web Conference 2018, pages 1515–1522, 2018.
+
+Z. Chen, H. Jia, J. Heﬂin, and B. D. Davison. Leveraging schema labels to enhance dataset search. In European
+
+Conference on Information Retrieval, pages 267–280. Springer, 2020a.
+
+Z. Chen, M. Trabelsi, J. Heﬂin, Y. Xu, and B. D. Davison. Table search using a deep contextualized language model.
+
+In Proceedings of the 43rd International ACM SIGIR Conference on Research and Development in Information
+
+Retrieval, page 589–598, New York, NY, USA, 2020b. Association for Computing Machinery.
+
+Y. Chiaramella. Information retrieval and structured documents. In Lectures on Information Retrieval, Third European
+
+Summer-School, ESSIR 2000, Varenna, Italy, September 11-15, 2000, Revised Lectures, volume 1980 of Lecture
+
+Notes in Computer Science, pages 286–309. Springer, 2000.
+
+K. Cho, B. van Merriënboer, C. Gulcehre, D. Bahdanau, F. Bougares, H. Schwenk, and Y. Bengio.
+
+Learning
+
+phrase representations using RNN encoder–decoder for statistical machine translation. In Proceedings of the 2014
+
+Conference on Empirical Methods in Natural Language Processing (EMNLP), pages 1724–1734, Doha, Qatar, Oct.
+
+2014. Association for Computational Linguistics.
+
+Y.-A. Chung and W.-H. Weng. Learning deep representations of medical images using siamese cnns with application to
+
+content-based image retrieval. ArXiv, abs/1711.08490, 2017.
+
+D. Cossock and T. Zhang. Subset ranking using regression. In Proceedings of the 19th Annual Conference on Learning
+
+Theory, page 605–619. Springer-Verlag, 2006.
+
+Z. Dai and J. Callan. Deeper text understanding for IR with contextual neural language modeling. In Proceedings of the
+
+42nd International ACM SIGIR Conference on Research and Development in Information Retrieval, SIGIR 2019,
+
+Paris, France, July 21-25, 2019, pages 985–988. ACM, 2019.
+
+Z. Dai, C. Xiong, J. Callan, and Z. Liu. Convolutional neural networks for soft-matching n-grams in ad-hoc search. In
+
+Proceedings of the Eleventh ACM International Conference on Web Search and Data Mining, page 126–134, 2018.
+
+Z. Dai, Z. Yang, Y. Yang, J. G. Carbonell, Q. V. Le, and R. Salakhutdinov. Transformer-xl: Attentive language models
+
+beyond a ﬁxed-length context. In Proceedings of the 57th Conference of the Association for Computational Linguistics,
+
+ACL 2019, Florence, Italy, July 28- August 2, 2019, Volume 1: Long Papers, pages 2978–2988. Association for
+
+Computational Linguistics, 2019.
+
+J. Dalton, L. Dietz, and J. Allan. Entity query feature expansion using knowledge base links. Proceedings of the 37th
+
+international ACM SIGIR conference on Research &amp; development in information retrieval, 2014.
+
+S. Deerwester, S. T. Dumais, G. W. Furnas, T. K. Landauer, and R. Harshman. Indexing by latent semantic analysis.
+
+JOURNAL OF THE AMERICAN SOCIETY FOR INFORMATION SCIENCE, 41(6):391–407, 1990.
+
+J. Devlin, M. Chang, K. Lee, and K. Toutanova. BERT: pre-training of deep bidirectional transformers for language
+
+understanding. In Proceedings of the 2019 Conference of the North American Chapter of the Association for
+
+Computational Linguistics: Human Language Technologies, NAACL-HLT 2019, Minneapolis, MN, USA, June 2-7,
+
+2019, Volume 1 (Long and Short Papers), pages 4171–4186. Association for Computational Linguistics, 2019.
+
+T. Dharani and I. L. Aroquiaraj. A survey on content based image retrieval. In 2013 International Conference on
+
+Pattern Recognition, Informatics and Mobile Engineering, pages 485–490, 2013.
+
+D. Diefenbach, V. Lopez, K. Singh, and P. Maret. Core techniques of question answering systems over knowledge
+
+bases: A survey. Knowl. Inf. Syst., 55(3):529–569, June 2018.
+
+Y. Fan, J. Guo, Y. Lan, J. Xu, C. Zhai, and X. Cheng. Modeling diverse relevance patterns in ad-hoc retrieval. In The
+
+41st International ACM SIGIR Conference on Research &amp; Development in Information Retrieval, SIGIR 2018, Ann
+
+Arbor, MI, USA, July 08-12, 2018, pages 375–384. ACM, 2018.
+
+H. Fang, T. Tao, and C. Zhai. A formal study of information retrieval heuristics. In Proceedings of the 27th Annual
+
+International ACM SIGIR Conference on Research and Development in Information Retrieval, page 49–56, New
+
+York, NY, USA, 2004. Association for Computing Machinery. ISBN 1581138814.
+
+Y. Freund, R. D. Iyer, R. E. Schapire, and Y. Singer. An efﬁcient boosting algorithm for combining preferences. In
+
+Proceedings of the Fifteenth International Conference on Machine Learning (ICML 1998), Madison, Wisconsin, USA,
+
+July 24-27, 1998, pages 170–178. Morgan Kaufmann, 1998.
+
+N. Fuhr. Optimum polynomial retrieval functions based on the probability ranking principle. ACM Trans. Inf. Syst., 7
+
+(3):183–204, 1989.
+
+F. C. Gey. Inferring probability of relevance using the method of logistic regression. In Proceedings of the 17th Annual
+
+International ACM-SIGIR Conference on Research and Development in Information Retrieval. Dublin, Ireland, 3-6
+
+July 1994 (Special Issue of the SIGIR Forum), pages 222–231. ACM/Springer, 1994.
+
+23
+
+
+J. Guo, Y. Fan, Q. Ai, and W. B. Croft. A deep relevance matching model for ad-hoc retrieval. In Proceedings of the
+
+25th ACM International Conference on Information and Knowledge Management, CIKM 2016, Indianapolis, IN,
+
+USA, October 24-28, 2016, pages 55–64. ACM, 2016.
+
+J. Guo, Y. Fan, L. Pang, L. Yang, Q. Ai, H. Zamani, C. Wu, W. B. Croft, and X. Cheng. A deep look into neural ranking
+
+models for information retrieval. Information Processing &amp; Management, 2019. ISSN 0306-4573.
+
+H. He and J. J. Lin. Pairwise word interaction modeling with deep neural networks for semantic similarity measurement.
+
+In NAACL HLT 2016, The 2016 Conference of the North American Chapter of the Association for Computational
+
+Linguistics: Human Language Technologies, San Diego California, USA, June 12-17, 2016, pages 937–948. The
+
+Association for Computational Linguistics, 2016.
+
+K. He, X. Zhang, S. Ren, and J. Sun. Deep residual learning for image recognition. In 2016 IEEE Conference on
+
+Computer Vision and Pattern Recognition (CVPR), pages 770–778, 2016.
+
+B. Hedin, S. Tomlinson, J. R. Baron, and D. W. Oard. Overview of the TREC 2009 legal track. In Proceedings of The
+
+Eighteenth Text REtrieval Conference, TREC 2009, Gaithersburg, Maryland, USA, November 17-20, 2009, volume
+
+500-278 of NIST Special Publication. National Institute of Standards and Technology (NIST), 2009.
+
+R. Herbrich, T. Graepel, and K. Obermayer. Large margin rank boundaries for ordinal regression. Advances in Large
+
+Margin Classiﬁers, 88, 01 2000.
+
+S. Hochreiter and J. Schmidhuber. Long short-term memory. Neural Comput., 9(8):1735–1780, Nov. 1997.
+
+S. Hofstätter, H. Zamani, B. Mitra, N. Craswell, and A. Hanbury. Local self-attention over long text for efﬁcient
+
+document retrieval. In Proceedings of the 43rd International ACM SIGIR Conference on Research and Development
+
+in Information Retrieval, page 2021–2024, New York, NY, USA, 2020. Association for Computing Machinery.
+
+B. Hu, Z. Lu, H. Li, and Q. Chen. Convolutional neural network architectures for matching natural language sentences.
+
+In Advances in Neural Information Processing Systems 27: Annual Conference on Neural Information Processing
+
+Systems 2014, December 8-13 2014, Montreal, Quebec, Canada, pages 2042–2050, 2014.
+
+G. Huang, Z. Liu, L. Van Der Maaten, and K. Q. Weinberger. Densely connected convolutional networks. In 2017
+
+IEEE Conference on Computer Vision and Pattern Recognition (CVPR), pages 2261–2269, 2017.
+
+J. C. Huang and B. J. Frey. Structured ranking learning using cumulative distribution networks. In Advances in Neural
+
+Information Processing Systems 21, Proceedings of the Twenty-Second Annual Conference on Neural Information
+
+Processing Systems, Vancouver, British Columbia, Canada, December 8-11, 2008, pages 697–704. Curran Associates,
+
+Inc., 2008.
+
+P. Huang, X. He, J. Gao, L. Deng, A. Acero, and L. P. Heck. Learning deep structured semantic models for web
+
+search using clickthrough data. In 22nd ACM International Conference on Information and Knowledge Management,
+
+CIKM’13, San Francisco, CA, USA, October 27 - November 1, 2013, pages 2333–2338. ACM, 2013.
+
+Z. Huang, S. Xu, M. Hu, X. Wang, J. Qiu, Y. Fu, Y. Zhao, Y. xing Peng, and C. Wang. Recent trends in deep learning
+
+based open-domain textual question answering systems. IEEE Access, 8:94341–94356, 2020.
+
+K. Hui, A. Yates, K. Berberich, and G. de Melo. PACRR: A position-aware neural IR model for relevance matching.
+
+In Proceedings of the 2017 Conference on Empirical Methods in Natural Language Processing, EMNLP 2017,
+
+Copenhagen, Denmark, September 9-11, 2017, pages 1049–1058. Association for Computational Linguistics, 2017.
+
+K. Hui, A. Yates, K. Berberich, and G. de Melo. Co-pacrr: A context-aware neural IR model for ad-hoc retrieval. In
+
+Proceedings of the Eleventh ACM International Conference on Web Search and Data Mining, WSDM 2018, Marina
+
+Del Rey, CA, USA, February 5-9, 2018, pages 279–287. ACM, 2018.
+
+A. Jaech, H. Kamisetty, E. K. Ringger, and C. Clarke. Match-tensor: a deep relevance model for search. ArXiv,
+
+abs/1701.07795, 2017.
+
+T. Joachims. Optimizing search engines using clickthrough data. In Proceedings of the Eighth ACM SIGKDD
+
+International Conference on Knowledge Discovery and Data Mining, July 23-26, 2002, Edmonton, Alberta, Canada,
+
+pages 133–142. ACM, 2002.
+
+N. Kalchbrenner, E. Grefenstette, and P. Blunsom. A convolutional neural network for modelling sentences. Proceedings
+
+of the 52nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers), 2014.
+
+O. Khattab and M. Zaharia. Colbert: Efﬁcient and effective passage search via contextualized late interaction over
+
+bert. In Proceedings of the 43rd International ACM SIGIR Conference on Research and Development in Information
+
+Retrieval, page 39–48, New York, NY, USA, 2020. Association for Computing Machinery. ISBN 9781450380164.
+
+M. Khokhlova, V. Gouet-Brunet, N. Abadie, and L. Chen. Cross-year multi-modal image retrieval using siamese
+
+networks. In ICIP 2020 – 27th IEEE International Conference on Image Processing, Abou Dhabi, United Arab
+
+Emirates, Oct. 2020. IEEE. URL https://hal.archives-ouvertes.fr/hal-02903434.
+
+24
+
+
+S. Kim, I. Kang, and N. Kwak. Semantic sentence matching with densely-connected recurrent and co-attentive
+
+information. In The Thirty-Third AAAI Conference on Artiﬁcial Intelligence, pages 6586–6593. AAAI Press, 2019.
+
+T. N. Kipf and M. Welling. Semi-supervised classiﬁcation with graph convolutional networks. In 5th International Con-
+
+ference on Learning Representations, ICLR 2017, Toulon, France, April 24-26, 2017, Conference Track Proceedings.
+
+OpenReview.net, 2017.
+
+N. Kitaev, L. Kaiser, and A. Levskaya. Reformer: The efﬁcient transformer. In 8th International Conference on
+
+Learning Representations, ICLR 2020, Addis Ababa, Ethiopia, April 26-30, 2020. OpenReview.net, 2020.
+
+T. M. Lai, T. Bui, and S. Li. A review on deep learning techniques applied to answer selection. In Proceedings of the
+
+27th International Conference on Computational Linguistics, pages 2132–2144, Santa Fe, New Mexico, USA, Aug.
+
+2018. Association for Computational Linguistics.
+
+W. Lan and W. Xu. Character-based neural networks for sentence pair modeling. In Proceedings of the 2018 Conference
+
+of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies,
+
+NAACL-HLT, New Orleans, Louisiana, USA, June 1-6, 2018, Volume 2 (Short Papers), pages 157–163. Association
+
+for Computational Linguistics, 2018.
+
+Q. V. Le and T. Mikolov. Distributed representations of sentences and documents. In Proceedings of the 31th
+
+International Conference on Machine Learning, ICML 2014, Beijing, China, 21-26 June 2014, volume 32 of JMLR
+
+Workshop and Conference Proceedings, pages 1188–1196. JMLR.org, 2014.
+
+J. Lehmann, R. Isele, M. Jakob, A. Jentzsch, D. Kontokostas, P. N. Mendes, S. Hellmann, M. Morsey, P. van Kleef,
+
+S. Auer, and C. Bizer. Dbpedia - a large-scale, multilingual knowledge base extracted from wikipedia. Semantic Web,
+
+6:167–195, 2015.
+
+C. Li, Y. Sun, B. He, L. Wang, K. Hui, A. Yates, L. Sun, and J. Xu. NPRF: A neural pseudo relevance feedback
+
+framework for ad-hoc information retrieval. In Proceedings of the 2018 Conference on Empirical Methods in
+
+Natural Language Processing, Brussels, Belgium, October 31 - November 4, 2018, pages 4482–4491. Association
+
+for Computational Linguistics, 2018.
+
+P. Li, C. J. C. Burges, and Q. Wu. Mcrank: Learning to rank using multiple classiﬁcation and gradient boosting. In
+
+Advances in Neural Information Processing Systems 20, Proceedings of the Twenty-First Annual Conference on
+
+Neural Information Processing Systems, Vancouver, British Columbia, Canada, December 3-6, 2007, pages 897–904.
+
+Curran Associates, Inc., 2007.
+
+X. Li, C. Xu, G. Yang, Z. Chen, and J. Dong. W2vv++: Fully deep learning for ad-hoc video search. Proceedings of
+
+the 27th ACM International Conference on Multimedia, 2019.
+
+T.-Y. Liu. Learning to rank for information retrieval. Found. Trends Inf. Retr., 3(3):225–331, Mar. 2009. ISSN
+
+1554-0669.
+
+X. Liu and W. B. Croft. Passage retrieval based on language models. In Proceedings of the Eleventh International
+
+Conference on Information and Knowledge Management, page 375–382, New York, NY, USA, 2002. Association for
+
+Computing Machinery.
+
+X. Liu and H. Fang. Latent entity space: a novel retrieval approach for entity-bearing queries. Information Retrieval
+
+Journal, 18:473–503, 2015.
+
+Z. Liu, C. Xiong, M. Sun, and Z. Liu. Entity-duet neural ranking: Understanding the role of knowledge graph semantics
+
+in neural information retrieval. In Proceedings of the 56th Annual Meeting of the Association for Computational
+
+Linguistics (Volume 1: Long Papers), pages 2395–2405, 2018.
+
+S. MacAvaney, A. Yates, A. Cohan, and N. Goharian. CEDR: contextualized embeddings for document ranking.
+
+In Proceedings of the 42nd International ACM SIGIR Conference on Research and Development in Information
+
+Retrieval, SIGIR 2019, Paris, France, July 21-25, 2019, pages 1101–1104. ACM, 2019.
+
+R. T. McDonald, G. Brokos, and I. Androutsopoulos. Deep relevance ranking using enhanced document-query
+
+interactions. In Proceedings of the 2018 Conference on Empirical Methods in Natural Language Processing, Brussels,
+
+Belgium, October 31 - November 4, 2018, pages 1849–1860. Association for Computational Linguistics, 2018.
+
+A. Miech, I. Laptev, and J. Sivic. Learning a text-video embedding from incomplete and heterogeneous data. ArXiv,
+
+abs/1804.02516, 2018.
+
+A. Miech, D. Zhukov, J.-B. Alayrac, M. Tapaswi, I. Laptev, and J. Sivic. Howto100m: Learning a text-video embedding
+
+by watching hundred million narrated video clips. In Proceedings of the IEEE/CVF International Conference on
+
+Computer Vision (ICCV), October 2019.
+
+T. Mikolov, K. Chen, G. Corrado, and J. Dean. Efﬁcient estimation of word representations in vector space. In
+
+1st International Conference on Learning Representations, ICLR 2013, Scottsdale, Arizona, USA, May 2-4, 2013,
+
+Workshop Track Proceedings, 2013.
+
+25
+
+
+B. Mitra and N. Craswell. Neural models for information retrieval. ArXiv, abs/1705.01509, 2017.
+
+B. Mitra, F. Diaz, and N. Craswell. Learning to match using local and distributed representations of text for web search.
+
+In Proceedings of the 26th International Conference on World Wide Web, WWW 2017, Perth, Australia, April 3-7,
+
+2017, pages 1291–1299. ACM, 2017.
+
+J. Mueller and A. Thyagarajan. Siamese recurrent architectures for learning sentence similarity. In Proceedings of
+
+the Thirtieth AAAI Conference on Artiﬁcial Intelligence, February 12-17, 2016, Phoenix, Arizona, USA, pages
+
+2786–2792. AAAI Press, 2016.
+
+P. Nguyen, Q. Li, Z.-Q. Cheng, Y.-J. Lu, H. Zhang, X. Wu, and C.-W. Ngo. Vireo @ trecvid 2017: Video-to-text,
+
+ad-hoc video search, and video hyperlinking. In TRECVID, 2017.
+
+T. Nguyen, M. Rosenberg, X. Song, J. Gao, S. Tiwary, R. Majumder, and L. Deng. MS MARCO: A human generated
+
+machine reading comprehension dataset. In Proceedings of the Workshop on Cognitive Computation: Integrating
+
+neural and symbolic approaches 2016 co-located with the 30th Annual Conference on Neural Information Processing
+
+Systems (NIPS 2016), Barcelona, Spain, December 9, 2016, volume 1773 of CEUR Workshop Proceedings. CEUR-
+
+WS.org, 2016.
+
+Y. Nie, Y. Li, and J. Nie. Empirical study of multi-level convolution models for IR based on representations and
+
+interactions. In Proceedings of the 2018 ACM SIGIR International Conference on Theory of Information Retrieval,
+
+ICTIR 2018, Tianjin, China, September 14-17, 2018, pages 59–66. ACM, 2018.
+
+R. Nogueira and K. Cho. Passage re-ranking with bert. ArXiv, abs/1901.04085, 2019.
+
+R. Nogueira, W. Yang, K. Cho, and J. Lin. Multi-stage document ranking with bert. ArXiv, abs/1910.14424, 2019.
+
+K. D. Onal, Y. Zhang, I. S. Altingövde, M. M. Rahman, P. Senkul, A. Braylan, B. Dang, H. Chang, H. Kim,
+
+Q. McNamara, A. Angert, E. Banner, V. Khetan, T. McDonnell, A. T. Nguyen, D. Xu, B. C. Wallace, M. Rijke, and
+
+M. Lease. Neural information retrieval: at the end of the early years. Information Retrieval Journal, 21:111–182,
+
+2017.
+
+H. Palangi, L. Deng, Y. Shen, J. Gao, X. He, J. Chen, X. Song, and R. Ward. Deep sentence embedding using long
+
+short-term memory networks: Analysis and application to information retrieval. IEEE/ACM Trans. Audio, Speech
+
+and Lang. Proc., 24(4):694–707, Apr. 2016.
+
+L. Pang, Y. Lan, J. Guo, J. Xu, and X. Cheng. A study of matchpyramid models on ad-hoc retrieval, 2016a.
+
+L. Pang, Y. Lan, J. Guo, J. Xu, S. Wan, and X. Cheng. Text matching as image recognition. In Proceedings of
+
+the Thirtieth AAAI Conference on Artiﬁcial Intelligence, February 12-17, 2016, Phoenix, Arizona, USA, pages
+
+2793–2799. AAAI Press, 2016b.
+
+L. Pang, Y. Lan, J. Guo, J. Xu, J. Xu, and X. Cheng. Deeprank: A new deep architecture for relevance ranking in
+
+information retrieval. In Proceedings of the 2017 ACM on Conference on Information and Knowledge Management,
+
+page 257–266, 2017.
+
+J. Pennington, R. Socher, and C. Manning. GloVe: Global vectors for word representation. In Proceedings of the 2014
+
+Conference on Empirical Methods in Natural Language Processing (EMNLP), pages 1532–1543. Association for
+
+Computational Linguistics, Oct. 2014.
+
+M. E. Peters, M. Neumann, M. Iyyer, M. Gardner, C. Clark, K. Lee, and L. Zettlemoyer. Deep contextualized word
+
+representations. In Proceedings of the 2018 Conference of the North American Chapter of the Association for
+
+Computational Linguistics: Human Language Technologies, NAACL-HLT 2018, New Orleans, Louisiana, USA, June
+
+1-6, 2018, Volume 1 (Long Papers), pages 2227–2237. Association for Computational Linguistics, 2018.
+
+R. L. Plackett. The analysis of permutations. Journal of the Royal Statistical Society. Series C (Applied Statistics), 24
+
+(2):193–202, 1975.
+
+Y. Qiao, C. Xiong, Z. Liu, and Z. Liu. Understanding the behaviors of bert in ranking. ArXiv, abs/1904.07531, 2019.
+
+T. Qin, T.-Y. Liu, and H. Li. A general approximation framework for direct optimization of information retrieval
+
+measures. Information Retrieval, 13:375–397, 2009.
+
+X. Qiu and X. Huang. Convolutional neural tensor network architecture for community-based question answering. In
+
+Proceedings of the 24th International Conference on Artiﬁcial Intelligence, page 1305–1311. AAAI Press, 2015.
+
+ISBN 9781577357384.
+
+H. Raviv, O. Kurland, and D. Carmel. Document retrieval using entity-based language models. In Proceedings of the
+
+39th International ACM SIGIR conference on Research and Development in Information Retrieval, SIGIR 2016, Pisa,
+
+Italy, July 17-21, 2016, pages 65–74. ACM, 2016.
+
+26
+
+
+S. E. Robertson, S. Walker, S. Jones, M. Hancock-Beaulieu, and M. Gatford. Okapi at TREC-2. In Proceedings of
+
+The Second Text REtrieval Conference, TREC 1993, Gaithersburg, Maryland, USA, August 31 - September 2, 1993,
+
+volume 500-215 of NIST Special Publication, pages 21–34. National Institute of Standards and Technology (NIST),
+
+1993.
+
+S. E. Robertson, S. Walker, S. Jones, M. Hancock-Beaulieu, and M. Gatford. Okapi at TREC-3. In Proceedings of The
+
+Third Text REtrieval Conference, TREC 1994, Gaithersburg, Maryland, USA, November 2-4, 1994, volume 500-225
+
+of NIST Special Publication, pages 109–126. National Institute of Standards and Technology (NIST), 1994.
+
+T. Rocktäschel, E. Grefenstette, K. M. Hermann, T. Kocisky, and P. Blunsom. Reasoning about Entailment with Neural
+
+Attention. In Proceedings of the International Conference on Learning Representations (ICLR), 2016.
+
+W. Sakata, T. Shibata, R. Tanaka, and S. Kurohashi. Faq retrieval using query-question similarity and bert-based query-
+
+answer relevance. In Proceedings of the 42nd International ACM SIGIR Conference on Research and Development
+
+in Information Retrieval, page 1113–1116. Association for Computing Machinery, 2019. ISBN 9781450361729.
+
+M. Schlichtkrull, T. N. Kipf, P. Bloem, R. van den Berg, I. Titov, and M. Welling. Modeling relational data with graph
+
+convolutional networks. Lecture Notes in Computer Science, page 593–607, 2018.
+
+M. Schuster and K. Paliwal. Bidirectional recurrent neural networks. Trans. Sig. Proc., 45(11):2673–2681, Nov. 1997.
+
+Y. Shen, X. He, J. Gao, L. Deng, and G. Mesnil. A latent semantic model with convolutional-pooling structure for
+
+information retrieval. In Proceedings of the 23rd ACM International Conference on Conference on Information and
+
+Knowledge Management, CIKM 2014, Shanghai, China, November 3-7, 2014, pages 101–110. ACM, 2014a.
+
+Y. Shen, X. He, J. Gao, L. Deng, and G. Mesnil. Learning semantic representations using convolutional neural networks
+
+for web search. In 23rd International World Wide Web Conference, WWW ’14, Seoul, Republic of Korea, April 7-11,
+
+2014, Companion Volume, pages 373–374. ACM, 2014b.
+
+Y. Shen, Y. Deng, M. Yang, Y. Li, N. Du, W. Fan, and K. Lei. Knowledge-aware attentive neural network for ranking
+
+question answer pairs. In The 41st International ACM SIGIR Conference on Research &amp; Development in Information
+
+Retrieval, page 901–904, New York, NY, USA, 2018. Association for Computing Machinery.
+
+R. Shraga, H. Roitman, G. Feigenblat, and M. Cannim. Web table retrieval using multimodal deep learning. page
+
+1399–1408, New York, NY, USA, 2020. Association for Computing Machinery. ISBN 9781450380164.
+
+C. G. M. Snoek and M. Worring. Concept-based video retrieval. Foundations and Trends in Information Retrieval, 2(4):
+
+215–322, Apr. 2009. ISSN 1554-0669.
+
+R. Socher, D. Chen, C. D. Manning, and A. Y. Ng. Reasoning with neural tensor networks for knowledge base
+
+completion. In Proceedings of the 26th International Conference on Neural Information Processing Systems - Volume
+
+1, page 926–934, Red Hook, NY, USA, 2013a. Curran Associates Inc.
+
+R. Socher, A. Perelygin, J. Wu, J. Chuang, C. D. Manning, A. Ng, and C. Potts. Recursive deep models for semantic
+
+compositionality over a sentiment treebank. In Proceedings of the 2013 Conference on Empirical Methods in Natural
+
+Language Processing, pages 1631–1642, Seattle, Washington, USA, Oct. 2013b. Association for Computational
+
+Linguistics.
+
+R. Socher, A. Perelygin, J. Wu, J. Chuang, C. D. Manning, A. Y. Ng, and C. Potts. Recursive deep models for semantic
+
+compositionality over a sentiment treebank. In Proceedings of the 2013 Conference on Empirical Methods in Natural
+
+Language Processing, EMNLP 2013, 18-21 October 2013, Grand Hyatt Seattle, Seattle, Washington, USA, A meeting
+
+of SIGDAT, a Special Interest Group of the ACL, pages 1631–1642. ACL, 2013c.
+
+C. Sun, X. Qiu, Y. Xu, and X. Huang. How to ﬁne-tune bert for text classiﬁcation?
+
+In Chinese Computational
+
+Linguistics, pages 194–206, Cham, 2019. Springer International Publishing.
+
+I. Sutskever, O. Vinyals, and Q. V. Le. Sequence to sequence learning with neural networks. In Proceedings of the 27th
+
+International Conference on Neural Information Processing Systems - Volume 2, page 3104–3112, Cambridge, MA,
+
+USA, 2014. MIT Press.
+
+C. Tan, F. Wei, W. Wang, W. Lv, and M. Zhou. Multiway attention networks for modeling sentence pairs. In
+
+Proceedings of the Twenty-Seventh International Joint Conference on Artiﬁcial Intelligence, IJCAI 2018, July 13-19,
+
+2018, Stockholm, Sweden, pages 4411–4417. ijcai.org, 2018.
+
+Z. Tang and G. H. Yang. Deeptilebars: Visualizing term distribution for neural information retrieval. In The Thirty-
+
+Third AAAI Conference on Artiﬁcial Intelligence, AAAI 2019, The Thirty-First Innovative Applications of Artiﬁcial
+
+Intelligence Conference, IAAI 2019, The Ninth AAAI Symposium on Educational Advances in Artiﬁcial Intelligence,
+
+EAAI 2019, Honolulu, Hawaii, USA, January 27 - February 1, 2019, pages 289–296. AAAI Press, 2019.
+
+M. Trabelsi, B. D. Davison, and J. Heﬂin. Improved table retrieval using multiple context embeddings for attributes. In
+
+2019 IEEE International Conference on Big Data (Big Data), pages 1238–1244, 2019.
+
+27
+
+
+M. Trabelsi, J. Cao, and J. Heﬂin. Semantic labeling using a deep contextualized language model. CoRR, abs/2010.16037,
+
+2020a. URL https://arxiv.org/abs/2010.16037.
+
+M. Trabelsi, Z. Chen, B. D. Davison, and J. Heﬂin. A hybrid deep model for learning to rank data tables. In 2020 IEEE
+
+International Conference on Big Data (Big Data), 2020b.
+
+M. Trabelsi, Z. Chen, B. D. Davison, and J. Heﬂin. Relational graph embeddings for table retrieval. In 2020 IEEE
+
+International Conference on Big Data (Big Data), 2020c.
+
+A. Vaswani, N. Shazeer, N. Parmar, J. Uszkoreit, L. Jones, A. N. Gomez, L. u. Kaiser, and I. Polosukhin. Attention is
+
+all you need. In Advances in Neural Information Processing Systems 30, pages 5998–6008. 2017.
+
+M. Volkovs and R. S. Zemel. Boltzrank: learning to maximize expected ranking gain. In Proceedings of the 26th
+
+Annual International Conference on Machine Learning, ICML 2009, Montreal, Quebec, Canada, June 14-18, 2009,
+
+volume 382 of ACM International Conference Proceeding Series, pages 1089–1096. ACM, 2009.
+
+J. Wan, P. Wu, S. Hoi, P. Zhao, X. Gao, D. Wang, Y. Zhang, and J. Li. Online learning to rank for content-based image
+
+retrieval. In Proceedings of the 24th International Joint Conference on Artiﬁcial Intelligence, page 2284–2290, 2015.
+
+S. Wan, Y. Lan, J. Guo, J. Xu, L. Pang, and X. Cheng. A deep architecture for semantic matching with multiple
+
+positional sentence representations. In Proceedings of the Thirtieth AAAI Conference on Artiﬁcial Intelligence,
+
+February 12-17, 2016, Phoenix, Arizona, USA, pages 2835–2841. AAAI Press, 2016a.
+
+S. Wan, Y. Lan, J. Xu, J. Guo, L. Pang, and X. Cheng. Match-srnn: Modeling the recursive matching structure
+
+with spatial rnn. In Proceedings of the Twenty-Fifth International Joint Conference on Artiﬁcial Intelligence, page
+
+2922–2928. AAAI Press, 2016b. ISBN 9781577357704.
+
+Q. Wang, Z. Mao, B. Wang, and L. Guo. Knowledge graph embedding: A survey of approaches and applications. IEEE
+
+Transactions on Knowledge and Data Engineering, 29(12):2724–2743, 2017.
+
+S. Wang and J. Jiang. A compare-aggregate model for matching text sequences. In 5th International Conference
+
+on Learning Representations, ICLR 2017, Toulon, France, April 24-26, 2017, Conference Track Proceedings.
+
+OpenReview.net, 2017.
+
+S. Wang, W. Zhou, and C. Jiang. A survey of word embeddings based on deep learning. Computing, 102(3):717–740,
+
+2020.
+
+Z. Wang, W. Hamza, and R. Florian. Bilateral multi-perspective matching for natural language sentences. In Proceedings
+
+of the Twenty-Sixth International Joint Conference on Artiﬁcial Intelligence, IJCAI-17, pages 4144–4150, 2017. URL
+
+https://doi.org/10.24963/ijcai.2017/579.
+
+K. L. Wiggers, A. S. Britto, L. Heutte, A. L. Koerich, and L. Oliveira. Image retrieval and pattern spotting using siamese
+
+neural network. 2019 International Joint Conference on Neural Networks (IJCNN), pages 1–8, 2019.
+
+R. Wilkinson. Effective retrieval of structured documents. In Proceedings of the 17th Annual International ACM-SIGIR
+
+Conference on Research and Development in Information Retrieval. Dublin, Ireland, 3-6 July 1994 (Special Issue of
+
+the SIGIR Forum), pages 311–317. ACM/Springer, 1994.
+
+H. Wu, R. W. Luk, K. Wong, and K. Kwok. A retrospective study of a hybrid document-context based retrieval model.
+
+Information Processing &amp; Management, 43(5):1308 – 1331, 2007. ISSN 0306-4573.
+
+P. Wu, X. Zhang, and Z. Feng. A survey of question answering over knowledge base. In Knowledge Graph and
+
+Semantic Computing: Knowledge Computing and Language Understanding, pages 86–97, Singapore, 2019. Springer
+
+Singapore.
+
+C. Xiong, J. Callan, and T. Liu. Bag-of-entities representation for ranking. In Proceedings of the 2016 ACM on
+
+International Conference on the Theory of Information Retrieval, ICTIR 2016, Newark, DE, USA, September 12- 6,
+
+2016, pages 181–184. ACM, 2016.
+
+C. Xiong, J. Callan, and T. Liu. Word-entity duet representations for document ranking. In Proceedings of the 40th
+
+International ACM SIGIR Conference on Research and Development in Information Retrieval, Shinjuku, Tokyo,
+
+Japan, August 7-11, 2017, pages 763–772. ACM, 2017a.
+
+C. Xiong, Z. Dai, J. Callan, Z. Liu, and R. Power. End-to-end neural ad-hoc ranking with kernel pooling. In Proceedings
+
+of the 40th International ACM SIGIR Conference on Research and Development in Information Retrieval, SIGIR ’17,
+
+pages 55–64. ACM, 2017b.
+
+Y. Xu, G. J. F. Jones, and B. Wang. Query dependent pseudo-relevance feedback based on wikipedia. In Proceedings
+
+of the 32nd Annual International ACM SIGIR Conference on Research and Development in Information Retrieval,
+
+SIGIR 2009, Boston, MA, USA, July 19-23, 2009, pages 59–66. ACM, 2009.
+
+28
+
+
+L. Yang, Q. Ai, J. Guo, and W. B. Croft. anmm: Ranking short answer texts with attention-based neural matching
+
+model. Proceedings of the 25th ACM International on Conference on Information and Knowledge Management -
+
+CIKM ’16, 2016.
+
+W. Yang, H. Zhang, and J. Lin. Simple applications of bert for ad hoc document retrieval. ArXiv, abs/1903.10972,
+
+2019a.
+
+X. Yang, J. Dong, Y. Cao, X. Wang, M. Wang, and T. Chua. Tree-augmented cross-modal encoding for complex-query
+
+video retrieval. Proceedings of the 43rd International ACM SIGIR Conference on Research and Development in
+
+Information Retrieval, 2020.
+
+Z. Yang, Z. Dai, Y. Yang, J. Carbonell, R. R. Salakhutdinov, and Q. V. Le. Xlnet: Generalized autoregressive pretraining
+
+for language understanding. In Advances in neural information processing systems, pages 5753–5763, 2019b.
+
+W. Yin, H. Schütze, B. Xiang, and B. Zhou. Abcnn: Attention-based convolutional neural network for modeling
+
+sentence pairs. Transactions of the Association for Computational Linguistics, 4:259–272, 2015.
+
+S. Yu, J. Su, and D. Luo. Improving bert-based text classiﬁcation with auxiliary sentence and domain knowledge. IEEE
+
+Access, 7:176600–176612, 2019.
+
+J. Yuan, Z.-J. Zha, Y.-T. Zheng, M. Wang, X. Zhou, and T.-S. Chua. Learning concept bundles for video search with
+
+complex queries. In Proceedings of the 19th ACM International Conference on Multimedia, page 453–462, New
+
+York, NY, USA, 2011. Association for Computing Machinery.
+
+H. Zamani, B. Mitra, X. Song, N. Craswell, and S. Tiwary. Neural ranking models with multiple document ﬁelds. In
+
+Proceedings of the Eleventh ACM International Conference on Web Search and Data Mining, pages 700–708. ACM,
+
+2018.
+
+J. Zhan, J. Mao, Y. Liu, M. Zhang, and S. Ma. An analysis of bert in document ranking. In Proceedings of the 43rd
+
+International ACM SIGIR Conference on Research and Development in Information Retrieval, page 1941–1944, New
+
+York, NY, USA, 2020. Association for Computing Machinery.
+
+H. Zhang, M. Abualsaud, N. Ghelani, M. D. Smucker, G. V. Cormack, and M. R. Grossman. Effective user interaction
+
+for high-recall retrieval: Less is more. In Proceedings of the 27th ACM International Conference on Information and
+
+Knowledge Management, page 187–196, 2018.
+
+K. Zhang, G. Lv, L. Wang, L. Wu, E. Chen, F. Wu, and X. Xie. Drr-net: Dynamic re-read network for sentence semantic
+
+matching. In The Thirty-Third AAAI Conference on Artiﬁcial Intelligence, AAAI 2019, The Thirty-First Innovative
+
+Applications of Artiﬁcial Intelligence Conference, IAAI 2019, The Ninth AAAI Symposium on Educational Advances
+
+in Artiﬁcial Intelligence, EAAI 2019, Honolulu, Hawaii, USA, January 27 - February 1, 2019, pages 7442–7449.
+
+AAAI Press, 2019.
+
+S. Zhang and K. Balog. Ad hoc table retrieval using semantic similarity. In Proceedings of the 2018 World Wide Web
+
+Conference on World Wide Web, WWW 2018, Lyon, France, April 23-27, 2018, pages 1553–1562. ACM, 2018.
+
+Z. Zheng, K. Chen, G. Sun, and H. Zha. A regression framework for learning ranking functions using relative relevance
+
+judgments. In SIGIR 2007: Proceedings of the 30th Annual International ACM SIGIR Conference on Research and
+
+Development in Information Retrieval, Amsterdam, The Netherlands, July 23-27, 2007, pages 287–294. ACM, 2007.
+
+Z. Zheng, H. Zha, and G. Sun. Query-level learning to rank using isotonic regression. In 2008 46th Annual Allerton
+
+Conference on Communication, Control, and Computing, pages 1108–1115, Sep. 2008.
+
+J. Zhou, G. Cui, Z. Zhang, C. Yang, Z. Liu, and M. Sun. Graph neural networks: A review of methods and applications.
+
+ArXiv, abs/1812.08434, 2018.
+
+W. Zhou, H. Li, and Q. Tian.
+
+Recent advance in content-based image retrieval: A literature survey.
+
+ArXiv,
+
+abs/1706.06064, 2017.
+
+29
+

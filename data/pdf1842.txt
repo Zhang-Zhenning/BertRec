@@ -1,0 +1,492 @@
+
+Blog posts that describe complicated data mining techniques and topics in simple English for people that aren't pursuing a PhD in data mining.
+
+Simple Data Mining
+
+
+
+Home
+
+Purpose of this Blog
+
+Helpful Tools/Courses
+
+
+
+Saturday, April 11, 2015
+
+Probabilistic Retrieval Model: Basics, Query Likelihood and
+
+Smoothing
+
+This post discusses a different way (compared to the vector space model) to rank documents when performing text
+
+retrieval.  This is called the probabilistic retrieval model.  It bases its formulas off of probability theory instead of the rules of
+
+thumb that were created for the vector space model through trial and error.  I'll explain the basics of the probability model,
+
+explains some limitations and derive a "smooting" implementation (Jelinek-Mercer), and then give an example of how it all
+
+works.
+
+If it has been a while since you've take statistics, or never have, I'm hoping to make this first section easy for you to follow.
+
+ When it comes to retrieving the right document during a search we can think of the best documents as the ones that have
+
+the highest probability of being relevant to the searcher.  The trick comes when we have to define that probability.  The
+
+mathspeak version of this probability definition is written as "p(R=1|d,q)".  Translated in to English that reads "the
+
+probability that R=1 (i.e. the document is relevant) given that we have document d and query q".  If we can efficiently
+
+calculate this probability, we can rank the documents in our search by their probability of being relevant.
+
+The problem with the probability p(R=1|d,q) is that it is actually very hard, if not impossible, to calculate from the
+
+information we have when a user submits a query.  So, the data mining community has developed a substitute probability
+
+to calculate that gives us basically the same effect.  What they use is the probability that the query entered by the user
+
+was randomly generated from a relevant document.  That probably didn't make sense yet, so let me explain what a
+
+unigram is and then give you an example. 
+
+When you analyze text, you have to decide how the text will be divided up for analysis.  If the user enters a query for "hard
+
+drive"  are you going to treat "hard" and "drive" as 2 separate variables? Or, are you going to treat them as one?  How do
+
+you know which one you should use?  For the simplest models we treat each word as a different variable and assume that
+
+each word has nothing to do with the other words.  This assumption is called statistical independence.  It basically means
+
+that you're assuming that there is no correlation between the words in the query.  This is obviously NOT true, but as it
+
+turns out, accepting this assumption actually gives pretty good results anyway so we'll go with it.  So each word in the
+
+query gets a fancy name called a unigram (basically means 1 word).  If you bunched words into groups of 2 they would be
+
+2-grams, etc.
+
+Query Likelihood Example
+
+Now it's time for that example I promised.  Suppose you entered the query {hard drive test} and
+
+you're looking at document D4 = {...as part of the factory acceptance, every unit gets a hard drive test...}.  This document
+
+contains each of the query words once.  Think of the document D4 as a bag of marbles where each document word
+
+(unigram) is a different marble in the bag. 
+
+Now randomly take a marble out, what's the probability that marble was one of the query words?  It should be the number
+
+of times the word is in the document divided by the number of words in the document.  If D4 is only 20 words long, then
+
+the probability of pulling out the word "hard" is 1/20.  The probability of pulling out "drive" and "test" if also 1/20 for each
+
+term.  If you're familiar with statistics, this is random sampling WITH replacement (put the marble back in the bag after you
+
+pick one), because the probability of pulling out "drive" isn't 1/19 after I've picked my first word.  Now that we understand
+
+that we can predict the probability of generating the query with the document we're looking at; it's just the probability of
+
+pulling out each word multiplied by each other, or (1/20) x (1/20) x (1/20) = 1/8000.  Using this methodology, you can look
+
+at all of the documents in the collection and do the same calculation; the highest ranked document will be the one that
+
+spits out the highest probability. If you want the mathspeak version of this probability it looks like this, "p(q|d,R=1)".  This
+
+basically assumes that all of the documents are relevant (we know they're not) and gives the probability that they
+
+generated your query.
+
+Now that we have that understanding, what happens when a method like the one above runs into a document that doesn't
+
+contain one of the query words...think about it...the probability calculated will be 0.  That's because if 1 query word is
+
+missing from the document, then one of the terms that get multiplied together will be something like (0/20) which equals 0.
+
+ Multiplying anything by 0 gives you 0 so this seems to penalize the document WAY to much.  What if this document had
+
+the phrase "hard drive examination" instead of "hard drive test".  Would we really want to rank that document at the very
+
+bottom...I think not! There's a way to fix this problem, but I'm going to have to explain some formulas before I do that.
+
+Query Likelihood Formulas
+
+Some words are very rare in documents.  If you happen to be searching for a rare term, then the probability of finding this
+
+
+
+
+
+
+
+Search
+
+Search This Blog
+
+
+
+Generalized Sequential Pattern
+
+(GSP) Mining
+
+Closed Itemsets
+
+Apriori Principle
+
+Null-Invariant Measures of
+
+Interestingness
+
+Graph Pattern Mining (gSpan) -
+
+Introduction
+
+Popular Posts
+
+
+
+▼  2015 (15)
+
+▼  April (4)
+
+How to Mine
+
+Frequent Patterns
+
+in Graphs with
+
+gSpan...
+
+Simple PageRank
+
+Algorithm
+
+Description
+
+Probabilistic Retrieval
+
+Model: Basics,
+
+Query Likel...
+
+Precision and
+
+Blog Archive
+
+
+
+
+
+
+
+更多 
+
+
+
+创建博客  登录
+
+
+
+
+term will be very small.  This small probability will multiply with other fractions and then it's pretty likely that you'll end up
+
+with tiny values for your query probability.  In a computer, when variable values get too close to 0 there is a growing risk
+
+that round off error in the computer will start to become significant and distort your results.  To avoid this, the magical
+
+properties of the logarithm come to save the day.  If you look at the chart below for the log(x) you will see that as x
+
+increases, the log(x) also increases (by the way I assume log base 10 here and through the rest of this post).  It's not a
+
+linear increase, but when it comes to ranking things, that's OK.  if X is greater than Y, then log(X) is greater than log(Y).
+
+ Also notice that the chart spans values where X is 0 to 1, like probabilities are required to do.
+
+The other thing that is SO cool about the logarithm is that log (A*B) = log(A) + log(B).  If we apply this rule to the
+
+probabilities we're adding together then for the example above (1/20) x (1/20) x (1/20) becomes log(1/20) + log(1/20) +
+
+log(1/20).  It doesn't look very different here, but this minimizes the round-off problem in a computer.  In mathspeak, if we
+
+have a lot of terms that get multiplied together we use a large pi symbol.  The way we calculated the probability of a query
+
+being generated from a document above would look like this
+
+f(q,d) is just a ranking function that depends on the query, q, and the document, d.  The fraction to the right is the count of
+
+a word (this is a word in the query) in a document divided by the number of words in the document.  This fraction can also
+
+be written as p(wi|d), or probability of a word given document, d.  That BIG pi symbol means that you're going to multiply
+
+all of fractions to the right together from the first word (i=1) in the query to the last word in the query (there are n words in
+
+the query).  If we take the logarithm of this formula, then we get this
+
+Both of these formulas are equivalent, but before your head explodes, calm down and we'll walk through each one slowly.
+
+ For both of them, we still have f(q,d) as the ranking function.  We don't have log(f(q,d)) because there's no reason to do
+
+this since we have proven that the order is maintained when we take the logarithm.  In the top equation, we have the same
+
+fraction on the right, but we take the logarithm of this fraction.  Instead of multiplying all of these fractions from i=1 to n, we
+
+add them all up.  That's what the BIG sigma symbol means.  Now the difference between the first line and the 2nd one is
+
+the subscript on the sigma symbol and the term c(w,q).  The subscript on the sigma symbol means that we are going to
+
+sum over all of the words in the volume (or words in the collection of documents).  The reason we can do this without
+
+messing everything up is that we are multiplying each term by c(w,q) which is the count of the word in the query.  So
+
+when 'w' in the summation equals "hard" then c(w,q)=1 and in effect we're saying this one counts/matters.  If the 'w' in the
+
+summation equals "banana", that's not part of our query, so c(w,q)=0 and we add nothing to our ranking function.  At this
+
+point in time, you may be thinking, why would anybody add that complexity to the equation?  We'll see why this makes
+
+some of the notation easier to understand in upcoming sections
+
+Language Model Smoothing
+
+If we plot the probability of a word being selected in a document using the query likelihood model on one axis and the word
+
+number on a 2nd axis, we might get something that looks like this
+
+
+
+
+
+
+
+
+
+
+
+Recall...and Other
+
+Variations
+
+►  March (4)
+
+►  February (7)
+
+
+
+
+As described earlier, if the word doesn't exist in the document, then there is 0 probability that it can be picked.  As
+
+described earlier, this is probably not desirable because there might be a document that matches very closely, but does
+
+not contain one of the words in the query.  What would be better is if we could adjust the curve to a little to look more like
+
+the green line below
+
+Notice that near the end of the curve there are non-zero values for p(w|d).  These non-zero values will help solve the
+
+problem of query terms that don't show up in a document.  Since this green curve represents the average probabilities for
+
+all the words in the document collection, we wouldn't want to just use this curve for p(w|d).  If we did, all of the documents
+
+would have the same score and the calculations would be pointless.  What we really want is a way to kind of take a
+
+weighted average between the actual document we're ranking and the whole collection of documents.  You can imagine
+
+that if we did this that the bumpy blue curve would become much smoother, thus the name "smoothing" for this approach.
+
+ One method of doing this is called the Jelinek-Mercer(JM) model.
+
+To get us to the JM model we've got to go through a derivation first.  I've tried to make this derivation as visual as possible.
+
+ If you don't really care about how the equation is derived, you can just skip down a little bit.  But, if you're feeling
+
+adventurous, here's what I've come up with to explain it.
+
+The top equation is the one we have already explained.  The next step down splits this equation into 2 parts that represent
+
+a weighting for the probability of words found in the document and a weighting for the probability of words found in the rest
+
+of the collection.  You'll notice that the probability of words in the document turned into a weird looking Pseen.  I'm going
+
+to ask you to just ignore this for now, we'll explain this more later.  On the 3rd line we split the 2nd term on the 2nd line
+
+because the sum over all of the terms not found in the document is the same as taking all the words in the collection and
+
+subtracting the words found in the document.  On the 4th line we use one of the properties of logarithm to split the alpha
+
+term out from the p(w|C) term.  Once we've done all of this we combine and reorganize all the terms in the last line.  The
+
+first term in the first line takes advantage of the fact that log(a)-log(b)=log(a/b).  For the 2nd term, since alpha is a constant
+
+we can simplify the notation where |q| is the count of words in the query.  The last term on the last line is just added to the
+
+end from the 4th line. 
+
+Now that we have this equation on the last line above, we can adapt it to the JM method of smoothing.  To do this we need
+
+to define this term circled in red
+
+
+
+
+
+
+
+
+The JM method starts by defining how it wants to perform the weighting between the probabilities from the documents and
+
+the collections.  Essentially it is giving a new definition for p(w|d), or the probability of a word given a document.  Here's
+
+how this is defined in the JM method
+
+Let's start by saying that lambda(λ) is a user selected variable that ranges between 0 and 1 (it's a different way of defining
+
+alpha in earlier equations). The first term is the weighted probability of a word based on data from the document, and the
+
+2nd term is the weighted probability of a word based on the collection of documents.  The 2nd half of the first term where
+
+we have that fraction, we're just taking the count of the word in the document, divided by the count of words in the
+
+document.  You can see that if we set lambda to a large value close to 1, that we will basically just be taking the
+
+probability of a word based on the document collection. With this one definition, we can now derive the rest of the JM
+
+ranking function.
+
+If you're one of those people that don't care about derivations (it's OK, I used to be one of them) just look at the last
+
+equation line and use it.  If not, here's a quick explanation.  The first equation row just used the definition for Pseen to
+
+simplify the fraction a little bit.  Notice that lamda gets substituted for alpha.  Up until now we have been using alpha as
+
+our generic term that defines the weighting between the document and collection.  Since the JM method defines this as
+
+lambda, we just swap alpha out for lambda.  After obtaining a simplified fraction for that weird Pseen fraction term, we
+
+substitute it into the ranking function in the 2nd line.  We also get to completely remove the last 2 terms of this ranking
+
+function because they're actually constant.  The last term is a probability of a word in the collection and that will be the
+
+same for any document in the collection.  The 2nd to last term is based on the number of words in the query, which is the
+
+same for every document we're trying to rank as well.  So, there's no need to calculate these values if we're only interested
+
+in ranking documents.  They get the X, and we end up with a simpler equation in the last line.  The sum in this final
+
+equation is over all the words in the query and document
+
+Now that we have this equation, let's finally do a simple example with it to show how to use it.  Let's say that we have the
+
+same query and documents used in the post about the vector space model:
+
+q = {hard drive test}
+
+D1 = {...it's hard to determine...};  |D1|=365
+
+D2 = {...this hard drive has 100GB of memory...make sure the drive is fully installed...};  |D2|=50
+
+D3 = {...before I bought my new car, I took it out for a test drive...};  |D3|=75
+
+D4 = {...as part of the factory acceptance, every unit gets a hard drive test...};  |D4|=50
+
+D5 = {...that was a hard test...a standardized test is design to be hard for...};  |D5|=230
+
+To do all of the calculations we need to know the probability of finding the query words in the collection of documents.  We
+
+take the count of the query words in all the documents and divide them by the total number of words in our collection.  For
+
+example, the word "hard" shows up 5 times in our collection of documents, and there are 365+50+75+50+230=770 words
+
+in the collection.  So the probability of "hard" in the collection is 5/770 = 0.006494 = p("hard"|collection).  If we do the
+
+same for drive and test we get p("drive"|collection) = 0.005195 and p("test"|collection) = 0.005195.
+
+The only thing left before we rank some documents is picking a value for lambda.  Let's just say that we use 0.5 for this
+
+example.  For the first document we would get the following.
+
+
+
+
+
+
+
+
+
+
+
+
+Posted by simpledatamining at 11:32 AM 
+
+Labels: Probability, Search, Text, Text Retrieval
+
+Notice that I only included 3 terms here because the other terms have values of c(w,q) that are equal to zero.  This is
+
+because there are only three query terms.  All of the other words in the collection aren't in the query so their value is zero.
+
+ This is actually a big weakness for the JM method.  It doesn't actually solve the problem where there are terms missing
+
+from our query.  Instead is smooths out the probability of the terms that are in our query with the probability from the
+
+collection.  To solve the problem where we don't include a term in our query, you have to use another method like Dirichlet
+
+Prior of BM25.  These are examples of other smoothing methods that the data mining community has created.  If we
+
+continue our example using the JM method we get the following ranking values for the documents in our collection:
+
+We can sort these scores from largest to smallest and output the documents to the user.  That's basically how it all
+
+works.  I think that wraps it up. If you have any other specific questions about this method, please say so in the
+
+comments and I'll see what I can do to augment this explanation to cover it.  As always I hope this helped somebody out
+
+there!
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Add comment
+
+1 comment:
+
+Unknown September 11, 2019 at 10:15 AM
+
+So probabilistic retrieval is actually just counting terms and dividing the result by the the count of all terms?
+
+Where do we get the term counts from? Do we count them in advance and do some kind of indexing or do we
+
+count them ad hoc?
+
+Great post. The books on this topic that I´ve read are way to abstract for a beginner like me. Thanks :)
+
+Reply
+
+
+
+
+Newer Post
+
+Older Post
+
+Home
+
+Subscribe to: Post Comments (Atom)
+
+
+
+Awesome Inc. theme. Powered by Blogger.
+

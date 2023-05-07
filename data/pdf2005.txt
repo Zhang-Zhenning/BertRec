@@ -1,0 +1,1397 @@
+
+Chapter 11
+
+Markov Chains &amp; PageRank
+
+Let us try to predict the weather! How long until it is rainy the next time?
+
+What about the weather in ten days? What is the local “climate”, i.e., the
+
+“average” weather?
+
+sunny
+
+cloudy
+
+rainy
+
+2
+
+3
+
+1
+
+3
+
+1
+
+2
+
+1
+
+2
+
+1
+
+3
+
+1
+
+3
+
+1
+
+3
+
+Figure 11.1:
+
+According to a self-proclaimed weather expert, the above graph
+
+models the weather in Z¨urich. On any given day, the weather is either sunny,
+
+cloudy, or rainy. The probability to have a cloudy day after a sunny day is 1
+
+3. In
+
+the context of Markov chains the nodes, in this case sunny, rainy, and cloudy,
+
+are called the states of the Markov chain.
+
+Remarks:
+
+• Figure 11.1 above is an example of a Markov chain—see the next
+
+section for a formal deﬁnition.
+
+• If the weather is currently sunny, the predictions for the next few days
+
+according to the model from Figure 11.1 are:
+
+Day
+
+sunny
+
+cloudy
+
+rainy
+
+0
+
+1
+
+0
+
+0
+
+1
+
+2
+
+3
+
+1
+
+3
+
+0
+
+2
+
+0.611
+
+0.222
+
+0.167
+
+3
+
+0.574
+
+0.259
+
+0.167
+
+4
+
+0.568
+
+0.247
+
+0.185
+
+...
+
+...
+
+...
+
+...
+
+93
+
+
+94
+
+CHAPTER 11. MARKOV CHAINS &amp; PAGERANK
+
+11.1
+
+Markov Chains
+
+Markov chains are a tool for studying stochastic processes that evolve over time.
+
+Deﬁnition 11.2 (Markov Chain). Let S be a ﬁnite or countably inﬁnite set of
+
+states. A (discrete time) Markov chain is a sequence of random variables
+
+X0, X1, X2, . . . ∈ S that satisﬁes the Markov property (see below).
+
+Deﬁnition 11.3 (Markov Property). A sequence (Xt) of random variables has
+
+the Markov property if for all t, the probability distribution for Xt+1 depends
+
+only on Xt, but not on Xt−1, . . . , X0.
+
+More formally, for all t ∈ N&gt;0 and
+
+s0, . . . , st+1 ∈ S it holds that Pr[Xt+1 = st+1 | X0 = s0, X1 = s1, . . . , Xt = st] =
+
+Pr[Xt+1 = st+1 | Xt = st].
+
+Remarks:
+
+• A sequence of random variables is also called a discrete time stochastic
+
+process. Processes that satisfy the Markov property are also called
+
+memoryless.
+
+• The probability distribution of X0 does not depend on a previous
+
+state (since there is none). It is called the initial distribution, and we
+
+denote it by the vector q0 = (q0,s)s∈S with the entries Pr[X0 = s] for
+
+every state s ∈ S. If the ﬁrst day is sunny, the initial distribution is
+
+q0 = (1, 0, 0).
+
+Deﬁnition 11.4 (Time Homogeneous Markov Chains). A Markov chain is
+
+time homogeneous if Pr[Xt+1 = st+1 | Xt = st] is independent of t, and in
+
+that case pi,j = Pr[Xt+1 = i | Xt = j] is well deﬁned.
+
+Remarks:
+
+• We will only consider time homogeneous Markov chains.
+
+• Markov chains are often modeled using directed graphs, as in Fig-
+
+ure 11.1. The states are represented as nodes, and an edge from state
+
+i to state j is weighted with probability pi,j.
+
+• Just like directed graphs, Markov chains can be written in matrix
+
+form (using the adjacency matrix).
+
+In this context, the matrix is
+
+called the transition matrix, and we denote it by P. For the example
+
+from Figure 11.1, the transition matrix is:
+
+to
+
+sunny
+
+cloudy
+
+rainy
+
+from
+
+sunny
+
+2/3
+
+1/3
+
+0
+
+cloudy
+
+1/2
+
+0
+
+1/2
+
+rainy
+
+1/3
+
+1/3
+
+1/3
+
+• Let qt = (qt,i)i∈S be the probability distribution on S for time t, i.e.,
+
+qt,i = Pr[Xt = i]. The probability to be in state j at time t + 1 is
+
+qt+1,j = �
+
+i∈S Pr[Xt = i]·Pr[Xt+1 = j |Xt = i] = �
+
+i∈S qt,i ·pi,j. This
+
+can be written as the vector-matrix-multiplication qt+1 = qt · P.
+
+
+11.1. MARKOV CHAINS
+
+95
+
+• The state distribution at time t is qt = q0 · P t. We denote by p(t)
+
+i,j the
+
+entry at position i, j in P t, i.e., the probability of reaching j from i in
+
+t steps.
+
+• Another interpretation of Markov chains is that of a random walk.
+
+Deﬁnition 11.5 (Random Walk). Let G = (V, E) be a directed graph, and
+
+let ω : E → [0, 1] be a weight function so that �
+
+v:(u,v)∈E ω(u, v) = 1 for all
+
+nodes u. Let u ∈ V be the starting node. A weighted random walk on G
+
+starting at u is the following discrete Markov chain in discrete time. Beginning
+
+with X0 = u, in every step t, the node Xt+1 is chosen according to the weights
+
+ω(Xt, v), where v are the neighbors of Xt. If G is undirected and unweighted,
+
+then Xt+1 is chosen uniformly at random among Xt’s neighbors and the random
+
+walk is called simple.
+
+Remarks:
+
+• Random walks are a special case of Markov chains where the initial
+
+distribution is a single state.
+
+In Section 11.4 we will study simple
+
+random walks.
+
+• If it is sunny today, how long will it stay sunny?
+
+Deﬁnition 11.6 (Sojourn Time). The sojourn time Ti of state i is the time
+
+the process stays in state i.
+
+Remarks:
+
+• It holds that Pr[Ti = k] = pk−1
+
+i,i
+
+· (1 − pi,i), i.e., Ti is geometrically
+
+distributed. For example E[Tsunny] = 2.
+
+• The sojourn time Ti does not depend on the time the process has spent
+
+in state i already (memoryless property). The geometric distribution
+
+is the only discrete distribution that is memoryless.
+
+• If it is currently sunny, how long does it take until we see the ﬁrst
+
+rainy day?
+
+Deﬁnition 11.7 (Hitting Time &amp; Arrival Probability). Let i and j be two
+
+states. The hitting time Ti,j is the random variable counting the number of
+
+steps until visiting j the ﬁrst time when starting from state i, i.e., the value of
+
+Ti,j is the smallest integer t ≥ 1 for which Xt = j under the condition that X0 =
+
+i. The expected hitting time from i to j is the expected value hi,j = E[Ti,j].
+
+The arrival probability from i to j is the probability fi,j = Pr[Ti,j &lt; ∞].
+
+Remarks:
+
+• The time ci,j = hi,j + hj,i is referred to as the commute time between
+
+i and j.
+
+• By deﬁnition, hi,j is the sum �∞
+
+i=1 i·p(t)
+
+i,j. The following lemma states
+
+that the expected hitting time can also be computed by solving a
+
+system of linear equations.
+
+
+96
+
+CHAPTER 11. MARKOV CHAINS &amp; PAGERANK
+
+Lemma 11.8. If if hi,j exists for all i, j ∈ S, then the expected hitting times
+
+are
+
+hi,j = 1 +
+
+�
+
+k̸=j
+
+pi,khk,j .
+
+Proof. Plugging in the deﬁnition of hi,j and applying the law of total probability
+
+we get that
+
+hi,j = E[Ti,j] =
+
+�
+
+k∈S
+
+E[Ti,j | X1 = k] · pi,k .
+
+Taking the jth term out, we obtain
+
+hi,j = E[Ti,j | X1 = j] · pi,j +
+
+�
+
+k̸=j
+
+E[Ti,j | X1 = k] · pi,k
+
+= 1 · pi,j +
+
+�
+
+k̸=j
+
+(1 + E[Tk,j]) · pi,k .
+
+Since pi,j together with all the values pi,k sum up to 1, we can simplify to
+
+hi,j = 1 +
+
+�
+
+k̸=j
+
+E[Tk,j] · pi,k = 1 +
+
+�
+
+k̸=j
+
+pi,khk,j .
+
+Remarks:
+
+• On a sunny day it takes in expectation 8 days until it starts raining.
+
+• Lemma 11.9 for the arrival probabilities can be established similarly
+
+to Lemma 11.8.
+
+Lemma 11.9. For all i, j ∈ S, the arrival probability is
+
+fi,j = pi,j +
+
+�
+
+k̸=j
+
+pi,kfk,j .
+
+11.2
+
+Stationary Distribution &amp; Ergodicity
+
+What is the “climate” in Z¨urich? Often one is particularly interested in the long
+
+term behavior of Markov chains and random walks. The mathematical notion
+
+that captures a Markov chain’s long term behavior is the stationary distribution,
+
+which we will introduce and study in the following.
+
+Remarks:
+
+• The entries in P t contain the probability of entering a certain weather
+
+condition (state). What happens for large values of t? The matrix
+
+seems to converge!
+
+P 3 ≈
+
+
+
+
+
+0.574
+
+0.259
+
+0.167
+
+0.556
+
+0.222
+
+0.222
+
+0.537
+
+0.259
+
+0.204
+
+
+
+
+
+P 10 ≈
+
+
+
+
+
+0.563
+
+0.250
+
+0.187
+
+0.562
+
+0.250
+
+0.187
+
+0.562
+
+0.250
+
+0.188
+
+
+
+
+
+
+11.2. STATIONARY DISTRIBUTION &amp; ERGODICITY
+
+97
+
+• No matter what the initial weather q0 is, the product q0 · P t seems to
+
+approach ˜q ≈ (0.563, 0.250, 0.188) as t grows. Moreover, if we multiply
+
+the vector ˜q with P we almost get ˜q again. In other words, ˜q is almost
+
+an eigenvector of P with eigenvalue 1.
+
+Deﬁnition 11.10 (Stationary Distribution). A distribution π over the states
+
+is called stationary distribution of the Markov chain with transition matrix
+
+P if π = π · P.
+
+Remarks:
+
+• Our weather Markov chain converges towards π = (9/16, 4/16, 3/16),
+
+which is an eigenvector of P with eigenvalue 1.
+
+We conclude that
+
+in the long run, 9 out of 16 days are sunny in Z¨urich. The weather
+
+model appears to be not as accurate as the weather expert led us to
+
+believe . . .
+
+• Consider the sequence qi = qi−1·P, where q0 is the initial distribution.
+
+In general, this sequence does not necessarily converge as t grows.
+
+However, if it does converge to some distribution π, then it must hold
+
+that π = π · P.
+
+Lemma 11.11. Every Markov chain has a left eigenvector with eigenvalue 1.
+
+Proof. Let P be the transition matrix of a Markov chain, and denote by e =
+
+(1, . . . , 1)⊤ the all-ones vector. Because in P the entries in each row sum up
+
+to 1 (P is row stochastic), it holds that Pe = e. Denoting by I the identity
+
+matrix, it follows that (P − I)e = 0. In other words, e is an eigenvector with
+
+eigenvalue 0 for (P −I), which implies that (P −I) is singular, i.e., not invertible.
+
+Thus, also (P − I)⊤ is singular, and it follows that there is a vector π ̸= 0 so
+
+that 0 = (P − I)⊤π = P ⊤π − Iπ. Transposing and rearranging we obtain that
+
+π⊤P = π⊤, as desired.
+
+Remarks:
+
+• Using Brouwer’s ﬁxed point theorem one can show that there is also
+
+a left eigenvector π that corresponds to a probability distribution.
+
+• The stationary distribution is not necessarily unique, see Figure 11.12.
+
+The issue is that some states are not reachable from all other states.
+
+u
+
+v
+
+w
+
+1
+
+1
+
+2
+
+1
+
+2
+
+1
+
+Figure 11.12:
+
+This Markov chain has inﬁnitely many stationary distributions,
+
+for example π0 = (1, 0, 0), π1 = (0, 0, 1), and π0.8 = (0.2, 0, 0.8). The states u
+
+and w are called absorbing states, since they are never left once they are entered.
+
+Deﬁnition 11.13 (Irreducible Markov Chains). A Markov chain is irreducible
+
+if all states are reachable from all other states. That is, if for all i, j ∈ S there
+
+is some t ∈ N, such that p(t)
+
+i,j &gt; 0.
+
+
+98
+
+CHAPTER 11. MARKOV CHAINS &amp; PAGERANK
+
+Lemma 11.14. In an irreducible Markov chain it holds that hi,j &lt; ∞ for all
+
+states i, j.
+
+Proof. Fix some state j, and observe that due to Deﬁnition 11.13 for every
+
+s ∈ S, there is some ts so that p(ts)
+
+s,j &gt; 0. Denote by t = max{ts | s ∈ S} the
+
+largest such value. State j can be reached from every state in at most t steps.
+
+We partition the random walk into trials of t successive steps. Within each trial,
+
+state j is reached with probability at least p = min{pts
+
+s,j | s ∈ S}. The number
+
+of trials until the random walk reaches j is thus upper bounded by a geometric
+
+distribution with parameter p. It follows that at most 1/p trials are necessary
+
+to reach j, and we conclude that hi,j ≤ t/p for any i.
+
+Remarks:
+
+• Similarly, it follows that fi,j = 1 for all states i, j if the Markov chain
+
+is irreducible.
+
+Lemma 11.15. Every ﬁnite irreducible Markov chain has a unique stationary
+
+distribution π. The distribution is πj =
+
+1
+
+hj,j for all j ∈ S.
+
+Proof. Denote by P the transition matrix of an irreducible Markov chain. Let
+
+π ̸= 0 be a left eigenvector of P with eigenvalue 1 as promised by Lemma 11.11.
+
+Denote further by hi,j the expected hitting times guaranteed by Lemma 11.14.
+
+We ﬁrst consider the case that �
+
+i πi ̸= 0 and w.l.o.g. assume that �
+
+i πi = 1.
+
+Due to Lemma 11.8 it holds that for any j ∈ S,
+
+πihi,j = πi
+
+
+
+1 +
+
+�
+
+k̸=j
+
+pi,khk,j
+
+
+
+ for all i ∈ S .
+
+Since �
+
+i πi = 1, summing up those equations over all i yields
+
+πjhj,j +
+
+�
+
+i̸=j
+
+πihi,j = 1 +
+
+�
+
+i
+
+πi
+
+�
+
+k̸=j
+
+pi,khk,j
+
+= 1 +
+
+�
+
+k̸=j
+
+hk,j
+
+�
+
+i
+
+πipi,k ,
+
+by switching the summation on the right hand side. Since π is an eigenvector
+
+with eigenvalue 1, it holds that �
+
+i πipi,k = πk, and thus the equation becomes
+
+πjhj,j +
+
+�
+
+i̸=j
+
+πihi,j = 1 +
+
+�
+
+k̸=j
+
+hk,jπk .
+
+Noting that all hj,j &gt; 1 we conclude that πj = 1/hj,j, as desired.
+
+In the
+
+remaining case where �
+
+i πi = 0, the equation turns into
+
+πjhj,j +
+
+�
+
+i̸=j
+
+πihi,j =
+
+�
+
+k̸=j
+
+hk,jπk ,
+
+yielding that πj = 0 for all j. This contradicts that π is an eigenvector.
+
+
+11.2. STATIONARY DISTRIBUTION &amp; ERGODICITY
+
+99
+
+Remarks:
+
+• Irreducible Markov chains with an inﬁnite number of states do not
+
+necessarily have a stationary distribution.
+
+• Depending on the choice of the initial distribution, even an irreducible
+
+Markov chain does not necessarily converge towards its stationary
+
+distribution, see Figure 11.16.
+
+u
+
+v
+
+1
+
+1
+
+Figure 11.16:
+
+This Markov chain is irreducible, and has the unique station-
+
+ary distribution π = (0.5, 0.5). In this particular chain, each state can only be
+
+reached every other step, or in other words, both states have period 2. There-
+
+fore, the initial distribution is attained in every second step, and only q0 = π
+
+“converges” towards the stationary distribution.
+
+Deﬁnition 11.17 (Aperiodic Markov Chains). The period of a state j ∈ S is
+
+the largest ξ ∈ N such that
+
+{n ∈ N | p(n)
+
+j,j &gt; 0} ⊆ {i · ξ | i ∈ N}
+
+A state with period ξ = 1 is called aperiodic, and the Markov chain is aperi-
+
+odic if all its states are.
+
+Remarks:
+
+• One can show that if the Markov chain is irreducible, then all states
+
+have the same period.
+
+• A state j with pj,j &gt; 0 is trivially aperiodic.
+
+• If pj,j = 0, then one can check whether state j is aperiodic by testing,
+
+as illustrated in Figure 11.18, if the following holds: Does j lie on two
+
+directed cycles of lengths k and l (counting the edges in the chain) so
+
+that k and l are relatively prime, i.e., have a greatest common divisor
+
+of 1? Or, using the kth and lth powers of P, are there relatively prime
+
+k and l such that both p(k)
+
+j,j and p(l)
+
+j,j &gt; 0?
+
+Deﬁnition 11.19 (Ergodic Markov Chains). If a ﬁnite Markov chain is irre-
+
+ducible and aperiodic, then it is called ergodic.
+
+Theorem 11.20. If a Markov chain is ergodic it holds that
+
+lim
+
+t→∞ qt = π,
+
+where π is the unique stationary distribution of the chain.
+
+
+100
+
+CHAPTER 11. MARKOV CHAINS &amp; PAGERANK
+
+u
+
+v
+
+w
+
+x
+
+1
+
+1
+
+2
+
+1
+
+2
+
+1
+
+1
+
+Figure 11.18:
+
+Starting at state v there is a cycle v → u → v using 2 edges, and
+
+a cycle v → w → x → v using 3 edges. Because 2 and 3 are relatively prime,
+
+the state v is aperiodic.
+
+Remarks:
+
+• The theorem holds regardless of the initial distribution.
+
+• The stationary distribution of ergodic Markov chains can thus be ap-
+
+proximated eﬃciently, namely by successively multiplying a vector
+
+with a matrix instead of computing the powers of a matrix.
+
+11.3
+
+PageRank Algorithm
+
+Google’s PageRank algorithm is based on a Markov chain obtained from a vari-
+
+ant of a random walk.
+
+Remarks:
+
+• Google provides search results that match the user’s search terms.
+
+Under the hood Google maintains a ranking among websites to make
+
+sure “better” or “more important” websites appear early in the search
+
+results. Instead of solving the whole problem at once, this ranking is
+
+ﬁrst established globally (independent of the search terms), and only
+
+later websites matching the search query are sorted according to some
+
+rank. In this section we focus on the ranking part.
+
+• The ﬁrst step to ranking websites is to crawl the web graph, i.e., a
+
+directed graph in which the nodes are websites, and an edge (u, v)
+
+indicates that website u contains a hyperlink to website v.
+
+u
+
+v
+
+w
+
+x
+
+y
+
+Figure 11.21:
+
+An example of a web graph with 5 websites. Website x does not
+
+link to any other website, i.e., x is a sink.
+
+• A na¨ıve approach is to rank the sites by the number of incoming
+
+hyperlinks. In the example from Figure 11.21 this yields the same
+
+
+11.3. PAGERANK ALGORITHM
+
+101
+
+rank for websites w and x. One could, however, argue that the link
+
+from w to x means that x is more important than w.
+
+• Google’s idea is to model a random surfer who follows hyperlinks
+
+in the web graph, i.e., performs a random walk.
+
+After suﬃciently
+
+many steps, the websites can be ranked by how many times they were
+
+visited. The intuition is that websites are visited more often if they
+
+are linked by many other sites, which should be a good measure of
+
+how important a website is.
+
+• Since the walk is directed, the random surfer can get stuck in sinks
+
+(nodes with no outgoing edges). To ﬁx this issue, a random website is
+
+chosen for the next step whenever the random surfer reaches a sink.
+
+• Let us denote the random surfer matrix describing this random walk
+
+by W.
+
+• Simulating the random walk described by W to ﬁnd a stationary dis-
+
+tribution is not feasible: There are over 1 billion websites—meaning
+
+that a lot of steps have to be simulated to get a good estimation of the
+
+stationary distribution. Using our knowledge about Markov chains we
+
+can simulate many random walks at once by repeatedly multiplying
+
+some initial distribution q0 with W.
+
+• There is no guarantee that this process converges to a stationary dis-
+
+tribution.
+
+We know that this can be ﬁxed by making the Markov
+
+chain ergodic.
+
+• One way to make a Markov chain ergodic is to insert an edge between
+
+every two nodes.
+
+Deﬁnition 11.22 (Google Matrix). Let W be a random surfer matrix, and let
+
+α ∈ (0, 1) be a constant. Denote further by R the matrix in which all entries
+
+are 1/n. The following matrix M is called the Google Matrix:
+
+M = α · W + (1 − α) · R .
+
+Remarks:
+
+• The intuition behind R is that in every step, with probability 1 − α,
+
+the random surfer “gets bored” by the current website and surfs to a
+
+new random site.
+
+• While the R-component in M ensures that the Markov chain con-
+
+verges, it also changes the stationary distribution. To ensure the im-
+
+pact is not too large, α should be chosen close to 1. A typical value
+
+for α is 0.85.
+
+• The rate at which the process converges depends on the magnitude of
+
+M’s second largest eigenvalue. One can show that for M the second
+
+largest eigenvalue is at most α, and that the error decreases by a factor
+
+of α in each step.
+
+
+102
+
+CHAPTER 11. MARKOV CHAINS &amp; PAGERANK
+
+• In the example from Figure 11.21, the page ranks are
+
+Website
+
+Rank
+
+x
+
+0.384615
+
+w
+
+0.230769
+
+u
+
+0.153846
+
+v
+
+0.153846
+
+y
+
+0.0769231
+
+• This initial version of the PageRank algorithm worked well at the time
+
+it was invented. However, it can be (and has been) fooled. Consider
+
+the following example.
+
+u
+
+v
+
+w
+
+x
+
+u
+
+v
+
+w
+
+x
+
+u
+
+u′
+
+u′′
+
+v
+
+w
+
+x
+
+Figure 11.23:
+
+Website u wants to improve its PageRank, which is ≈ 0.23 in the
+
+initial setting on the left. First, all outgoing links to websites that do not link
+
+back are removed. The PageRank improves to ≈ 0.27. In a Sybil attack (right)
+
+the owner of u creates fake websites u′ and u′′ whose purpose is to exchange
+
+links with u. Moreover, the new websites increase the probability to visit u after
+
+a sink. Now, website u is the highest ranked site in the network with a rank of
+
+≈ 0.41.
+
+• Attacks where a single party pretends to be more than one individual
+
+are called Sybil Attacks.
+
+• It is unknown how exactly Google ranks websites today, and speciﬁ-
+
+cally how the engineers at Google mitigate the eﬀects of attacks.
+
+• A diﬀerent kind of attack on Google is Google bombing. This attack
+
+relies on the fact that the search terms for which a website v is consid-
+
+ered relevant also take the anchor text of hyperlinks to website v into
+
+account. If, for instance, many websites link to http://www.ethz.ch
+
+using the anchor text “Smartest People Alive”, then a search query
+
+for smart people might end up presenting ETH’s website.
+
+11.4
+
+Simple Random Walks
+
+In this section, all random walks are considered to be simple. This means that
+
+the edges are undirected, and the node for the next step is chosen uniformly at
+
+random among the current node’s neighbors.
+
+
+11.4. SIMPLE RANDOM WALKS
+
+103
+
+Lemma 11.24. Let G be a graph with m edges. The stationary distribution π
+
+of any random walk on G is
+
+πu = δ(u)
+
+2m .
+
+Proof. Let π be as above, and consider some arbitrary node u ∈ V . It holds
+
+that
+
+πu =
+
+�
+
+v ∈ N(u)
+
+πv · pv,u =
+
+�
+
+v ∈ N(u)
+
+δ(v)
+
+2m ·
+
+1
+
+δ(v) = δ(u)
+
+2m ,
+
+i.e., the distribution is stationary. Since the Markov chain underlying the ran-
+
+dom walk is irreducible, it is also unique.
+
+Remarks:
+
+• It follows from Lemma 11.15 that for a random walk, hu,u is 2m/δ(u).
+
+• The cover time cov(v) is the expected number of steps until all nodes
+
+in G were visited at least once.
+
+• One could use the following Markov chain to compute the cover time
+
+of a random walk on the graph G = (V, E).
+
+The set of states is
+
+{(v, I) | v ∈ V and I ∈ 2V }, where v denotes the “current state” and
+
+I denotes the visited states. The probabilities p(v,I),(w,I∪{w}) is 0 if
+
+either I = V or {u, v} ̸∈ E, and 1/δ(v) if {u, v} ∈ E. Then, the cover
+
+time is cov(v) = �
+
+w∈V h(v,{v}),(w,V ).
+
+Lemma 11.25. Let G = (V, E) be a graph with n nodes and m edges. It holds
+
+that cov(s) &lt; 4m(n − 1) for any starting node s ∈ V .
+
+Proof. Let {u, v} ∈ E be an edge. It holds that
+
+2m
+
+du
+
+= hu,u = 1
+
+du
+
+�
+
+w∈N(u)
+
+(hw,u + 1) ,
+
+and thus it must be true that hu,v &lt; 2m. Next, observe that it is possible to
+
+traverse all nodes in G by using no more than 2n−2 edges, e.g., by traversing a
+
+spanning tree rooted at s. Since hu,v &lt; 2m holds for every edge {u, v} used in
+
+the traversal, it follows that cov(s) &lt; (2n − 2) · 2m = 4m(n − 1), as desired.
+
+Remarks:
+
+• Consider the resistor network obtained from G by replacing every
+
+edge with a 1Ω resistor. Let u and v be two nodes in the resistor
+
+network and apply a current of 1V to them. It can be shown that
+
+cu,v = 2m · R(u, v), where R(u, v) denotes the eﬀective resistance
+
+between u and v.
+
+• Foster’s Theorem states that for every connected graph G = (V, E)
+
+with n nodes,
+
+�
+
+(u,v) ∈ E
+
+R(u, v) = n − 1 ,
+
+i.e., that adding/removing an edge in G reduces/increases the eﬀective
+
+resistance, respectively.
+
+
+104
+
+CHAPTER 11. MARKOV CHAINS &amp; PAGERANK
+
+Chapter Notes
+
+Historic background on the development of Markov chains can be found in [1].
+
+The short version is that in a 1902 paper [9], the theologist Pavel Alekseevich
+
+Nekrasov, in his eﬀort to establish free will on a mathematical basis, (falsely)
+
+postulated that independence of events is necessary for the law of large numbers.
+
+Markov, being an atheist and considering Nekrasov’s reasoning an “abuse of
+
+mathematics”, set out to prove him wrong.
+
+In 1906, Markov published his ﬁrst ﬁndings on chains of pairwise dependent
+
+random variables [7]. This work already includes a variant of Theorem 11.20,
+
+thus disproving Nekrasov’s claim. Markov also studied the notion of irreducibil-
+
+ity [8], proving that for irreducible Markov chains 1 is a single eigenvalue and
+
+the largest by magnitude. Today, Markov’s ideas are widely applied in, e.g.,
+
+physics, chemistry, and economics.
+
+Markov chains are the basis for queueing theory, an important transport
+
+layer concept. Another application in computer science is the PageRank algo-
+
+rithm [10]. The bound on the Google matrix’ second eigenvalue is from [5].
+
+Sybil attacks were originally studied in the context of peer to peer systems [3],
+
+and PageRank’s sensitivity to such attacks was investigated in [2].
+
+The connection from random walks to resistor networks is investigated in
+
+depth in [4]. By associating a word with each state, random walks can be used
+
+to generate random text [11]. More than 120 “scientiﬁc” papers were generated
+
+using such methods [6] and later withdrawn by the publishers.
+
+This chapter was written in collaboration with Jochen Seidel.
+
+Bibliography
+
+[1] Gely P. Basharin, Amy N. Langville, and Valeriy A. Naumov. The life and
+
+work of a.a. markov. Linear Algebra and its Applications, 386:3 – 26, 2004.
+
+[2] Alice Cheng and Eric Friedman. Manipulability of pagerank under sybil
+
+strategies, 2006.
+
+[3] John R. Douceur. The sybil attack. In Peer-to-Peer Systems, volume 2429
+
+of LNCS, pages 251–260. Springer Berlin Heidelberg, 2002.
+
+[4] Peter G. Doyle and J. Laurie Snell.
+
+Random walks and electric net-
+
+works.
+
+http://math.dartmouth.edu/~doyle/docs/walks/walks.pdf,
+
+July 2006. Originally published 1984. Website accessed Sep. 23, 2015.
+
+[5] Taher Haveliwala and Sepandar Kamvar.
+
+The second eigenvalue of the
+
+google matrix. Technical Report 2003-20, Stanford InfoLab, 2003.
+
+[6] Cyril Labb´e and Dominique Labb´e.
+
+Duplicate and fake publications in
+
+the scientiﬁc literature: How many SCIgen papers in computer science?
+
+Scientometrics, 94(1):379–396, 2013.
+
+[7] Andrey Andreyevich Markov. Rasprostranenie zakona bol’shih chisel na
+
+velichiny, zavisyaschie drug ot druga. Izvestiya Fiziko-matematicheskogo
+
+obschestva pri Kazanskom universitete, 2-ya seriya 15 (94):135–156, 1906.
+
+(Extension of the law of large numbers to random variables dependent on
+
+each other).
+
+
+BIBLIOGRAPHY
+
+105
+
+[8] Andrey Andreyevich Markov.
+
+Rasprostranenie predel’nyh teorem is-
+
+chisleniya veroyatnostej na summu velichin svyazannyh v cep’.
+
+Zapiski
+
+Akademii Nauk po Fiziko-matematicheskomu otdeleniyu, VIII seriya 25 (3),
+
+1908. (Extension of the limit theorems of probability theory to a sum of
+
+variables connected in a chain).
+
+[9] Pavel Alekseevich Nekrasov. The philosophy and logic of science of mass
+
+phenomena in human activity, Moscow 1902. In Russian.
+
+[10] Lawrence Page, Sergey Brin, Rajeev Motwani, and Terry Winograd. The
+
+pagerank citation ranking: Bringing order to the web. Technical Report
+
+1999-66, Stanford InfoLab, November 1999.
+
+[11] Jeremy Stribling, Max Krohn, and Dan Aguayo. SCIgen - an automatic CS
+
+paper generator. https://pdos.csail.mit.edu/archive/scigen/, 2005.
+
+Website accessed Sep. 23, 2015.
+

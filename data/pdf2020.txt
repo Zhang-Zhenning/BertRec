@@ -1,0 +1,207 @@
+
+CSE 446: Machine Learning
+
+Lecture
+
+(An example of) The Expectation-Maximization (EM) Algorithm
+
+Instructor: Sham Kakade
+
+1
+
+An example: the problem of document clustering/topic modeling
+
+Suppose we have N documents x1, . . . xn. Each document is is of length T, and we only keep track of the word count
+
+in each document. Let us say Count(n)(w) is the number of times word w appeared in the n-th document.
+
+We are interested in a “soft” grouping of the documents along with estimating a model for document generation. Let
+
+us start with a simple model.
+
+2
+
+A generative model for documents
+
+For a moment, put aside the document clustering problem. Let us instead posit a (probabilistic) procedure which
+
+underlies how our documents were generated.
+
+2.1
+
+“Bag of words” model: a (single) topic model
+
+Random variables: a “hidden” (or latent topic) i ∈ {1 . . . k} and T-word outcomes w1, w2, . . . wT which take on some
+
+discrete values (these T outcomes constitute a document).
+
+Parameters: the mixing weights πi = Pr(topic = i), the topics bwi = Pr(word = w|topic = i)
+
+The generative model for a T-word document, where every document is only about one topic, is speciﬁed as follows:
+
+1. sample a topic i, which has probability πi
+
+2. gererate T words w1, w2, . . . wT , independently. in particular, we choose word wt as the t-th word with proba-
+
+bility bwti.
+
+Note this generative model ignores the word order, so it is not a particularly faithful generative model.
+
+Due to the ’graph’ (i.e. the conditional independencies implied by the generative model procedure), we can write the
+
+joint probability of the outcome topic i occurring with a document containing the words w1, w2, . . . wT as:
+
+Pr(topic = i and w1, w2, . . . wT )
+
+=
+
+Pr(topic = i) Pr(w1, w2, . . . wT |topic = i)
+
+=
+
+Pr(topic = i) Pr(w1|topic = i) Pr(w2|topic = i) Pr(wT |topic = i)
+
+=
+
+πibw1ibw2i . . . bwT i
+
+where the second to last step follows due to the fact that the words are generated independently given the topic i.
+
+1
+
+
+Inference
+
+Suppose we were given a document with w1, w2, . . . wT . One inference question would be: what is the probability the
+
+underlying topic is i? By Bayes rule, we have:
+
+Pr(topic = i|w1, w2, . . . wT )
+
+=
+
+1
+
+Pr(w1, w2, . . . wT ) Pr(topic = i and w1, w2, . . . wT )
+
+=
+
+1
+
+Z πibw1ibw2i . . . bwT i
+
+where Z is a number chosen so that the probabilities sum to 1. Critically, note that Z is not a function of i.
+
+2.2
+
+Maximum Likelihood estimation
+
+Given the N documents, we could estimate the parameters as follows:
+
+�b, �π = arg minb,π − log Pr(x1, . . . xn|b, π)
+
+How can we do this efﬁciently?
+
+3
+
+The Expectation Maximization algorithm (EM): By example
+
+The EM algorithm is a general procedure to estimate the parameters in a model with latent (unobserved) factors.
+
+We present an example of the algorithm. EM improves the log likelihood function at every step and will converge.
+
+However, it may not converge to the global optima. Think of it as a more general (and probabilistic) adaptation of the
+
+K-means algorithm.
+
+3.1
+
+The algorithm: An example for the topic modeling case
+
+The EM algorithm is an alternating minimization algorithm. We start at some initialization and then alternate between
+
+the E and M steps as follows:
+
+Initialization:
+
+Start with some guess �b and �π (where the guess is not “symmetric”).
+
+The E step:
+
+Estimate the posterior probabilities, i.e. the soft assignments, of each document:
+
+�
+
+Pr(topic i|xn) = 1
+
+Z �πi �
+
+bw1i �
+
+bw2i . . . �
+
+bwT i
+
+The M step:
+
+Note that Count(n)(w)/T is the empirical frequency of word w in the n-th document.
+
+Given the power probabilities (which we can view as “soft” assignments), we go back and re-estimate the topic
+
+probabilities and the mixing weights as follows
+
+�bwi =
+
+�N
+
+n=1 �
+
+Pr(topic i|xn) Count(n)(w)/T
+
+�N
+
+n=1 �
+
+Pr(topic i|xn)
+
+2
+
+
+and
+
+�πi = 1
+
+N
+
+N
+
+�
+
+n=1
+
+�
+
+Pr(topic i|xn)
+
+Now got back to the E-step.
+
+3.2
+
+(local) Convergence
+
+For a general class of latent variable models — models which have unobserved random variables — we can say the
+
+following about EM:
+
+• If the algorithm has not converged, then, after every M step, the negative log likelihood function decreases in
+
+value.
+
+• The algorithm will converge in the limit (to some point, under mild assumptions). Unfortunately, this point
+
+may not be the global minima. This is related to the that the log likelihood objective function (for these latent
+
+variable models) is typically not convex.
+
+3
+

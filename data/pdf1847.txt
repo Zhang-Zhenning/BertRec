@@ -1,0 +1,5234 @@
+
+Topic Discovery via Latent Space Clustering of Pretrained
+
+Language Model Representations
+
+Yu Meng, Yunyi Zhang, Jiaxin Huang, Yu Zhang, Jiawei Han
+
+Department of Computer Science, University of Illinois at Urbana-Champaign, IL, USA
+
+{yumeng5, yzhan238, jiaxinh3, yuz9, hanj}@illinois.edu
+
+ABSTRACT
+
+Topic models have been the prominent tools for automatic topic
+
+discovery from text corpora. Despite their effectiveness, topic mod-
+
+els suffer from several limitations including the inability of mod-
+
+eling word ordering information in documents, the difficulty of
+
+incorporating external linguistic knowledge, and the lack of both
+
+accurate and efficient inference methods for approximating the
+
+intractable posterior. Recently, pretrained language models (PLMs)
+
+have brought astonishing performance improvements to a wide
+
+variety of tasks due to their superior representations of text. Inter-
+
+estingly, there have not been standard approaches to deploy PLMs
+
+for topic discovery as better alternatives to topic models. In this
+
+paper, we begin by analyzing the challenges of using PLM repre-
+
+sentations for topic discovery, and then propose a joint latent space
+
+learning and clustering framework built upon PLM embeddings. In
+
+the latent space, topic-word and document-topic distributions are
+
+jointly modeled so that the discovered topics can be interpreted by
+
+coherent and distinctive terms and meanwhile serve as meaning-
+
+ful summaries of the documents. Our model effectively leverages
+
+the strong representation power and superb linguistic features
+
+brought by PLMs for topic discovery, and is conceptually simpler
+
+than topic models. On two benchmark datasets in different domains,
+
+our model generates significantly more coherent and diverse topics
+
+than strong topic models, and offers better topic-wise document
+
+representations, based on both automatic and human evaluations.1
+
+CCS CONCEPTS
+
+• Information systems → Clustering; Document topic mod-
+
+els; • Computing methodologies → Natural language pro-
+
+cessing.
+
+KEYWORDS
+
+Topic Discovery, Pretrained Language Models, Clustering
+
+ACM Reference Format:
+
+Yu Meng, Yunyi Zhang, Jiaxin Huang, Yu Zhang, Jiawei Han. 2022. Topic
+
+Discovery via Latent Space Clustering of Pretrained Language Model Rep-
+
+resentations. In Proceedings of the ACM Web Conference 2022 (WWW ’22),
+
+April 25–29, 2022, Virtual Event, Lyon, France. ACM, New York, NY, USA,
+
+10 pages. https://doi.org/10.1145/3485447.3512034
+
+1Code and data can be found at https://github.com/yumeng5/TopClus.
+
+Permission to make digital or hard copies of all or part of this work for personal or
+
+classroom use is granted without fee provided that copies are not made or distributed
+
+for profit or commercial advantage and that copies bear this notice and the full citation
+
+on the first page. Copyrights for components of this work owned by others than ACM
+
+must be honored. Abstracting with credit is permitted. To copy otherwise, or republish,
+
+to post on servers or to redistribute to lists, requires prior specific permission and/or a
+
+fee. Request permissions from permissions@acm.org.
+
+WWW ’22, April 25–29, 2022, Virtual Event, Lyon, France
+
+© 2022 Association for Computing Machinery.
+
+ACM ISBN 978-1-4503-9096-5/22/04...$15.00
+
+https://doi.org/10.1145/3485447.3512034
+
+1
+
+INTRODUCTION
+
+Automatically discovering coherent and meaningful topics from
+
+text corpora is intuitively appealing for web-scale content anal-
+
+yses, as it facilitates many web applications including document
+
+analysis [9], text summarization [63] and ad-hoc information re-
+
+trieval [65]. Decades of research efforts have been dedicated to the
+
+development of such algorithms, among which topic models [11, 26]
+
+are the most prominent methods. The success of topic models can
+
+be largely credited to their proposed generative process: By max-
+
+imizing the likelihood of a probabilistic process that models how
+
+documents are generated conditioned on the hidden topics, topic
+
+models are able to uncover the latent topic structures in the corpus.
+
+Despite the success of topic models, the generative process in-
+
+curs several notable limitations: (1) The “bag-of-words” generative
+
+assumption completely ignores word ordering information in text,
+
+which is essential for defining word meanings [18]. (2) The gener-
+
+ative process cannot leverage external knowledge to learn word
+
+semantics, which may miss important topic-indicating words if they
+
+are not sufficiently reflected by the co-occurrence statistics of the
+
+given corpus, as is likely the case for small-scale/short-text corpora.
+
+(3) The generative process induces an intractable posterior that re-
+
+quires approximation algorithms like Monte Carlo simulation [50]
+
+or variational inference [1]. Unfortunately, there is always a trade-
+
+off between accuracy and efficiency with these approximations
+
+since they can only be asymptotically exact [57]. Later variants
+
+of topic models attempt to overcome some of these limitations by
+
+either replacing the analytic approximation of the posterior with
+
+deep neural networks [47, 60, 64] to improve the effectiveness and
+
+efficiency of the inference process, or incorporating word embed-
+
+dings [15, 17, 52] to make up for the representation deficiency of
+
+the “bag-of-words” generative assumption. Nevertheless, without
+
+fundamental changes of the topic modeling framework, none of
+
+these approaches address the limitations of topic models all at once.
+
+Along another line of text representation learning research, text
+
+embeddings have achieved enormous success in a wide spectrum of
+
+downstream tasks. The effectiveness of text embeddings stems from
+
+the learning of distributed representations of words and documents
+
+from contexts. Early models like Word2Vec [48] learn context-free
+
+word semantics based on a local context window of the center
+
+word. Recently, pretrained language models (PLMs) like BERT [16],
+
+RoBERTa [36] and XLNet [67] have revolutionized text process-
+
+ing via learning contextualized word embeddings. They employ
+
+Transformer [62] as the backbone architecture for capturing the
+
+long-range, high-order semantic dependency in text sequences,
+
+yielding superior representations to previous context-free embed-
+
+dings. Since these PLMs are pretrained on large-scale text corpora
+
+like Wikipedia, they carry superb linguistic features that can be
+
+generalized to almost any text-related applications.
+
+Motivated by the strong representation power of the contextu-
+
+alized embeddings that accurately capture word semantics, a few
+
+arXiv:2202.04582v1  [cs.CL]  9 Feb 2022
+
+
+recent studies have attempted to utilize PLMs for topic discovery.
+
+Sia et al. [59] directly cluster averaged BERT word embeddings to
+
+obtain word clusters as topics. The resulting topic quality relies
+
+significantly on heuristic tricks like frequency-based weighting/re-
+
+ranking and barely reaches the performance of LDA, the most basic
+
+topic model. Instead of clustering word embeddings, BERTopic [23]
+
+clusters document embeddings and then uses TF-IDF metrics to
+
+extract representative terms from each notable document cluster
+
+as topics. However, as the document embeddings in BERTopic are
+
+obtained from Sentence-BERT [56], which is trained on natural
+
+language inference datasets with manually annotated sentence la-
+
+bels, the performance of BERTopic may suffer from domain shift
+
+when the target corpus is semantically different from the Sentence-
+
+BERT training set, and when manually annotated labels for re-
+
+training the sentence embeddings are absent. Moreover, BERTopic
+
+constructs topics via TF-IDF metrics and fails to take advantage of
+
+the distributed representations of PLMs, which are known to better
+
+capture word semantics than frequency-based statistics.
+
+In this work, we study topic discovery with PLM embeddings as a
+
+potential alternative to topic models. We first analyze the challenges
+
+of directly operating on the PLM embedding space by investigating
+
+its structure. Motivated by the challenges, we propose TopClus, a
+
+joint latent space learning and clustering approach that derives
+
+a lower-dimensional, spherical latent embedding space with topic
+
+structures. Such latent space mitigates the “curse of dimensionality”
+
+issue and uses angular similarity to model semantic correlations
+
+among words, documents and topics, thus is better suited for cluster-
+
+ing than the high-dimensional Euclidean embedding space of PLMs.
+
+Unlike traditional clustering algorithms that work with fixed data
+
+representations, TopClus jointly adjusts the latent space represen-
+
+tations and performs clustering. Topic-word and document-topic
+
+distributions are jointly modeled in the latent space to derive topics
+
+that (1) are interpretable by coherent and distinctive words and (2)
+
+serve as meaningful summaries of documents.
+
+TopClus enjoys the following advantages over topic models: (1)
+
+TopClus works with PLM contextualized embeddings obtained by
+
+modeling the entire text sequences with positional information,
+
+which are expected to provide better representations than the “bag-
+
+of-words” assumption of topic models. (2) TopClus employs PLMs
+
+to bring in general linguistic knowledge which helps generate more
+
+accurate and stable word representations on the target corpus than
+
+training topic models from scratch on it. (3) The training algorithm
+
+of TopClus does not involve any probabilistic approximations, and
+
+is computationally and conceptually simpler than variational infer-
+
+ence in topic models. With these advantageous properties, TopClus
+
+simultaneously addresses the major limitations of topic models.
+
+Our contributions are summarized as follows:
+
+(1) We explore using PLM embeddings for topic discovery. We first
+
+identify the challenges with an in-depth analysis of the original
+
+PLM embedding space’s structure.
+
+(2) We propose a new framework TopClus which jointly learns a
+
+lower-dimensional, spherical latent space with cluster struc-
+
+tures based on word and document embeddings from PLMs.
+
+High-quality topic clusters are derived by simultaneously mod-
+
+eling topic-word and document-topic distributions. TopClus can
+
+be integrated with any PLMs for unsupervised topic discovery.
+
+(3) We propose three objectives for training TopClus to induce
+
+distinctive and balanced cluster structures in the latent space
+
+which result in diverse and coherent topics.
+
+−100
+
+0
+
+100
+
+−100
+
+0
+
+100
+
+(a) New York Times.
+
+−100
+
+0
+
+100
+
+−100
+
+0
+
+100
+
+(b) Yelp Review.
+
+Figure 1: Visualization using t-SNE of 3, 000 randomly sam-
+
+pled contextualized word embeddings of BERT on (a) NYT
+
+and (b) Yelp datasets, respectively. The embedding spaces do
+
+not have clearly separated clusters.
+
+(4) We evaluate TopClus on two benchmark datasets in different
+
+domains. TopClus significantly outperforms strong topic dis-
+
+covery methods by generating more coherent and diverse topics
+
+and providing better document topic representations judged
+
+from both automatic and human evaluations.
+
+2
+
+CHALLENGES OF TOPIC DISCOVERY
+
+WITH PRETRAINED LANGUAGE MODELS
+
+We first identify three major challenges of using PLM embeddings
+
+for topic discovery, which motivate our proposed model in Section 3.
+
+Unsuitability of PLM Embedding Space for Clustering. One
+
+straightforward way of obtaining 𝐾 topics with PLM embeddings
+
+(e.g., from BERT [16]) is to simply apply clustering algorithms like
+
+𝐾-means [37] to group correlated terms that form topics. To pro-
+
+vide empirical evidence that such direct clustering may not work
+
+well, we visualize 3, 000 randomly sampled contextualized word
+
+embeddings obtained by running BERT on the New York Times and
+
+Yelp Review datasets in Figure 1. The embedding spaces do not ex-
+
+hibit clearly separated clusters, and applying clustering algorithms
+
+like 𝐾-means with a typical 𝐾 (e.g., 𝐾 = 100) to these spaces leads
+
+to low-quality and unstable clusters. We show theoretically that
+
+such a phenomenon is due to too many clusters in the embedding
+
+space. Below, we study the effect of the Masked Language Modeling
+
+(MLM) pretraining objective of BERT on the embedding space.
+
+Theorem 2.1. The MLM pretraining objective of BERT assumes
+
+that the learned contextualized embeddings are generated from a
+
+Gaussian Mixture Model (GMM) with |𝑉 | mixture components where
+
+|𝑉 | is the vocabulary size of BERT.
+
+Proof. See Appendix B.
+
+□
+
+Theorem 2.1 applies to many PLMs (e.g., BERT [16], RoBERTa [35],
+
+XLNet [67]) that use MLM-like pretraining objectives. It reveals that
+
+the optimal number of cluster 𝐾 to apply 𝐾-means like algorithm
+
+is |𝑉 | (|𝑉 | ≈ 30, 000 in the BERT base model). In other words, the
+
+PLM embedding space is partitioned into extremely fine-grained
+
+clusters and lacks topic structures inherently. If a typical 𝐾 for topic
+
+discovery is used (𝐾 ≪ |𝑉 |), the partition will not fit the original
+
+data well, resulting in unstable and low-quality clusters. If a very
+
+big 𝐾 is used (𝐾 ≈ |𝑉 |), most clusters will contain only one unique
+
+term, which is meaningless for topic discovery.
+
+Curse of Dimensionality. PLM embeddings are usually high-
+
+dimensional (e.g., number of dimensions 𝑟 = 768 in the BERT
+
+base model), while distance functions can become meaningless and
+
+unreliable in high-dimensional spaces [5], rendering Euclidean dis-
+
+tance based clustering algorithms ineffective for high-dimensional
+
+
+cases, known as the “curse of dimensionality”. From another per-
+
+spective, the high-dimensional PLM embeddings encode linguistic
+
+information of multiple aspects for the generic language modeling
+
+purpose, but some features are not necessary for or may even in-
+
+terfere with topic discovery. For example, some syntactic features
+
+in the PLM embeddings should not be considered when grouping
+
+semantically similar concepts (e.g., “play”, “plays” and “playing”
+
+should not represent different topics).
+
+Lack of Good Document Representations from PLMs. Topic
+
+discovery usually requires jointly modeling documents with words
+
+to derive latent topics. Although PLMs are famous for their supe-
+
+rior contextualized word representations, obtaining quality docu-
+
+ment embeddings from PLMs has been a big challenge. Sentence-
+
+BERT [56] reports that the inherent BERT sequence embeddings (i.e.,
+
+obtained from the [CLS] token) are of rather bad quality without
+
+fine-tuning, even worse than averaged GloVe context-free embed-
+
+dings. To obtain meaningful sentence embeddings, Sentence-BERT
+
+fine-tunes pretrained BERT model on natural language inference
+
+(NLI) tasks with manually annotated sentences. However, using
+
+Sentence-BERT for topic discovery raises two concerns: (1) When
+
+the given corpus has a big domain shift from the Sentence-BERT
+
+training set (e.g., the documents are much longer than the sentences
+
+in NLI, or are very different semantically from the NLI dataset), the
+
+document embeddings need to be re-trained from target corpus doc-
+
+ument labels, which contradicts the unsupervised nature of topic
+
+discovery. (2) The sentence embeddings are in a different space
+
+from word embeddings as they are not jointly trained, and cannot
+
+be simultaneously used to model both words and documents. This
+
+is why BERTopic [23] relies on TF-IDF for topic word selection.
+
+3
+
+METHOD
+
+We first introduce the two major components in our TopClus model:
+
+(1) attention-based document embedding learning module and (2)
+
+latent space generative module, and then we introduce three train-
+
+ing objectives for model learning. Figure 2 provides an overview of
+
+TopClus. We assume BERT is used as the PLM, but TopClus can be
+
+seamlessly integrated with any other PLMs.
+
+3.1
+
+Attention-Based Document Embeddings
+
+As the prerequisite of topic discovery is the joint modeling of words
+
+and documents, we first propose a simple attention mechanism to
+
+learn document embeddings. Previous studies [33] show that a sim-
+
+ple average of word embeddings from PLMs can serve as decent
+
+generic sequence representations. In this work, we assume that
+
+not all words in a document are equally topic-indicative, so we
+
+learn attention weights of each token to derive document embed-
+
+dings as a weighted average of contextualized word embeddings
+
+which are expected to be better tailored for topic discovery than
+
+an unweighted average of word embeddings. This also allows the
+
+learned document embeddings to share the same space with word
+
+embeddings which enables joint modeling of words and documents.
+
+For each text document 𝒅 = [𝑤1,𝑤2, . . . ,𝑤𝑛], we obtain the
+
+BERT contextualized word representations [𝒉(𝑤)
+
+1
+
+, 𝒉(𝑤)
+
+2
+
+, . . . , 𝒉(𝑤)
+
+𝑛
+
+]
+
+where 𝒉(𝑤)
+
+𝑖
+
+∈ R𝑟 (𝑟 = 768 in the BERT base model). The attention
+
+weights 𝜶 = [𝛼1, 𝛼2, . . . , 𝛼𝑛] are learned for each token as follows:
+
+𝒍𝑖 = tanh
+
+�
+
+𝑾𝒉(𝑤)
+
+𝑖
+
++ 𝒃
+
+�
+
+,
+
+𝛼𝑖 =
+
+exp(𝒍⊤
+
+𝑖 𝒗)
+
+�𝑛
+
+𝑗=1 exp(𝒍⊤
+
+𝑗 𝒗) ,
+
+where 𝑾 and 𝒃 are learnable parameters of a linear layer with the
+
+tanh(·) activation. Each word embedding 𝒉(𝑤)
+
+𝑖
+
+is transformed to a
+
+new representation 𝒍𝑖 whose dot product with another learnable
+
+vector 𝒗 reflects how topic-indicative the token is. Finally, the doc-
+
+ument embedding 𝒉(𝑑) is obtained as the combination of all word
+
+embeddings in the document weighted by the attention values:
+
+𝒉(𝑑) =
+
+𝑛
+
+∑︁
+
+𝑖=1
+
+𝛼𝑖𝒉(𝑤)
+
+𝑖
+
+.
+
+We note that the contextualized word embeddings from BERT
+
+{𝒉(𝑤)
+
+𝑖
+
+}𝑛
+
+𝑖=1 are not updated during topic discovery since they al-
+
+ready capture word semantics reliably and accurately through pre-
+
+training. The learnable parameters associated with the attention
+
+mechanism 𝑨 = {𝑾, 𝒃, 𝒗} are randomly initialized and trained via
+
+the unsupervised objectives to be introduced in Section 3.3.
+
+3.2
+
+The Latent Space Generative Model
+
+Motivation and Assumptions. As we have shown in Section 2,
+
+the original embedding space 𝑯 of PLMs is unsuitable for direct clus-
+
+tering to generate topic clusters. To address the challenges, we pro-
+
+pose to project the original embedding space 𝑯 into a latent space 𝒁
+
+with𝐾 soft clusters of words corresponding to𝐾 latent topics. We as-
+
+sume that 𝒁 is spherical (i.e., 𝒁 ⊂ S𝑟′−1; S𝑟′−1 = {𝒛 ∈ R𝑟′ : ∥𝒛∥ = 1}
+
+is the unit 𝑟 ′ − 1 sphere) and lower-dimensional (i.e., 𝑟 ′ &lt; 𝑟). Such a
+
+latent space has the following preferable properties: (1) In the spher-
+
+ical latent space, angular similarity (i.e., without considering vector
+
+norms) between vectors is employed to capture word semantic cor-
+
+relations, which works better than Euclidean metrics (e.g., cosine
+
+similarity between embeddings is more effective for measuring
+
+word similarity [40, 46]). (2) The lower-dimensional space mitigates
+
+the “curse of dimensionality” of the original high-dimensional space
+
+and better suits the clustering task. (3) Projecting high-dimensional
+
+embeddings to the lower-dimensional space forces the model to
+
+discard the information that does not help form topic clusters (e.g.,
+
+syntactic features).
+
+Why Not Naive Approach? A straightforward way is to first
+
+apply a dimensionality reduction technique to the original embed-
+
+ding space 𝑯 to obtain the aforementioned latent space 𝒁, and
+
+subsequently apply clustering algorithms to 𝒁 for obtaining the
+
+latent space clusters representing topics. However, such a naive ap-
+
+proach cannot guarantee that the reduced-dimension embeddings
+
+will be naturally suited for clustering, given that no clustering-
+
+promoting objective is incorporated in the dimensionality reduc-
+
+tion step. Therefore, we propose to jointly learn the latent space
+
+projection and cluster in the latent space instead of conducting
+
+them one after another, so that the latent representation learning is
+
+guided by the clustering objective, and the cluster quality benefits
+
+from the well-separated structure of the latent space, achieving a
+
+mutually-enhanced effect. Such joint learning is realized by training
+
+a generative model that connects the latent topic structure with
+
+the original space representations.
+
+Our Generative Model. We introduce our latent space generative
+
+model as follows. With the number of topics 𝐾 as the input to the
+
+model, we assume that there exists a latent space 𝒁 ⊂ S𝑟′−1 with
+
+𝐾 topics reflecting the latent structure of the original embedding
+
+space 𝑯. Each topic is associated with a spherical distribution called
+
+the von Mises-Fisher (vMF) distribution [2, 21] that characterizes
+
+the topic-word and document-topic distributions in the latent space.
+
+
+
+
+&lt;latexit sha1_base64="LO5MZ4zcV
+
+OH6H28v7ADoSbJEyc="&gt;ACDHicbVDLSsNAFJ3UV61Vqy4FGSyCq5IUXFVcN
+
+NlC/aBTSiTyaQdOsmEmYlQpYu3PgrblxUxK0f4M5v8CectF3U1gvDHM65l3vP
+
+cSNGpTLNbyO3tr6xuZXfLuwUd/f2SweHbcljgUkLc8ZF10WSMBqSlqKkW4kCA
+
+pcRjru6DbTOw9ESMrDOzWOiBOgQUh9ipHSVL9U9m9slzNPjgP9JfU2orDReo+
+
+1V1mxZwWXAXWHJRrxUnz5/Fk0uiXvmyP4zgocIMSdmzEg5CRKYkbSgh1LEiE
+
+8QgPS0zBEAZFOMjWTwjPNeNDnQr9QwSm7OJGgQGan6c4AqaFc1jLyP60XK/aS
+
+WgYxYqEeLbIjxnUfrNkoEcFwYqNUBYUH0rxEMkEFY6v4IOwVq2vAra1Yp1Wbl
+
+o6jSqYFZ5cAxOwTmwBWogTpogBbA4Am8gAl4M56NV+Pd+Ji15oz5zBH4U8bnL
+
+0xkn3A=&lt;/latexit&gt;f : H ! Z
+
+&lt;latexit sha1_base64="LO5MZ4zcV
+
+OH6H28v7ADoSbJEyc="&gt;ACDHicbVDLSsNAFJ3UV61Vqy4FGSyCq5IUXFVcN
+
+NlC/aBTSiTyaQdOsmEmYlQpYu3PgrblxUxK0f4M5v8CectF3U1gvDHM65l3vP
+
+cSNGpTLNbyO3tr6xuZXfLuwUd/f2SweHbcljgUkLc8ZF10WSMBqSlqKkW4kCA
+
+pcRjru6DbTOw9ESMrDOzWOiBOgQUh9ipHSVL9U9m9slzNPjgP9JfU2orDReo+
+
+1V1mxZwWXAXWHJRrxUnz5/Fk0uiXvmyP4zgocIMSdmzEg5CRKYkbSgh1LEiE
+
+8QgPS0zBEAZFOMjWTwjPNeNDnQr9QwSm7OJGgQGan6c4AqaFc1jLyP60XK/aS
+
+WgYxYqEeLbIjxnUfrNkoEcFwYqNUBYUH0rxEMkEFY6v4IOwVq2vAra1Yp1Wbl
+
+o6jSqYFZ5cAxOwTmwBWogTpogBbA4Am8gAl4M56NV+Pd+Ji15oz5zBH4U8bnL
+
+0xkn3A=&lt;/latexit&gt;f : H ! Z
+
+Word &amp; Document
+
+Embeddings
+
+Attention-Based 
+
+Document Embeddings
+
+Original Space 
+
+&lt;latexit sha1_base64="qhtvaEHdSw
+
+dVQVBHbs2UCuFlquY="&gt;AB9XicbVDNSgMxGPy2/tX6V/XoJVgET2VXKnoseO
+
+mxgm2Fdi3ZbLYNzSZLklXK0vfw4kERr76LN9/GbLsHbR0IGWa+j0wmSDjTxnW/
+
+ndLa+sbmVnm7srO7t39QPTzqapkqQjtEcqnuA6wpZ4J2DOc3ieK4jgtBdMbn
+
+K/90iVZlLcmWlC/RiPBIsYwcZKD4NA8lBPY3tlrdmwWnPr7hxolXgFqUGB9rD6
+
+NQglSWMqDOFY67nJsbPsDKMcDqrDFJNE0wmeET7lgocU+1n89QzdGaVEVS2SM
+
+Mmqu/NzIc6zyanYyxGetlLxf/8/qpia79jIkNVSQxUNRypGRK8AhUxRYvjUE
+
+kwUs1kRGWOFibFVWwJ3vKXV0n3ou5d1t3bRq3ZKOowmcwjl4cAVNaEbOkB
+
+AwTO8wpvz5Lw4787HYrTkFDvH8AfO5w8HeJLP&lt;/latexit&gt;H
+
+&lt;latexit sha1_base64="qhtvaEHdSw
+
+dVQVBHbs2UCuFlquY="&gt;AB9XicbVDNSgMxGPy2/tX6V/XoJVgET2VXKnoseO
+
+mxgm2Fdi3ZbLYNzSZLklXK0vfw4kERr76LN9/GbLsHbR0IGWa+j0wmSDjTxnW/
+
+ndLa+sbmVnm7srO7t39QPTzqapkqQjtEcqnuA6wpZ4J2DOc3ieK4jgtBdMbn
+
+K/90iVZlLcmWlC/RiPBIsYwcZKD4NA8lBPY3tlrdmwWnPr7hxolXgFqUGB9rD6
+
+NQglSWMqDOFY67nJsbPsDKMcDqrDFJNE0wmeET7lgocU+1n89QzdGaVEVS2SM
+
+Mmqu/NzIc6zyanYyxGetlLxf/8/qpia79jIkNVSQxUNRypGRK8AhUxRYvjUE
+
+kwUs1kRGWOFibFVWwJ3vKXV0n3ou5d1t3bRq3ZKOowmcwjl4cAVNaEbOkB
+
+AwTO8wpvz5Lw4787HYrTkFDvH8AfO5w8HeJLP&lt;/latexit&gt;H
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+&lt;latexit sha1_base64="qgwquz0JqI+6ceV9z1rc67fxhwM="&gt;AB+Xi
+
+cdVDNS8MwHE3n15xfVY9egkPwVNLSzu428OJxgpuDrZQ0y7aw9IMkHYy/8SLB0W8+p94878x3Sao6IOQx3u/H3l5UcaZVAh9GJWNza3tnepubW/4PD
+
+IPD7pyjQXhHZIylPRi7CknCW0o5jitJcJiuOI0/toel369zMqJEuTOzXPaBDjcJGjGClpdA0B1HKh3Ie6tQi9ANzTqymn7D9j2ILOQ7yHU08exG03Og
+
+baEl6mCNdmi+D4YpyWOaKMKxlH0bZSosFCMcLqoDXJM0ymeEz7miY4pjIolskX8EIrQzhKhT6Jgkv1+0aBY1mG05MxVhP52yvFv7x+rkZ+ULAkyxVN
+
+yOqhUc6hSmFZAxwyQYnic0wEUxnhWSCBSZKl1XTJXz9FP5Puo5lexa6destd1HFZyBc3AJbHAFWuAGtEHEDAD+AJPBuF8Wi8GK+r0Yqx3jkFP2C8f
+
+QJtB5Qk&lt;/latexit&gt;t4
+
+&lt;latexit sha1_base64="VKk51risQeMi2DL6t2q9H8TfqU="&gt;AB+Xi
+
+cdVBPS8MwHE3nvzn/VT16CQ7BU0nOudt4MXjBOcGWylpm1haVqSdDKvokXD4p49Zt489uYbhNU9EHI473fj7y8MOVMaYQ+rNLa+sbmVnm7srO7t39
+
+gHx7dqySThHZIwhPZC7GinAna0Uxz2kslxXHIaTecXBd+d0qlYom407OU+jEeCTZkBGsjBbY9CBMeqVlsrlzPAzewq8hBjQa6qEPkeKjmXSFDEGo0vRp0
+
+DSlQBSu0A/t9ECUki6nQhGOl+i5KtZ9jqRnhdF4ZIqmEzwiPYNFTimys8XyefwzCgRHCbSHKHhQv2+keNYFeHMZIz1WP32CvEvr5/pYdPmUgzTQVZ
+
+PjTMONQJLGqAEZOUaD4zBPJTFZIxlhiok1ZFVPC10/h/+S+5rieg27r1VZ9VUcZnIBTcA5cAla4Aa0QcQMAUP4Ak8W7n1aL1Yr8vRkrXaOQY/YL19A
+
+ksFlA0=&lt;/latexit&gt;t1
+
+&lt;latexit sha1_base64="PxTpiLA0omDfPnADLr7ABmN7qc="&gt;AB+Xi
+
+cdVDNS8MwHE3n15xfVY9egkPwNoxdbsNvHic4D5gKyVN0y0sTUqSDkbZf+LFgyJe/U+8+d+YbhWm6IOQx3u/H3l5QcKo0o7zaZU2Nre2d8q7lb39g8M
+
+j+/ikp0QqMeliwYQcBEgRjnpaqoZGSoDhgpB9Mb3O/PyNSUcEf9DwhXozGnEYUI20k37ZHgWChmsfmyvTCr/t21ak5S8A10mo1nes6dAulCgp0fPtj
+
+FAqcxoRrzJBSQ9dJtJchqSlmZFEZpYokCE/RmAwN5SgmysuWyRfwighjIQ0h2u4VNc3MhSrPJyZjJGeqN9eLv7lDVMdNb2M8iTVhOPVQ1HKoBYwrwG
+
+VBKs2dwQhCU1WSGeImwNmVTAnfP4X/k1695l7VnPtGtd0o6iDM3AOLoELbkAb3IEO6AIMZuARPIMXK7OerFfrbTVasoqdU/AD1vsXJIKT8w=&lt;/lat
+
+exit&gt;t2
+
+&lt;latexit sha1_base64="oeONZ69isdrDXjrJXdmkSogD8tQ="&gt;AB+Xi
+
+cdVBPS8MwHE3nvzn/VT16CQ7BU2ndpt4MXjBOcGWylpm5haVKSdDKvokXD4p49Zt489uYbhNU9EHI473fj7y8MGVUadf9sEpr6xubW+Xtys7u3v6
+
+BfXh0r0QmMeliwYTsh0gRjnpaqoZ6aeSoCRkpBdOrgu/NyVSUcHv9CwlfoJGnMYUI2kwLaHoWCRmiXmyvU8qAV21XUarkENuo67gCGtVrNWv4TeSqmC
+
+FTqB/T6MBM4SwjVmSKmB56baz5HUFDMyrwzRVKEJ2hEBoZylBDl54vkc3hmlAjGQprDNVyo3zdylKginJlMkB6r314h/uUNMh03/ZzyNOE4+VDcag
+
+FrCoAUZUEqzZzBCEJTVZIR4jibA2ZVMCV8/hf+T+wvHazjub3arq/qKIMTcArOgQeuQBvcgA7oAgym4AE8gWcrtx6tF+t1OVqyVjvH4Aest0847pQB&lt;
+
+/latexit&gt;t3
+
+&lt;latexit sha1_base64="X75KeoG9I341wUuDGB4IcBN9d1I="&gt;AB+Xi
+
+cdVDNS8MwHE3n15xfVY9egkPwVNJ9MHcbePE4wc3BVkqapltYmpYkHYy/8SLB0W8+p94878x3Sao6IOQx3u/H3l5QcqZ0gh9WKWNza3tnfJuZW/4PD
+
+IPj7pqySThPZIwhM5CLCinAna0xzOkglxXHA6X0wvS78+xmViXiTs9T6sV4LFjECNZG8m17FCQ8VPYXLle+E3friKn3UYN1ILIaSLk1tuGoHrdMOg6
+
+aIkqWKPr2+jMCFZTIUmHCs1dFGqvRxLzQini8oUzTFZIrHdGiowDFVXr5MvoAXRglhlEhzhIZL9ftGjmNVhDOTMdYT9dsrxL+8YajKy9nIs0FWT1
+
+UJRxqBNY1ABDJinRfG4IJpKZrJBMsMREm7IqpoSvn8L/Sb/muE0H3Taqndq6jI4A+fgErigBTrgBnRBDxAwAw/gCTxbufVovVivq9GStd45BT9gvX0CS
+
+3+UCw=&lt;/latexit&gt;t5
+
+
+
+Latent Spherical Space 
+
+&lt;latexit sha1_base64="rfytvYVGyononeapkrmDy7P3Y="&gt;AB9XicbVD
+
+LSgMxFL1TX7W+qi7dBIvgqsyIosuCG5cV7APbsWQymTY0kwxJRilD/8ONC0Xc+i/u/Bsz7Sy09UDI4Zx7yckJEs60cd1vp7Syura+Ud6sbG3v7O5V9w/aWqaK0Ba
+
+RXKpugDXlTNCWYbTbqIojgNO8H4Ovc7j1RpJsWdmSTUj/FQsIgRbKz0A8kD/Uktld2Px1Ua27dnQEtE68gNSjQHFS/+qEkaUyFIRxr3fPcxPgZVoYRTqeVfqp
+
+gskYD2nPUoFjqv1slnqKTqwSokgqe4RBM/X3RoZjnUezkzE2I73o5eJ/Xi810ZWfMZGkhgoyfyhKOTIS5RWgkClKDJ9YgoliNisiI6wMbaoi3BW/zyMmf1b2L
+
+unt7XmucF3WU4QiO4RQ8uIQG3EATWkBAwTO8wpvz5Lw4787HfLTkFDuH8AfO5w8i0pLh&lt;/latexit&gt;Z
+
+&lt;latexit sha1_base64="rfytvYVGyononeapkrmDy7P3Y="&gt;AB9XicbVD
+
+LSgMxFL1TX7W+qi7dBIvgqsyIosuCG5cV7APbsWQymTY0kwxJRilD/8ONC0Xc+i/u/Bsz7Sy09UDI4Zx7yckJEs60cd1vp7Syura+Ud6sbG3v7O5V9w/aWqaK0Ba
+
+RXKpugDXlTNCWYbTbqIojgNO8H4Ovc7j1RpJsWdmSTUj/FQsIgRbKz0A8kD/Uktld2Px1Ua27dnQEtE68gNSjQHFS/+qEkaUyFIRxr3fPcxPgZVoYRTqeVfqp
+
+gskYD2nPUoFjqv1slnqKTqwSokgqe4RBM/X3RoZjnUezkzE2I73o5eJ/Xi810ZWfMZGkhgoyfyhKOTIS5RWgkClKDJ9YgoliNisiI6wMbaoi3BW/zyMmf1b2L
+
+unt7XmucF3WU4QiO4RQ8uIQG3EATWkBAwTO8wpvz5Lw4787HfLTkFDuH8AfO5w8i0pLh&lt;/latexit&gt;Z with 
+
+&lt;latexit sha1_base64="/v1yl+2T2s+qpV0nAswg02/gQKI="&gt;AB6HicbVB
+
+NS8NAEJ3Ur1q/qh69LBbBU0mkoseCF8FLC7YW2lA20m7drMJuxuhP4CLx4U8epP8ua/cdvmoK0PBh7vzTAzL0gE18Z1v53C2vrG5lZxu7Szu7d/UD48aus4VQx
+
+bLBax6gRUo+ASW4YbgZ1EIY0CgQ/B+GbmPzyh0jyW92aSoB/RoeQhZ9RYqXnXL1fcqjsHWSVeTiqQo9Evf/UGMUsjlIYJqnXcxPjZ1QZzgROS71UY0LZmA6xa6mk
+
+EWo/mx86JWdWGZAwVrakIXP190RGI60nUWA7I2pGetmbif953dSE137GZIalGyxKEwFMTGZfU0GXCEzYmIJZYrbWwkbUWZsdmUbAje8surpH1R9S6rbrNWqdfy
+
+OIpwAqdwDh5cQR1uoQEtYIDwDK/w5jw6L86787FoLTj5zDH8gfP5A58hjMU=&lt;/latexit&gt;K
+
+&lt;latexit sha1_base64="/v1yl+2T2s+qpV0nAswg02/gQKI="&gt;AB6HicbVB
+
+NS8NAEJ3Ur1q/qh69LBbBU0mkoseCF8FLC7YW2lA20m7drMJuxuhP4CLx4U8epP8ua/cdvmoK0PBh7vzTAzL0gE18Z1v53C2vrG5lZxu7Szu7d/UD48aus4VQx
+
+bLBax6gRUo+ASW4YbgZ1EIY0CgQ/B+GbmPzyh0jyW92aSoB/RoeQhZ9RYqXnXL1fcqjsHWSVeTiqQo9Evf/UGMUsjlIYJqnXcxPjZ1QZzgROS71UY0LZmA6xa6mk
+
+EWo/mx86JWdWGZAwVrakIXP190RGI60nUWA7I2pGetmbif953dSE137GZIalGyxKEwFMTGZfU0GXCEzYmIJZYrbWwkbUWZsdmUbAje8surpH1R9S6rbrNWqdfy
+
+OIpwAqdwDh5cQR1uoQEtYIDwDK/w5jw6L86787FoLTj5zDH8gfP5A58hjMU=&lt;/latexit&gt;K Clusters   
+
+
+
+Recovered Space
+
+ 
+
+&lt;latexit sha1_base64="QcSvc7r7J5EZiDr8QAbFrNX/d4="&gt;AB/XicbVBLSwMxGMzWV62v9XHzEiyCp7IrRb1Z8NJjBfuAbinZbLYNzSZLkhXqsvg79OTFg
+
+yJexb/hzX9jtu1BWwdChpnvI5PxY0aVdpxvq7C0vLK6VlwvbWxube/Yu3stJRKJSRMLJmTHR4owyklTU81IJ5YERT4jbX90lfvtWyIVFfxGj2PSi9CA05BipI3Utw+8IdKp5wsWqHFkrSeZX27FScCeAicWekfPn5kOx0be/vEDgJCJcY4aU6rpOrHspkpiRrKSlygSIzxCA9I1lKOIqF46SZ/BY6MEMBTSHK7hRP29kaJI5dnMZI
+
+T0UM17ufif1010eNFLKY8TiePhQmDGoB8ypgQCXBmo0NQVhSkxXiIZIa1NYyZTgzn95kbROK+5ZpXrtlGtVMEURHIjcAJcA5qoA4aoAkwuANP4AW8WvfWs/VmvU9HC9ZsZx/8gfXxA4z9ml0=&lt;/latexit&gt; ˆH
+
+&lt;latexit sha1_base64="QcSvc7r7J5EZiDr8QAbFrNX/d4="&gt;AB/XicbVBLSwMxGMzWV62v9XHzEiyCp7IrRb1Z8NJjBfuAbinZbLYNzSZLkhXqsvg79OTFg
+
+yJexb/hzX9jtu1BWwdChpnvI5PxY0aVdpxvq7C0vLK6VlwvbWxube/Yu3stJRKJSRMLJmTHR4owyklTU81IJ5YERT4jbX90lfvtWyIVFfxGj2PSi9CA05BipI3Utw+8IdKp5wsWqHFkrSeZX27FScCeAicWekfPn5kOx0be/vEDgJCJcY4aU6rpOrHspkpiRrKSlygSIzxCA9I1lKOIqF46SZ/BY6MEMBTSHK7hRP29kaJI5dnMZI
+
+T0UM17ufif1010eNFLKY8TiePhQmDGoB8ypgQCXBmo0NQVhSkxXiIZIa1NYyZTgzn95kbROK+5ZpXrtlGtVMEURHIjcAJcA5qoA4aoAkwuANP4AW8WvfWs/VmvU9HC9ZsZx/8gfXxA4z9ml0=&lt;/latexit&gt; ˆH
+
+
+
+&lt;latexit sha1_base64="BatYsbvA8tAkDJUz7ieyCf/V3E="&gt;ACDHicbVD
+
+LSgMxFM3UV62vqks3wSK4KjNSUVwV3HRZwT6wM5RMJtOGZpIhyQhlmA9w46+4caGIWz/AnX9jp1Fb0QcjnXu49x48ZVdq2f6zS2vrG5lZ5u7Kzu7d/UD086iq
+
+RSEw6WDAh+z5ShFOpqRvqxJCjyGen5k9tc7z0Sqajg93oaEy9CI05DipE21LBaG924vmCBmkbmSx8y6GoBF6lWZrsuj0ruAqcAtRAUe1h9dsNBE4iwjVmSKmB
+
+Y8faS5HUFDOSVdxEkRjhCRqRgYEcRUR56cxMBs8ME8BQSPO4hjN2cSJFkcpPM50R0mO1rOXkf9og0eG1l1IeJ5pwPF8UJgwav3kyMKCSYM2mBiAsqbkV4jGSCGuT
+
+X8WE4CxbXgXdi7pzWbfvGrVmo4ijDE7AKTgHDrgCTdACbdABGDyBF/AG3q1n69X6sD7nrSWrmDkGf8r6+gV3D5vX&lt;/latexit&gt;g : Z ! H
+
+&lt;latexit sha1_base64="BatYsbvA8tAkDJUz7ieyCf/V3E="&gt;ACDHicbVD
+
+LSgMxFM3UV62vqks3wSK4KjNSUVwV3HRZwT6wM5RMJtOGZpIhyQhlmA9w46+4caGIWz/AnX9jp1Fb0QcjnXu49x48ZVdq2f6zS2vrG5lZ5u7Kzu7d/UD086iq
+
+RSEw6WDAh+z5ShFOpqRvqxJCjyGen5k9tc7z0Sqajg93oaEy9CI05DipE21LBaG924vmCBmkbmSx8y6GoBF6lWZrsuj0ruAqcAtRAUe1h9dsNBE4iwjVmSKmB
+
+Y8faS5HUFDOSVdxEkRjhCRqRgYEcRUR56cxMBs8ME8BQSPO4hjN2cSJFkcpPM50R0mO1rOXkf9og0eG1l1IeJ5pwPF8UJgwav3kyMKCSYM2mBiAsqbkV4jGSCGuT
+
+X8WE4CxbXgXdi7pzWbfvGrVmo4ijDE7AKTgHDrgCTdACbdABGDyBF/AG3q1n69X6sD7nrSWrmDkGf8r6+gV3D5vX&lt;/latexit&gt;g : Z ! H
+
+&lt;latexit sha
+
+1_base64="cfLucvCFP1XE
+
+6FW6F3QWTzbOzY="&gt;AB
+
+/3icbVDNS8MwHE39nPOrKn
+
+jxEhzCvIxWhnocePE4wX3A
+
+VkuaZltYmpQkVUbtwX/Fiw
+
+dFvPpvePO/Md160M0HIY/3
+
+fj/y8oKYUaUd59taWl5ZXV
+
+svbZQ3t7Z3du29/bYSicSk
+
+hQUTshsgRjlpKWpZqQbS4
+
+KigJFOML7K/c49kYoKfqsn
+
+MfEiNOR0QDHSRvLtw34gWK
+
+gmkbnSUea7d2n14Tz7YpT
+
+c6aAi8QtSAUaPr2Vz8UOI
+
+kI15ghpXquE2svRVJTzEhW
+
+7ieKxAiP0ZD0DOUoIspLp/
+
+kzeGKUEA6ENIdrOFV/b6Qo
+
+UnlEMxkhPVLzXi7+5/USPb
+
+j0UsrjRBOZw8NEga1gHkZ
+
+MKSYM0mhiAsqckK8QhJhL
+
+WprGxKcOe/vEjaZzX3vFa/
+
+qVcaTlFHCRyBY1AFLrgADX
+
+ANmqAFMHgEz+AVvFlP1ov1
+
+bn3MRpesYucA/IH1+QMh8J
+
+Yf&lt;/latexit&gt;
+
+h(w)
+
+1
+
+
+
+BERT
+
+(no ﬁne-tuning)
+
+· · ·
+
+&lt;latexit sha1
+
+_base64="AcPHc2/GmseUvYw
+
+39tetylSl3A8="&gt;AB7Xicb
+
+VBNS8NAEJ3Ur1q/qh69LBbBU0
+
+lE0GPRi8cK9gPaUDabTbt2kw
+
+27E6GE/gcvHhTx6v/x5r9x2+
+
+agrQ8GHu/NMDMvSKUw6LrfTm
+
+ltfWNzq7xd2dnd2z+oHh61jco
+
+04y2mpNLdgBouRcJbKFDybqo
+
+5jQPJO8H4duZ3nrg2QiUPOEm
+
+5H9NhIiLBKFqp3WehQjOo1ty6
+
+OwdZJV5BalCgOah+9UPFspgn
+
+yCQ1pue5Kfo51SiY5NKPzM8
+
+pWxMh7xnaUJjbvx8fu2UnFklJ
+
+JHSthIkc/X3RE5jYyZxYDtji
+
+iOz7M3E/7xehtG1n4skzZAnb
+
+LEoyiRBRWavk1BozlBOLKFMC3
+
+srYSOqKUMbUMWG4C2/vEraF3
+
+XPJnN/WvcFHGU4QRO4Rw8uI
+
+IG3ETWsDgEZ7hFd4c5bw478
+
+7HorXkFDPH8AfO5w+uBY8u&lt;/l
+
+atexit&gt;
+
+&lt;latexit sha1
+
+_base64="AcPHc2/GmseUvYw
+
+39tetylSl3A8="&gt;AB7Xicb
+
+VBNS8NAEJ3Ur1q/qh69LBbBU0
+
+lE0GPRi8cK9gPaUDabTbt2kw
+
+27E6GE/gcvHhTx6v/x5r9x2+
+
+agrQ8GHu/NMDMvSKUw6LrfTm
+
+ltfWNzq7xd2dnd2z+oHh61jco
+
+04y2mpNLdgBouRcJbKFDybqo
+
+5jQPJO8H4duZ3nrg2QiUPOEm
+
+5H9NhIiLBKFqp3WehQjOo1ty6
+
+OwdZJV5BalCgOah+9UPFspgn
+
+yCQ1pue5Kfo51SiY5NKPzM8
+
+pWxMh7xnaUJjbvx8fu2UnFklJ
+
+JHSthIkc/X3RE5jYyZxYDtji
+
+iOz7M3E/7xehtG1n4skzZAnb
+
+LEoyiRBRWavk1BozlBOLKFMC3
+
+srYSOqKUMbUMWG4C2/vEraF3
+
+XPJnN/WvcFHGU4QRO4Rw8uI
+
+IG3ETWsDgEZ7hFd4c5bw478
+
+7HorXkFDPH8AfO5w+uBY8u&lt;/l
+
+atexit&gt;
+
+&lt;latexit sha1
+
+_base64="AcPHc2/GmseUvYw
+
+39tetylSl3A8="&gt;AB7Xicb
+
+VBNS8NAEJ3Ur1q/qh69LBbBU0
+
+lE0GPRi8cK9gPaUDabTbt2kw
+
+27E6GE/gcvHhTx6v/x5r9x2+
+
+agrQ8GHu/NMDMvSKUw6LrfTm
+
+ltfWNzq7xd2dnd2z+oHh61jco
+
+04y2mpNLdgBouRcJbKFDybqo
+
+5jQPJO8H4duZ3nrg2QiUPOEm
+
+5H9NhIiLBKFqp3WehQjOo1ty6
+
+OwdZJV5BalCgOah+9UPFspgn
+
+yCQ1pue5Kfo51SiY5NKPzM8
+
+pWxMh7xnaUJjbvx8fu2UnFklJ
+
+JHSthIkc/X3RE5jYyZxYDtji
+
+iOz7M3E/7xehtG1n4skzZAnb
+
+LEoyiRBRWavk1BozlBOLKFMC3
+
+srYSOqKUMbUMWG4C2/vEraF3
+
+XPJnN/WvcFHGU4QRO4Rw8uI
+
+IG3ETWsDgEZ7hFd4c5bw478
+
+7HorXkFDPH8AfO5w+uBY8u&lt;/l
+
+atexit&gt;
+
+&lt;latexit sha1
+
+_base64="AcPHc2/GmseUvYw
+
+39tetylSl3A8="&gt;AB7Xicb
+
+VBNS8NAEJ3Ur1q/qh69LBbBU0
+
+lE0GPRi8cK9gPaUDabTbt2kw
+
+27E6GE/gcvHhTx6v/x5r9x2+
+
+agrQ8GHu/NMDMvSKUw6LrfTm
+
+ltfWNzq7xd2dnd2z+oHh61jco
+
+04y2mpNLdgBouRcJbKFDybqo
+
+5jQPJO8H4duZ3nrg2QiUPOEm
+
+5H9NhIiLBKFqp3WehQjOo1ty6
+
+OwdZJV5BalCgOah+9UPFspgn
+
+yCQ1pue5Kfo51SiY5NKPzM8
+
+pWxMh7xnaUJjbvx8fu2UnFklJ
+
+JHSthIkc/X3RE5jYyZxYDtji
+
+iOz7M3E/7xehtG1n4skzZAnb
+
+LEoyiRBRWavk1BozlBOLKFMC3
+
+srYSOqKUMbUMWG4C2/vEraF3
+
+XPJnN/WvcFHGU4QRO4Rw8uI
+
+IG3ETWsDgEZ7hFd4c5bw478
+
+7HorXkFDPH8AfO5w+uBY8u&lt;/l
+
+atexit&gt;
+
+&lt;latexit sha1_ba
+
+se64="W4CHVkKewjyOR8AmK0awMB4/C
+
+r4="&gt;AB6nicbVDLSgNBEOw1PmJ8Rc
+
+WTl8EgeAq7Iuox4MVjRPOAJITZSW8yZ
+
+HZ2mZlVwpJP8OJBEa/+iL/gQfDkp+jk
+
+cdDEgoaiqpvuLj8WXBvX/XQWMotLyvZ
+
+1dza+sbmVn57p6qjRDGsEhEqu5TjYJ
+
+LrBhuBNZjhT0Bdb8/sXIr92i0jySN2
+
+YQYyukXckDzqix0vVd2vnC27RHYPME
+
+29KCqXMx/fb3heW2/n3ZidiSYjSMEG1
+
+bnhubFopVYzgcNcM9EYU9anXWxYKm
+
+IupWOTx2SQ6t0SBApW9KQsfp7IqWh1o
+
+PQt50hNT09643E/7xGYoLzVsplnBiUb
+
+LIoSAQxERn9TpcITNiYAlitbCetR
+
+RZmx6eRsCN7sy/Okelz0TosnVzYNFyb
+
+Iwj4cwBF4cAYluIQyVIBF+7hEZ4c4Tw
+
+4z87LpHXBmc7swh84rz+qm5HE&lt;/late
+
+xit&gt;w1
+
+&lt;latexit sha1_ba
+
+se64="W4CHVkKewjyOR8AmK0awMB4/C
+
+r4="&gt;AB6nicbVDLSgNBEOw1PmJ8Rc
+
+WTl8EgeAq7Iuox4MVjRPOAJITZSW8yZ
+
+HZ2mZlVwpJP8OJBEa/+iL/gQfDkp+jk
+
+cdDEgoaiqpvuLj8WXBvX/XQWMotLyvZ
+
+1dza+sbmVn57p6qjRDGsEhEqu5TjYJ
+
+LrBhuBNZjhT0Bdb8/sXIr92i0jySN2
+
+YQYyukXckDzqix0vVd2vnC27RHYPME
+
+29KCqXMx/fb3heW2/n3ZidiSYjSMEG1
+
+bnhubFopVYzgcNcM9EYU9anXWxYKm
+
+IupWOTx2SQ6t0SBApW9KQsfp7IqWh1o
+
+PQt50hNT09643E/7xGYoLzVsplnBiUb
+
+LIoSAQxERn9TpcITNiYAlitbCetR
+
+RZmx6eRsCN7sy/Okelz0TosnVzYNFyb
+
+Iwj4cwBF4cAYluIQyVIBF+7hEZ4c4Tw
+
+4z87LpHXBmc7swh84rz+qm5HE&lt;/late
+
+xit&gt;w1
+
+&lt;latexit sha1_ba
+
+se64="0lymhe+SoahmHM5UE3GDGYX42
+
+2E="&gt;AB6nicbVDLSgNBEOxNfMT4io
+
+onL4tB8BR2g6jHgBePEc0DkiXMTnqTI
+
+bOzy8ysEpZ8ghcPinj1R/wFD4InP0Un
+
+j4MmFjQUVd10d/kxZ0o7zqeVyS4tr6zm
+
+1vLrG5tb24Wd3bqKEkmxRiMeyaZPFHI
+
+msKaZ5tiMJZLQ59jwBxdjv3GLUrFI3O
+
+hjF5IeoIFjBJtpOu7TrlTKDolZwJ7k
+
+bgzUqxkP7f9r+w2im8t7sRTUIUmnKi
+
+VMt1Yu2lRGpGOY7y7URhTOiA9LBlqCA
+
+hKi+dnDqyj4zStYNImhLanqi/J1ISKj
+
+UMfdMZEt1X895Y/M9rJTo491Im4kSjo
+
+NFQcJtHdnjv+0uk0g1HxpCqGTmVpv2
+
+iSRUm3TyJgR3/uVFUi+X3NPSyZVJw4E
+
+pcnAh3AMLpxBS6hCjWg0IN7eIQni1s
+
+P1rP1Mm3NWLOZPfgD6/UHrB+RxQ=&lt;/
+
+latexit&gt;w2
+
+&lt;latexit sha1_ba
+
+se64="0lymhe+SoahmHM5UE3GDGYX42
+
+2E="&gt;AB6nicbVDLSgNBEOxNfMT4io
+
+onL4tB8BR2g6jHgBePEc0DkiXMTnqTI
+
+bOzy8ysEpZ8ghcPinj1R/wFD4InP0Un
+
+j4MmFjQUVd10d/kxZ0o7zqeVyS4tr6zm
+
+1vLrG5tb24Wd3bqKEkmxRiMeyaZPFHI
+
+msKaZ5tiMJZLQ59jwBxdjv3GLUrFI3O
+
+hjF5IeoIFjBJtpOu7TrlTKDolZwJ7k
+
+bgzUqxkP7f9r+w2im8t7sRTUIUmnKi
+
+VMt1Yu2lRGpGOY7y7URhTOiA9LBlqCA
+
+hKi+dnDqyj4zStYNImhLanqi/J1ISKj
+
+UMfdMZEt1X895Y/M9rJTo491Im4kSjo
+
+NFQcJtHdnjv+0uk0g1HxpCqGTmVpv2
+
+iSRUm3TyJgR3/uVFUi+X3NPSyZVJw4E
+
+pcnAh3AMLpxBS6hCjWg0IN7eIQni1s
+
+P1rP1Mm3NWLOZPfgD6/UHrB+RxQ=&lt;/
+
+latexit&gt;w2
+
+&lt;latexit sha1_base64="j3YI7AW0+P
+
+SVk8L64t3vnace3SI="&gt;AB6nicbVDLSgNBEOw1PmJ8RcWTl8EgeAq7Iuox4M
+
+VjRPOAJITZSW8yZHZ2mZlVwpJP8OJBEa/+iL/gQfDkp+jkcdDEgoaiqpvuLj8W
+
+XBvX/XQWMotLyvZ1dza+sbmVn57p6qjRDGsEhEqu5TjYJLrBhuBNZjhT0Bd
+
+b8/sXIr92i0jySN2YQYyukXckDzqix0vVdW7bzBbfojkHmiTclhVLm4/t7wvL
+
+7fx7sxOxJERpmKBaNzw3Nq2UKsOZwGumWiMKevTLjYslTRE3UrHpw7JoVU6JIi
+
+ULWnIWP09kdJQ60Ho286Qmp6e9Ubif14jMcF5K+UyTgxKNlkUJIKYiIz+Jh2uk
+
+BkxsIQyxe2thPWoszYdHI2BG/25XlSPS56p8WTK5uGCxNkYR8O4Ag8OIMSXEI
+
+ZKsCgC/fwCE+OcB6cZ+dl0rgTGd24Q+c1x8HpIB&lt;/latexit&gt;wn
+
+&lt;latexit sha1_base64="j3YI7AW0+P
+
+SVk8L64t3vnace3SI="&gt;AB6nicbVDLSgNBEOw1PmJ8RcWTl8EgeAq7Iuox4M
+
+VjRPOAJITZSW8yZHZ2mZlVwpJP8OJBEa/+iL/gQfDkp+jkcdDEgoaiqpvuLj8W
+
+XBvX/XQWMotLyvZ1dza+sbmVn57p6qjRDGsEhEqu5TjYJLrBhuBNZjhT0Bd
+
+b8/sXIr92i0jySN2YQYyukXckDzqix0vVdW7bzBbfojkHmiTclhVLm4/t7wvL
+
+7fx7sxOxJERpmKBaNzw3Nq2UKsOZwGumWiMKevTLjYslTRE3UrHpw7JoVU6JIi
+
+ULWnIWP09kdJQ60Ho286Qmp6e9Ubif14jMcF5K+UyTgxKNlkUJIKYiIz+Jh2uk
+
+BkxsIQyxe2thPWoszYdHI2BG/25XlSPS56p8WTK5uGCxNkYR8O4Ag8OIMSXEI
+
+ZKsCgC/fwCE+OcB6cZ+dl0rgTGd24Q+c1x8HpIB&lt;/latexit&gt;wn
+
+· · ·
+
+&lt;latexit sha1
+
+_base64="AcPHc2/GmseUvYw
+
+39tetylSl3A8="&gt;AB7Xicb
+
+VBNS8NAEJ3Ur1q/qh69LBbBU0
+
+lE0GPRi8cK9gPaUDabTbt2kw
+
+27E6GE/gcvHhTx6v/x5r9x2+
+
+agrQ8GHu/NMDMvSKUw6LrfTm
+
+ltfWNzq7xd2dnd2z+oHh61jco
+
+04y2mpNLdgBouRcJbKFDybqo
+
+5jQPJO8H4duZ3nrg2QiUPOEm
+
+5H9NhIiLBKFqp3WehQjOo1ty6
+
+OwdZJV5BalCgOah+9UPFspgn
+
+yCQ1pue5Kfo51SiY5NKPzM8
+
+pWxMh7xnaUJjbvx8fu2UnFklJ
+
+JHSthIkc/X3RE5jYyZxYDtji
+
+iOz7M3E/7xehtG1n4skzZAnb
+
+LEoyiRBRWavk1BozlBOLKFMC3
+
+srYSOqKUMbUMWG4C2/vEraF3
+
+XPJnN/WvcFHGU4QRO4Rw8uI
+
+IG3ETWsDgEZ7hFd4c5bw478
+
+7HorXkFDPH8AfO5w+uBY8u&lt;/l
+
+atexit&gt;
+
+&lt;latexit sha1
+
+_base64="AcPHc2/GmseUvYw
+
+39tetylSl3A8="&gt;AB7Xicb
+
+VBNS8NAEJ3Ur1q/qh69LBbBU0
+
+lE0GPRi8cK9gPaUDabTbt2kw
+
+27E6GE/gcvHhTx6v/x5r9x2+
+
+agrQ8GHu/NMDMvSKUw6LrfTm
+
+ltfWNzq7xd2dnd2z+oHh61jco
+
+04y2mpNLdgBouRcJbKFDybqo
+
+5jQPJO8H4duZ3nrg2QiUPOEm
+
+5H9NhIiLBKFqp3WehQjOo1ty6
+
+OwdZJV5BalCgOah+9UPFspgn
+
+yCQ1pue5Kfo51SiY5NKPzM8
+
+pWxMh7xnaUJjbvx8fu2UnFklJ
+
+JHSthIkc/X3RE5jYyZxYDtji
+
+iOz7M3E/7xehtG1n4skzZAnb
+
+LEoyiRBRWavk1BozlBOLKFMC3
+
+srYSOqKUMbUMWG4C2/vEraF3
+
+XPJnN/WvcFHGU4QRO4Rw8uI
+
+IG3ETWsDgEZ7hFd4c5bw478
+
+7HorXkFDPH8AfO5w+uBY8u&lt;/l
+
+atexit&gt;
+
+&lt;latexit sha1
+
+_base64="AcPHc2/GmseUvYw
+
+39tetylSl3A8="&gt;AB7Xicb
+
+VBNS8NAEJ3Ur1q/qh69LBbBU0
+
+lE0GPRi8cK9gPaUDabTbt2kw
+
+27E6GE/gcvHhTx6v/x5r9x2+
+
+agrQ8GHu/NMDMvSKUw6LrfTm
+
+ltfWNzq7xd2dnd2z+oHh61jco
+
+04y2mpNLdgBouRcJbKFDybqo
+
+5jQPJO8H4duZ3nrg2QiUPOEm
+
+5H9NhIiLBKFqp3WehQjOo1ty6
+
+OwdZJV5BalCgOah+9UPFspgn
+
+yCQ1pue5Kfo51SiY5NKPzM8
+
+pWxMh7xnaUJjbvx8fu2UnFklJ
+
+JHSthIkc/X3RE5jYyZxYDtji
+
+iOz7M3E/7xehtG1n4skzZAnb
+
+LEoyiRBRWavk1BozlBOLKFMC3
+
+srYSOqKUMbUMWG4C2/vEraF3
+
+XPJnN/WvcFHGU4QRO4Rw8uI
+
+IG3ETWsDgEZ7hFd4c5bw478
+
+7HorXkFDPH8AfO5w+uBY8u&lt;/l
+
+atexit&gt;
+
+&lt;latexit sha1
+
+_base64="AcPHc2/GmseUvYw
+
+39tetylSl3A8="&gt;AB7Xicb
+
+VBNS8NAEJ3Ur1q/qh69LBbBU0
+
+lE0GPRi8cK9gPaUDabTbt2kw
+
+27E6GE/gcvHhTx6v/x5r9x2+
+
+agrQ8GHu/NMDMvSKUw6LrfTm
+
+ltfWNzq7xd2dnd2z+oHh61jco
+
+04y2mpNLdgBouRcJbKFDybqo
+
+5jQPJO8H4duZ3nrg2QiUPOEm
+
+5H9NhIiLBKFqp3WehQjOo1ty6
+
+OwdZJV5BalCgOah+9UPFspgn
+
+yCQ1pue5Kfo51SiY5NKPzM8
+
+pWxMh7xnaUJjbvx8fu2UnFklJ
+
+JHSthIkc/X3RE5jYyZxYDtji
+
+iOz7M3E/7xehtG1n4skzZAnb
+
+LEoyiRBRWavk1BozlBOLKFMC3
+
+srYSOqKUMbUMWG4C2/vEraF3
+
+XPJnN/WvcFHGU4QRO4Rw8uI
+
+IG3ETWsDgEZ7hFd4c5bw478
+
+7HorXkFDPH8AfO5w+uBY8u&lt;/l
+
+atexit&gt;
+
+&lt;latexit sha1
+
+_base64="FNS2fi95VyFAnt2
+
+cvRvS3ldvzk0="&gt;AB/3icb
+
+VDNS8MwHE3n15xfVcGLl+IQ5m
+
+W0Y6jHgRePE9wHbLWkabqFpU
+
+lJUmXUHvxXvHhQxKv/hjf/G9
+
+OtB918EPJ47/cjL8+PKZHKtr
+
++N0srq2vpGebOytb2zu2fuH3Q
+
+lTwTCHcQpF30fSkwJwx1FMX
+
+9WGAY+RT3/MlV7vfusZCEs1s
+
+1jbEbwREjIUFQackzj4Y+p4Gc
+
+RvpKx5nXuEtrD2eZ1btuj2D
+
+tUycglRBgbZnfg0DjpIM4Uo
+
+lHLg2LFyUygUQRnlWEicQzRB
+
+I7wQFMGIyzdJY/s061ElghF
+
+/owZc3U3xspjGQeU9GUI3lo
+
+peL/3mDRIWXbkpYnCjM0PyhMK
+
+GW4lZehUQgZGiU0gEkRntd
+
+AYCoiUrqyiS3AWv7xMuo26c1
+
+5v3jSrLbuowyOwQmoAQdcgB
+
+a4Bm3QAQg8gmfwCt6MJ+PFeDc
+
++5qMlo9g5BH9gfP4AI3qWIA=
+
+=&lt;/latexit&gt;
+
+h(w)
+
+2
+
+&lt;latexit sha1_base64="WDU
+
+lFY/IMlqCnrnFMpokfKS6FYQ="&gt;AB/3icbVDNS8MwHE39n
+
+POrKnjxEhzCvIxWhnocePE4wX3AVkuaZltYmpQkVUbtwX/Fiw
+
+dFvPpvePO/Md160M0HIY/3fj/y8oKYUaUd59taWl5ZXVsvbZQ
+
+3t7Z3du29/bYSicSkhQUTshsgRjlpKWpZqQbS4KigJFOML7
+
+K/c49kYoKfqsnMfEiNOR0QDHSRvLtw34gWKgmkbnSUebzu7T6
+
+cJr5dsWpOVPAReIWpAIKNH37qx8KnESEa8yQUj3XibWXIqkp
+
+ZiQr9xNFYoTHaEh6hnIUEeWl0/wZPDFKCAdCmsM1nKq/N1IUq
+
+TyimYyQHql5Lxf/83qJHlx6KeVxognHs4cGCYNawLwMGFJsG
+
+YTQxCW1GSFeIQkwtpUVjYluPNfXiTts5p7Xqvf1CsNp6ijBI
+
+7AMagCF1yABrgGTdACGDyCZ/AK3qwn68V6tz5mo0tWsXMA/sD
+
+6/AF/0pZc&lt;/latexit&gt;
+
+h(w)
+
+n
+
+&lt;latexit sha1
+
+_base64="znY9scH54y4Fvc
+
+9fmTbd2GHnE="&gt;AB/Xicd
+
+VBJSwMxGM241rqNy81LsAj1Up
+
+JSutwKXjxWsAu0Y8lk0jY0s5
+
+BkhDoM/hUvHhTx6v/w5r8x01
+
+ZQ0Qchj/e+j7w8NxJcaYQ+rJ
+
+XVtfWNzdxWfntnd2/fPjsqDC
+
+WlLVpKELZc4ligesrbkWrBd
+
+JRnxXsK47vcj87i2TiofBtZ5
+
+FzPHJOAjTok20tA+Hrih8NTM
+
+N1cySW+SoneDu0CKiGEMYw
+
+I7hWRY0GvUyrkOcWQYFsERr
+
+aL8PvJDGPgs0FUSpPkaRdhIiN
+
+aeCpflBrFhE6JSMWd/QgPhMO
+
+ck8fQrPjOLBUSjNCTScq983E
+
+uKrLKCZ9ImeqN9eJv7l9WM9qj
+
+sJD6JYs4AuHhrFAuoQZlVAj0
+
+tGtZgZQqjkJiukEyIJ1awvC
+
+nh6fwf9Ipl3C1VLmqFJpoWU
+
+cOnIBTUAQY1EATXIWaAMK7sA
+
+DeALP1r31aL1Yr4vRFWu5cwR
+
++wHr7B2slZ4=&lt;/latexit&gt;
+
+h(d)
+
+&lt;latexit sha1_ba
+
+se64="p5z4Wvu1h356foKLdoXSQMiF9
+
+74="&gt;AB73icdVDLSsNAFL2pr1pfVZ
+
+duBovgKiS1tsmu4MZlBfuANpTJdNIOn
+
+TycmQgl9CfcuFDErb/jzr9x0lZQ0QMX
+
+Dufcy73+AlnUlnWh1FYW9/Y3Cpul3Z2
+
+9/YPyodHRmngtA2iXksej6WlLOIthV
+
+TnPYSQXHoc9r1p1e5372nQrI4ulWzhH
+
+ohHkcsYAQrLfUGmCcTPLSH5YplXjquU
+
+28gy6xXesiJ67rNBwH2a1QAVWaA3L
+
+74NRTNKQRopwLGXfthLlZVgoRjidlwa
+
+pAkmUzymfU0jHFLpZYt75+hMKyMUxE
+
+JXpNBC/T6R4VDKWejrzhCrifzt5eJfX
+
+j9VgeNlLEpSRSOyXBSkHKkY5c+jEROU
+
+KD7TBPB9K2ITLDAROmISjqEr0/R/6R
+
+TNe26WbupVZq1VRxFOIFTOAcbGtCEa2h
+
+BGwhweIAneDbujEfjxXhdthaM1cwx/I
+
+Dx9glfn5Au&lt;/latexit&gt;↵1
+
+&lt;latexit sha1_ba
+
+se64="z87OMXG+8K1Eoz/8hkmXY0Kci
+
+hA="&gt;AB73icdVDLSgNBEJyNrxhfUY
+
+9eBoPgKeyEkMct4MVjBPOAZAm9k9lky
+
+OzsOjMrhCU/4cWDIl79HW/+jbNJBUt
+
+aCiqunu8mPBtXHdDye3sbm1vZPfLezt
+
+HxweFY9PujpKFGUdGolI9X3QTHDJOoY
+
+bwfqxYhD6gvX82VXm9+6Z0jySt2YeMy
+
++EieQBp2Cs1B+CiKcwqoyKJbfsui4hB
+
+GeE1GuJc1mo0IamGSWRQmt0R4V34fj
+
+iCYhk4YK0HpA3Nh4KSjDqWCLwjDRLAY
+
+6gwkbWCohZNpLl/cu8IVxjiIlC1p8F
+
+L9PpFCqPU89G1nCGaqf3uZ+Jc3SEzQ8
+
+FIu48QwSVeLgkRgE+HseTzmilEj5pYA
+
+VdzeiukUFBjIyrYEL4+xf+TbqVMauX
+
+qTbXUq7jyKMzdI4uEUF1ELXqI06iCK
+
+BHtATenbunEfnxXldteac9cwp+gHn7R
+
+MCEo/u&lt;/latexit&gt;↵2
+
+&lt;latexit sha1_ba
+
+se64="W4q3Yw/D/N6hYKuaIShn+7iPA
+
+qI="&gt;AB73icdVDLSgNBEOyNrxhfUY
+
+9eBoPgKeyEkMct4MVjBPOAZAmzk9lky
+
+OzsOjMrhCU/4cWDIl79HW/+jbNJBUt
+
+aCiqunu8mPBtXHdDye3sbm1vZPfLezt
+
+HxweFY9PujpKFGUdGolI9X2imeCSdQw
+
+3gvVjxUjoC9bzZ1eZ37tnSvNI3p5zL
+
+yQTCQPOCXGSv0hEfGUjOSoWHLrutij
+
+FGcL3mWtJsNiq4gXBmWZRgjfao+D4c
+
+RzQJmTRUEK0H2I2NlxJlOBVsURgmsW
+
+EzsiEDSyVJGTaS5f3LtCFVcYoiJQtad
+
+BS/T6RklDrejbzpCYqf7tZeJf3iAxQ
+
+cNLuYwTwyRdLQoSgUyEsufRmCtGjZhb
+
+Qqji9lZEp0QRamxEBRvC16fof9KtlHG
+
+tXL2plrVdRx5OINzuAQMdWjBNbShAxQ
+
+EPMATPDt3zqPz4ryuWnPOeuYUfsB5+w
+
+RdApAq&lt;/latexit&gt;↵n
+
+&lt;latexit sha1_base64="b7r+TzF7s1
+
+zdbmlZ12hX1q/gbDg="&gt;AB6HicbVBNS8NAEJ3Ur1q/qh69LBbBU0mkoseCF4
+
+8t2A9oQ9lsJ+3azSbsboQS+gu8eFDEqz/Jm/GbZuDtj4YeLw3w8y8IBFcG9f9
+
+dgobm1vbO8Xd0t7+weFR+fikreNUMWyxWMSqG1CNgktsGW4EdhOFNAoEdoLJ3d
+
+zvPKHSPJYPZpqgH9GR5CFn1FipaQblilt1FyDrxMtJBXI0BuWv/jBmaYTSMEG1
+
+7nluYvyMKsOZwFmpn2pMKJvQEfYslTRC7WeLQ2fkwipDEsbKljRkof6eyGik9TQ
+
+KbGdEzVivenPxP6+XmvDWz7hMUoOSLReFqSAmJvOvyZArZEZMLaFMcXsrYWOqK
+
+DM2m5INwVt9eZ20r6redVt1ir1Wh5HEc7gHC7Bgxuowz0oAUMEJ7hFd6cR+f
+
+FeXc+lq0FJ585hT9wPn8A3UWM7g=&lt;/latexit&gt;t
+
+&lt;latexit sha1_base64="b7r+TzF7s1zdbmlZ12hX1q/gbDg="&gt;AB6HicbVB
+
+NS8NAEJ3Ur1q/qh69LBbBU0mkoseCF48t2A9oQ9lsJ+3azSbsboQS+gu8eFDEqz/Jm/GbZuDtj4YeLw3w8y8IBFcG9f9dgobm1vbO8Xd0t7+weFR+fikreNUMWy
+
+xWMSqG1CNgktsGW4EdhOFNAoEdoLJ3dzvPKHSPJYPZpqgH9GR5CFn1FipaQblilt1FyDrxMtJBXI0BuWv/jBmaYTSMEG17nluYvyMKsOZwFmpn2pMKJvQEfYslTRC
+
+7WeLQ2fkwipDEsbKljRkof6eyGik9TQKbGdEzVivenPxP6+XmvDWz7hMUoOSLReFqSAmJvOvyZArZEZMLaFMcXsrYWOqKDM2m5INwVt9eZ20r6redVt1ir1Wh5H
+
+Ec7gHC7Bgxuowz0oAUMEJ7hFd6cR+fFeXc+lq0FJ585hT9wPn8A3UWM7g=&lt;/latexit&gt;t
+
+sharpened
+
+Distinctive Topic Clustering
+
+&lt;latexit sha1_base64="LyMuTmUgx
+
+vigwqoJY0Wlq21c7Y="&gt;ACAnicbVC7TsMwFHXKq5RXgAmxWFRI7VIlqALGSi
+
+yMRaIPqQ2V4zitVSeObAdUQsTCr7AwgBArX8HG3+C0GaDlSJaPzrlX97jRoxK
+
+ZVnfRmFpeWV1rbhe2tjc2t4xd/fakscCkxbmjIuiyRhNCQtRUj3UgQFLiMdN
+
+zxReZ3bomQlIfXahIRJ0DkPoUI6WlgXkQVdRD3+XMk5NAf8l9epNU7qpdWCW
+
+rZo1BVwkdk7KIEdzYH71PY7jgIQKMyRlz7Yi5SRIKIoZSUv9WJI4TEakp6mIQq
+
+IdJLpCSk81oHfS70CxWcqr87EhTIbENdGSA1kvNeJv7n9WLlnzsJDaNYkRDPB
+
+vkxg4rDLA/oUGwYhNEBZU7wrxCAmElU6tpEOw509eJO2Tmn1aq1/Vy416Hkc
+
+RHIjUAE2OAMNcAmaoAUweATP4BW8GU/Gi/FufMxKC0besw/+wPj8AX9Tl3Q=&lt;
+
+/latexit&gt;
+
+p(t|z(w))
+
+&lt;latexit sha1_base64="IkMPfsFb6lmr3k3mMyXCJo5bDQ="&gt;ACAnicbVC
+
+7TsMwFHV4lvIKMCEWiwqpXaoEVcBYiYWxSPQhtaFyHKe16jBdkAlRCz8CgsDCLHyFWz8DU6bAVqOZPnonHt17z1uxKhUlvVtLCwuLa+sFtaK6xubW9vmzm5LhrH
+
+ApIlDFoqOiyRhlJOmoqRTiQIClxG2u7oPbt0RIGvIrNY6IE6ABpz7FSGmpb+7flNVDzw2ZJ8eB/pL79Dop31XSt8sWVrAjhP7JyUQI5G3/zqeSGOA8IVZkjK
+
+rm1FykmQUBQzkhZ7sSQRwiM0IF1NOQqIdJLJCSk80oH/VDoxWcqL87EhTIbENdGSA1lLNeJv7ndWPlnzkJ5VGsCMfTQX7MoAphlgf0qCBYsbEmCAuqd4V4iATC
+
+SqdW1CHYsyfPk9Zx1T6p1i5rpXotj6MADsAhKAMbnI6uAN0AQYPIJn8ArejCfjxXg3PqalC0beswf+wPj8AYDvl3U=&lt;/latexit&gt;
+
+q(t|z(w))
+
+Topical Reconstruction of Documents
+
+&lt;latexit sha1_base64="b7r+TzF7s1zdbmlZ12hX1q/gbDg="&gt;AB6HicbVB
+
+NS8NAEJ3Ur1q/qh69LBbBU0mkoseCF48t2A9oQ9lsJ+3azSbsboQS+gu8eFDEqz/Jm/GbZuDtj4YeLw3w8y8IBFcG9f9dgobm1vbO8Xd0t7+weFR+fikreNUMWy
+
+xWMSqG1CNgktsGW4EdhOFNAoEdoLJ3dzvPKHSPJYPZpqgH9GR5CFn1FipaQblilt1FyDrxMtJBXI0BuWv/jBmaYTSMEG17nluYvyMKsOZwFmpn2pMKJvQEfYslTRC
+
+7WeLQ2fkwipDEsbKljRkof6eyGik9TQKbGdEzVivenPxP6+XmvDWz7hMUoOSLReFqSAmJvOvyZArZEZMLaFMcXsrYWOqKDM2m5INwVt9eZ20r6redVt1ir1Wh5H
+
+Ec7gHC7Bgxuowz0oAUMEJ7hFd6cR+fFeXc+lq0FJ585hT9wPn8A3UWM7g=&lt;/latexit&gt;t
+
+&lt;latexit sha1_base64="/pTfY2g+ZmqiowuIo3COH5p3pE="&gt;ACAnicbVD
+
+LSgMxFM34rPU16krcBIvQbsqMFHVZcOygn1AW0smk2lDM8mQZIQ6Dm78FTcuFHrV7jzb8y0s9DWAyGHc+7l3nu8iFGlHefbWlpeWV1bL2wUN7e2d3btvf2WErH
+
+EpIkFE7LjIUY5aSpqWakE0mCQo+Rtje+zPz2HZGKCn6jJxHph2jIaUAx0kYa2IdRWT/0PMF8NQnNl9ynt0nZr6SVgV1yqs4UcJG4OSmBHI2B/dXzBY5DwjVmSKmu
+
+60S6nyCpKWYkLfZiRSKEx2hIuoZyFBLVT6YnpPDEKD4MhDSPazhVf3ckKFTZhqYyRHqk5r1M/M/rxjq46CeUR7EmHM8GBTGDWsAsD+hTSbBmE0MQltTsCvEISYS1
+
+Sa1oQnDnT14krdOqe1atXdK9VoeRwEcgWNQBi4B3VwBRqgCTB4BM/gFbxZT9aL9W59zEqXrLznAPyB9fkDYk6XYQ=&lt;/latexit&gt;
+
+p(t|z(d))
+
+&lt;latexit sha1_base64="68zGdgAC75N60YXj18uJlaTdA="&gt;ACBHicdVD
+
+LSgMxFM3UV62vqstugkVwISWpYtdwY3LCvYBnVIyadqGZh4kd4QydOHGX3HjQhG3foQ7/8ZMW0FD4QczrmXe+/xIiUNEPLhZFZW19Y3spu5re2d3b38/kHLhLH
+
+moslDFeqOx4xQMhBNkKBEJ9KC+Z4SbW9ymfrtW6GNDIMbmEai57NRIeSM7BSP18gpTP31B0zSFwvVAMz9e2XwGzWL/fzRVIihFBKcUpo5YJYUqtVy7SKaWpZFNES
+
+jX7+3R2EPZFAFwxY7qURNBLmAbJlZjl3NiIiPEJG4mupQHzhekl8yNm+NgqAzwMtX0B4Ln6vSNhvkm3s5U+g7H57aXiX143hmG1l8gikEfDFoGCsMIU4TwQOp
+
+BQc1tYRxLe2umI+Zhxsbjkbwtel+H/SKpfoRen8+rxYJ8s4sqiAjtAJoqiC6ugKNVATcXSHtATenbunUfnxXldlGacZc8h+gHn7ROxCpg&lt;/latexit&gt;
+
+0.3ˆt2
+
+&lt;latexit sha1_base64="CNg0/39wEBNjInC9KXhmVCiMZk="&gt;ACBHicdVD
+
+LSgMxFM34rPVdlNsAguZMiUsba7ghuXFewDOqVk0rQNzTxI7ghl6MKNv+LGhSJu/Qh3/o2ZtoKHg5nHMv97jx1JoIOTDWldW9/YzG3lt3d29/YLB4ctHSW
+
+K8SaLZKQ6PtVcipA3QYDknVhxGviSt/3JZea3b7nSIgpvYBrzXkBHoRgKRsFI/UKR2I535o0pJ4fyYGeBuZLYTbru/1Cidi1aoW4ZUxsQqplUjHknDg1p4Ydo2Qo
+
+oSUa/cK7N4hYEvAQmKRadx0SQy+lCgSTfJb3Es1jyiZ0xLuGhjTgupfOj5jhE6M8DBS5oWA5+r3jpQGOtvOVAYUxvq3l4l/ed0EhtVeKsI4AR6yxaBhIjFEOEsE
+
+D4TiDOTUEMqUMLtiNqaKMjC5U0IX5fi/0mrbDsV2712S3WyjCOHiugYnSIHXaA6ukIN1EQM3aEH9ISerXvr0XqxXhelK9ay5wj9gPX2CclWmDA=&lt;/latexit&gt;
+
+0.1ˆt4
+
+&lt;latexit sha1_base64="b+WX/rcy7ThFNfGaxvUSzu3ZueI="&gt;ACBXicdVD
+
+LSgMxFM3UV62vqktdBIvgQobM2Gq7K7hxWcE+oFNKJk3b0MyD5I5Qhm7c+CtuXCji1n9w59+YPgQVPRByOde7r3Hj6XQMiHlVlaXldy67nNja3tnfyu3sNHSW
+
+K8TqLZKRaPtVcipDXQYDkrVhxGviSN/3R5dRv3nKlRTewDjmnYAOQtEXjIKRuvlDYpOSd+oNKaSeH8meHgfmS2Ey6Za6+QKxKxVSLJYwsUvEd2yIeTMLVc7Nhk
+
+hgJaoNbNv3u9iCUBD4FJqnXbITF0UqpAMknOS/RPKZsRAe8bWhIA6476eyKCT42Sg/3I2VeCHimfu9IaCn25nKgMJQ/am4l9eO4F+uZOKME6Ah2w+qJ9IDBGe
+
+RoJ7QnEGcmwIZUqYXTEbUkUZmOByJoSvS/H/pOHazrldvC4WqmQRxYdoCN0ghx0garoCtVQHTF0hx7QE3q27q1H68V6nZdmrEXPvoB6+0TSNGYcg=&lt;/latexi
+
+t&gt;
+
+0.05ˆt5
+
+&lt;latexit sha1_base64="ymEHqb2Q+hNzNQGljcsCpg+49Bw="&gt;ACBXicdVD
+
+LSgMxFM3UV62vqktdBIvgQoaMtrXdFdy4rGAf0Cklk6ZtaOZBckcoQzdu/BU3LhRx6z+482/MtBVU9EDI4Zx7ufceL5JCAyEfVmZpeWV1Lbue29jc2t7J7+41dRg
+
+rxhslKFqe1RzKQLeAGStyPFqe9J3vLGl6nfuVKizC4gUnEuz4dBmIgGAUj9fKHxHZK7qk7opC4Xij7euKbL4HptHfeyxeIXSJOtVzGxCbEKVYcQ6rVihGxY5QU
+
+BbRAvZd/d/shi30eAJNU645DIugmVIFgk9zbqx5RNmYDnH0ID6XHeT2RVTfGyUPh6EyrwA8Ez93pFQX6fbmUqfwkj/9lLxL68Tw6DSTUQxcADNh80iCWGEKeR
+
+4L5QnIGcGEKZEmZXzEZUQYmuJwJ4etS/D9pntlO2S5eFws1sogjiw7QETpBDrpANXSF6qiBGLpD+gJPVv31qP1Yr3OSzPWomcf/YD19glG/phx&lt;/latexit&gt;
+
+0.15ˆt3
+
+&lt;latexit sha1_base64="uAmKMo1Akb+TsCDln1/eyoYTk4="&gt;ACBHicdVD
+
+LSgMxFM3UV62vqstugkVwIUNS2tplwY3LCvYBnVIyadqGZh4kd4QydOHGX3HjQhG3foQ7/8b0IajogZDOfdy7z1+rKQBQj6czNr6xuZWdju3s7u3f5A/PGqZKNF
+
+cNHmkIt3xmRFKhqIJEpToxFqwFei7U8u537Vmgjo/AGprHoBWwUyqHkDKzUzxeIW/bOvTGD1PMjNTDTwH4pzGZ92s8XiUuqlTKtYeJWCK3RiWlCiWkhKlLFi
+
+FRr9/Ls3iHgSiBC4YsZ0KYmhlzINkisxy3mJETHjEzYSXUtDFgjTSxdHzPCpVQZ4Gn7QsAL9XtHygIz385WBgzG5rc3F/yugkMa71UhnECIuTLQcNEYjwPBE8
+
+kFpwUFNLGNfS7or5mGnGweaWsyF8XYr/J62S6tu+bpcrJNVHFlUQCfoDF0geroCjVQE3F0hx7QE3p27p1H58V5XZmnFXPMfoB5+0TsiYIA=&lt;/latexit&gt;
+
+0.4ˆt1
+
+&lt;latexit sha1_base64="5a3jtcUqnyUp6
+
+j2FJhbgZl2/AM="&gt;AB6XicbVBNS8NAEJ3Ur1q/qh69LBbBU0mkqMeiF49V7Ae0oWy2m
+
+3bpZhN2J0IJ/QdePCji1X/kzX/jts1BWx8MPN6bYWZekEh0HW/ncLa+sbmVnG7tLO7t39
+
+QPjxqmTjVjDdZLGPdCajhUijeRIGSdxLNaRI3g7GtzO/cS1EbF6xEnC/YgOlQgFo2ilh
+
+960X64VXcOskq8nFQgR6Nf/uoNYpZGXCGT1Jiu5yboZ1SjYJPS73U8ISyMR3yrqWKRtz
+
+42fzSKTmzyoCEsbalkMzV3xMZjYyZRIHtjCiOzLI3E/zuimG134mVJIiV2yxKEwlwZjM3
+
+iYDoTlDObGEMi3srYSNqKYMbTglG4K3/PIqaV1Uvctq7b5Wqd/kcRThBE7hHDy4gjrcQO
+
+awCEZ3iFN2fsvDjvzseiteDkM8fwB87nD6F6jXA=&lt;/latexit&gt;}
+
+&lt;latexit sha1_base64="k+ks0qtuCct89DxERayMtoaX1Nw="&gt;ACA3icbVD
+
+LSgMxFM3UV62vUXe6CRahbsqMFHVZcOygn1AO5ZMJtOGZpIhyQhlGHDjr7hxoYhbf8Kdf2OmnYW2Hg5nHMv97jx4wq7TjfVmldW19o7xZ2dre2d2z9w86SiQ
+
+SkzYWTMiejxRhlJO2pqRXiwJinxGuv7kOve7D0QqKvidnsbEi9CI05BipI0tI8GPpLpwBcsUNPIfOk4y+7TWnCWDe2qU3dmgMvELUgVFGgN7a9BIHASEa4xQ0r1
+
+XSfWXoqkpiRrDJIFIkRnqAR6RvKUSUl85uyOCpUQIYCmke13Cm/u5IUaTyDU1lhPRYLXq5+J/XT3R45aWUx4kmHM8HhQmDWsA8EBhQSbBmU0MQltTsCvEYSYS1
+
+ia1iQnAXT14mnfO6e1Fv3DaqzUYRxkcgxNQAy64BE1wA1qgDTB4BM/gFbxZT9aL9W59zEtLVtFzCP7A+vwBwIWYMQ=&lt;/latexit&gt;
+
+¯h
+
+(d)
+
+reconstruct
+
+Figure 2: Overview of TopClus. We assume that the 𝐾-topic structure exists in a latent spherical space 𝒁. We jointly learn the at-
+
+tention weights for document embeddings and the latent space generation model via three objectives: (1) a clustering loss that
+
+encourages distinctive topic learning in the latent space, (2) a topical reconstruction loss of documents that promotes mean-
+
+ingful topic representations for summarizing document semantics and (3) an embedding space preserving loss that maintains
+
+the semantics of the original embedding space. The PLM is not fine-tuned.
+
+Specifically, the vMF distribution (can be seen as the spherical coun-
+
+terpart of the Gaussian distribution) of a topic 𝑡 is parameterized by
+
+a mean vector 𝒕 and a concentration parameter 𝜅. The probability
+
+density closer to 𝒕 is greater and the spread is controlled by 𝜅. Intu-
+
+itively, words and documents are more likely to be correlated with
+
+a topic 𝑡 if their latent space representations are closer to the topic
+
+vector 𝒕. Formally, a unit random vector 𝒛 ∈ S𝑟′−1 has the 𝑟 ′-variate
+
+vMF distribution vMF𝑟′(𝒕,𝜅) if its probability density function is
+
+𝑝(𝒛; 𝒕,𝜅) = 𝑛𝑟′(𝜅) exp (𝜅 · cos(𝒛, 𝒕)) ,
+
+where ∥𝒕∥ = 1 is the center direction, 𝜅 ≥ 0 is the concentration
+
+parameter, cos(𝒛, 𝒕) is the cosine similarity between 𝒛 and 𝒕, and
+
+the normalization constant 𝑛𝑟′(𝜅) is given by
+
+𝑛𝑟′(𝜅) =
+
+𝜅𝑟′/2−1
+
+(2𝜋)𝑟′/2𝐼𝑟′/2−1(𝜅)
+
+,
+
+where 𝐼𝑟′/2−1(·) represents the modified Bessel function of the first
+
+kind at order 𝑟 ′/2−1. We assume all topics’ vMF distributions share
+
+the same concentration parameter 𝜅 (i.e., the topic terms are equally
+
+concentrated around the topic center for all topics) which can be
+
+set as a hyperparameter.
+
+Every word embedding 𝒉(𝑤)
+
+𝑖
+
+∈ 𝑯 from the original space is
+
+assumed to be generated through the following process : (1) A topic
+
+𝑡𝑘 is sampled from a uniform distribution over the 𝐾 topics. (2)
+
+A latent embedding 𝒛(𝑤)
+
+𝑖
+
+is generated from the vMF distribution
+
+associated with topic 𝑡𝑘. (3) A function 𝑔 : 𝒁 → 𝑯 maps the latent
+
+embedding 𝒛(𝑤)
+
+𝑖
+
+to the original embedding 𝒉(𝑤)
+
+𝑖
+
+corresponding to
+
+word 𝑤𝑖. The generative process is summarized as follows:
+
+𝑡𝑘 ∼ Uniform(𝐾), 𝒛(𝑤)
+
+𝑖
+
+∼ vMF𝑟′(𝒕𝑘,𝜅), 𝒉(𝑤)
+
+𝑖
+
+= 𝑔(𝒛(𝑤)
+
+𝑖
+
+).
+
+(1)
+
+The generative process of document embedding 𝒉(𝑑) ∈ 𝑯 is
+
+similar since it resides in the same word embedding space:
+
+𝑡𝑘 ∼ Uniform(𝐾), 𝒛(𝑑) ∼ vMF𝑟′(𝒕𝑘,𝜅), 𝒉(𝑑) = 𝑔(𝒛(𝑑)).
+
+(2)
+
+We assume that the mapping function 𝑔 can be nonlinear to
+
+model arbitrary transformations, and we parameterize 𝑔 as a deep
+
+neural network (DNN) since DNNs can approximate any nonlinear
+
+function [27]. Each layer 𝑙 in the DNN is a linear layer with ReLU
+
+activation function, taking 𝒙𝑙 as input and outputting 𝒚𝑙:
+
+𝒚𝑙 = ReLU(𝑾𝑙𝒙𝑙 + 𝒃𝑙),
+
+where 𝑾𝑙 and 𝒃𝑙 are the learnable parameters in the layer. We also
+
+jointly learn the mapping 𝑓 : 𝑯 → 𝒁 from the original space to the
+
+latent space (i.e., the inverse function of 𝑔, also parameterized by
+
+a DNN) to map unseen word/document embeddings to the latent
+
+space. Such joint learning of two nonlinear functions follows an au-
+
+toencoder [25] setup where an encoding network maps data points
+
+from the original space to the latent space, and a decoding network
+
+converts latent space data back to an approximate reconstruction
+
+of the original data.
+
+3.3
+
+Model Training
+
+To jointly train the attention module for document embeddings in
+
+Section 3.1 and the latent generative model in Section 3.2, we intro-
+
+duce three objectives: (1) a clustering loss that enforces separable
+
+cluster structures in the latent space for distinctive topic learning,
+
+(2) a topical reconstruction loss of documents to ensure the discov-
+
+ered topics are meaningful summaries of document semantics, and
+
+(3) an embedding space preserving loss to maintain the semantic
+
+information in the original space.
+
+Distinctive Topic Clustering. The first clustering objective in-
+
+duces a latent space with 𝐾 well-separated clusters by gradually
+
+sharpening the posterior topic-word distributions via an expecta-
+
+tion–maximization (EM) algorithm. In the E-step, we estimate a
+
+new (soft) cluster assignment of each word based on the current
+
+parameters; in the M-step, we update the model parameters given
+
+the cluster assignments. The process is illustrated in Figure 3.
+
+E-Step. To estimate the cluster assignment of each word, we compute
+
+the posterior topic distribution obtained via the Bayes rule:
+
+𝑝
+
+�
+
+𝑡𝑘
+
+��𝒛(𝑤)
+
+𝑖
+
+�
+
+=
+
+𝑝
+
+�
+
+𝒛(𝑤)
+
+𝑖
+
+��𝑡𝑘
+
+�
+
+𝑝(𝑡𝑘)
+
+�𝐾
+
+𝑘′=1 𝑝
+
+�
+
+𝒛(𝑤)
+
+𝑖
+
+��𝑡𝑘′
+
+�
+
+𝑝(𝑡𝑘′)
+
+,
+
+
+&lt;latexit sha1_base64="8YSojf0y3wH45JzEu6
+
+XDvEA32wg="&gt;AB+XicdVDLSsNAFJ3UV62vqEs3g0VwFSah1boruHFZwdZCG8JkMmHTiZhZlIoX/
+
+ixoUibv0Td/6Nk7aCih4Y7uHce7lnTphxpjRCH1ZlbX1jc6u6XdvZ3ds/sA+PeirNJaFdkvJU9kOsKG
+
+eCdjXTnPYzSXEScnofTq7L/v2USsVScadnGfUTPBIsZgRrIwW2PQxTHqlZYkqh54EX2HXkeE3kNlyIH
+
+FNd1DAEodaVdwFdQ0rUwQqdwH4fRinJEyo04VipgYsy7RdYakY4ndeGuaIZJhM8ogNDBU6o8ouF8zk8
+
+M0oE41SaJzRcqN83Cpyo0pyZTLAeq9+9UvyrN8h13PILJrJcU0GWh+KcQ53CMgYMUmJ5jNDMJHMeIV
+
+kjCUm2oRVMyF8/RT+T3qe4zYdNuotxurOKrgBJyCc+CS9AGN6ADuoCAKXgAT+DZKqxH68V6XY5WrN
+
+XOMfgB6+0TOteUAg=&lt;/latexit&gt;t2
+
+&lt;latexit sha1_base64="s
+
+ZPk4K4gYvCl/yxEVgr7N5F3nq4="&gt;AB+XicdVDNS8Mw
+
+HE3n15xfVY9egkPwVNqtbvM28OJxgvuArZQ0TbewNC1JO
+
+hl/4kXD4p49T/x5n9juk1Q0Qchj/d+P/LygpRqWz7wy
+
+htbG5t75R3K3v7B4dH5vFJTyaZwKSLE5aIQYAkYZSTrqK
+
+KkUEqCIoDRvrB9Kbw+zMiJE34vZqnxIvRmNOIYqS05Jvm
+
+KEhYKOexvnK18Ou+WbWt61aj5jagbdl206k5Bak13boLH
+
+a0UqI1Or75PgoTnMWEK8yQlEPHTpWXI6EoZmRGWSpA
+
+hP0ZgMNeUoJtLl8kX8EIrIYwSoQ9XcKl+38hRLItwejJ
+
+GaiJ/e4X4lzfMVNTycsrTBGOVw9FGYMqgUNMKSCYMXm
+
+miAsqM4K8QJhJUuq6JL+Pop/J/0apZzZdl3brXtruso
+
+gzNwDi6BA5qgDW5B3QBjPwAJ7As5Ebj8aL8boaLRnrn
+
+VPwA8bJ1X4lBQ=&lt;/latexit&gt;t3
+
+&lt;latexit sha1_base64="DNBgawlu8FhwfKgGcwP4
+
+roE7O0="&gt;AB+XicdVBLSwMxGMz6rPW16tFLsAielmzt0u6t4MVjBfuAdlmy2Wwbmn2QZAtl6T/x4kERr/4
+
+Tb/4bs20FR0IGWa+j0wmyDiTCqEPY2Nza3tnt7JX3T84PDo2T057Ms0FoV2S8lQMAiwpZwntKqY4HWSC4j
+
+gtB9Mb0q/P6NCsjS5V/OMejEeJyxiBCst+aY5ClIeynmsr0ItfNs3a8hCjtsuhBZDrpuIUcT123VXRfaFlq
+
+iBtbo+Ob7KExJHtNEY6lHNoU16BhWKE0V1lEuaYTLFYzrUNMExlV6xTL6Al1oJYZQKfRIFl+r3jQLHsgyn
+
+J2OsJvK3V4p/ecNcRS2vYEmWK5qQ1UNRzqFKYVkDJmgRPG5JpgIprNCMsECE6XLquoSvn4K/ye9umU7Frpr
+
+1NqNdR0VcA4uwBWwQRO0wS3ogC4gYAYewBN4Ngrj0XgxXlejG8Z65wz8gPH2CYj8lDg=&lt;/latexit&gt;t1
+
+Start of EM Algorithm
+
+&lt;latexit sha1_base64="
+
++CAtpXlswOAnKzTaKvrlmE1Y78="&gt;AB/3icdVBL
+
+SwMxGMz6rPW1KnjxEixCvSzZ2trureDFYwX7gHYt2T
+
+RtQ7MPkqxS1x78K148KOLVv+HNf2O2raCiAyHDzPeR
+
+yXgRZ1Ih9GEsLC4tr6xm1rLrG5tb2+bObkOGsSC0Tk
+
+IeipaHJeUsoHXFKetSFDse5w2vdFZ6jevqZAsDC7V
+
+OKujwcB6zOClZa65n7HC3lPjn19JbeTrn2V5G+OJ1
+
+0zhyxUcsplByKrhE4qKSJ41QKjgNtC02RA3PUuZ7p
+
+xeS2KeBIhxL2bZRpNwEC8UIp5NsJ5Y0wmSEB7StaYB
+
+9Kt1kmn8Cj7TSg/1Q6BMoOFW/byTYl2lEPeljNZS/v
+
+VT8y2vHql9xExZEsaIBmT3UjzlUIUzLgD0mKF8rAk
+
+mgumskAyxwETpyrK6hK+fwv9Jo2DZp1bxopirFud1Z
+
+MABOAR5YIMyqIJzUAN1QMAdeABP4Nm4Nx6NF+N1Nrp
+
+gzHf2wA8Yb5/VKZad&lt;/latexit&gt;
+
+z(w)
+
+1
+
+&lt;latexit sha1_base64="p8N9OG07gVyuszOtbinc1
+
+kRCayA="&gt;AB/3icdVBLSwMxGMz6rPW1KnjxEixCvSzZ2trureDFYwX7gLaWbJptQ7MPkqxS1x78K148KOL
+
+Vv+HNf2O2raCiAyHDzPeRybgRZ1Ih9GEsLC4tr6xm1rLrG5tb2+bObkOGsSC0TkIeipaLJeUsoHXFKetSFD
+
+su5w23dFZ6jevqZAsDC7VOKJdHw8C5jGClZ65n7HDXlfjn19JbeTXuEqyd8cT3pmDlmo5JTLDkRWCZ1UEk
+
+Tx6kUHAfaFpoiB+ao9cz3Tj8ksU8DRTiWsm2jSHUTLBQjnE6ynVjSCJMRHtC2pgH2qewm0/wTeKSVPvRCoU+g
+
+4FT9vpFgX6YR9aSP1VD+9lLxL68dK6/STVgQxYoGZPaQF3OoQpiWAftMUKL4WBNMBNZIRligYnSlWV1CV8/
+
+hf+TRsGyT63iRTFXLc7ryIADcAjywAZlUAXnoAbqgIA78ACewLNxbzwaL8brbHTBmO/sgR8w3j4B1rOWng=
+
+&lt;/latexit&gt;
+
+z(w)
+
+2
+
+&lt;latexit sha1_base64="
+
+ImfnfWoymiH6OEy2JYoXK9l1G8="&gt;AB/3icdVBJ
+
+SwMxGM3UrdZtVPDiJViEehnSzXZuBS8eK9gF2nHIpG
+
+kbmlIMkode/CvePGgiFf/hjf/jekiqOiDkMd730de
+
+nhdxJhVCH0ZqaXldS29ntnY3NreMXf3mjKMBaENEv
+
+JQtD0sKWcBbSimOG1HgmLf47Tljc6mfuaCsnC4FKN
+
+I+r4eBCwPiNYack1D7peyHty7OsruZ24xaskd3Myc
+
+0slDZrlRsiKwyKlZRWRPbrhZsG+YtNEMWLFB3zfduL
+
+ySxTwNFOJayk0eRchIsFCOcTjLdWNIkxEe0I6mAfa
+
+pdJZ/gk81koP9kOhT6DgTP2+kWBfTiPqSR+rofztT
+
+cW/vE6s+lUnYUEUKxqQ+UP9mEMVwmkZsMcEJYqPNcF
+
+EMJ0VkiEWmChdWUaX8PVT+D9pFqz8qVW6KGVrpUda
+
+XAIjkAO5EF1MA5qIMGIOAOPIAn8GzcG4/Gi/E6H0
+
+Zi5198APG2yfYPZaf&lt;/latexit&gt;
+
+z(w)
+
+3
+
+&lt;latexit sha1_base64="
+
+U7JG7zABr4eNKyBVj5kxCqGfmU0="&gt;AB/3icdVBL
+
+SwMxGMzWV62vVcGLl2AR6qXs1qWPW8GLxwr2AW1dst
+
+m0Dc1uliSr1LUH/4oXD4p49W9489+YbSuo6EDIMPN9
+
+ZDJexKhUlvVhZJaWV1bXsu5jc2t7R1zd68leSwaW
+
+LOuOh4SBJGQ9JUVDHSiQRBgcdI2xufpX7mghJeXip
+
+JhHpB2gY0gHFSGnJNQ96Hme+nAT6Sm6nbu0qKdycTF
+
+0zbxVr1XLJOYVW0bIcu2ynpFSpOFVoayVFHizQcM3n
+
+s9xHJBQYak7NpWpPoJEopiRqa5XixJhPAYDUlX0xA
+
+FRPaTWf4pPNaKDwdc6BMqOFO/byQokGlEPRkgNZK/v
+
+VT8y+vGalDtJzSMYkVCPH9oEDOoOEzLgD4VBCs20QR
+
+hQXVWiEdIKx0ZTldwtdP4f+kVSra5aJz4eTrzqKOL
+
+DgER6AbFABdXAOGqAJMLgD+AJPBv3xqPxYrzORzP
+
+GYmcf/IDx9gmzrJaF&lt;/latexit&gt;
+
+z(w)
+
+9
+
+&lt;latexit sha1_base64="
+
+l8PtAsZJgDOBLkHG/nIAVEQCkI="&gt;AB/3icdVBL
+
+SwMxGMz6rPVFbx4CRahXpbdurTreDFYwX7gHZdst
+
+lsG5p9kGSVuvbgX/HiQRGv/g1v/huzbQUVHQgZr6P
+
+TMZLGBXSMD60hcWl5ZXVwlpxfWNza7u0s9sWcoxae
+
+GYxbzrIUEYjUhLUslIN+EhR4jHW90lvuda8IFjaNL
+
+OU6IE6JBRAOKkVSW9rvezHzxThUV3Y7ce2rHJzPH
+
+FLZUM/tWtV6wQaumFYZs3MSbVet2xoKiVHGczRdEvf
+
+T/GaUgiRkSomcaiXQyxCXFjEyK/VSQBOERGpCeohE
+
+KiXCyaf4JPFKD4OYqxNJOFW/b2QoFHlENRkiORS/v
+
+Vz8y+ulMrCdjEZJKkmEZw8FKYMyhnkZ0KecYMnGiD
+
+MqcoK8RBxhKWqrKhK+Pop/J+0q7pZ060Lq9yw5nUw
+
+AE4BVgjpogHPQBC2AwR14AE/gWbvXHrUX7XU2uqD
+
+Nd/bAD2hvn7IiloQ=&lt;/latexit&gt;
+
+z(w)
+
+8
+
+&lt;latexit sha1_base64="
+
+b48HWXE8y3b1Vfuehkq3Cb70B0o="&gt;AB/3icdVBL
+
+SwMxGMz6rPVFbx4CRahXpbdurT1VvDisYJ9QLsu2W
+
+y2Dc0+SLJKXfgX/HiQRGv/g1v/huzbQUVHQgZr6P
+
+TMaNGRXSMD60hcWl5ZXVwlpxfWNza7u0s9sRUcIxae
+
+OIRbznIkEYDUlbUslIL+YEBS4jXd8lvda8IFjcJL
+
+OYmJHaBhSH2KkVSU9ofuBHzxCRQV3qbOfWrtHJznD
+
+mlsqGfNmpV6wQaumFYZs3MSbVetxrQVEqOMpij5ZTeB
+
+16Ek4CEjMkRN80YmniEuKGcmKg0SQGOExGpK+oiE
+
+KiLDTaf4MHinFg37E1QklnKrfN1IUiDyimgyQHInfX
+
+i7+5fUT6TfslIZxIkmIZw/5CYMygnkZ0KOcYMkmiD
+
+MqcoK8QhxhKWqrKhK+Pop/J90qrpZ060Lq9y05nUw
+
+AE4BVgjpognPQAm2AwR14AE/gWbvXHrUX7XU2uqD
+
+Nd/bAD2hvn7CYloM=&lt;/latexit&gt;
+
+z(w)
+
+7
+
+&lt;latexit sha1_base64="6oni0ouPRHGymUnXqx3Tv
+
+CoJeyQ="&gt;AB/3icdVBLSwMxGMzWV62vquDFS7AI9bJkS7f2WPDisYJ9QFuXbDZtQ7MPkqxS1z34V7x4UMS
+
+rf8Ob/8ZsW0FB0KGme8jk3EjzqRC6MPILS2vrK7l1wsbm1vbO8XdvbYMY0Foi4Q8F0XS8pZQFuKU67kaD
+
+YdzntuJOzO9cUyFZGFyqaUQHPh4FbMgIVlpyigd9N+SenPr6Sm5Tx75KyjcnqVMsIRPV7KpVh8i0kVW3bE0
+
+qtoVQBVomqEFmg6xfe+F5LYp4EiHEvZs1CkBgkWihFO0I/ljTCZIJHtKdpgH0qB8ksfwqPteLBYSj0CRSc
+
+qd83EuzLKe9LEay9eJv7l9WI1rA8SFkSxogGZPzSMOVQhzMqAHhOUKD7VBPBdFZIxlhgonRlBV3C10/h
+
+/6RdMa2aWb2olhrVR15cAiOQBlY4BQ0wDloghYg4A48gCfwbNwbj8aL8TofzRmLnX3wA8bJ5PSlm8=&lt;/la
+
+texit&gt;
+
+z(w)
+
+5
+
+&lt;latexit sha1_base64="SCpRfPzOUN6zXGNSVtw/Y
+
+JX+pIE="&gt;AB/3icdVBLSwMxGMzWV62vVcGLl2AR6mXJlt3aY8GLxwr2AW0t2TRtQ7MPkqxS1z34V7x4UMS
+
+rf8Ob/8ZsW0FB0KGme8jk/EizqRC6MPILS2vrK7l1wsbm1vbO+buXlOGsSC0QUIeiraHJeUsoA3FKftSFD
+
+se5y2vMlZ5reuqZAsDC7VNKI9H48CNmQEKy31zYOuF/KBnPr6Sm7TfuUqKd2cpH2ziCxUcR27CpHlIrtqu5q
+
+UXRuhMrQtNEMRLFDvm+/dQUhinwaKcCxlx0aR6iVYKEY4TQvdWNIkwke0Y6mAfap7CWz/Ck81soADkOhT6Dg
+
+TP2+kWBfZhH1pI/VWP72MvEvrxOrYbWXsCKFQ3I/KFhzKEKYVYGHDBieJTARTGeFZIwFJkpXVtAlfP0U
+
+/k+aZcuWM6FU6w5izry4BAcgRKwSmogXNQBw1AwB14AE/g2bg3Ho0X43U+mjMWO/vgB4y3T5VclnA=&lt;/la
+
+texit&gt;
+
+z(w)
+
+6
+
+&lt;latexit sha1_base64="PEJr7vmsZpuShKLGgU0vq
+
+yYjFyo="&gt;AB/3icdVBLSwMxGMz6rPVFbx4CRahXpa0trZ7K3jxWME+oK1LNptQ7MPkqxS1z34V7x4UMS
+
+rf8Ob/8b0IajoQMgw831kMk7EmVQIfRgLi0vLK6uZtez6xubWdm5ntyXDWBDaJCEPRcfBknIW0KZitNOJCj
+
+2HU7bzuhs4revqZAsDC7VOKJ9Hw8C5jGClZbs3H7PCbkrx76+ktvULl8lhZvj1M7lkYkqVrVqQWRW0EkNVTS
+
+xrFrJsmDRFPkwRwNO/fec0MS+zRQhGMpu0UqX6ChWKE0zTbiyWNMBnhAe1qGmCfyn4yzZ/CI6240AuFPoGC
+
+U/X7RoJ9OYmoJ32shvK3NxH/8rqx8mr9hAVRrGhAZg95MYcqhJMyoMsEJYqPNcFEMJ0VkiEWmChdWVaX8PVT
+
++D9plcziqVm+KOfr5XkdGXADkEBFEV1ME5aIAmIOAOPIAn8GzcG4/Gi/E6G10w5jt74AeMt0/Zx5ag&lt;/la
+
+texit&gt;
+
+z(w)
+
+4
+
+(a) Start of EM Algorithm.
+
+E-Step: Compute New Posterior 
+
+&lt;latexit sha1_base64="8YSojf0y3wH45JzEu6XDvEA32wg="&gt;AB+XicdVDLSsNAFJ3UV62vqEs3
+
+g0VwFSah1boruHFZwdZCG8JkMmHTiZhZlIoX/ixoUibv0Td/6Nk7aCih4Y7uHce7lnTphxpjRCH1ZlbX1jc6u6XdvZ3ds/sA+PeirNJaFdkvJU9kOsKGeCdjXTnPYzSXEScnofTq7L/v2USsVScadnGfUTPB
+
+IsZgRrIwW2PQxTHqlZYkqh54EX2HXkeE3kNlyIHFNd1DAEodaVdwFdQ0rUwQqdwH4fRinJEyo04VipgYsy7RdYakY4ndeGuaIZJhM8ogNDBU6o8ouF8zk8M0oE41SaJzRcqN83Cpyo0pyZTLAeq9+9UvyrN8h1
+
+3PILJrJcU0GWh+KcQ53CMgYMUmJ5jNDMJHMeIVkjCUm2oRVMyF8/RT+T3qe4zYdNuotxurOKrgBJyCc+CS9AGN6ADuoCAKXgAT+DZKqxH68V6XY5WrNXOMfgB6+0TOteUAg=&lt;/latexit&gt;t2
+
+&lt;latexit sha1_base64="sZPk4K4gYvCl/yxEVgr7N5F3nq4="&gt;AB+XicdVDNS8MwHE3n15xfVY9egkPwVNqtbv
+
+M28OJxgvuArZQ0TbewNC1JOhl/4kXD4p49T/x5n9juk1Q0Qchj/d+P/LygpRqWz7wyhtbG5t75R3K3v7B4dH5vFJTyaZwKSLE5aIQYAkYZSTrqKkUEqCIoDRvrB9Kbw+zMiJE34vZqnxIvRmNOIYqS05JvmKEhYKOexvnK18Ou+WbWt61
+
+aj5jagbdl206k5Bak13boLHa0UqI1Or75PgoTnMWEK8yQlEPHTpWXI6EoZmRGWSpAhP0ZgMNeUoJtLl8kX8EIrIYwSoQ9XcKl+38hRLItwejJGaiJ/e4X4lzfMVNTycsrTBGOVw9FGYMqgUNMKSCYMXmiAsqM4K8QJhJUuq6JL+P
+
+op/J/0apZzZdl3brXtrusogzNwDi6BA5qgDW5B3QBjPwAJ7As5Ebj8aL8boaLRnrnVPwA8bJ1X4lBQ=&lt;/latexit&gt;t3
+
+&lt;latexit sha1_base64="DNBgawlu8FhwfKgGcwP4roE7O0="&gt;AB+XicdVBLSwMxGMz6rPW16tFLsAiel
+
+mzt0u6t4MVjBfuAdlmy2Wwbmn2QZAtl6T/x4kERr/4Tb/4bs20FR0IGWa+j0wmyDiTCqEPY2Nza3tnt7JX3T84PDo2T057Ms0FoV2S8lQMAiwpZwntKqY4HWSC4jgtB9Mb0q/P6NCsjS5V/OMejEeJyxiBCst+aY5ClIey
+
+nmsr0ItfNs3a8hCjtsuhBZDrpuIUcT123VXRfaFlqiBtbo+Ob7KExJHtNEY6lHNoU16BhWKE0V1lEuaYTLFYzrUNMExlV6xTL6Al1oJYZQKfRIFl+r3jQLHsgynJ2OsJvK3V4p/ecNcRS2vYEmWK5qQ1UNRzqFKYVkDJ
+
+mgRPG5JpgIprNCMsECE6XLquoSvn4K/ye9umU7Frpr1NqNdR0VcA4uwBWwQRO0wS3ogC4gYAYewBN4Ngrj0XgxXlejG8Z65wz8gPH2CYj8lDg=&lt;/latexit&gt;t1
+
+&lt;latexit sha1_base64="U7JG7zABr4eNKyBVj5kxC
+
+qGfmU0="&gt;AB/3icdVBLSwMxGMzWV62vVcGLl2AR6qXs1qWPW8GLxwr2AW1dstm0Dc1uliSr1LUH/4oXD4p
+
+49W9489+YbSuo6EDIMPN9ZDJexKhUlvVhZJaWV1bXsu5jc2t7R1zd68leSwaWLOuOh4SBJGQ9JUVDHSiQR
+
+BgcdI2xufpX7mghJeXipJhHpB2gY0gHFSGnJNQ96Hme+nAT6Sm6nbu0qKdycTF0zbxVr1XLJOYVW0bIcu2y
+
+npFSpOFVoayVFHizQcM3ns9xHJBQYak7NpWpPoJEopiRqa5XixJhPAYDUlX0xAFRPaTWf4pPNaKDwdc6BMq
+
+OFO/byQokGlEPRkgNZK/vVT8y+vGalDtJzSMYkVCPH9oEDOoOEzLgD4VBCs20QRhQXVWiEdIKx0ZTldwtdP
+
+4f+kVSra5aJz4eTrzqKOLDgER6AbFABdXAOGqAJMLgD+AJPBv3xqPxYrzORzPGYmcf/IDx9gmzrJaF&lt;/la
+
+texit&gt;
+
+z(w)
+
+9
+
+&lt;latexit sha1_base64="l8PtAsZJgDOBLkHG/nIAV
+
+EQCkI="&gt;AB/3icdVBLSwMxGMz6rPVFbx4CRahXpbdurTreDFYwX7gHZdstlsG5p9kGSVuvbgX/HiQRG
+
+v/g1v/huzbQUVHQgZr6PTMZLGBXSMD60hcWl5ZXVwlpxfWNza7u0s9sWcoxaeGYxbzrIUEYjUhLUslIN+E
+
+EhR4jHW90lvuda8IFjaNLOU6IE6JBRAOKkVSW9rvezHzxThUV3Y7ce2rHJzPHFLZUM/tWtV6wQaumFYZs3
+
+MSbVet2xoKiVHGczRdEvfT/GaUgiRkSomcaiXQyxCXFjEyK/VSQBOERGpCeohEKiXCyaf4JPFKD4OYqxNJ
+
+OFW/b2QoFHlENRkiORS/vVz8y+ulMrCdjEZJKkmEZw8FKYMyhnkZ0KecYMnGiDMqcoK8RBxhKWqrKhK+Pop
+
+/J+0q7pZ060Lq9yw5nUwAE4BVgjpogHPQBC2AwR14AE/gWbvXHrUX7XU2uqDNd/bAD2hvn7IiloQ=&lt;/la
+
+texit&gt;
+
+z(w)
+
+8
+
+&lt;latexit sha1_base64="b48HWXE8y3b1Vfuehkq3Cb70B0o="&gt;AB/3icdVBLSwMxGMz6rPVFbx4CRahX
+
+pbdurT1VvDisYJ9QLsu2Wy2Dc0+SLJKXfgX/HiQRGv/g1v/huzbQUVHQgZr6PTMaNGRXSMD60hcWl5ZXVwlpxfWNza7u0s9sRUcIxaeOIRbznIkEYDUlbUslIL+YEBS4jXd8lvda8IFjcJLOYmJHaBhSH2KkVSU9ofu
+
+BHzxCRQV3qbOfWrtHJznDmlsqGfNmpV6wQaumFYZs3MSbVetxrQVEqOMpij5ZTeB16Ek4CEjMkRN80YmniEuKGcmKg0SQGOExGpK+oiEKiLDTaf4MHinFg37E1QklnKrfN1IUiDyimgyQHInfXi7+5fUT6TfslIZxIkmIZw
+
+/5CYMygnkZ0KOcYMkmiDMqcoK8QhxhKWqrKhK+Pop/J90qrpZ060Lq9y05nUwAE4BVgjpognPQAm2AwR14AE/gWbvXHrUX7XU2uqDNd/bAD2hvn7CYloM=&lt;/latexit&gt;
+
+z(w)
+
+7
+
+&lt;latexit sha1_base64="+CAtpXlswOAnKzTaKvrlmE1Y78="&gt;AB/3icdVBLSwMxGMz6rPW1KnjxEixCv
+
+SzZ2trureDFYwX7gHYt2TRtQ7MPkqxS1x78K148KOLVv+HNf2O2raCiAyHDzPeRyXgRZ1Ih9GEsLC4tr6xm1rLrG5tb2+bObkOGsSC0TkIeipaHJeUsoHXFKetSFDse5w2vdFZ6jevqZAsDC7VOKujwcB6zOClZa65n7HC
+
+3lPjn19JbeTrn2V5G+OJ10zhyxUcsplByKrhE4qKSJ41QKjgNtC02RA3PUuZ7pxeS2KeBIhxL2bZRpNwEC8UIp5NsJ5Y0wmSEB7StaYB9Kt1kmn8Cj7TSg/1Q6BMoOFW/byTYl2lEPeljNZS/vVT8y2vHql9xExZEsaIBmT
+
+3UjzlUIUzLgD0mKF8rAkmgumskAyxwETpyrK6hK+fwv9Jo2DZp1bxopirFud1ZMABOAR5YIMyqIJzUAN1QMAdeABP4Nm4Nx6NF+N1NrpgzHf2wA8Yb5/VKZad&lt;/latexit&gt;
+
+z(w)
+
+1
+
+&lt;latexit sha1_base64="p8N9OG07gVyuszOtbinc1kRCayA="&gt;AB/3icdVBLSwMxGMz6rPW1KnjxEixCv
+
+SzZ2trureDFYwX7gLaWbJptQ7MPkqxS1x78K148KOLVv+HNf2O2raCiAyHDzPeRybgRZ1Ih9GEsLC4tr6xm1rLrG5tb2+bObkOGsSC0TkIeipaLJeUsoHXFKetSFDsu5w23dFZ6jevqZAsDC7VOKJdHw8C5jGClZ65n7HD
+
+Xlfjn19JbeTXuEqyd8cT3pmDlmo5JTLDkRWCZ1UEkTx6kUHAfaFpoiB+ao9cz3Tj8ksU8DRTiWsm2jSHUTLBQjnE6ynVjSCJMRHtC2pgH2qewm0/wTeKSVPvRCoU+g4FT9vpFgX6YR9aSP1VD+9lLxL68dK6/STVgQxYoGZP
+
+aQF3OoQpiWAftMUKL4WBNMBNZIRligYnSlWV1CV8/hf+TRsGyT63iRTFXLc7ryIADcAjywAZlUAXnoAbqgIA78ACewLNxbzwaL8brbHTBmO/sgR8w3j4B1rOWng=&lt;/latexit&gt;
+
+z(w)
+
+2
+
+&lt;latexit sha1_base64="ImfnfWoymiH6OEy2JYoXK9l1G8="&gt;AB/3icdVBJSwMxGM3UrdZtVPDiJViEe
+
+hnSzXZuBS8eK9gF2nHIpGkbmlIMkode/CvePGgiFf/hjf/jekiqOiDkMd730denhdxJhVCH0ZqaXldS29ntnY3NreMXf3mjKMBaENEvJQtD0sKWcBbSimOG1HgmLf47Tljc6mfuaCsnC4FKNI+r4eBCwPiNYack1D7pey
+
+Hty7OsruZ24xaskd3Myc0slDZrlRsiKwyKlZRWRPbrhZsG+YtNEMWLFB3zfduLySxTwNFOJayk0eRchIsFCOcTjLdWNIkxEe0I6mAfapdJZ/gk81koP9kOhT6DgTP2+kWBfTiPqSR+rofztTcW/vE6s+lUnYUEUKxqQ+U
+
+P9mEMVwmkZsMcEJYqPNcFEMJ0VkiEWmChdWUaX8PVT+D9pFqz8qVW6KGVrpUdaXAIjkAO5EF1MA5qIMGIOAOPIAn8GzcG4/Gi/E6H0Zi5198APG2yfYPZaf&lt;/latexit&gt;
+
+z(w)
+
+3
+
+&lt;latexit sha1_base64="6oni0ouPRHGymUnXqx3TvCoJeyQ="&gt;AB/3icdVBLSwMxGMzWV62vquDFS7AI9
+
+bJkS7f2WPDisYJ9QFuXbDZtQ7MPkqxS1z34V7x4UMSrf8Ob/8ZsW0FB0KGme8jk3EjzqRC6MPILS2vrK7l1wsbm1vbO8XdvbYMY0Foi4Q8F0XS8pZQFuKU67kaDYdzntuJOzO9cUyFZGFyqaUQHPh4FbMgIVlpyigd9N
+
++SenPr6Sm5Tx75KyjcnqVMsIRPV7KpVh8i0kVW3bE0qtoVQBVomqEFmg6xfe+F5LYp4EiHEvZs1CkBgkWihFO0I/ljTCZIJHtKdpgH0qB8ksfwqPteLBYSj0CRScqd83EuzLKe9LEay9eJv7l9WI1rA8SFkSxogGZPz
+
+SMOVQhzMqAHhOUKD7VBPBdFZIxlhgonRlBV3C10/h/6RdMa2aWb2olhrVR15cAiOQBlY4BQ0wDloghYg4A48gCfwbNwbj8aL8TofzRmLnX3wA8bJ5PSlm8=&lt;/latexit&gt;
+
+z(w)
+
+5
+
+&lt;latexit sha1_base64="SCpRfPzOUN6zXGNSVtw/YJX+pIE="&gt;AB/3icdVBLSwMxGMzWV62vVcGLl2AR6
+
+mXJlt3aY8GLxwr2AW0t2TRtQ7MPkqxS1z34V7x4UMSrf8Ob/8ZsW0FB0KGme8jk/EizqRC6MPILS2vrK7l1wsbm1vbO+buXlOGsSC0QUIeiraHJeUsoA3FKftSFDse5y2vMlZ5reuqZAsDC7VNKI9H48CNmQEKy31zYOuF
+
+/KBnPr6Sm7TfuUqKd2cpH2ziCxUcR27CpHlIrtqu5qUXRuhMrQtNEMRLFDvm+/dQUhinwaKcCxlx0aR6iVYKEY4TQvdWNIkwke0Y6mAfap7CWz/Ck81soADkOhT6DgTP2+kWBfZhH1pI/VWP72MvEvrxOrYbWXsCKFQ3I/K
+
+FhzKEKYVYGHDBieJTARTGeFZIwFJkpXVtAlfP0U/k+aZcuWM6FU6w5izry4BAcgRKwSmogXNQBw1AwB14AE/g2bg3Ho0X43U+mjMWO/vgB4y3T5VclnA=&lt;/latexit&gt;
+
+z(w)
+
+6
+
+&lt;latexit sha1_base64="PEJr7vmsZpuShKLGgU0vqyYjFyo="&gt;AB/3icdVBLSwMxGMz6rPVFbx4CRahX
+
+pa0trZ7K3jxWME+oK1LNptQ7MPkqxS1z34V7x4UMSrf8Ob/8b0IajoQMgw831kMk7EmVQIfRgLi0vLK6uZtez6xubWdm5ntyXDWBDaJCEPRcfBknIW0KZitNOJCj2HU7bzuhs4revqZAsDC7VOKJ9Hw8C5jGClZbs3H7PC
+
+bkrx76+ktvULl8lhZvj1M7lkYkqVrVqQWRW0EkNVTSxrFrJsmDRFPkwRwNO/fec0MS+zRQhGMpu0UqX6ChWKE0zTbiyWNMBnhAe1qGmCfyn4yzZ/CI6240AuFPoGCU/X7RoJ9OYmoJ32shvK3NxH/8rqx8mr9hAVRrGhAZg
+
+95MYcqhJMyoMsEJYqPNcFEMJ0VkiEWmChdWVaX8PVT+D9plcziqVm+KOfr5XkdGXADkEBFEV1ME5aIAmIOAOPIAn8GzcG4/Gi/E6G10w5jt74AeMt0/Zx5ag&lt;/latexit&gt;
+
+z(w)
+
+4
+
+&lt;latexit sha1_base64="ajFDUxGch2dMFA3w0mSOFwPyIFM="&gt;ACDXicbVC7TsNAEDzDOFloKSxCEhJE
+
+9koAspINJRBIg8pNtH5fE5OT+4W4OC8Q/Q8Cs0FCBES0/H3BOUkDCSKcbzexqd8eNOZNgmt/awuLS8spqYa24vrG5ta3v7LZklAhCmyTikei4WFLOQtoEBpx2YkFx4HLadofnud+pUKyKLyCUydAPdD5jOCQUk9/fDG5
+
+tSHMjzYbsQ9OQrUl95n12n5rpLZgvUHUOnpJbNqjmHME2tKSmiKRk/sr2IJAENgXAsZdcyY3BSLIARTrOinUgaYzLEfdpVNMQBlU46viYzjpTiGX4k1AvBGKu/O1IcyHxPVRlgGMhZLxf/87oJ+GdOysI4ARqSySA/4QZERh
+
+6N4TFBCfCRIpgIpnY1yALTEAFWFQhWLMnz5PWcdU6qdYua6V6bRpHAe2jA1RGFjpFdXSBGqiJCHpEz+gVvWlP2ov2rn1MShe0ac8e+gPt8wd0C5xk&lt;/latexit&gt;
+
+q
+
+⇣
+
+t|z(w)⌘
+
+(b) E-Step.
+
+&lt;latexit sha1_base64="Ew6ly8om7T6mt1n1MtMW1UHRMg="&gt;AB/3icdVBLSwMxGMzWV62vquDFS7AI9
+
+bJky7b2WPDisYJ9QFuXbDZtQ7MPkqxS1z34V7x4UMSrf8Ob/8ZsW0FB0KGme8jk3EjzqRC6MPILS2vrK7l1wsbm1vbO8XdvbYMY0Foi4Q8F0XS8pZQFuKU67kaDYdzntuJOzO9cUyFZGFyqaUQHPh4FbMgIVlpyigd9N
+
++SenPr6Sm5Tx75KyjcnqVMsIRPVqrZVh8isIqtuVTWpVC2EKtAy0QwlsEDTKb73vZDEPg0U4VjKnoUiNUiwUIxwmhb6saQRJhM8oj1NA+xTOUhm+VN4rBUPDkOhT6DgTP2+kWBfZhH1pI/VWP72MvEvrxerYX2QsCKFQ3I/K
+
+FhzKEKYVYG9JigRPGpJpgIprNCMsYCE6UrK+gSvn4K/yftimnVTPvCLjXsR15cAiOQBlY4BQ0wDloghYg4A48gCfwbNwbj8aL8TofzRmLnX3wA8bJ5JIlm4=&lt;/latexit&gt;
+
+z(w)
+
+4
+
+&lt;latexit sha1_base64="8YSojf0y3wH45JzEu6XDvEA32wg="&gt;AB+XicdVDLSsNAFJ3UV62vqEs3
+
+g0VwFSah1boruHFZwdZCG8JkMmHTiZhZlIoX/ixoUibv0Td/6Nk7aCih4Y7uHce7lnTphxpjRCH1ZlbX1jc6u6XdvZ3ds/sA+PeirNJaFdkvJU9kOsKGeCdjXTnPYzSXEScnofTq7L/v2USsVScadnGfUTPB
+
+IsZgRrIwW2PQxTHqlZYkqh54EX2HXkeE3kNlyIHFNd1DAEodaVdwFdQ0rUwQqdwH4fRinJEyo04VipgYsy7RdYakY4ndeGuaIZJhM8ogNDBU6o8ouF8zk8M0oE41SaJzRcqN83Cpyo0pyZTLAeq9+9UvyrN8h1
+
+3PILJrJcU0GWh+KcQ53CMgYMUmJ5jNDMJHMeIVkjCUm2oRVMyF8/RT+T3qe4zYdNuotxurOKrgBJyCc+CS9AGN6ADuoCAKXgAT+DZKqxH68V6XY5WrNXOMfgB6+0TOteUAg=&lt;/latexit&gt;t2
+
+&lt;latexit sha1_base64="sZPk4K4gYvCl/yxEVgr7N5F3nq4="&gt;AB+XicdVDNS8MwHE3n15xfVY9egkPwVNqtbv
+
+M28OJxgvuArZQ0TbewNC1JOhl/4kXD4p49T/x5n9juk1Q0Qchj/d+P/LygpRqWz7wyhtbG5t75R3K3v7B4dH5vFJTyaZwKSLE5aIQYAkYZSTrqKkUEqCIoDRvrB9Kbw+zMiJE34vZqnxIvRmNOIYqS05JvmKEhYKOexvnK18Ou+WbWt61
+
+aj5jagbdl206k5Bak13boLHa0UqI1Or75PgoTnMWEK8yQlEPHTpWXI6EoZmRGWSpAhP0ZgMNeUoJtLl8kX8EIrIYwSoQ9XcKl+38hRLItwejJGaiJ/e4X4lzfMVNTycsrTBGOVw9FGYMqgUNMKSCYMXmiAsqM4K8QJhJUuq6JL+P
+
+op/J/0apZzZdl3brXtrusogzNwDi6BA5qgDW5B3QBjPwAJ7As5Ebj8aL8boaLRnrnVPwA8bJ1X4lBQ=&lt;/latexit&gt;t3
+
+&lt;latexit sha1_base64="DNBgawlu8FhwfKgGcwP4roE7O0="&gt;AB+XicdVBLSwMxGMz6rPW16tFLsAiel
+
+mzt0u6t4MVjBfuAdlmy2Wwbmn2QZAtl6T/x4kERr/4Tb/4bs20FR0IGWa+j0wmyDiTCqEPY2Nza3tnt7JX3T84PDo2T057Ms0FoV2S8lQMAiwpZwntKqY4HWSC4jgtB9Mb0q/P6NCsjS5V/OMejEeJyxiBCst+aY5ClIey
+
+nmsr0ItfNs3a8hCjtsuhBZDrpuIUcT123VXRfaFlqiBtbo+Ob7KExJHtNEY6lHNoU16BhWKE0V1lEuaYTLFYzrUNMExlV6xTL6Al1oJYZQKfRIFl+r3jQLHsgynJ2OsJvK3V4p/ecNcRS2vYEmWK5qQ1UNRzqFKYVkDJ
+
+mgRPG5JpgIprNCMsECE6XLquoSvn4K/ye9umU7Frpr1NqNdR0VcA4uwBWwQRO0wS3ogC4gYAYewBN4Ngrj0XgxXlejG8Z65wz8gPH2CYj8lDg=&lt;/latexit&gt;t1
+
+&lt;latexit sha1_base64="U7JG7zABr4eNKyBVj5kxCqGfmU0="&gt;AB/3icdVBLSwMxGMzWV62vVcGLl2AR6
+
+qXs1qWPW8GLxwr2AW1dstm0Dc1uliSr1LUH/4oXD4p49W9489+YbSuo6EDIMPN9ZDJexKhUlvVhZJaWV1bXsu5jc2t7R1zd68leSwaWLOuOh4SBJGQ9JUVDHSiQRBgcdI2xufpX7mghJeXipJhHpB2gY0gHFSGnJNQ96H
+
+me+nAT6Sm6nbu0qKdycTF0zbxVr1XLJOYVW0bIcu2ynpFSpOFVoayVFHizQcM3ns9xHJBQYak7NpWpPoJEopiRqa5XixJhPAYDUlX0xAFRPaTWf4pPNaKDwdc6BMqOFO/byQokGlEPRkgNZK/vVT8y+vGalDtJzSMYkVCPH
+
+9oEDOoOEzLgD4VBCs20QRhQXVWiEdIKx0ZTldwtdP4f+kVSra5aJz4eTrzqKOLDgER6AbFABdXAOGqAJMLgD+AJPBv3xqPxYrzORzPGYmcf/IDx9gmzrJaF&lt;/latexit&gt;
+
+z(w)
+
+9
+
+&lt;latexit sha1_base64="l8PtAsZJgDOBLkHG/nIAVEQCkI="&gt;AB/3icdVBLSwMxGMz6rPVFbx4CRahX
+
+pbdurTreDFYwX7gHZdstlsG5p9kGSVuvbgX/HiQRGv/g1v/huzbQUVHQgZr6PTMZLGBXSMD60hcWl5ZXVwlpxfWNza7u0s9sWcoxaeGYxbzrIUEYjUhLUslIN+EhR4jHW90lvuda8IFjaNLOU6IE6JBRAOKkVSW9rve
+
+zHzxThUV3Y7ce2rHJzPHFLZUM/tWtV6wQaumFYZs3MSbVet2xoKiVHGczRdEvfT/GaUgiRkSomcaiXQyxCXFjEyK/VSQBOERGpCeohEKiXCyaf4JPFKD4OYqxNJOFW/b2QoFHlENRkiORS/vVz8y+ulMrCdjEZJKkmEZw
+
+8FKYMyhnkZ0KecYMnGiDMqcoK8RBxhKWqrKhK+Pop/J+0q7pZ060Lq9yw5nUwAE4BVgjpogHPQBC2AwR14AE/gWbvXHrUX7XU2uqDNd/bAD2hvn7IiloQ=&lt;/latexit&gt;
+
+z(w)
+
+8
+
+&lt;latexit sha1_base64="b48HWXE8y3b1Vfuehkq3Cb70B0o="&gt;AB/3icdVBLSwMxGMz6rPVFbx4CRahX
+
+pbdurT1VvDisYJ9QLsu2Wy2Dc0+SLJKXfgX/HiQRGv/g1v/huzbQUVHQgZr6PTMaNGRXSMD60hcWl5ZXVwlpxfWNza7u0s9sRUcIxaeOIRbznIkEYDUlbUslIL+YEBS4jXd8lvda8IFjcJLOYmJHaBhSH2KkVSU9ofu
+
+BHzxCRQV3qbOfWrtHJznDmlsqGfNmpV6wQaumFYZs3MSbVetxrQVEqOMpij5ZTeB16Ek4CEjMkRN80YmniEuKGcmKg0SQGOExGpK+oiEKiLDTaf4MHinFg37E1QklnKrfN1IUiDyimgyQHInfXi7+5fUT6TfslIZxIkmIZw
+
+/5CYMygnkZ0KOcYMkmiDMqcoK8QhxhKWqrKhK+Pop/J90qrpZ060Lq9y05nUwAE4BVgjpognPQAm2AwR14AE/gWbvXHrUX7XU2uqDNd/bAD2hvn7CYloM=&lt;/latexit&gt;
+
+z(w)
+
+7
+
+&lt;latexit sha1_base64="+CAtpXlswOAnKzTaKvrlmE1Y78="&gt;AB/3icdVBLSwMxGMz6rPW1KnjxEixCv
+
+SzZ2trureDFYwX7gHYt2TRtQ7MPkqxS1x78K148KOLVv+HNf2O2raCiAyHDzPeRyXgRZ1Ih9GEsLC4tr6xm1rLrG5tb2+bObkOGsSC0TkIeipaHJeUsoHXFKetSFDse5w2vdFZ6jevqZAsDC7VOKujwcB6zOClZa65n7HC
+
+3lPjn19JbeTrn2V5G+OJ10zhyxUcsplByKrhE4qKSJ41QKjgNtC02RA3PUuZ7pxeS2KeBIhxL2bZRpNwEC8UIp5NsJ5Y0wmSEB7StaYB9Kt1kmn8Cj7TSg/1Q6BMoOFW/byTYl2lEPeljNZS/vVT8y2vHql9xExZEsaIBmT
+
+3UjzlUIUzLgD0mKF8rAkmgumskAyxwETpyrK6hK+fwv9Jo2DZp1bxopirFud1ZMABOAR5YIMyqIJzUAN1QMAdeABP4Nm4Nx6NF+N1NrpgzHf2wA8Yb5/VKZad&lt;/latexit&gt;
+
+z(w)
+
+1
+
+&lt;latexit sha1_base64="p8N9OG07gVyuszOtbinc1kRCayA="&gt;AB/3icdVBLSwMxGMz6rPW1KnjxEixCv
+
+SzZ2trureDFYwX7gLaWbJptQ7MPkqxS1x78K148KOLVv+HNf2O2raCiAyHDzPeRybgRZ1Ih9GEsLC4tr6xm1rLrG5tb2+bObkOGsSC0TkIeipaLJeUsoHXFKetSFDsu5w23dFZ6jevqZAsDC7VOKJdHw8C5jGClZ65n7HD
+
+Xlfjn19JbeTXuEqyd8cT3pmDlmo5JTLDkRWCZ1UEkTx6kUHAfaFpoiB+ao9cz3Tj8ksU8DRTiWsm2jSHUTLBQjnE6ynVjSCJMRHtC2pgH2qewm0/wTeKSVPvRCoU+g4FT9vpFgX6YR9aSP1VD+9lLxL68dK6/STVgQxYoGZP
+
+aQF3OoQpiWAftMUKL4WBNMBNZIRligYnSlWV1CV8/hf+TRsGyT63iRTFXLc7ryIADcAjywAZlUAXnoAbqgIA78ACewLNxbzwaL8brbHTBmO/sgR8w3j4B1rOWng=&lt;/latexit&gt;
+
+z(w)
+
+2
+
+&lt;latexit sha1_base64="ImfnfWoymiH6OEy2JYoXK9l1G8="&gt;AB/3icdVBJSwMxGM3UrdZtVPDiJViEe
+
+hnSzXZuBS8eK9gF2nHIpGkbmlIMkode/CvePGgiFf/hjf/jekiqOiDkMd730denhdxJhVCH0ZqaXldS29ntnY3NreMXf3mjKMBaENEvJQtD0sKWcBbSimOG1HgmLf47Tljc6mfuaCsnC4FKNI+r4eBCwPiNYack1D7pey
+
+Hty7OsruZ24xaskd3Myc0slDZrlRsiKwyKlZRWRPbrhZsG+YtNEMWLFB3zfduLySxTwNFOJayk0eRchIsFCOcTjLdWNIkxEe0I6mAfapdJZ/gk81koP9kOhT6DgTP2+kWBfTiPqSR+rofztTcW/vE6s+lUnYUEUKxqQ+U
+
+P9mEMVwmkZsMcEJYqPNcFEMJ0VkiEWmChdWUaX8PVT+D9pFqz8qVW6KGVrpUdaXAIjkAO5EF1MA5qIMGIOAOPIAn8GzcG4/Gi/E6H0Zi5198APG2yfYPZaf&lt;/latexit&gt;
+
+z(w)
+
+3
+
+&lt;latexit sha1_base64="6oni0ouPRHGymUnXqx3TvCoJeyQ="&gt;AB/3icdVBLSwMxGMzWV62vquDFS7AI9
+
+bJkS7f2WPDisYJ9QFuXbDZtQ7MPkqxS1z34V7x4UMSrf8Ob/8ZsW0FB0KGme8jk3EjzqRC6MPILS2vrK7l1wsbm1vbO8XdvbYMY0Foi4Q8F0XS8pZQFuKU67kaDYdzntuJOzO9cUyFZGFyqaUQHPh4FbMgIVlpyigd9N
+
++SenPr6Sm5Tx75KyjcnqVMsIRPV7KpVh8i0kVW3bE0qtoVQBVomqEFmg6xfe+F5LYp4EiHEvZs1CkBgkWihFO0I/ljTCZIJHtKdpgH0qB8ksfwqPteLBYSj0CRScqd83EuzLKe9LEay9eJv7l9WI1rA8SFkSxogGZPz
+
+SMOVQhzMqAHhOUKD7VBPBdFZIxlhgonRlBV3C10/h/6RdMa2aWb2olhrVR15cAiOQBlY4BQ0wDloghYg4A48gCfwbNwbj8aL8TofzRmLnX3wA8bJ5PSlm8=&lt;/latexit&gt;
+
+z(w)
+
+5
+
+&lt;latexit sha1_base64="SCpRfPzOUN6zXGNSVtw/YJX+pIE="&gt;AB/3icdVBLSwMxGMzWV62vVcGLl2AR6mXJlt3aY8GLxwr2AW0t2TRtQ7MPkqxS1z34V7x4UMSrf8Ob/8ZsW0FB0KGme8jk/EizqRC6MPILS2vrK7l1
+
+wsbm1vbO+buXlOGsSC0QUIeiraHJeUsoA3FKftSFDse5y2vMlZ5reuqZAsDC7VNKI9H48CNmQEKy31zYOuF/KBnPr6Sm7TfuUqKd2cpH2ziCxUcR27CpHlIrtqu5qUXRuhMrQtNEMRLFDvm+/dQUhinwaKcCxlx0aR6iVYKEY4TQvdWNIkwke0Y6mAfap7CWz/Ck81soADkOhT6DgTP2+kWBfZhH1pI/VWP72MvEvrxOrYbWXsCKFQ3I/KFhzKEKYVYGHDBieJTARTGeFZIwFJkpXVtAlfP0U/k+aZcuWM6FU6w5izry4BAcgRKwSmogXNQBw1AwB
+
+14AE/g2bg3Ho0X43U+mjMWO/vgB4y3T5VclnA=&lt;/latexit&gt;
+
+z(w)
+
+6
+
+M-Step: Jointly Update 
+
+&lt;latexit sha1_base64="0TM8bo79mt8FX8GutU2QyKdPg="&gt;AB/XicbVA7T8MwGHTKq5RXeGwsFhVSW
+
+aoEVcBGJRbGItGH1IbKcZzWquNEtgNqo4jfARMLAwixIv4G/8Gp+0ALSdZPt19n3w+N2JUKsv6NnILi0vLK/nVwtr6xuaWub3TkGEsMKnjkIWi5SJGOWkrqhipBUJgKXkaY7uMj85i0Rkob8Wg0j4gSox6lPMVJa6p7H
+
+TdknhwG+kpG6U1SujtKu2bRKltjwHliT0nx/PMhw2Ota351vBDHAeEKMyRl27Yi5SRIKIoZSQudWJI4QHqkbamHAVEOsk4fQoPteJBPxT6cAXH6u+NBAUyC6gnA6T6ctbLxP+8dqz8MyehPIoV4XjykB8zqEKYVQE9KghWbK
+
+gJwoLqrBD3kUBY6cIKugR79svzpHFctk/KlSurWK2ACfJgHxyAErDBKaiCS1ADdYDBCDyBF/Bq3BvPxpvxPhnNGdOdXfAHxscPKz2aHA=&lt;/latexit&gt;
+
+z(w)
+
+&lt;latexit sha1_base64="0TM8bo79mt8FX8GutU2QyKdPg="&gt;AB/XicbVA7T8MwGHTKq5RXeGwsFhVSW
+
+aoEVcBGJRbGItGH1IbKcZzWquNEtgNqo4jfARMLAwixIv4G/8Gp+0ALSdZPt19n3w+N2JUKsv6NnILi0vLK/nVwtr6xuaWub3TkGEsMKnjkIWi5SJGOWkrqhipBUJgKXkaY7uMj85i0Rkob8Wg0j4gSox6lPMVJa6p7H
+
+TdknhwG+kpG6U1SujtKu2bRKltjwHliT0nx/PMhw2Ota351vBDHAeEKMyRl27Yi5SRIKIoZSQudWJI4QHqkbamHAVEOsk4fQoPteJBPxT6cAXH6u+NBAUyC6gnA6T6ctbLxP+8dqz8MyehPIoV4XjykB8zqEKYVQE9KghWbK
+
+gJwoLqrBD3kUBY6cIKugR79svzpHFctk/KlSurWK2ACfJgHxyAErDBKaiCS1ADdYDBCDyBF/Bq3BvPxpvxPhnNGdOdXfAHxscPKz2aHA=&lt;/latexit&gt;
+
+z(w)  and 
+
+&lt;latexit sha1_base64="0TM8bo79mt8FX8GutU2QyKdPg="&gt;AB/XicbVA7T8MwGHTKq5RXeGwsFhVSWaoEVcBGJRbGItGH1IbKcZzWquNEtgNqo4jfARMLAwixIv4G/8Gp+0ALSdZPt19n3w+N2JUKsv6NnILi0vLK
+
+/nVwtr6xuaWub3TkGEsMKnjkIWi5SJGOWkrqhipBUJgKXkaY7uMj85i0Rkob8Wg0j4gSox6lPMVJa6p7HTdknhwG+kpG6U1SujtKu2bRKltjwHliT0nx/PMhw2Ota351vBDHAeEKMyRl27Yi5SRIKIoZSQudWJI4QHqkbamHAVEOsk4fQoPteJBPxT6cAXH6u+NBAUyC6gnA6T6ctbLxP+8dqz8MyehPIoV4XjykB8zqEKYVQE9KghWbKgJwoLqrBD3kUBY6cIKugR79svzpHFctk/KlSurWK2ACfJgHxyAErDBKaiCS1ADdYDBCDyBF/Bq3BvPxpvxPh
+
+nNGdOdXfAHxscPKz2aHA=&lt;/latexit&gt;
+
+z(w)
+
+&lt;latexit sha1_base64="0TM8bo79mt8FX8GutU2QyKdPg="&gt;AB/XicbVA7T8MwGHTKq5RXeGwsFhVSWaoEVcBGJRbGItGH1IbKcZzWquNEtgNqo4jfARMLAwixIv4G/8Gp+0ALSdZPt19n3w+N2JUKsv6NnILi0vLK
+
+/nVwtr6xuaWub3TkGEsMKnjkIWi5SJGOWkrqhipBUJgKXkaY7uMj85i0Rkob8Wg0j4gSox6lPMVJa6p7HTdknhwG+kpG6U1SujtKu2bRKltjwHliT0nx/PMhw2Ota351vBDHAeEKMyRl27Yi5SRIKIoZSQudWJI4QHqkbamHAVEOsk4fQoPteJBPxT6cAXH6u+NBAUyC6gnA6T6ctbLxP+8dqz8MyehPIoV4XjykB8zqEKYVQE9KghWbKgJwoLqrBD3kUBY6cIKugR79svzpHFctk/KlSurWK2ACfJgHxyAErDBKaiCS1ADdYDBCDyBF/Bq3BvPxpvxPh
+
+nNGdOdXfAHxscPKz2aHA=&lt;/latexit&gt;
+
+z(w) 
+
+(c) M-Step.
+
+Figure 3: One iteration of EM algorithm. During the E-Step, we compute new posterior topic-word distribution 𝑞(𝑡|𝒛(𝑤)) that
+
+sharpens the original posterior 𝑝(𝑡|𝒛(𝑤)) (resulting in lower entropy of 𝑝(𝑡|𝒛(𝑤)) denoted by the smaller colored area around
+
+𝒛(𝑤)) and meanwhile encourage balanced cluster distribution (resulting in some cluster assignment change). During the M-
+
+Step, we update topic embeddings 𝒕 and word embeddings 𝒛(𝑤) = 𝑓 (𝒉(𝑤)) according to the new posteriors.
+
+where 𝑝
+
+�
+
+𝒛(𝑤)
+
+𝑖
+
+|𝑡𝑘
+
+�
+
+= vMF𝑟′(𝒕𝑘,𝜅) = 𝑛𝑟′(𝜅) exp
+
+�
+
+𝜅 · cos(𝒛(𝑤)
+
+𝑖
+
+, 𝒕𝑘)
+
+�
+
+and 𝑝(𝑡𝑘) = 1/𝐾 according to Eq. (1). The posterior is simplified as
+
+𝑝
+
+�
+
+𝑡𝑘
+
+��𝒛(𝑤)
+
+𝑖
+
+�
+
+=
+
+exp
+
+�
+
+𝜅 · cos
+
+�
+
+𝒛(𝑤)
+
+𝑖
+
+, 𝒕𝑘
+
+��
+
+�𝐾
+
+𝑘′=1 exp
+
+�
+
+𝜅 · cos
+
+�
+
+𝒛(𝑤)
+
+𝑖
+
+, 𝒕𝑘′
+
+�� .
+
+Then we compute a new estimate of the cluster assignments𝑞(𝑡𝑘 |𝒛(𝑤)
+
+𝑖
+
+)
+
+to be used for updating the model in the M-Step following [66]:
+
+𝑞
+
+�
+
+𝑡𝑘
+
+��𝒛(𝑤)
+
+𝑖
+
+�
+
+=
+
+𝑝
+
+�
+
+𝑡𝑘
+
+��𝒛(𝑤)
+
+𝑖
+
+�2
+
+/𝑠𝑘
+
+�𝐾
+
+𝑘′=1 𝑝
+
+�
+
+𝑡𝑘′
+
+��𝒛(𝑤)
+
+𝑖
+
+�2
+
+/𝑠𝑘′
+
+, 𝑠𝑘 =
+
+𝑁
+
+∑︁
+
+𝑖=1
+
+𝑝
+
+�
+
+𝑡𝑘
+
+��𝒛(𝑤)
+
+𝑖
+
+�
+
+, (3)
+
+where 𝑁 is the total number of tokens in the corpus. Using Eq. (3) to
+
+obtain the target cluster assignment has the following two favorable
+
+effects: (1) Distinctive topic learning. Squaring-then-normalizing the
+
+posterior distribution 𝑝(𝑡𝑘 |𝒛(𝑤)
+
+𝑖
+
+) has a sharpening effect that skews
+
+the distribution towards its most confident cluster assignment, and
+
+the so learned latent space will have gradually well-separated clus-
+
+ters for distinctive topic interpretation. This is similar in spirit to the
+
+Dirichlet prior used in LDA that promotes sparse topic distributions.
+
+(2) Topic prior regularization. The soft cluster frequency 𝑠𝑘 should
+
+encode the uniform topic prior assumed in Eq. (1), and dividing the
+
+sharpened 𝑝(𝑡𝑘 |𝒛(𝑤)
+
+𝑖
+
+)2 by 𝑠𝑘 encourages balanced clusters.
+
+M-Step. We update the model parameters to maximize the expected
+
+log-probability of the current cluster assignment under the new
+
+cluster assignment estimate E𝑞[log𝑝], which is equivalent to mini-
+
+mizing the following cross entropy loss:
+
+Lclus = −
+
+𝑁
+
+∑︁
+
+𝑖=1
+
+𝐾
+
+∑︁
+
+𝑘=1
+
+𝑞
+
+�
+
+𝑡𝑘
+
+��𝒛(𝑤)
+
+𝑖
+
+�
+
+log𝑝
+
+�
+
+𝑡𝑘
+
+��𝒛(𝑤)
+
+𝑖
+
+�
+
+,
+
+(4)
+
+where 𝑝 is updated to approximate 𝑞 which is a fixed target. Using
+
+Eq. (4) to update the model parameters has a notable difference
+
+from standard clustering algorithms: Since 𝑝(𝑡𝑘 |𝒛(𝑤)
+
+𝑖
+
+) is jointly
+
+determined by the topic center vector 𝒕𝑘 and latent representation
+
+𝒛(𝑤)
+
+𝑖
+
+, both of them will be updated to fit the new estimate𝑞(𝑡𝑘 |𝒛(𝑤)
+
+𝑖
+
+)
+
+which encourages distinctive cluster distribution. Therefore, the
+
+mapping function 𝑓 will be adjusted accordingly to induce a latent
+
+space with a 𝐾-cluster structure and the topic center vectors will
+
+become 𝐾 anchoring points surrounded by topic-representative
+
+words. In contrast, standard clustering algorithms only update the
+
+cluster parameters without changing the data representations.
+
+Topical Reconstruction of Documents. The second objective
+
+aims to reconstruct document semantics with topic representa-
+
+tions so that the learned latent topics are meaningful summaries
+
+of the documents. Specifically, the reconstructed document embed-
+
+ding ˆ𝒉(𝑑) is obtained by combining all projected topic vectors ˆ𝒕𝑘
+
+weighted by the document-topic distribution 𝑝(𝑡𝑘 |𝒛(𝑑)):
+
+ˆ𝒉(𝑑) =
+
+𝐾
+
+∑︁
+
+𝑘=1
+
+𝑝
+
+�
+
+𝑡𝑘
+
+��𝒛(𝑑)�
+
+ˆ𝒕𝑘,
+
+ˆ𝒕𝑘 = 𝑔(𝒕𝑘),
+
+where 𝑝(𝑡𝑘 |𝒛(𝑑)) is obtained according to Eq. (2):
+
+𝑝
+
+�
+
+𝑡𝑘
+
+��𝒛(𝑑)�
+
+=
+
+exp
+
+�
+
+𝜅 · cos
+
+�
+
+𝒛(𝑑), 𝒕𝑘
+
+��
+
+�𝐾
+
+𝑘′=1 exp �𝜅 · cos �𝒛(𝑑), 𝒕𝑘′�� .
+
+We require the reconstructed document embedding to be a good
+
+approximation of the original content by minimizing the following
+
+reconstruction loss:
+
+Lrec =
+
+∑︁
+
+𝑑 ∈D
+
+��ˆ𝒉(𝑑) − ¯𝒉(𝑑)��2,
+
+(5)
+
+where ¯𝒉(𝑑) is the average of word embeddings in the document
+
+serving as the generic document embedding.
+
+Preservation of Original PLM Embeddings. We need to ensure
+
+the latent space preserves the important semantic information of
+
+the original embedding space, and the third objective encourages
+
+the output of the autoencoder to faithfully recover the structure of
+
+the original embedding space by minimizing the the following loss:
+
+Lpre =
+
+𝑁
+
+∑︁
+
+𝑖=1
+
+��𝒉(𝑤)
+
+𝑖
+
+− 𝑔
+
+�
+
+𝑓
+
+�
+
+𝒉(𝑤)
+
+𝑖
+
+�� ��2.
+
+(6)
+
+Overall Algorithm. We summarize the training of TopClus in Al-
+
+gorithm 1. We first pretrain the mapping functions 𝑓 and 𝑔 only
+
+using the preservation loss in Eq. (6) as it provides a stable ini-
+
+tialization of the latent space [66]. During training, we apply the
+
+EM algorithm to iteratively update all model parameters with the
+
+summed objectives (the clustering loss is weighed by 𝜆).
+
+Complexity. In the E-Step of the algorithm, 𝑞(𝑡𝑘 |𝒛(𝑤)
+
+𝑖
+
+) is com-
+
+puted for every latent representation over each topic, resulting in
+
+an O(𝑁𝐾𝑟 ′) complexity per iteration. The M-Step updates DNN pa-
+
+rameters whose complexity is related to the number of parameters
+
+in the model and the optimization method.
+
+
+Algorithm 1: TopClus Training.
+
+Input: D: Text corpus; 𝑀: PLM; 𝐾: Number of topics.
+
+Parameter: 𝑨: Attention mechanism parameters; 𝑓 ,𝑔:
+
+Encoding/decoding functions; 𝑻: Topic
+
+embeddings.
+
+Hyperparameter: 𝐸: Training epochs; 𝜆: Clustering loss
+
+weight.
+
+Output: Topic-word distributions 𝑝
+
+�
+
+𝑧(𝑤)
+
+𝑖
+
+��𝑡𝑘
+
+�
+
+;
+
+document-topic distributions 𝑝
+
+�
+
+𝑡𝑘
+
+��𝑧(𝑑)�
+
+.
+
+𝑓 ,𝑔 ← arg min𝑓 ,𝑔 Lpre; // Pretrain 𝑓 ,𝑔 via Eq. (6);
+
+𝑻 = 𝒕𝑘
+
+��𝐾
+
+𝑘=1 ← Initialize with 𝐾-means on S𝑟′−1;
+
+for 𝑗 ∈ [1, 2, . . . , 𝐸] do
+
+// E-Step: Update cluster assignment estimation;
+
+𝑞
+
+�
+
+𝑡𝑘
+
+��𝒛(𝑤)
+
+𝑖
+
+�
+
+← Eq. (3);
+
+// M-Step: Update model parameters;
+
+𝑨, 𝑓 ,𝑔, 𝑻 ← arg min𝑨,𝑓 ,𝑔,𝑻
+
+�𝜆Lclus + Lrec + Lpre
+
+�;
+
+return 𝑝
+
+�
+
+𝑧(𝑤)
+
+𝑖
+
+��𝑡𝑘
+
+�
+
+, 𝑝
+
+�
+
+𝑡𝑘
+
+��𝑧(𝑑)�
+
+;
+
+4
+
+EXPERIMENTS
+
+4.1
+
+Experiment Setup
+
+Settings. We use two benchmark datasets in different domains
+
+with long/short texts for evaluation: (1) The New York Times an-
+
+notated corpus (NYT) [58]; and (2) The Yelp Review Challenge
+
+dataset (Yelp). The dataset statistics can be found in Table 4. The
+
+implementation details and parameters of TopClus are shown in
+
+Appendix C. For both datasets, we set the number of topics 𝐾 = 100
+
+for all compared methods.
+
+Compared Methods. We compare TopClus with the following
+
+strong baselines:
+
+• LDA [11]: LDA is the standard topic model that learns topic-
+
+word and document-topic distributions by modeling the generative
+
+process of the corpus.
+
+• CorEx [19]: CorEx does not rely on generative assumptions and
+
+learns maximally informative topics measured by total correlation.
+
+• ETM [17]: ETM models word topic correlations via distributed
+
+representations to improve the expressiveness of topic models.
+
+• BERTopic [23]: BERTopic first clusters document embeddings
+
+from BERT and then uses TF-IDF to extract topic representative
+
+words, which does not leverage word embeddings from PLMs.
+
+4.2
+
+Topic Discovery Evaluation
+
+Evaluation Metrics. We evaluate the quality of the topics from
+
+two aspects: topic coherence and topic diversity. Good topic results
+
+should be both coherent for humans to interpret and diverse to cover
+
+more information about the corpus. We evaluate the effectiveness
+
+of document-level topic modeling by document clustering.
+
+For topic coherence, we use three metrics including both human
+
+and automatic evaluations:
+
+• UMass [49]: UMass computes the log-conditional probability
+
+of every top word in each topic given every other top word that
+
+has a higher order in the ranking of that topic. The probability is
+
+computed based on document-level word co-occurrence.
+
+• UCI [51]: UCI computes the average pointwise mutual informa-
+
+tion of all pairs of top words in each topic. The word co-occurrence
+
+counts are derived using a sliding window of size 10.
+
+• Intrusion: Given the top terms of a topic, we inject an intrusion
+
+term that is randomly chosen from another topic. Then a human
+
+evaluator is asked to identify the intruded term. The more coher-
+
+ent the top terms are, the more likely an evaluator can correctly
+
+identify the fake term, and thus we compute the ratio of correctly
+
+identified intrusion instances as the topic coherence score given
+
+by the intrusion test. The topics from all compared methods are
+
+randomly shuffled during evaluation to avoid the bias of human
+
+evaluators.
+
+For topic diversity, we report the percentage of unique words in
+
+the top words of all topics following the definition in [17].
+
+Qualitative Evaluation. We randomly select several ground truth
+
+topics from both datasets, and manually match the most relevant
+
+topic generated by all methods. Table 1 shows the top-5 words
+
+per topic. All methods are able to generate relevant topics to the
+
+ground truth ones. LDA and CorEx results contain noises that
+
+are semantically irrelevant to the topic; ETM improves LDA by
+
+incorporating word embeddings, but still generates slightly off-
+
+topic terms; BERTopic also has noisy terms in the results, as it uses
+
+TF-IDF metrics without exploiting word representations from BERT
+
+for obtaining top words. TopClus consistently outputs coherent and
+
+meaningful topics.
+
+Quantitative Evaluation. We report the performance of all meth-
+
+ods under the four metrics in Table 2. Overall, the quantitative
+
+evaluation coincides with the previous qualitative results. TopClus
+
+generates not only the most coherent but also diverse topics, under
+
+both automatic and human evaluations.
+
+4.3
+
+Document Clustering Evaluation
+
+Evaluation Metrics. We use the learned latent document embed-
+
+ding 𝒛(𝑑) as the feature to 𝐾-Means for obtaining document clusters,
+
+then we report the Normalized Mutual Information (NMI) score be-
+
+tween the clustering results and the ground truth document labels.
+
+We use the topic label set (e.g., politics, sports) and location label
+
+set (e.g., United States, China) on the NYT dataset. The detailed
+
+label statistics can be found in [39]. On the two label sets, the
+
+document-topic distribution learned by TopClus consistently yields
+
+the best clustering results among all methods as shown in Table 3.
+
+4.4
+
+Study of TopClus Training
+
+Joint Learning Latent Space and Clustering Improves Topic
+
+Quality. Figure 5 shows the improvement in topic quality (mea-
+
+sured by both intrusion test score and topic diversity) and document
+
+clustering performance during TopClus training. At epoch 0, the
+
+result is equivalent to first applying dimensionality reduction (i.e.,
+
+pretraining autoencoder with Lpre) and then clustering with 𝐾-
+
+means, the “naive approach” mentioned in the second paragraph of
+
+Section 3.2. Its inferior performance confirms that conducting the
+
+two steps separately does not generate satisfactory topics. Topic
+
+quality and document clustering performance improve when the
+
+model is trained longer, showing that joint latent space learning and
+
+clustering indeed helps generate coherent and distinctive topics.
+
+Visualization. To intuitively understand how TopClus jointly learns
+
+the latent space structure and performs clustering, we visualize the
+
+learned latent embeddings at different training epochs in Figure 4.
+
+
+Table 1: Qualitative evaluation of topic discovery. We select several ground truth topics and manually find the most relevant
+
+topic generated by all methods. Words not strictly belonging to the corresponding topic are italicized and underlined.
+
+Methods
+
+NYT
+
+Yelp
+
+Topic 1
+
+Topic 2
+
+Topic 3
+
+Topic 4
+
+Topic 5
+
+Topic 1
+
+Topic 2
+
+Topic 3
+
+Topic 4
+
+Topic 5
+
+(sports)
+
+(politics)
+
+(research)
+
+(france)
+
+(japan)
+
+(positive)
+
+(negative)
+
+(vegetables)
+
+(fruits)
+
+(seafood)
+
+LDA
+
+olympic
+
+mr
+
+said
+
+french
+
+japanese
+
+amazing
+
+loud
+
+spinach
+
+mango
+
+fish
+
+year
+
+bush
+
+report
+
+union
+
+tokyo
+
+really
+
+awful
+
+carrots
+
+strawberry
+
+roll
+
+said
+
+president
+
+evidence
+
+germany
+
+year
+
+place
+
+sunday
+
+greens
+
+vanilla
+
+salmon
+
+games
+
+white
+
+findings
+
+workers
+
+matsui
+
+phenomenal
+
+like
+
+salad
+
+banana
+
+fresh
+
+team
+
+house
+
+defense
+
+paris
+
+said
+
+pleasant
+
+slow
+
+dressing
+
+peanut
+
+good
+
+CorEx
+
+baseball
+
+house
+
+possibility
+
+french
+
+japanese
+
+great
+
+even
+
+garlic
+
+strawberry
+
+shrimp
+
+championship
+
+white
+
+challenge
+
+italy
+
+tokyo
+
+friendly
+
+bad
+
+tomato
+
+caramel
+
+beef
+
+playing
+
+support
+
+reasons
+
+paris
+
+index
+
+atmosphere
+
+mean
+
+onions
+
+sugar
+
+crab
+
+fans
+
+groups
+
+give
+
+francs
+
+osaka
+
+love
+
+cold
+
+toppings
+
+fruit
+
+dishes
+
+league
+
+member
+
+planned
+
+jacques
+
+electronics
+
+favorite
+
+literally
+
+slices
+
+mango
+
+salt
+
+ETM
+
+olympic
+
+government
+
+approach
+
+french
+
+japanese
+
+nice
+
+disappointed
+
+avocado
+
+strawberry
+
+fish
+
+league
+
+national
+
+problems
+
+students
+
+agreement
+
+worth
+
+cold
+
+greek
+
+mango
+
+shrimp
+
+national
+
+plan
+
+experts
+
+paris
+
+tokyo
+
+lunch
+
+review
+
+salads
+
+sweet
+
+lobster
+
+basketball
+
+public
+
+move
+
+german
+
+market
+
+recommend
+
+experience
+
+spinach
+
+soft
+
+crab
+
+athletes
+
+support
+
+give
+
+american
+
+european
+
+friendly
+
+bad
+
+tomatoes
+
+flavors
+
+chips
+
+BERTopic
+
+swimming
+
+bush
+
+researchers
+
+french
+
+japanese
+
+awesome
+
+horrible
+
+tomatoes
+
+strawberry
+
+lobster
+
+freestyle
+
+democrats
+
+scientists
+
+paris
+
+tokyo
+
+atmosphere
+
+quality
+
+avocado
+
+mango
+
+crab
+
+popov
+
+white
+
+cases
+
+lyon
+
+ufj
+
+friendly
+
+disgusting
+
+soups
+
+cup
+
+shrimp
+
+gold
+
+bushs
+
+genetic
+
+minister
+
+company
+
+night
+
+disappointing
+
+kale
+
+lemon
+
+oysters
+
+olympic
+
+house
+
+study
+
+billion
+
+yen
+
+good
+
+place
+
+cauliflower
+
+banana
+
+amazing
+
+TopClus
+
+athletes
+
+government
+
+hypothesis
+
+french
+
+japanese
+
+good
+
+tough
+
+potatoes
+
+strawberry
+
+fish
+
+medalist
+
+ministry
+
+methodology
+
+seine
+
+tokyo
+
+best
+
+bad
+
+onions
+
+lemon
+
+octopus
+
+olympics
+
+bureaucracy
+
+possibility
+
+toulouse
+
+osaka
+
+friendly
+
+painful
+
+tomatoes
+
+apples
+
+shrimp
+
+tournaments
+
+politicians
+
+criteria
+
+marseille
+
+hokkaido
+
+cozy
+
+frustrating
+
+cabbage
+
+grape
+
+lobster
+
+quarterfinal
+
+electoral
+
+assumptions
+
+paris
+
+yokohama
+
+casual
+
+brutal
+
+mushrooms
+
+peach
+
+crab
+
+−100
+
+0
+
+100
+
+−100
+
+0
+
+100
+
+(a) Epoch 0.
+
+−100
+
+0
+
+100
+
+−100
+
+0
+
+100
+
+(b) Epoch 2.
+
+−100
+
+0
+
+100
+
+−100
+
+0
+
+100
+
+(c) Epoch 4.
+
+−100
+
+0
+
+100
+
+−100
+
+0
+
+100
+
+(d) Epoch 8.
+
+Figure 4: Visualization using t-SNE of 3, 000 randomly sampled latent word embeddings during training. Embeddings assigned
+
+to the same cluster are in the same color. The latent space gradually exhibits distinctive and balanced cluster structure.
+
+Before the training starts (epoch 0), the latent embedding space does
+
+not have clear cluster structures, just like the original space. During
+
+training, the latent embeddings are becoming well-separated and
+
+the cluster structure is gradually more distinctive and balanced,
+
+resulting in coherent and diverse topics.
+
+5
+
+RELATED WORK
+
+5.1
+
+Topic Models
+
+Topic models aim to discover underlying topics and semantic struc-
+
+tures from text corpora. Despite extensive studies of topic models
+
+following LDA, most approaches suffer from one or more of the
+
+following limitations: (1) The “bag-of-words” assumption that pre-
+
+sumes words in the document are generated independently from
+
+each other. (2) The reliance on local corpus statistics, which could
+
+be improved by leveraging general knowledge such as pretrained
+
+language models [16]. (3) The intractable posterior that requires
+
+approximation techniques during model inference.
+
+Topic modeling approaches can be divided into three major cat-
+
+egories: (1) LDA-based approaches use pLSA [26] or LDA [11] as
+
+the backbone. The idea is to characterize documents as mixtures of
+
+latent topics and represent each topic as a distribution over words.
+
+Popular models in this category include Hierarchical LDA [22],
+
+Dynamic Topic Models [8], Correlated Topic Models [7], Pachinko
+
+
+Table 2: Quantitative evaluation of topic discovery. We eval-
+
+uate all methods with three topic coherence metrics UCI,
+
+UMAss and Intrusion (Int.) and a topic diversity (Div.) met-
+
+ric. Higher score means better for all metrics. We do not re-
+
+port Div. for CorEx because it requires topics to have non-
+
+overlapping words by design.
+
+Methods
+
+NYT
+
+Yelp
+
+UMass
+
+UCI
+
+Int.
+
+Div. UMass
+
+UCI
+
+Int.
+
+Div.
+
+LDA
+
+-3.75
+
+-1.76
+
+0.53
+
+0.78
+
+-4.71
+
+-2.47
+
+0.47
+
+0.65
+
+CorEx
+
+-3.83
+
+-0.96
+
+0.77
+
+-
+
+-4.75
+
+-1.91
+
+0.43
+
+-
+
+ETM
+
+-2.98
+
+-0.98
+
+0.67
+
+0.30
+
+-3.04
+
+-0.33
+
+0.47
+
+0.16
+
+BERTopic
+
+-3.78
+
+-0.51
+
+0.70
+
+0.61
+
+-6.37
+
+-2.05
+
+0.73
+
+0.36
+
+TopClus
+
+-2.67
+
+-0.45 0.93 0.99
+
+-1.35
+
+-0.27 0.87 0.96
+
+Table
+
+3:
+
+Document
+
+clustering
+
+NMI
+
+scores
+
+on
+
+NYT
+
+(Topic/Location label set).
+
+LDA
+
+CorEx
+
+ETM
+
+BERTopic
+
+TopClus
+
+0.39/0.20
+
+0.29/0.20
+
+0.41/0.21
+
+0.26/0.22
+
+0.46/0.28
+
+0 1 2
+
+4
+
+10
+
+Training Epochs
+
+0.4
+
+0.6
+
+0.8
+
+1.0
+
+Score
+
+Intrusion
+
+Diversity
+
+(a) Topic Quality.
+
+0 1 2
+
+4
+
+6
+
+8
+
+10
+
+Training Epochs
+
+0.2
+
+0.3
+
+0.4
+
+0.5
+
+NMI
+
+Topic
+
+Location
+
+(b) Document Clustering.
+
+Figure 5: Study of TopClus training on NYT. We show (a) topic
+
+coherence measured by intrusion test and topic diversity
+
+and (b) document clustering NMI scores over training.
+
+Allocation [34], Supervised Topic Models [10] and Labeled LDA [55].
+
+Most of these models suffer from all three limitations mentioned
+
+above. (2) Topic models with word embeddings have been broadly
+
+studied after word2vec [48] came out. The common strategy is to
+
+convert the discrete text into continuous representations of em-
+
+beddings, and then adapt LDA to generate real-valued data. Such
+
+kind of models include Gaussian LDA [15], Spherical Hierarchical
+
+Dirichlet Process [3] and WELDA [12]. There are some other strate-
+
+gies combining topic modeling and word embedding. For example,
+
+LFTM [52] models a mixture of the multinomial distribution and a
+
+link function between word and topic embeddings. TWE [35] uses
+
+pretrained topic structures to learn topic embeddings and improve
+
+word embeddings. Although these models consider word embed-
+
+dings to make up for the “bag-of-words” assumption, they are not
+
+equipped with general knowledge from pretrained language mod-
+
+els. (3) Neural topic models are inspired by deep generative models
+
+such as VAE [32]. NVDM [47] encodes documents with variational
+
+posteriors in the latent topic space. Instead, ProdLDA [60] proposes
+
+a Laplace approximation of Dirichlet distributions to enable repa-
+
+rameterization. Although these neural topic models improve the
+
+posterior approximation with neural networks, they still do not
+
+utilize general knowledge such as pretrained language models.
+
+5.2
+
+Pretrained Language Models
+
+Bengio et al. [4] propose the Neural Network Language Model
+
+which pioneers the study of modern word embedding. Mikolov
+
+et al. [48] introduce two architectures, CBOW and Skip-Gram, to
+
+capture local context semantics of each word.
+
+Although word embeddings have been shown effective in NLP
+
+tasks, they are context-independent. Meanwhile, most NLP tasks
+
+are beyond word-level, thus it is beneficial to derive word seman-
+
+tics based on specific contexts. Therefore, contextualized PLMs are
+
+widely studied recently. For example, BERT [16] and RoBERTa [36]
+
+adopt masked token prediction as the pretraining task to leverage
+
+bidirectional contexts. XLNet [67] proposes a new pretraining objec-
+
+tive on a random permutation of input sequences. ELECTRA [14],
+
+COCO-LM [43] and AMOS [44] use a generator to replace some
+
+tokens of a sequence and predict whether a token is replaced given
+
+its surrounding context. For more related studies, one can refer
+
+to a recent survey [54]. There have been a few recent studies that
+
+attempt to incorporate PLM representations into the topic modeling
+
+framework for different purposes [6, 13, 24, 28, 61]. By contrast,
+
+our approach features a latent space clustering framework that
+
+leverages the inherent representations of PLMs for topic discovery
+
+without following the topic modeling setup.
+
+6
+
+CONCLUSION
+
+We explore a new alternative to topic models via latent space cluster-
+
+ing of PLM representations. We first analyze the challenges of using
+
+PLM embeddings to generate topic structures, and then propose
+
+a joint latent space learning and clustering approach TopClus to
+
+address the identified challenges. TopClus generates coherent and
+
+distinctive topics and outperforms strong topic modeling baselines
+
+in both topic quality and topical document representations. We also
+
+conduct studies to provide insights on how the joint learning setup
+
+in TopClus gradually improves the generated topic quality.
+
+TopClus is conceptually simple which facilitates future exten-
+
+sions such as integrating with new PLMs and advanced clustering
+
+techniques. TopClus may also be extended to perform hierarchical
+
+topic discovery, perhaps via top-down clustering in the latent space.
+
+Other related tasks like taxonomy construction [30] and weakly-
+
+supervised text classification [29, 41, 42, 45, 68] may benefit from
+
+the coherent and distinctive topics generated by TopClus.
+
+ACKNOWLEDGMENTS
+
+Research was supported in part by US DARPA KAIROS Program
+
+No. FA8750-19-2-1004, SocialSim Program No. W911NF-17-C-0099,
+
+and INCAS Program No. HR001121C0165, National Science Founda-
+
+tion IIS-19-56151, IIS-17-41317, and IIS 17-04532, and the Molecule
+
+Maker Lab Institute: An AI Research Institutes program supported
+
+by NSF under Award No. 2019897. Any opinions, findings, and
+
+conclusions or recommendations expressed herein are those of
+
+the authors and do not necessarily represent the views, either ex-
+
+pressed or implied, of DARPA or the U.S. Government. Yu Meng is
+
+supported by the Google PhD Fellowship. We thank anonymous
+
+reviewers for valuable and insightful feedback.
+
+REFERENCES
+
+[1] Hagai Attias. 2000. A variational Bayesian framework for graphical models.
+
+NIPS.
+
+
+[2] Arindam Banerjee, Inderjit S. Dhillon, Joydeep Ghosh, and Suvrit Sra. 2005.
+
+Clustering on the Unit Hypersphere using von Mises-Fisher Distributions. J.
+
+Mach. Learn. Res. (2005).
+
+[3] Kayhan Batmanghelich, Ardavan Saeedi, Karthik Narasimhan, and Sam Gersh-
+
+man. 2016. Nonparametric spherical topic modeling with word embeddings. In
+
+ACL.
+
+[4] Yoshua Bengio, Réjean Ducharme, Pascal Vincent, and Christian Janvin. 2003. A
+
+neural probabilistic language model. JMLR (2003).
+
+[5] Kevin Beyer, Jonathan Goldstein, Raghu Ramakrishnan, and Uri Shaft. 1999.
+
+When is “nearest neighbor” meaningful?. In ICDT.
+
+[6] Federico Bianchi, Silvia Terragni, and Dirk Hovy. 2021. Pre-training is a Hot
+
+Topic: Contextualized Document Embeddings Improve Topic Coherence. In ACL.
+
+[7] David Blei and John Lafferty. 2006. Correlated topic models. In NIPS.
+
+[8] David M Blei and John D Lafferty. 2006. Dynamic topic models. In ICML.
+
+[9] David M Blei, John D Lafferty, et al. 2007. A correlated topic model of science.
+
+The annals of applied statistics (2007).
+
+[10] David M Blei and Jon D Mcauliffe. 2008. Supervised topic models. In NIPS.
+
+[11] David M. Blei, Andrew Y. Ng, and Michael I. Jordan. 2003. Latent Dirichlet
+
+Allocation. In NIPS.
+
+[12] Stefan Bunk and Ralf Krestel. 2018. WELDA: Enhancing Topic Models by Incor-
+
+porating Local Word Context. In JCDL.
+
+[13] Yatin Chaudhary, Pankaj Gupta, Khushbu Saxena, Vivek Kulkarni, Thomas A.
+
+Runkler, and Hinrich Schütze. 2020. TopicBERT for Energy Efficient Document
+
+Classification. In EMNLP Findings.
+
+[14] Kevin Clark, Minh-Thang Luong, Quoc V Le, and Christopher D Manning. 2020.
+
+ELECTRA: Pre-training text encoders as discriminators rather than generators.
+
+arXiv preprint arXiv:2003.10555 (2020).
+
+[15] Rajarshi Das, Manzil Zaheer, and Chris Dyer. 2015. Gaussian LDA for topic
+
+models with word embeddings. In ACL.
+
+[16] Jacob Devlin, Ming-Wei Chang, Kenton Lee, and Kristina Toutanova. 2019. BERT:
+
+Pre-training of Deep Bidirectional Transformers for Language Understanding. In
+
+NAACL.
+
+[17] Adji B Dieng, Francisco JR Ruiz, and David M Blei. 2020. Topic modeling in
+
+embedding spaces. TACL (2020).
+
+[18] J. R. Firth. 1957. A synopsis of linguistic theory 1930-55. (1957).
+
+[19] Ryan J Gallagher, Kyle Reing, David Kale, and Greg Ver Steeg. 2017. Anchored
+
+correlation explanation: Topic modeling with minimal domain knowledge. TACL
+
+(2017).
+
+[20] Samuel Gehman, Suchin Gururangan, Maarten Sap, Yejin Choi, and Noah A.
+
+Smith. 2020. RealToxicityPrompts: Evaluating Neural Toxic Degeneration in
+
+Language Models. In EMNLP Findings.
+
+[21] Siddharth Gopal and Yiming Yang. 2014. Von Mises-Fisher Clustering Models. In
+
+ICML.
+
+[22] Thomas L Griffiths, Michael I Jordan, Joshua B Tenenbaum, and David M Blei.
+
+2004. Hierarchical topic models and the nested Chinese restaurant process. In
+
+NIPS.
+
+[23] Maarten Grootendorst. 2020. BERTopic: Leveraging BERT and c-TF-IDF to create
+
+easily interpretable topics. Zenodo: 10.5281/zenodo.4430182 (2020).
+
+[24] Pankaj Gupta, Yatin Chaudhary, and Hinrich Schütze. 2021. Multi-source Neural
+
+Topic Modeling in Multi-view Embedding Spaces. In NAACL.
+
+[25] Geoffrey E Hinton and Richard S Zemel. 1993. Autoencoders, Minimum Descrip-
+
+tion Length and Helmholtz Free Energy. In NIPS.
+
+[26] Thomas Hofmann. 2004. Latent semantic models for collaborative filtering. ACM
+
+TOIS (2004).
+
+[27] Kurt Hornik. 1991. Approximation capabilities of multilayer feedforward net-
+
+works. Neural networks (1991).
+
+[28] Alexander Miserlis Hoyle, Pranav Goel, and Philip Resnik. 2020. Improving
+
+Neural Topic Models Using Knowledge Distillation. In EMNLP.
+
+[29] Jiaxin Huang, Yu Meng, Fang Guo, Heng Ji, and Jiawei Han. 2020. Weakly-
+
+Supervised Aspect-Based Sentiment Analysis via Joint Aspect-Sentiment Topic
+
+Embedding. In EMNLP.
+
+[30] Jiaxin Huang, Yiqing Xie, Yu Meng, Yunyi Zhang, and Jiawei Han. 2020. CoRel:
+
+Seed-Guided Topical Taxonomy Construction by Concept Learning and Relation
+
+Transferring. In KDD.
+
+[31] Diederik P Kingma and Jimmy Ba. 2015. Adam: A method for stochastic opti-
+
+mization. In ICLR.
+
+[32] Diederik P Kingma and Max Welling. 2013. Auto-encoding variational bayes.
+
+arXiv preprint arXiv:1312.6114 (2013).
+
+[33] Bohan Li, Hao Zhou, Junxian He, Mingxuan Wang, Yiming Yang, and Lei Li. 2020.
+
+On the Sentence Embeddings from Pre-trained Language Models. In EMNLP.
+
+[34] Wei Li and Andrew McCallum. 2006. Pachinko allocation: DAG-structured
+
+mixture models of topic correlations. In ICML.
+
+[35] Yang Liu, Zhiyuan Liu, Tat-Seng Chua, and Maosong Sun. 2015. Topical word
+
+embeddings. In AAAI.
+
+[36] Yinhan Liu, Myle Ott, Naman Goyal, Jingfei Du, Mandar Joshi, Danqi Chen, Omer
+
+Levy, Mike Lewis, Luke Zettlemoyer, and Veselin Stoyanov. 2019. Roberta: A
+
+robustly optimized bert pretraining approach. arXiv preprint arXiv:1907.11692
+
+(2019).
+
+[37] Stuart Lloyd. 1982. Least squares quantization in PCM. IEEE transactions on
+
+information theory (1982).
+
+[38] Xinyao Ma, Maarten Sap, Hannah Rashkin, and Yejin Choi. 2020. PowerTrans-
+
+former: Unsupervised Controllable Revision for Biased Language Correction. In
+
+EMNLP.
+
+[39] Yu Meng, Jiaxin Huang, Guangyuan Wang, Zihan Wang, Chao Zhang, Yu Zhang,
+
+and Jiawei Han. 2020. Discriminative topic mining via category-name guided
+
+text embedding. In WWW.
+
+[40] Yu Meng, Jiaxin Huang, Guangyuan Wang, Chao Zhang, Honglei Zhuang,
+
+Lance M. Kaplan, and Jiawei Han. 2019. Spherical Text Embedding. In NeurIPS.
+
+[41] Yu Meng, Jiaming Shen, Chao Zhang, and Jiawei Han. 2018. Weakly-Supervised
+
+Neural Text Classification. In CIKM.
+
+[42] Yu Meng, Jiaming Shen, Chao Zhang, and Jiawei Han. 2019. Weakly-Supervised
+
+Hierarchical Text Classification. In AAAI.
+
+[43] Yu Meng, Chenyan Xiong, Payal Bajaj, Saurabh Tiwary, Paul Bennett, Jiawei
+
+Han, and Xia Song. 2021. COCO-LM: Correcting and contrasting text sequences
+
+for language model pretraining. In NeurIPS.
+
+[44] Yu Meng, Chenyan Xiong, Payal Bajaj, Saurabh Tiwary, Paul Bennett, Jiawei
+
+Han, and Xia Song. 2022. Pretraining Text Encoders with Adversarial Mixture of
+
+Training Signal Generators. In ICLR.
+
+[45] Yu Meng, Yunyi Zhang, Jiaxin Huang, Chenyan Xiong, Heng Ji, Chao Zhang,
+
+and Jiawei Han. 2020. Text Classification Using Label Names Only: A Language
+
+Model Self-Training Approach. In EMNLP.
+
+[46] Yu Meng, Yunyi Zhang, Jiaxin Huang, Yu Zhang, Chao Zhang, and Jiawei Han.
+
+2020. Hierarchical Topic Mining via Joint Spherical Tree and Text Embedding. In
+
+KDD.
+
+[47] Yishu Miao, Lei Yu, and Phil Blunsom. 2016. Neural variational inference for text
+
+processing. In ICML.
+
+[48] Tomas Mikolov, Ilya Sutskever, Kai Chen, Gregory S. Corrado, and Jeffrey Dean.
+
+2013. Distributed Representations of Words and Phrases and their Composition-
+
+ality. In NIPS.
+
+[49] David Mimno, Hanna Wallach, Edmund Talley, Miriam Leenders, and Andrew
+
+McCallum. 2011. Optimizing semantic coherence in topic models. In EMNLP.
+
+[50] Radford M Neal. 1993. Probabilistic inference using Markov chain Monte Carlo
+
+methods.
+
+[51] David Newman, Jey Han Lau, Karl Grieser, and Timothy Baldwin. 2010. Automatic
+
+evaluation of topic coherence. In NAACL.
+
+[52] Dat Quoc Nguyen, Richard Billingsley, Lan Du, and Mark Johnson. 2015. Improv-
+
+ing topic models with latent feature word representations. TACL (2015).
+
+[53] Shrimai Prabhumoye, Yulia Tsvetkov, Ruslan Salakhutdinov, and Alan W. Black.
+
+2018. Style Transfer Through Back-Translation. In ACL.
+
+[54] Xipeng Qiu, Tianxiang Sun, Yige Xu, Yunfan Shao, Ning Dai, and Xuanjing
+
+Huang. 2020. Pre-trained Models for Natural Language Processing: A Survey.
+
+arXiv preprint arXiv:2003.08271 (2020).
+
+[55] Daniel Ramage, David Hall, Ramesh Nallapati, and Christopher D Manning. 2009.
+
+Labeled LDA: A supervised topic model for credit attribution in multi-labeled
+
+corpora. In EMNLP.
+
+[56] Nils Reimers and Iryna Gurevych. 2019. Sentence-BERT: Sentence Embeddings
+
+using Siamese BERT-Networks. In EMNLP-IJCNLP.
+
+[57] Tim Salimans, Diederik Kingma, and Max Welling. 2015. Markov chain monte
+
+carlo and variational inference: Bridging the gap. In ICML.
+
+[58] Evan Sandhaus. 2008. The New York Times Annotated Corpus.
+
+[59] Suzanna Sia, Ayush Dalmia, and Sabrina J Mielke. 2020. Tired of Topic Models?
+
+Clusters of Pretrained Word Embeddings Make for Fast and Good Topics Too!.
+
+In EMNLP.
+
+[60] Akash Srivastava and Charles Sutton. 2017. Autoencoding Variational Inference
+
+For Topic Models. In ICLR.
+
+[61] Laure Thompson and David Mimno. 2020. Topic Modeling with Contextualized
+
+Word Representation Clusters. ArXiv abs/2010.12626 (2020).
+
+[62] Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones,
+
+Aidan N Gomez, Lukasz Kaiser, and Illia Polosukhin. 2017. Attention is All
+
+you Need. In NIPS.
+
+[63] Dingding Wang, Shenghuo Zhu, Tao Li, and Yihong Gong. 2009. Multi-document
+
+summarization using sentence-based topic models. In ACL.
+
+[64] Rui Wang, Xuemeng Hu, Deyu Zhou, Yulan He, Yuxuan Xiong, Chenchen Ye,
+
+and Haiyang Xu. 2020. Neural Topic Modeling with Bidirectional Adversarial
+
+Training. In ACL.
+
+[65] Xuerui Wang, Andrew McCallum, and Xing Wei. 2007. Topical n-grams: Phrase
+
+and topic discovery, with an application to information retrieval. In ICDM.
+
+[66] Junyuan Xie, Ross Girshick, and Ali Farhadi. 2016. Unsupervised deep embedding
+
+for clustering analysis. In ICML.
+
+[67] Zhilin Yang, Zihang Dai, Yiming Yang, Jaime Carbonell, Russ R Salakhutdinov, and
+
+Quoc V Le. 2019. XLNet: Generalized Autoregressive Pretraining for Language
+
+Understanding. In NeurIPS.
+
+[68] Yu Zhang, Shweta Garg, Yu Meng, Xiusi Chen, and Jiawei Han. 2022. MotifClass:
+
+Weakly Supervised Text Classification with Higher-order Metadata Information.
+
+In WSDM.
+
+
+A
+
+ETHICAL CONSIDERATIONS
+
+PLMs have been shown to contain potential biases [53] which
+
+may be carried to the downstream applications. Our work focuses
+
+on using representations from PLMs for discovery of topics in a
+
+target corpus, and the results will be related to both the PLMs and
+
+the corpus statistics. We suggest applying our method together
+
+with bias reduction and correction techniques for PLMs [20, 38]
+
+and filtering out biased contents in the target corpus to mitigate
+
+potential risks and harms.
+
+B
+
+PROOF OF THEOREM 2.1
+
+Proof. The MLM objective of BERT trains contextualized word
+
+embeddings to predict the masked tokens in a sequence. Formally,
+
+given an input sequence 𝒅 = [𝑤1,𝑤2, . . . ,𝑤𝑛], a random subset of
+
+tokens (e.g., usually 15% from the original sequence) M is selected
+
+and replaced with [MASK] symbols. Then the BERT encoder maps
+
+the masked sequence ˆ𝒅 to a sequence of contextualized represen-
+
+tations [𝒉1, 𝒉2, . . . , 𝒉𝑛] where 𝒉𝑖 ∈ R𝑟 (𝑟 = 768 in the BERT base
+
+model). BERT is trained by maximizing the log-probability of cor-
+
+rectly predicting every masked word with a Softmax layer over the
+
+vocabulary 𝑉 :
+
+max
+
+𝒆, 𝒉, 𝒃
+
+∑︁
+
+𝑤𝑖 ∈M
+
+log
+
+exp
+
+�
+
+𝒆⊤𝑤𝑖𝒉𝑖 + 𝑏𝑤𝑖
+
+�
+
+�|𝑉 |
+
+𝑗=1 exp
+
+�
+
+𝒆⊤𝑤𝑗 𝒉𝑖 + 𝑏𝑤𝑗
+
+� ,
+
+(7)
+
+where 𝒆𝑤𝑖 ∈ R𝑟 is the token embedding; and 𝑏𝑤𝑖 ∈ R is a bias value
+
+for token 𝑤𝑖.
+
+Next, we construct a multivariate GMM parameterized by the
+
+learned token embeddings 𝒆 and bias vector 𝒃 of BERT, and we
+
+show that the MLM objective (Eq. (7)) optimizes the posterior prob-
+
+ability of contextualized embeddings 𝒉 generated from this GMM.
+
+We consider the following GMM with |𝑉 | mixture components,
+
+where each component 𝑖 is a multivariate Gaussian distribution
+
+N (𝝁𝑖, 𝚺𝑖) with mean vector 𝝁𝑖 ∈ R𝑟 , covariance matrix 𝚺𝑖 ∈ R𝑟×𝑟
+
+and mixture weight 𝜋𝑖 (i.e., the prior probability) defined as follows:
+
+𝝁𝑖 � 𝚺 𝒆𝑤𝑖, 𝚺𝑖 � 𝚺, 𝜋𝑖 �
+
+exp
+
+�
+
+1
+
+2𝒆⊤𝑤𝑖 𝚺 𝒆𝑤𝑖 + 𝑏𝑤𝑖
+
+�
+
+�
+
+1≤𝑗 ≤|𝑉 | exp
+
+�
+
+1
+
+2𝒆⊤𝑤𝑗 𝚺 𝒆𝑤𝑗 + 𝑏𝑤𝑗
+
+� ,
+
+where all components share the same covariance matrix 𝚺.
+
+The contextualized embeddings 𝒉𝑖 are generated by first sam-
+
+pling a token 𝑤𝑖 according to the prior distribution, and then sam-
+
+pling from the Gaussian distribution corresponding to 𝑤𝑖, as fol-
+
+lows:
+
+𝑤𝑖 ∼ Categorical(𝝅), 𝒉𝑖 ∼ N �𝚺 𝒆𝑤𝑖, 𝚺� .
+
+Based on the above generative process, the prior probability of
+
+token 𝑤𝑖 is
+
+𝑝(𝑤𝑖) = 𝜋𝑖 =
+
+exp
+
+�
+
+1
+
+2𝒆⊤𝑤𝑖 𝚺 𝒆𝑤𝑖 + 𝑏𝑤𝑖
+
+�
+
+�|𝑉 |
+
+𝑗=1 exp
+
+�
+
+1
+
+2𝒆⊤𝑤𝑗 𝚺 𝒆𝑤𝑗 + 𝑏𝑤𝑗
+
+� ,
+
+and the likelihood of generating 𝒉𝑖 given 𝑤𝑖 is
+
+𝑝 (𝒉𝑖 |𝑤𝑖) =
+
+exp
+
+�
+
+− 1
+
+2 (𝒉𝑖 − 𝚺 𝒆𝑤𝑖 )⊤𝚺−1 �𝒉𝑖 − 𝚺 𝒆𝑤𝑖
+
+��
+
+(2𝜋)𝑟/2|𝚺|1/2
+
+.
+
+The posterior probability can be obtained using the Bayes rule:
+
+𝑝(𝑤𝑖 |𝒉𝑖) =
+
+𝑝 (𝒉𝑖 |𝑤𝑖) 𝑝(𝑤𝑖)
+
+�|𝑉 |
+
+𝑗=1 𝑝 �𝒉𝑖 |𝑤𝑗
+
+� 𝑝(𝑤𝑗)
+
+,
+
+where the numerator 𝑝 (𝒉𝑖 |𝑤𝑖) 𝑝(𝑤𝑖) is
+
+exp
+
+�
+
+− 1
+
+2𝒉⊤
+
+𝑖 𝚺−1𝒉𝑖 + 𝒉⊤
+
+𝑖 𝒆𝑤𝑖 − 
+
+
+
+1
+
+2𝒆⊤𝑤𝑖 𝚺 𝒆𝑤𝑖 + 
+
+
+
+1
+
+2𝒆⊤𝑤𝑖 𝚺 𝒆𝑤𝑖 + 𝑏𝑤𝑖
+
+�
+
+(2𝜋)𝑟/2|𝚺|1/2 �|𝑉 |
+
+𝑗=1 exp
+
+�
+
+1
+
+2𝒆⊤𝑤𝑗 𝚺 𝒆𝑤𝑗 + 𝑏𝑤𝑗
+
+�
+
+.
+
+The terms in the denominator are in a similar form and many com-
+
+mon factors between the numerator and the denominator cancel
+
+out. Finally, the above posterior probability is simplified as:
+
+𝑝(𝑤𝑖 |𝒉𝑖) =
+
+exp
+
+�
+
+𝒆⊤𝑤𝑖𝒉𝑖 + 𝑏𝑤𝑖
+
+�
+
+�|𝑉 |
+
+𝑗=1 exp
+
+�
+
+𝒆⊤𝑤𝑗 𝒉𝑖 + 𝑏𝑤𝑗
+
+� ,
+
+which is precisely the probability maximized by the MLM objective
+
+(Eq. (7)). Therefore, the MLM pretraining objective of BERT assumes
+
+that the contextualized representations are generated from a |𝑉 |-
+
+component GMM.
+
+□
+
+C
+
+IMPLEMENTATION DETAILS AND
+
+PARAMETERS
+
+We preprocess the corpora by discarding infrequent words that
+
+appear less than 5 times. We use the default hyperparameters of
+
+baseline methods. The hyperparameters of TopClus are set as fol-
+
+lows: Latent space dimension 𝑟 ′ = 100; training epochs 𝐸 = 20;
+
+clustering loss weight 𝜆 = 0.1; DNN hidden dimensions are 500-
+
+500-1000 for learning 𝑓 and 1000-500-500 for learning 𝑔; the shared
+
+concentration parameter of topic vMF distributions 𝜅 = 10. We
+
+use the BERT [16] base model to obtain pretrained embeddings,
+
+and use Adam [31] with 5𝑒 − 4 learning rate to optimize the DNNs
+
+with batch size 32. When computing the generic document as an
+
+average of word embeddings in Eq. (5), we only use the words
+
+that are nouns, verbs, or adjectives because they are usually the
+
+topic-indicative ones.
+
+Table 4: Dataset statistics.
+
+Corpus
+
+# documents
+
+# words/doc.
+
+Vocabulary
+
+NYT
+
+31,997
+
+690
+
+25,903
+
+Yelp
+
+29,280
+
+114
+
+11,419
+

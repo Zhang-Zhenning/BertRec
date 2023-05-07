@@ -1,0 +1,983 @@
+
+Python for ML
+
+NumPy
+
+Pandas
+
+OpenCV
+
+Data Analysis
+
+ML Math
+
+NLP
+
+Deep Learning
+
+Data Sciecne
+
+ML Projects
+
+ML Interview Questions
+
+
+
+Read
+
+Discuss
+
+Courses
+
+Practice
+
+Video
+
+Language modeling is the way of determining the probability of any sequence of words. Language modeling is
+
+used in a wide variety of applications such as Speech Recognition, Spam filtering, etc. In fact, language modeling
+
+is the key aim behind the implementation of many state-of-the-art Natural Language Processing models.
+
+Methods of Language Modelings:
+
+Two types of Language Modelings:
+
+Statistical Language Modelings: Statistical Language Modeling, or Language Modeling, is the development of
+
+probabilistic models that are able to predict the next word in the sequence given the words that precede.
+
+Examples such as N-gram language modeling.
+
+Neural Language Modelings: Neural network methods are achieving better results than classical methods both
+
+on standalone language models and when models are incorporated into larger models on challenging tasks like
+
+speech recognition and machine translation. A way of performing a neural language model is through word
+
+embeddings.
+
+N-gram
+
+N-Gram Language Modelling with NLTK
+
+
+
+
+
+
+
+
+
+pawangfg
+
+
+N-gram can be defined as the contiguous sequence of n items from a given sample of text or speech. The items
+
+can be letters, words, or base pairs according to the application. The N-grams typically are collected from a text or
+
+speech corpus (A long text dataset).
+
+N-gram Language Model:
+
+An N-gram language model predicts the probability of a given N-gram within any sequence of words in the
+
+language. A good N-gram model can predict the next word in the sentence i.e the value of p(w|h)
+
+Example of N-gram such as unigram (“This”, “article”, “is”, “on”, “NLP”)  or bi-gram (‘This article’, ‘article is’, ‘is
+
+on’,’on NLP’).
+
+Now, we will establish a relation on how to find the next word in the sentence using 
+
+. We need to calculate p(w|h), where is the candidate for the next word. For example in the above example, lets’
+
+consider, we want to calculate what is the probability of the last word being “NLP” given the previous words:
+
+
+
+After generalizing the above equation can be calculated as:
+
+
+
+
+
+
+But how do we calculate it? The answer lies in the chain rule of probability:
+
+
+
+Now generalize the above equation:
+
+
+
+Simplifying the above formula using Markov assumptions:
+
+
+For unigram:
+
+
+
+For Bigram:
+
+
+
+Implementation
+
+Python3
+
+# imports
+
+import string
+
+import random
+
+import nltk
+
+nltk.download('punkt')
+
+nltk.download('stopwords')
+
+nltk.download('reuters')
+
+
+nltk.download('reuters')
+
+from nltk.corpus import reuters
+
+from nltk import FreqDist
+
+  
+
+# input the reuters sentences
+
+sents  =reuters.sents()
+
+  
+
+# write the removal characters such as : Stopwords and punctuation
+
+stop_words = set(stopwords.words('english'))
+
+string.punctuation = string.punctuation +'"'+'"'+'-'+'''+'''+'—'
+
+string.punctuation
+
+removal_list = list(stop_words) + list(string.punctuation)+ ['lt','rt']
+
+removal_list
+
+  
+
+# generate unigrams bigrams trigrams
+
+unigram=[]
+
+bigram=[]
+
+trigram=[]
+
+tokenized_text=[]
+
+for sentence in sents:
+
+  sentence = list(map(lambda x:x.lower(),sentence))
+
+ for word in sentence:
+
+ if word== '.':
+
+            sentence.remove(word) 
+
+ else:
+
+            unigram.append(word)
+
+  
+
+  tokenized_text.append(sentence)
+
+  bigram.extend(list(ngrams(sentence, 2,pad_left=True, pad_right=True)))
+
+  trigram.extend(list(ngrams(sentence, 3, pad_left=True, pad_right=True)))
+
+  
+
+# remove the n-grams with removable words
+
+def remove_stopwords(x):     
+
+    y = []
+
+ for pair in x:
+
+        count = 0
+
+ for word in pair:
+
+ if word in removal_list:
+
+                count = count or 0
+
+ else:
+
+                count = count or 1
+
+ if (count==1):
+
+            y.append(pair)
+
+ return (y)
+
+unigram = remove_stopwords(unigram)
+
+bigram = remove_stopwords(bigram)
+
+trigram = remove_stopwords(trigram)
+
+  
+
+# generate frequency of n-grams 
+
+freq_bi = FreqDist(bigram)
+
+freq_tri = FreqDist(trigram)
+
+  
+
+d = defaultdict(Counter)
+
+for a, b, c in freq_tri:
+
+ if(a != None and b!= None and c!= None):
+
+      d[a, b] += freq_tri[a, b, c]
+
+  
+
+  
+
+# Next word prediction      
+
+s=''
+
+def pick_word(counter):
+
+ "Chooses a random element."
+
+ return random.choice(list(counter.elements()))
+
+prefix = "he", "said"
+
+print(" ".join(prefix))
+
+s = " ".join(prefix)
+
+for i in range(19):
+
+    suffix = pick_word(d[prefix])
+
+    s=s+' '+suffix
+
+ print(s)
+
+
+he said
+
+he said kotc
+
+he said kotc made
+
+he said kotc made profits
+
+he said kotc made profits of
+
+he said kotc made profits of 265
+
+he said kotc made profits of 265 ,
+
+he said kotc made profits of 265 , 457
+
+he said kotc made profits of 265 , 457 vs
+
+he said kotc made profits of 265 , 457 vs loss
+
+he said kotc made profits of 265 , 457 vs loss eight
+
+he said kotc made profits of 265 , 457 vs loss eight cts
+
+he said kotc made profits of 265 , 457 vs loss eight cts net
+
+he said kotc made profits of 265 , 457 vs loss eight cts net loss
+
+he said kotc made profits of 265 , 457 vs loss eight cts net loss 343
+
+he said kotc made profits of 265 , 457 vs loss eight cts net loss 343 ,
+
+he said kotc made profits of 265 , 457 vs loss eight cts net loss 343 , 266
+
+he said kotc made profits of 265 , 457 vs loss eight cts net loss 343 , 266 ,
+
+he said kotc made profits of 265 , 457 vs loss eight cts net loss 343 , 266 , 000
+
+he said kotc made profits of 265 , 457 vs loss eight cts net loss 343 , 266 , 000 shares
+
+Metrics for Language Modelings
+
+Entropy: Entropy, as a measure of the amount of information conveyed by Claude Shannon. Below is the
+
+formula for representing entropy
+
+
+
+H(p) is always greater than equal to 0.
+
+Cross-Entropy: It measures the ability of the trained model to represent test data(
+
+
+
+). 
+
+ print(s)
+
+    prefix = prefix[1], suffix
+
+
+
+
+The cross-entropy is always greater than or equal to Entropy i.e the model uncertainty can be no less than the true
+
+uncertainty.
+
+Perplexity: Perplexity is a measure of how good a probability distribution predicts a sample. It can be
+
+understood as a measure of uncertainty. The perplexity can be calculated by cross-entropy to the exponent of
+
+2. 
+
+
+
+Following is the formula for the calculation of Probability of the test set assigned by the language model, normalized
+
+by the number of words:
+
+
+
+For Example:
+
+Let’s take an example of the sentence: ‘Natural Language Processing’. For predicting the first word, let’s say
+
+the word has the following probabilities:
+
+
+word
+
+P(word | &lt;start&gt;)
+
+The
+
+0.4
+
+Processing
+
+0.3
+
+Natural
+
+0.12
+
+Language
+
+0.18
+
+Now, we know the probability of getting the first word as natural. But, what’s the probability of getting the next
+
+word after getting the word ‘Language‘ after the word ‘Natural‘.
+
+word
+
+P(word | ‘Natural’ )
+
+The
+
+0.05
+
+Processing
+
+0.3
+
+Natural
+
+0.15
+
+Language
+
+0.5
+
+After getting the probability of generating words ‘Natural Language’, what’s the probability of getting
+
+‘Processing‘.
+
+word
+
+P(word | ‘Language’ )
+
+The
+
+0.1
+
+Processing
+
+0.7
+
+Natural
+
+0.1
+
+Language
+
+0.1
+
+Now, the perplexity can be calculated as:
+
+
+Similar Reads
+
+1.
+
+Aspect Modelling in Sentiment Analysis
+
+2.
+
+Difference between Machine Learning and Predictive Modelling
+
+3.
+
+
+
+From that we can also calculate entropy:
+
+
+
+Shortcomings:
+
+To get a better context of the text, we need higher values of n, but this will also increase computational overhead.
+
+The increasing value of n in n-gram can also lead to sparsity.
+
+References
+
+N-gram Language modeling Stanford Slides
+
+Last Updated : 28 Sep, 2022
+
+
+
+
+
+
+Tokenize text using NLTK in python
+
+4.
+
+How to get synonyms/antonyms from NLTK WordNet in Python?
+
+5.
+
+Python | Gender Identification by name using NLTK
+
+6.
+
+Removing stop words with NLTK in Python
+
+7.
+
+Python | Lemmatization with NLTK
+
+8.
+
+Python | Stemming words with NLTK
+
+9.
+
+Implement your own word2vec(skip-gram) model in Python
+
+10.
+
+Explaining the language in Natural Language
+
+Related Tutorials
+
+1.
+
+Deep Learning Tutorial
+
+2.
+
+Top 101 Machine Learning Projects with Source Code
+
+3.
+
+Machine Learning Mathematics
+
+4.
+
+Natural Language Processing (NLP) Tutorial
+
+5.
+
+Data Science for Beginners
+
+Previous
+
+
+Courses
+
+ 
+
+course-img
+
+
+
+ 142k+ interested Geeks
+
+Python Programming Foundation -
+
+Self Paced
+
+ Beginner and Intermediate
+
+course-img
+
+
+
+ 102k+ interested Geeks
+
+Complete Machine Learning &amp;
+
+Data Science Program
+
+ Beginner to Advance
+
+course-img
+
+
+
+ 127k+ interested Geeks
+
+Next  
+
+Article Contributed By :
+
+pawangfg
+
+@pawangfg
+
+Vote for difficulty
+
+Current difficulty : Easy
+
+ 
+
+ 
+
+ 
+
+ 
+
+
+
+
+
+Easy
+
+
+
+Normal
+
+
+
+Medium
+
+
+
+Hard
+
+
+
+Expert
+
+Improved By :
+
+simranarora5sos,
+
+kashishsoda
+
+Article Tags :
+
+Natural-language-processing,
+
+Machine Learning
+
+Practice Tags :
+
+Machine Learning
+
+Report Issue
+
+
+ A-143, 9th Floor, Sovereign Corporate Tower,
+
+Sector-136, Noida, Uttar Pradesh - 201305
+
+ feedback@geeksforgeeks.org
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Company
+
+About Us
+
+Careers
+
+In Media
+
+Contact Us
+
+Terms and
+
+Conditions
+
+Privacy Policy
+
+Copyright Policy
+
+
+Third-Party
+
+Copyright Notices
+
+Advertise with us
+
+Languages
+
+Python
+
+Java
+
+C++
+
+GoLang
+
+SQL
+
+R Language
+
+Android Tutorial
+
+Data Structures
+
+Array
+
+String
+
+Linked List
+
+Stack
+
+Queue
+
+Tree
+
+Graph
+
+Algorithms
+
+Sorting
+
+Searching
+
+Greedy
+
+Dynamic
+
+Programming
+
+Pattern Searching
+
+Recursion
+
+Backtracking
+
+Web
+
+Development
+
+HTML
+
+CSS
+
+JavaScript
+
+Bootstrap
+
+ReactJS
+
+AngularJS
+
+NodeJS
+
+Write &amp; Earn
+
+Write an Article
+
+Improve an Article
+
+Pick Topics to Write
+
+
+Write Interview
+
+Experience
+
+Internships
+
+Video Internship
+
+Computer
+
+Science
+
+GATE CS Notes
+
+Operating Systems
+
+Computer Network
+
+Database
+
+Management
+
+System
+
+Software
+
+Engineering
+
+Digital Logic Design
+
+Engineering Maths
+
+Data Science &amp;
+
+ML
+
+Data Science With
+
+Python
+
+Data Science For
+
+Beginner
+
+Machine Learning
+
+Tutorial
+
+Maths For Machine
+
+Learning
+
+Pandas Tutorial
+
+NumPy Tutorial
+
+NLP Tutorial
+
+Interview
+
+Corner
+
+Company
+
+Preparation
+
+Preparation for SDE
+
+Company Interview
+
+Corner
+
+Experienced
+
+Interview
+
+Internship Interview
+
+Competitive
+
+Programming
+
+Aptitude
+
+Python
+
+
+Python Tutorial
+
+Python
+
+Programming
+
+Examples
+
+Django Tutorial
+
+Python Projects
+
+Python Tkinter
+
+OpenCV Python
+
+Tutorial
+
+GfG School
+
+CBSE Notes for
+
+Class 8
+
+CBSE Notes for
+
+Class 9
+
+CBSE Notes for
+
+Class 10
+
+CBSE Notes for
+
+Class 11
+
+CBSE Notes for
+
+Class 12
+
+English Grammar
+
+UPSC/SSC/BANKING
+
+SSC CGL Syllabus
+
+SBI PO Syllabus
+
+IBPS PO Syllabus
+
+UPSC Ethics Notes
+
+UPSC Economics
+
+Notes
+
+UPSC History
+
+Notes
+
+@geeksforgeeks , Some rights reserved
+

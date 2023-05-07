@@ -1,0 +1,1895 @@
+
+arXiv:1212.3900v2  [stat.ML]  21 Dec 2012
+
+Probabilistic Latent Semantic Analysis
+
+Liangjie Hong
+
+Department of Computer Science and Engineering
+
+Lehigh University
+
+December 24, 2012
+
+1
+
+Some History
+
+Historically, many believe that these three papers [7, 8, 9] established the techniques of Probabilistic Latent
+
+Semantic Analysis or PLSA for short. However, there also exists one variant of the model in [11] and
+
+indeed all these models were originally discussed in an earlier technical report [10]. In [2], the authors
+
+extended MLE-style estimation of PLSA to MAP-style estimations. A hierarchical extension was proposed
+
+in [6]. In [4], the authors showed the equivalent between PLSA and another popular method, non-negative
+
+matrix factorization. A high order of proof was shown in [12]. The equivalent between PLSA and LDA
+
+was shown in [5]. More recently, a new MAP estimation algorithm is proposed in [13].
+
+2
+
+A Modern View of PLSA
+
+In order to better understand the intuition behind the model, we need to make some assumptions. First,
+
+we assume a topic φk is a distribution over a ﬁxed size of vocabulary V. In the original PLSA model, this
+
+distribution is not explicitly speciﬁed but the form is in Multinomial distribution. Thus, φk is essentially a
+
+vector that each element φ(k,w) represents the probability that term w is chosen by topic k, namely:
+
+p(w|k) = φ(k,w)
+
+(1)
+
+and note ∑V
+
+w φ(k,w) = 1. Secondly, we also assume that a document consists of multiple topics. Therefore,
+
+there is a distribution θd over a ﬁxed number of topics T for each document d. Similarly, original PLSA
+
+model does not have the explicit speciﬁcation of this distribution but it is indeed a Multinomial distribution
+
+where each element θ(d,k) in the vector θd represents the probability that topic k appears in document d,
+
+namely:
+
+p(k|d) = θ(d,k)
+
+(2)
+
+and also ∑T
+
+k θ(d,k) = 1. This is the prerequisite of the model.
+
+1
+
+
+PLSA can be considered as a generative model, although it is not strictly the case [1]. Before we start, there
+
+is one subtle issue needs to be pointed out. That is the difference between a term w in the vocabulary V
+
+and a token position di in a document d. Terms in the vocabulary are distinct, meaning that all the terms
+
+differ from each other. Token positions are the places where terms are realized. Therefore, a term could
+
+appear multiple times in a same document d in different token positions.
+
+Imagine someone wants to write a document, he needs to decide which term to choose for each token
+
+position in a document d. For i-th position, he ﬁrst decides which topic he wants to write, according to
+
+the distribution θd. In this step, he essentially ﬂips a T- side dice since θd is a Multinomial distribution.
+
+Once the outcome of decision is made, suppose it is topic k, he then chooses a term, according to the
+
+distribution φk. Similarly, a V-side dice is ﬂipped. This two step generation process is repeated for all
+
+token positions and for all documents in the dataset.
+
+The generation process can be summarized as follows:
+
+• For each document d
+
+– For each token position i
+
+Choose a topic z ∼ Multinomial(θd)
+
+Choose a term w ∼ Multinomial(φz)
+
+and we can write the probability a term w appearing at token position i in document d as follows:
+
+p(di = w|Φ, θd) =
+
+T
+
+∑
+
+z=k
+
+φ(z,w)θ(d,z)
+
+(3)
+
+and the joint likelihood of the whole dataset W is:
+
+p(W|Φ, Θ)
+
+=
+
+D
+
+∏
+
+d
+
+Nd
+
+∏
+
+i
+
+T
+
+∑
+
+z=k
+
+φ(z,w)θ(d,z)
+
+=
+
+D
+
+∏
+
+d
+
+V
+
+∏
+
+w
+
+�
+
+T
+
+∑
+
+z=k
+
+φ(z,w)θ(d,z)
+
+�n(d,w)
+
+(4)
+
+where n(d, w) is the number of times term w appearing in document d.
+
+In the formalism above, the likelihood depends on parameters Φ and Θ, which needs to be estimated from
+
+data. Here, we wish to obtain the parameters that can maximize the above likelihood. Therefore, we have:
+
+arg max
+
+Φ,Θ
+
+�
+
+log p(W|Φ, Θ) +
+
+D
+
+∑
+
+d
+
+λd(1 −
+
+T
+
+∑
+
+z
+
+θ(d,z)) +
+
+T
+
+∑
+
+z
+
+σk(1 −
+
+V
+
+∑
+
+w
+
+φ(z,w))
+
+�
+
+(5)
+
+where the second and the third part of the equation is Lagrange Multipliers to guarantee Multinomial
+
+parameters in range [0, 1].
+
+It is difﬁcult to directly optimize the above equation due to the log sign is out of a summation. EM (Expec-
+
+tation Maximization) [3] algorithm is employed here to estimate these parameters. The key assumption to
+
+apply EM algorithm is that we know for each token position which topic is chosen from. In other words,
+
+for each token position, we know z value. Note, we just pretend we know these values. We denote Rwdi
+
+2
+
+
+to represent which z is chosen for token position di in document d. Thus, Rwdi is a T dimensional vector
+
+where ∑k R(wdi,k) = 1. This also indicates that each Rwdi is in fact a valid distribution and R is a matrix
+
+where each row entry is a Rwdi. We plug all these hidden variables into the likelihood function:
+
+L = log p(W|R, Φ, Θ) =
+
+D
+
+∑
+
+d
+
+Nd
+
+∑
+
+di
+
+T
+
+∑
+
+z
+
+R(wdi,z)
+
+�
+
+log φ(z,wdi) + log θ(d,z)
+
+�
+
+(6)
+
+and our new objective function is as follows:
+
+arg max
+
+Φ,Θ Λ =
+
+�
+
+log p(W|R, Φ, Θ) +
+
+D
+
+∑
+
+d
+
+λd(1 −
+
+T
+
+∑
+
+z
+
+θ(d,z)) +
+
+T
+
+∑
+
+z
+
+σk(1 −
+
+V
+
+∑
+
+w
+
+φ(z,w))
+
+�
+
+(7)
+
+For a standard E-step in EM algorithm, we compute the posterior distribution of hidden variables, given
+
+the data and the current values of parameters:
+
+&lt; R(wdi,k) &gt;
+
+=
+
+p(R(wdi,k) = 1|W, Θ, Φ)
+
+=
+
+p(W, R(wdi,k) = 1|Θ, Φ)
+
+
+
+∑T
+
+k p(W, R(wdi,k) = 1|Θ, Φ)
+
+=
+
+p(wdi, R(wdi,k) = 1|θd, Φ)
+
+
+
+∑T
+
+k p(wdi, R(wdi,k) = 1|θd, Φ)
+
+=
+
+p(wdi|φ(k,wdi))p(k|θd)
+
+
+
+∑T
+
+k p(wdi|φ(k,wdi))p(k|θd)
+
+=
+
+φ(k,wdi)θ(d,k)
+
+
+
+∑T
+
+k φ(k,wdi)θ(d,k)
+
+(8)
+
+In M-step, we obtain the new optimal values for parameters given the current settings of hidden variables.
+
+For θd, we have:
+
+∂Λ
+
+
+
+∂θ(d,z)
+
+=
+
+Nd
+
+∑
+
+di
+
+&lt; R(wdi,z) &gt;
+
+
+
+θ(d,z)
+
+− λd = 0
+
+∂Λ
+
+
+
+∂λd
+
+=
+
+1 −
+
+T
+
+∑
+
+z
+
+θ(d,z) = 0
+
+(9)
+
+Solving the above two equations, we obtain:
+
+θ(d,z) = ∑di &lt; R(wdi,z) &gt;
+
+
+
+Nd
+
+(10)
+
+Similarly, for φz, we have:
+
+∂Λ
+
+
+
+∂φ(z,w)
+
+=
+
+D
+
+∑
+
+d
+
+Nd
+
+∑
+
+di
+
+&lt; R(wdi,z)&gt;I(wdi = w)
+
+
+
+θ(z,w)
+
+− σz = 0
+
+∂Λ
+
+
+
+∂σz
+
+=
+
+1 −
+
+V
+
+∑
+
+w
+
+φ(z,w) = 0
+
+(11)
+
+3
+
+
+Solving the above two equations, we obtain:
+
+φ(z,w) =
+
+∑D
+
+d ∑Nd
+
+di &lt; R(wdi,z)&gt;I(wdi = w)
+
+
+
+∑V
+
+w′ ∑D
+
+d ∑Nd
+
+di &lt; R(wdi,z)&gt;I(wdi = w′)
+
+(12)
+
+Note, we can simplify the notation of EM step. Notice that for all token positions of a same term w in a
+
+same document d, E-step is essentially same and therefore simpliﬁed E-step is:
+
+&lt; R(d)
+
+(w,k) &gt;=
+
+φ(k,w)θ(d,k)
+
+
+
+∑T
+
+k φ(k,w)θ(d,k)
+
+(13)
+
+and simpliﬁed M-step is:
+
+θ(d,k)
+
+=
+
+∑V
+
+w n(d, w) &lt; R(d)
+
+(w,k) &gt;
+
+
+
+Nd
+
+φ(k,w)
+
+=
+
+∑D
+
+d n(d, w) &lt; R(d)
+
+(w,k) &gt;
+
+
+
+∑V
+
+w′ ∑D
+
+d n(d, w′) &lt; R(d)
+
+(w′,k) &gt;
+
+(14)
+
+3
+
+Discussion on EM Algorithm
+
+In the above discussion, there is one subtle detail that needs more space to be clariﬁed. We introduced
+
+R(wdi,k) as indicator variables to indicate which topic is chosen for token position di. Although it satisﬁes
+
+∑k R(wdi,k) = 1, this vector essentially only has one element equal to 1. However, when we calculate E-step
+
+of the inference algorithm, we calculate &lt; R(wdi,k) &gt;, the posterior distribution of hidden variables, given
+
+the data and current settings of parameters. Here, &lt; R(wdi,k) &gt; is a distribution and it has probabilities in
+
+each element of the vector but still satisﬁes ∑k &lt; R(wdi,k) &gt;= 1. What really leads to this difference?
+
+We re-write the log likelihood of one token position after we introduce the indicator variables as follows:
+
+log
+
+T
+
+∑
+
+k
+
+R(wdi,k)
+
+�
+
+φ(k,wdi)θ(d,k)
+
+�
+
+(15)
+
+We introduce an auxiliary distribution q(R(wdi,k)) = q(R(wdi,k) = 1) and therefore ∑k q(R(wdi,k)) = 1. Plug
+
+this auxiliary distribution into the above log likelihood, we obtain:
+
+log
+
+T
+
+∑
+
+k
+
+R(wdi,k)
+
+�
+
+φ(k,wdi)θ(d,k)
+
+�
+
+
+
+q(R(wdi,k))
+
+q(R(wdi,k)) = log Eq
+
+� R(wdi,k)
+
+�
+
+φ(k,wdi)θ(d,k)
+
+�
+
+
+
+q(R(wdi,k))
+
+�
+
+(16)
+
+By using Jensen’s Inequality, we can move the log sign into the expectation and make a lower bound of
+
+our original log likelihood:
+
+log Eq
+
+� R(wdi,k)
+
+�
+
+φ(k,wdi)θ(d,k)
+
+�
+
+
+
+q(R(wdi,k))
+
+�
+
+≥
+
+Eq
+
+�
+
+log
+
+R(wdi,k)
+
+�
+
+φ(k,wdi)θ(d,k)
+
+�
+
+
+
+q(R(wdi,k))
+
+�
+
+≥
+
+Eq
+
+�
+
+log
+
+�
+
+R(wdi,k)
+
+�
+
+φ(k,wdi)θ(d,k)
+
+��
+
+− log q(R(wdi,k))
+
+�
+
+(17)
+
+4
+
+
+Now, our goal is clear. Since it is hard to directly optimize the left hand side, we need to maximize the
+
+lower bound, right hand side, as much as possible:
+
+∑
+
+k
+
+q(R(wdi,k)) log
+
+�
+
+R(wdi,k)
+
+�
+
+φ(k,wdi)θ(d,k)
+
+��
+
+−∑
+
+k
+
+q(R(wdi,k)) log q(R(wdi,k)) + λ
+
+�
+
+1 − ∑
+
+k
+
+q(R(wdi,k))
+
+�
+
+(18)
+
+Taking the derivatives respect to q(R(wdi,k)) and setting to 0, we have:
+
+log
+
+�
+
+R(wdi,k)
+
+�
+
+φ(k,wdi)θ(d,k)
+
+��
+
+− log q(R(wdi,k)) − 1 − λ = 0
+
+(19)
+
+Solving this, we obtain:
+
+q(R(wdi,k)) =
+
+φ(k,wdi)θ(d,k)
+
+
+
+∑T
+
+k φ(k,wdi)θ(d,k)
+
+(20)
+
+It is exactly E-step we obtained in the previous section. Note, q(R(wdi,k)) is indeed &lt; R(wdi,k) &gt; and we
+
+understand that EM algorithm here in a lower bound maximization process.
+
+4
+
+Original Formalism of PLSA
+
+In original proposed PLSA by Thomas Hofmann [7, 8, 9], there are two ways to formulate PLSA. They are
+
+equivalent but may lead to different inference process.
+
+P(d, w) = P(d)∑
+
+z
+
+P(w|z)P(z|d)
+
+(21)
+
+P(d, w) = ∑
+
+z
+
+P(w|z)P(d|z)P(z)
+
+(22)
+
+Let’s see why these two equations are equivalent by using Bayes rule.
+
+P(z|d) = P(d|z)P(z)
+
+
+
+P(d)
+
+P(z|d)P(d) = P(d|z)P(z)
+
+P(w|z)P(z|d)P(d) = P(w|z)P(d|z)P(z)
+
+P(d)∑
+
+z
+
+P(w|z)P(z|d) = ∑
+
+z
+
+P(w|z)P(d|z)P(z)
+
+The whole data set is generated as (we assume that all words are generated independently):
+
+D = ∏
+
+d ∏
+
+w
+
+P(d, w)n(d,w)
+
+(23)
+
+The Log-likelihood of the whole data set for (1) and (2) are:
+
+L1 = ∑
+
+d ∑
+
+w
+
+n(d, w) log[P(d)∑
+
+z
+
+P(w|z)P(z|d)]
+
+(24)
+
+L2 = ∑
+
+d ∑
+
+w
+
+n(d, w) log[∑
+
+z
+
+P(w|z)P(d|z)P(z)]
+
+(25)
+
+5
+
+
+5
+
+EM
+
+For Equation 24 and Equation 25, the optimization is hard due to the log of sum. Therefore, an algorithm
+
+called Expectation-Maximization is usually employed. Before we introduce anything about EM, please
+
+note that EM is only guarantee to ﬁnd a local optimum, although it may be a global one.
+
+First, we see how EM works in general. As we shown for PLSA, we usually want to estimate the likelihood
+
+of data, namely P(X|θ), given the paramter θ. The easiest way is to obtain a maximum likelihood estima-
+
+tor by maximizing P(X|θ). However, sometimes, we also want to include some hidden variables which are
+
+usually useful for our task. Therefore, what we really want to maximize is P(X|θ) = ∑z P(X|z, θ)P(z|θ),
+
+the complete likelihood. Now, our attention becomes to this complete likelihood. Again, directly maxi-
+
+mizing this likelihood is usually difﬁcult. What we would like to show here is to obtain a lower bound of
+
+the likelihood and maximize this lower bound.
+
+We need Jensen’s Inequality to help us obtain this lower bound. For any convex function f(x), Jensen’s
+
+Inequality states that :
+
+λ f(x) + (1 − λ) f(y) ≥ f(λx + (1 − λ)y)
+
+(26)
+
+Thus, it is not difﬁcult to show that :
+
+E[ f(x)] = ∑
+
+x
+
+P(x) f(x) ≥ f(∑
+
+x
+
+P(x)x) = f(E[x])
+
+(27)
+
+For concave functions (like logarithm), Jensen’s Inequality should be used reversely as:
+
+E[ f(x)] ≤ f(E[x])
+
+(28)
+
+Back to our complete likelihood, we can obtain the following conclusion by using concave version of
+
+Jensen’s Inequality :
+
+log∑
+
+z
+
+P(X|z, θ)P(z|θ) = log∑
+
+z
+
+P(X|z, θ)P(z|θ)q(z)
+
+
+
+q(z)
+
+(29)
+
+= log Eq
+
+� P(X|z, θ)P(z|θ)
+
+
+
+q(z)
+
+�
+
+(30)
+
+≥ Eq
+
+�
+
+log P(X|z, θ)P(z|θ)
+
+
+
+q(z)
+
+�
+
+(31)
+
+where Eq is expectation with respect to q(z). Therefore, we obtained a lower bound of complete likelihood
+
+and we want to maximize it as tight as possible. EM is an algorithm that maximize this lower bound
+
+through an iterative fashion. Usually, EM ﬁrst would ﬁx current θ value and maximize q(z) and then use
+
+the new q(z) value to obtain a new guess on θ, which is essentially a two stage maximization process. The
+
+6
+
+
+ﬁrst step can be shown as follows:
+
+Eq
+
+�
+
+log P(X|z, θ)P(z|θ)
+
+
+
+q(z)
+
+�
+
+= ∑
+
+z
+
+q(z) log P(X|z, θ)P(z|θ)
+
+
+
+q(z)
+
+= ∑
+
+z
+
+q(z) log P(z | X, θ)P(X | θ)
+
+
+
+q(z)
+
+= ∑
+
+z
+
+q(z) log P(X | θ) + ∑
+
+z
+
+q(z) log P(z|X, θ)
+
+
+
+q(z)
+
+= log P(X | θ) − ∑
+
+z
+
+q(z) log
+
+q(z)
+
+
+
+P(z|X, θ)
+
+= log P(X | θ) − Eq
+
+�
+
+log
+
+q(z)
+
+
+
+P(z|X, θ)
+
+�
+
+= log P(X | θ) − KL
+
+�
+
+q(z) || P(z|X, θ)
+
+�
+
+The ﬁrst term does not contain z.
+
+Therefore, in order to maximize the whole equation, we need to
+
+minimize KL divergence between q(z) and P(z|X, θ), which eventually leads to the optimum solution of
+
+q(z) = P(z|X, θ). So, usually for E-step, we use current guess of θ to calculate the posterior distribution
+
+of hidden variable as the new update score. For M-step, it is problem-dependent. We will see how to do
+
+that in later discussions.
+
+We also show another explanation of EM in terms of optimizing a so-called Q function. We devise the
+
+data generation process as P(X|θ) = P(X, H|θ) = P(H|X, θ)P(X|θ). Therefore, the complete likelihood is
+
+modiﬁed as:
+
+Lc(θ) = log P(X, H|θ) = log P(X|θ) + log P(H|X, θ) = L(θ) + log P(H|X, θ)
+
+Think about how to maximize Lc(θ).
+
+Instead of directly maximizing it, we can iteratively maximize
+
+Lc(θ(n+1)) − Lc(θ(n)) as :
+
+L(θ) − L(θ(n)) = Lc(θ) − log P(H|X, θ) − Lc(θ(n)) + log P(H|X, θ(n))
+
+= Lc(θ) − Lc(θ(n)) + log P(H|X, θ(n))
+
+
+
+P(H|X, θ)
+
+Now take the expectation of this equation, we have:
+
+L(θ) − L(θ(n)) = ∑
+
+H
+
+Lc(θ)P(H|X, θ(n)) − ∑
+
+H
+
+Lc(θ(n))P(H|X, θ(n)) + ∑
+
+H
+
+P(H|X, θ(n)) log P(H|X, θ(n))
+
+
+
+P(H|X, θ)
+
+The last term is always non-negative since it can be recognized as the KL-divergence of P(H|X, θ(n) and
+
+P(H|X, θ). Therefore, we obtain a lower bound of Likelihood :
+
+L(θ) ≥ ∑
+
+H
+
+Lc(θ)P(H|X, θ(n)) + L(θ(n)) − ∑
+
+H
+
+Lc(θ(n))P(H|X, θ(n))
+
+The last two terms can be treated as constants as they do not contain the variable θ, so the lower bound is
+
+essentially the ﬁrst term, which is also sometimes called as “Q-function”.
+
+Q(θ; θ(n)) = E(Lc(θ)) = ∑
+
+H
+
+Lc(θ)P(H|X, θ(n))
+
+(32)
+
+7
+
+
+5.1
+
+EM of Formulation 1
+
+In case of Formulation 1, let us introduce hidden variables R(z, w, d) to indicate which hidden topic z is
+
+selected to generated w in d where ∑z R(z, w, d) = 1. Therefore, the complete likelihood can be formulated
+
+as:
+
+Lc1 = ∑
+
+d ∑
+
+w
+
+n(d, w)∑
+
+z
+
+R(z, w, d) log
+
+�
+
+P(d)P(w | z)P(z | d)
+
+�
+
+= ∑
+
+d ∑
+
+w
+
+n(d, w)∑
+
+z
+
+R(z, w, d)
+
+�
+
+log P(d) + log P(w|z) + log P(z | d)
+
+�
+
+From the equation above, we can write our Q-function for the complete likelihood E[Lc1]:
+
+E[Lc1] = ∑
+
+d ∑
+
+w
+
+n(d, w)∑
+
+z
+
+P(z|w, d)
+
+�
+
+log P(d) + log P(w | z) + log P(z | d)
+
+�
+
+For E-step, we obtain the posterior probability for latent variables:
+
+P(z|w, d) = P(w, z, d)
+
+
+
+P(w, d)
+
+=
+
+P(w|z)P(z|d)P(d)
+
+
+
+∑z P(w|z)P(z|d)P(d)
+
+=
+
+P(w|z)P(z|d)
+
+
+
+∑z P(w|z)P(z|d)
+
+For M-step, we need to maximize Q-function, which needs to be incorporated with other constraints:
+
+H = E[Lc1] + α[1 − ∑
+
+d
+
+P(d)] + β∑
+
+z
+
+[1 − ∑
+
+w
+
+P(w|z)] + γ∑
+
+d
+
+[1 − ∑
+
+z
+
+P(z|d)]
+
+where α, β and γ are Lagrange Multipliers. We take all derivatives:
+
+∂H
+
+
+
+∂P(d) = ∑
+
+w ∑
+
+z
+
+n(d, w) P(z|w, d)
+
+
+
+P(d)
+
+− α = 0
+
+→ ∑
+
+w ∑
+
+z
+
+n(d, w)P(z|w, d) − αP(d) = 0
+
+∂H
+
+
+
+∂P(w|z) = ∑
+
+d
+
+n(d, w) P(z|w, d)
+
+
+
+P(w|z) − β = 0
+
+→ ∑
+
+d
+
+n(d, w)P(z|w, d) − βP(w|z) = 0
+
+∂H
+
+
+
+∂P(z|d) = ∑
+
+w
+
+n(d, w) P(z|w, d)
+
+
+
+P(z|d)
+
+− γ = 0
+
+→ ∑
+
+w
+
+n(d, w)P(z|w, d) − γP(z|d) = 0
+
+8
+
+
+Therefore, we can easily obtain:
+
+P(d) =
+
+∑w ∑z n(d, w)P(z|w, d)
+
+
+
+∑d ∑w ∑z n(d, w)P(z|w, d)
+
+=
+
+n(d)
+
+
+
+∑d n(d)
+
+(33)
+
+P(w|z) =
+
+∑d n(d, w)P(z|w, d)
+
+
+
+∑w ∑d n(d, w)P(z|w, d)
+
+(34)
+
+P(z|d) =
+
+∑w n(d, w)P(z|w, d)
+
+
+
+∑z ∑w n(d, w)P(z|w, d)
+
+= ∑w n(d, w)P(z|w, d)
+
+
+
+n(d)
+
+(35)
+
+5.2
+
+EM of Formulation 2
+
+Use similar method to introduce hidden variables to indicate which z is selected to generated w and d and
+
+we can have the following complete likelihood :
+
+Lc2 = ∑
+
+d ∑
+
+w
+
+n(d, w)∑
+
+z
+
+R(z, w, d) log[P(z)P(w|z)P(d|z)]
+
+= ∑
+
+d ∑
+
+w
+
+n(d, w)∑
+
+z
+
+R(z, w, d)
+
+�
+
+log P(z) + log P(w|z) + log P(d|z)
+
+�
+
+Therefore, the Q-function E[Lc2] would be :
+
+E[Lc2] = ∑
+
+d ∑
+
+w
+
+n(d, w)∑
+
+z
+
+P(z|w, d)[log P(z) + log P(w|z) + log P(d|z)]
+
+For E-step, again, we obtain the posterior probability for latent variables:
+
+P(z|w, d) = P(w, z, d)
+
+
+
+P(w, d)
+
+=
+
+P(w|z)P(d|z)P(z)
+
+
+
+∑z P(w|z)P(d|z)P(z)
+
+For M-step, we maximize the constraint version of Q-function:
+
+H = E[Lc2] + α[1 − ∑
+
+z
+
+P(z)] + β∑
+
+z
+
+[1 − ∑
+
+w
+
+P(w|z)] + γ∑
+
+z
+
+[1 − ∑
+
+d
+
+P(d|z)]
+
+9
+
+
+where α, β and γ are Lagrange Multipliers. We take all derivatives:
+
+∂H
+
+
+
+∂P(z) = ∑
+
+d ∑
+
+w
+
+n(d, w) P(z|w, d)
+
+
+
+P(z)
+
+− α = 0
+
+→ ∑
+
+d ∑
+
+w
+
+n(d, w)P(z|w, d) − αP(z) = 0
+
+∂H
+
+
+
+∂P(w|z) = ∑
+
+d
+
+n(d, w) P(z|w, d)
+
+
+
+P(w|z) − β = 0
+
+→ ∑
+
+d
+
+n(d, w)P(z|w, d) − βP(w|z) = 0
+
+∂H
+
+
+
+∂P(d|z) = ∑
+
+w
+
+n(d, w) P(z|w, d)
+
+
+
+P(d|z)
+
+− γ = 0
+
+→ ∑
+
+w
+
+n(d, w)P(z|w, d) − γP(d|z) = 0
+
+Therefore, we can easily obtain:
+
+P(z) =
+
+∑d ∑w n(d, w)P(z|w, d)
+
+
+
+∑d ∑w ∑z n(d, w)P(z|w, d)
+
+= ∑d ∑w n(d, w)P(z|w, d)
+
+
+
+∑d ∑w n(d, w)
+
+(36)
+
+P(w|z) =
+
+∑d n(d, w)P(z|w, d)
+
+
+
+∑w ∑d n(d, w)P(z|w, d)
+
+(37)
+
+P(d|z) =
+
+∑w n(d, w)P(z|w, d)
+
+
+
+∑d ∑w n(d, w)P(z|w, d)
+
+(38)
+
+6
+
+Incorporating Background Language Model
+
+Another PLSA model which incorporates background language model is usually formulated like this :
+
+P(d, w) = λBP(w|θB) + (1 − λB)∑
+
+z
+
+P(w|z)P(z|d)P(d)
+
+(39)
+
+The log likelihood of Equation 7 is
+
+L = ∑
+
+d ∑
+
+w
+
+n(d, w) log[λBP(w|θB) + (1 − λB)∑
+
+z
+
+P(w|z)P(z|d)P(d)]
+
+Let’s again introduce a hidden variable P(Zd,w) to indicate which component that the w and d are gen-
+
+erated while P(Zd,w = θB) means that the word is generated by the background model and P(Zd,w = j)
+
+meaning the word is generated by the topic zj. Thus, the complete log likelihood is :
+
+Lc = ∑
+
+d ∑
+
+w
+
+n(d, w)[P(Zd,w = θB) log(λBP(w|θB)) +∑
+
+z
+
+P(Zd,w = z|Zd,w ̸= θB) log((1 − λB)P(w|z)P(z|d)P(d))]
+
+10
+
+
+The E-step is straightforward. Using Bayes Rule, we can obtain:
+
+P(Zd,w = θB|d, w) = P(w|θB, d)
+
+
+
+P(w, d)
+
+=
+
+λBP(w|θB)
+
+
+
+λBP(w|θB) + (1 − λB) ∑z P(w|z)P(z|d)P(d)
+
+P(Zd,w = z|d, w) = P(w|z, d)
+
+
+
+P(w, d)
+
+=
+
+P(w|z)P(z|d)P(d)
+
+
+
+∑z P(w|z)P(z|d)P(d)
+
+=
+
+P(w|z)P(z|d)
+
+
+
+∑z P(w|z)P(z|d)
+
+For M-step, we maximize the constraint version of Q-function:
+
+H = E[Lc] + β[1 − ∑
+
+w
+
+P(w|z)] + γ[1 − ∑
+
+z
+
+P(z|d)]
+
+and take all derivatives:
+
+∂H
+
+
+
+∂P(w|z) = ∑
+
+d
+
+n(d, w) P(Zd,w = z)
+
+
+
+P(w|z)
+
+− β = 0
+
+→ ∑
+
+d
+
+n(d, w)P(Zd,w = z) − βP(w|z) = 0
+
+∂H
+
+
+
+∂P(z|d) = ∑
+
+w
+
+n(d, w) P(Zd,w = z)
+
+
+
+P(z|d)
+
+− γ = 0
+
+→ ∑
+
+w
+
+n(d, w)P(Zd,w = z) − γP(z|d) = 0
+
+Therefore, we can easily obtain:
+
+P(w|z) =
+
+∑d n(d, w)(1 − P(Zd,w = θB|d, w))P(Zd,w = z)
+
+
+
+∑w ∑d n(d, w)(1 − P(Zd,w = θB|d, w))P(Zd,w = z)
+
+P(z|d) =
+
+∑w n(d, w)(1 − P(Zd,w = θB|d, w))P(Zd,w = z)
+
+
+
+∑z ∑w n(d, w)(1 − P(Zd,w = θB|d, w))P(Zd,w = z)
+
+Note, P(w|θB) is only sampled once by using the equation:
+
+P(w|θB) =
+
+∑d n(d, w)
+
+
+
+∑w ∑d n(d, w)
+
+If we change to the PLSA Formulation 2, we will get the following E steps:
+
+P(Zd,w = θB|d, w) = P(w|θB, d)
+
+
+
+P(w, d)
+
+=
+
+λBP(w|θB)
+
+
+
+λBP(w|θB) + (1 − λB) ∑z P(w|z)P(d|z)P(z)
+
+P(Zd,w = z|d, w) = P(w|z, d)
+
+
+
+P(w, d)
+
+=
+
+P(w|z)P(d|z)P(z)
+
+
+
+∑z P(w|z)P(d|z)P(z)
+
+11
+
+
+and corresponding M steps:
+
+P(w|z) =
+
+∑d n(d, w)(1 − P(Zd,w = θB|d, w))P(Zd,w = z)
+
+
+
+∑w ∑d n(d, w)(1 − P(Zd,w = θB|d, w))P(Zd,w = z)
+
+P(d|z) =
+
+∑w n(d, w)(1 − P(Zd,w = θB|d, w))P(Zd,w = z)
+
+
+
+∑d ∑w n(d, w)(1 − P(Zd,w = θB|d, w))P(Zd,w = z)
+
+P(z) =
+
+∑d ∑w n(d, w)(1 − P(Zd,w = θB|d, w))P(Zd,w = z))
+
+
+
+∑d ∑w ∑z n(d, w)(1 − P(Zd,w = θB|d, w))P(Zd,w = z)
+
+7
+
+Acknowledgement
+
+I would like to thank Xingjian Zhang (Lehigh Univ.), Yi Luo (Lehigh Univ.) and Ming Lu for pointing out
+
+errors and typos in the manuscript.
+
+References
+
+[1] D. M. Blei, A. Y. Ng, and M. I. Jordan. Latent Dirichlet Allocation. The Journal of Machine Learning
+
+Research, 3:993–1022, 2003.
+
+[2] J. T. Chien, J. T. Chien, M. S. Wu, and M. S. Wu.
+
+Adaptive bayesian Latent Semantic Analysis.
+
+Audio, Speech, and Language Processing, IEEE Transactions on [see also Speech and Audio Processing, IEEE
+
+Transactions on], 16(1):198–207, 2008.
+
+[3] A. P. Dempster, N. M. Laird, and D. B. Rubin. Maximum likelihood from incomplete data via the em
+
+algorithm. Journal of the Royal Statistical Society. Series B (Methodological), 39(1):1–38, 1977.
+
+[4] C. Ding, T. Li, and W. Peng.
+
+On the equivalence between non-negative matrix factorization and
+
+probabilistic latent semantic indexing. Computational Statistics &amp; Data Analysis, 52(8):3913–3927, 2008.
+
+[5] M. Girolami and A. Kabán. On an equivalence between plsi and lda. In SIGIR ’03: Proceedings of the
+
+26th annual international ACM SIGIR conference on Research and development in informaion retrieval, pages
+
+433–434, New York, NY, USA, 2003. ACM.
+
+[6] T. Hofmann. The cluster-abstraction model: unsupervised learning of topic hierarchies from text
+
+data. In IJCAI’99: Proceedings of the 16th international joint conference on Artiﬁcial intelligence, pages
+
+682–687, San Francisco, CA, USA, 1999. Morgan Kaufmann Publishers Inc.
+
+[7] T. Hofmann. Probabilistic Latent Semantic Analysis. In UAI ’99: Proceedings of the Fifteenth Conference
+
+on Uncertainty in Artiﬁcial Intelligence, pages 289–296, 1999.
+
+[8] T. Hofmann. Probabilistic Latent Semantic Indexing. In SIGIR ’99: Proceedings of the 22nd annual
+
+international ACM SIGIR conference on Research and development in information retrieval, pages 50–57,
+
+New York, NY, USA, 1999. ACM.
+
+[9] T. Hofmann.
+
+Unsupervised learning by probabilistic latent semantic analysis.
+
+Machine Learning,
+
+42(1-2):177–196, 2001.
+
+[10] T. Hofmann and J. Puzicha. Unsupervised learning from dyadic data. Technical report, MIT, 1998.
+
+12
+
+
+[11] T. Hofmann, J. Puzicha, and M. I. Jordan. Learning from dyadic data. In Advances in Neural Information
+
+Processing Systems 11, 1999.
+
+[12] W. Peng.
+
+Equivalence between nonnegative tensor factorization and tensorial probabilistic latent
+
+semantic analysis. In SIGIR ’09: Proceedings of the 32nd international ACM SIGIR conference on Research
+
+and development in information retrieval, pages 668–669, New York, NY, USA, 2009. ACM.
+
+[13] M. A. Taddy. On estimation and selection for topic models. In Proceedings of the 15th International
+
+Conference on Artiﬁcial Intelligence and Statistics (AISTATS), 2012.
+
+13
+

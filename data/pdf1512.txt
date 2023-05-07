@@ -1,0 +1,1318 @@
+
+Text Mining with R: A Tidy Approach
+
+4 Relationships between words: n-grams and
+
+correlations
+
+So far we’ve considered words as individual units, and considered their relationships to sentiments or to documents.
+
+However, many interesting text analyses are based on the relationships between words, whether examining which words
+
+tend to follow others immediately, or that tend to co-occur within the same documents.
+
+In this chapter, we’ll explore some of the methods tidytext offers for calculating and visualizing relationships between
+
+words in your text dataset. This includes the token = "ngrams"  argument, which tokenizes by pairs of adjacent words
+
+rather than by individual ones. We’ll also introduce two new packages: ggraph, which extends ggplot2 to construct network
+
+plots, and widyr, which calculates pairwise correlations and distances within a tidy data frame. Together these expand our
+
+toolbox for exploring text within the tidy data framework.
+
+4.1 Tokenizing by n-gram
+
+We’ve been using the unnest_tokens  function to tokenize by word, or sometimes by sentence, which is useful for the kinds
+
+of sentiment and frequency analyses we’ve been doing so far. But we can also use the function to tokenize into
+
+consecutive sequences of words, called n-grams
+
+n-grams. By seeing how often word X is followed by word Y, we can then build a
+
+model of the relationships between them.
+
+We do this by adding the token = "ngrams"  option to unnest_tokens() , and setting n  to the number of words we wish to
+
+capture in each n-gram. When we set n  to 2, we are examining pairs of two consecutive words, often called “bigrams”:
+
+This data structure is still a variation of the tidy text format. It is structured as one-token-per-row (with extra metadata, such
+
+as book , still preserved), but each token now represents a bigram.
+
+
+
+library(dplyr)
+
+library(tidytext)
+
+library(janeaustenr)
+
+austen_bigrams &lt;- austen_books() %&gt;%
+
+ unnest_tokens(bigram, text, token = "ngrams", n = 2) %&gt;%
+
+ filter(!is.na(bigram))
+
+austen_bigrams
+
+#&gt; # A tibble: 662,783 × 2
+
+#&gt;    book                bigram         
+
+#&gt;    &lt;fct&gt;               &lt;chr&gt;          
+
+#&gt;  1 Sense &amp; Sensibility sense and      
+
+#&gt;  2 Sense &amp; Sensibility and sensibility
+
+#&gt;  3 Sense &amp; Sensibility by jane        
+
+#&gt;  4 Sense &amp; Sensibility jane austen    
+
+#&gt;  5 Sense &amp; Sensibility chapter 1      
+
+#&gt;  6 Sense &amp; Sensibility the family     
+
+#&gt;  7 Sense &amp; Sensibility family of      
+
+#&gt;  8 Sense &amp; Sensibility of dashwood    
+
+#&gt;  9 Sense &amp; Sensibility dashwood had   
+
+#&gt; 10 Sense &amp; Sensibility had long       
+
+#&gt; # … with 662,773 more rows
+
+
+Notice that these bigrams overlap: “sense and” is one token, while “and sensibility” is another.
+
+4.1.1 Counting and filtering n-grams
+
+Our usual tidy tools apply equally well to n-gram analysis. We can examine the most common bigrams using dplyr’s
+
+count() :
+
+As one might expect, a lot of the most common bigrams are pairs of common (uninteresting) words, such as of the  and
+
+to be : what we call “stop-words” (see Chapter 1). This is a useful time to use tidyr’s separate() , which splits a column
+
+into multiple based on a delimiter. This lets us separate it into two columns, “word1” and “word2”, at which point we can
+
+remove cases where either is a stop-word.
+
+
+
+austen_bigrams %&gt;%
+
+ count(bigram, sort = TRUE)
+
+#&gt; # A tibble: 193,209 × 2
+
+#&gt;    bigram       n
+
+#&gt;    &lt;chr&gt;    &lt;int&gt;
+
+#&gt;  1 of the    2853
+
+#&gt;  2 to be     2670
+
+#&gt;  3 in the    2221
+
+#&gt;  4 it was    1691
+
+#&gt;  5 i am      1485
+
+#&gt;  6 she had   1405
+
+#&gt;  7 of her    1363
+
+#&gt;  8 to the    1315
+
+#&gt;  9 she was   1309
+
+#&gt; 10 had been  1206
+
+#&gt; # … with 193,199 more rows
+
+
+We can see that names (whether first and last or with a salutation) are the most common pairs in Jane Austen books.
+
+In other analyses, we may want to work with the recombined words. tidyr’s unite()  function is the inverse of separate() ,
+
+and lets us recombine the columns into one. Thus, “separate/filter/count/unite” let us find the most common bigrams not
+
+containing stop-words.
+
+In other analyses you may be interested in the most common trigrams, which are consecutive sequences of 3 words. We
+
+can find this by setting n = 3 :
+
+
+
+library(tidyr)
+
+bigrams_separated &lt;- austen_bigrams %&gt;%
+
+ separate(bigram, c("word1", "word2"), sep = " ")
+
+bigrams_filtered &lt;- bigrams_separated %&gt;%
+
+ filter(!word1 %in% stop_words$word) %&gt;%
+
+ filter(!word2 %in% stop_words$word)
+
+# new bigram counts:
+
+bigram_counts &lt;- bigrams_filtered %&gt;% 
+
+ count(word1, word2, sort = TRUE)
+
+bigram_counts
+
+#&gt; # A tibble: 28,974 × 3
+
+#&gt;    word1   word2         n
+
+#&gt;    &lt;chr&gt;   &lt;chr&gt;     &lt;int&gt;
+
+#&gt;  1 sir     thomas      266
+
+#&gt;  2 miss    crawford    196
+
+#&gt;  3 captain wentworth   143
+
+#&gt;  4 miss    woodhouse   143
+
+#&gt;  5 frank   churchill   114
+
+#&gt;  6 lady    russell     110
+
+#&gt;  7 sir     walter      108
+
+#&gt;  8 lady    bertram     101
+
+#&gt;  9 miss    fairfax      98
+
+#&gt; 10 colonel brandon      96
+
+#&gt; # … with 28,964 more rows
+
+
+
+bigrams_united &lt;- bigrams_filtered %&gt;%
+
+ unite(bigram, word1, word2, sep = " ")
+
+bigrams_united
+
+#&gt; # A tibble: 38,913 × 2
+
+#&gt;    book                bigram                  
+
+#&gt;    &lt;fct&gt;               &lt;chr&gt;                   
+
+#&gt;  1 Sense &amp; Sensibility jane austen             
+
+#&gt;  2 Sense &amp; Sensibility chapter 1               
+
+#&gt;  3 Sense &amp; Sensibility norland park            
+
+#&gt;  4 Sense &amp; Sensibility surrounding acquaintance
+
+#&gt;  5 Sense &amp; Sensibility late owner              
+
+#&gt;  6 Sense &amp; Sensibility advanced age            
+
+#&gt;  7 Sense &amp; Sensibility constant companion      
+
+#&gt;  8 Sense &amp; Sensibility happened ten            
+
+#&gt;  9 Sense &amp; Sensibility henry dashwood          
+
+#&gt; 10 Sense &amp; Sensibility norland estate          
+
+#&gt; # … with 38,903 more rows
+
+
+4.1.2 Analyzing bigrams
+
+This one-bigram-per-row format is helpful for exploratory analyses of the text. As a simple example, we might be interested
+
+in the most common “streets” mentioned in each book:
+
+A bigram can also be treated as a term in a document in the same way that we treated individual words. For example, we
+
+can look at the tf-idf (Chapter 3) of bigrams across Austen novels. These tf-idf values can be visualized within each book,
+
+just as we did for words (Figure 4.1).
+
+
+
+austen_books() %&gt;%
+
+ unnest_tokens(trigram, text, token = "ngrams", n = 3) %&gt;%
+
+ filter(!is.na(trigram)) %&gt;%
+
+ separate(trigram, c("word1", "word2", "word3"), sep = " ") %&gt;%
+
+ filter(!word1 %in% stop_words$word,
+
+ !word2 %in% stop_words$word,
+
+ !word3 %in% stop_words$word) %&gt;%
+
+ count(word1, word2, word3, sort = TRUE)
+
+#&gt; # A tibble: 6,140 × 4
+
+#&gt;    word1     word2     word3         n
+
+#&gt;    &lt;chr&gt;     &lt;chr&gt;     &lt;chr&gt;     &lt;int&gt;
+
+#&gt;  1 dear      miss      woodhouse    20
+
+#&gt;  2 miss      de        bourgh       17
+
+#&gt;  3 lady      catherine de           11
+
+#&gt;  4 poor      miss      taylor       11
+
+#&gt;  5 sir       walter    elliot       10
+
+#&gt;  6 catherine de        bourgh        9
+
+#&gt;  7 dear      sir       thomas        8
+
+#&gt;  8 replied   miss      crawford      7
+
+#&gt;  9 sir       william   lucas         7
+
+#&gt; 10 ten       thousand  pounds        7
+
+#&gt; # … with 6,130 more rows
+
+
+
+bigrams_filtered %&gt;%
+
+ filter(word2 == "street") %&gt;%
+
+ count(book, word1, sort = TRUE)
+
+#&gt; # A tibble: 33 × 3
+
+#&gt;    book                word1           n
+
+#&gt;    &lt;fct&gt;               &lt;chr&gt;       &lt;int&gt;
+
+#&gt;  1 Sense &amp; Sensibility harley         16
+
+#&gt;  2 Sense &amp; Sensibility berkeley       15
+
+#&gt;  3 Northanger Abbey    milsom         10
+
+#&gt;  4 Northanger Abbey    pulteney       10
+
+#&gt;  5 Mansfield Park      wimpole         9
+
+#&gt;  6 Pride &amp; Prejudice   gracechurch     8
+
+#&gt;  7 Persuasion          milsom          5
+
+#&gt;  8 Sense &amp; Sensibility bond            4
+
+#&gt;  9 Sense &amp; Sensibility conduit         4
+
+#&gt; 10 Persuasion          rivers          4
+
+#&gt; # … with 23 more rows
+
+
+
+
+bigram_tf_idf &lt;- bigrams_united %&gt;%
+
+ count(book, bigram) %&gt;%
+
+ bind_tf_idf(bigram, book, n) %&gt;%
+
+ arrange(desc(tf_idf))
+
+bigram_tf_idf
+
+#&gt; # A tibble: 31,391 × 6
+
+#&gt;    book                bigram                n     tf   idf tf_idf
+
+#&gt;    &lt;fct&gt;               &lt;chr&gt;             &lt;int&gt;  &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt;
+
+#&gt;  1 Mansfield Park      sir thomas          266 0.0304  1.79 0.0545
+
+#&gt;  2 Persuasion          captain wentworth   143 0.0290  1.79 0.0519
+
+#&gt;  3 Mansfield Park      miss crawford       196 0.0224  1.79 0.0402
+
+#&gt;  4 Persuasion          lady russell        110 0.0223  1.79 0.0399
+
+#&gt;  5 Persuasion          sir walter          108 0.0219  1.79 0.0392
+
+#&gt;  6 Emma                miss woodhouse      143 0.0173  1.79 0.0309
+
+#&gt;  7 Northanger Abbey    miss tilney          74 0.0165  1.79 0.0295
+
+#&gt;  8 Sense &amp; Sensibility colonel brandon      96 0.0155  1.79 0.0278
+
+#&gt;  9 Sense &amp; Sensibility sir john             94 0.0152  1.79 0.0273
+
+#&gt; 10 Pride &amp; Prejudice   lady catherine       87 0.0139  1.79 0.0248
+
+#&gt; # … with 31,381 more rows
+
+
+
+
+Figure 4.1: Bigrams with the highest tf-idf from each Jane Austen novel
+
+Much as we discovered in Chapter 3, the units that distinguish each Austen book are almost exclusively names. We also
+
+notice some pairings of a common verb and a name, such as “replied elinor” in Sense &amp; Sensibility, or “cried catherine” in
+
+Northanger Abbey.
+
+There are advantages and disadvantages to examining the tf-idf of bigrams rather than individual words. Pairs of
+
+consecutive words might capture structure that isn’t present when one is just counting single words, and may provide
+
+context that makes tokens more understandable (for example, “maple grove”, in Emma, is more informative than “maple”).
+
+However, the per-bigram counts are also sparser: a typical two-word pair is rarer than either of its component words. Thus,
+
+
+bigrams can be especially useful when you have a very large text dataset.
+
+4.1.3 Using bigrams to provide context in sentiment analysis
+
+Our sentiment analysis approach in Chapter 2 simply counted the appearance of positive or negative words, according to a
+
+reference lexicon. One of the problems with this approach is that a word’s context can matter nearly as much as its
+
+presence. For example, the words “happy” and “like” will be counted as positive, even in a sentence like “I’m not happy
+
+happy and
+
+I don’t like
+
+like it!”
+
+Now that we have the data organized into bigrams, it’s easy to tell how often words are preceded by a word like “not”:
+
+By performing sentiment analysis on the bigram data, we can examine how often sentiment-associated words are preceded
+
+by “not” or other negating words. We could use this to ignore or even reverse their contribution to the sentiment score.
+
+Let’s use the AFINN lexicon for sentiment analysis, which you may recall gives a numeric sentiment value for each word,
+
+with positive or negative numbers indicating the direction of the sentiment.
+
+We can then examine the most frequent words that were preceded by “not” and were associated with a sentiment.
+
+
+
+bigrams_separated %&gt;%
+
+ filter(word1 == "not") %&gt;%
+
+ count(word1, word2, sort = TRUE)
+
+#&gt; # A tibble: 1,178 × 3
+
+#&gt;    word1 word2     n
+
+#&gt;    &lt;chr&gt; &lt;chr&gt; &lt;int&gt;
+
+#&gt;  1 not   be      580
+
+#&gt;  2 not   to      335
+
+#&gt;  3 not   have    307
+
+#&gt;  4 not   know    237
+
+#&gt;  5 not   a       184
+
+#&gt;  6 not   think   162
+
+#&gt;  7 not   been    151
+
+#&gt;  8 not   the     135
+
+#&gt;  9 not   at      126
+
+#&gt; 10 not   in      110
+
+#&gt; # … with 1,168 more rows
+
+
+
+AFINN &lt;- get_sentiments("afinn")
+
+AFINN
+
+
+
+#&gt; # A tibble: 2,477 × 2
+
+#&gt;    word       value
+
+#&gt;    &lt;chr&gt;      &lt;dbl&gt;
+
+#&gt;  1 abandon       -2
+
+#&gt;  2 abandoned     -2
+
+#&gt;  3 abandons      -2
+
+#&gt;  4 abducted      -2
+
+#&gt;  5 abduction     -2
+
+#&gt;  6 abductions    -2
+
+#&gt;  7 abhor         -3
+
+#&gt;  8 abhorred      -3
+
+#&gt;  9 abhorrent     -3
+
+#&gt; 10 abhors        -3
+
+#&gt; # … with 2,467 more rows
+
+
+For example, the most common sentiment-associated word to follow “not” was “like”, which would normally have a
+
+(positive) score of 2.
+
+It’s worth asking which words contributed the most in the “wrong” direction. To compute that, we can multiply their value by
+
+the number of times they appear (so that a word with a value of +3 occurring 10 times has as much impact as a word with
+
+a sentiment value of +1 occurring 30 times). We visualize the result with a bar plot (Figure 4.2).
+
+
+
+not_words &lt;- bigrams_separated %&gt;%
+
+ filter(word1 == "not") %&gt;%
+
+ inner_join(AFINN, by = c(word2 = "word")) %&gt;%
+
+ count(word2, value, sort = TRUE)
+
+not_words
+
+#&gt; # A tibble: 229 × 3
+
+#&gt;    word2   value     n
+
+#&gt;    &lt;chr&gt;   &lt;dbl&gt; &lt;int&gt;
+
+#&gt;  1 like        2    95
+
+#&gt;  2 help        2    77
+
+#&gt;  3 want        1    41
+
+#&gt;  4 wish        1    39
+
+#&gt;  5 allow       1    30
+
+#&gt;  6 care        2    21
+
+#&gt;  7 sorry      -1    20
+
+#&gt;  8 leave      -1    17
+
+#&gt;  9 pretend    -1    17
+
+#&gt; 10 worth       2    17
+
+#&gt; # … with 219 more rows
+
+
+
+library(ggplot2)
+
+not_words %&gt;%
+
+ mutate(contribution = n * value) %&gt;%
+
+ arrange(desc(abs(contribution))) %&gt;%
+
+ head(20) %&gt;%
+
+ mutate(word2 = reorder(word2, contribution)) %&gt;%
+
+ ggplot(aes(n * value, word2, fill = n * value &gt; 0)) +
+
+ geom_col(show.legend = FALSE) +
+
+ labs(x = "Sentiment value * number of occurrences",
+
+       y = "Words preceded by \"not\"")
+
+
+
+
+Figure 4.2: Words preceded by ‘not’ that had the greatest contribution to sentiment values, in either a positive or negative direction
+
+The bigrams “not like” and “not help” were overwhelmingly the largest causes of misidentification, making the text seem
+
+much more positive than it is. But we can see phrases like “not afraid” and “not fail” sometimes suggest text is more
+
+negative than it is.
+
+“Not” isn’t the only term that provides some context for the following word. We could pick four common words (or more)
+
+that negate the subsequent term, and use the same joining and counting approach to examine all of them at once.
+
+We could then visualize what the most common words to follow each particular negation are (Figure 4.3). While “not like”
+
+and “not help” are still the two most common examples, we can also see pairings such as “no great” and “never loved.” We
+
+could combine this with the approaches in Chapter 2 to reverse the AFINN values of each word that follows a negation.
+
+These are just a few examples of how finding consecutive words can give context to text mining methods.
+
+
+
+negation_words &lt;- c("not", "no", "never", "without")
+
+negated_words &lt;- bigrams_separated %&gt;%
+
+ filter(word1 %in% negation_words) %&gt;%
+
+ inner_join(AFINN, by = c(word2 = "word")) %&gt;%
+
+ count(word1, word2, value, sort = TRUE)
+
+
+
+
+Figure 4.3: Most common positive or negative words to follow negations such as ‘never’, ‘no’, ‘not’, and ‘without’
+
+4.1.4 Visualizing a network of bigrams with ggraph
+
+We may be interested in visualizing all of the relationships among words simultaneously, rather than just the top few at a
+
+time. As one common visualization, we can arrange the words into a network, or “graph.” Here we’ll be referring to a “graph”
+
+not in the sense of a visualization, but as a combination of connected nodes. A graph can be constructed from a tidy object
+
+since it has three variables:
+
+from
+
+from: the node an edge is coming from
+
+to
+
+to: the node an edge is going towards
+
+weight
+
+weight: A numeric value associated with each edge
+
+The igraph package has many powerful functions for manipulating and analyzing networks. One way to create an igraph
+
+object from tidy data is the graph_from_data_frame()  function, which takes a data frame of edges with columns for
+
+“from”, “to”, and edge attributes (in this case n ):
+
+
+igraph has plotting functions built in, but they’re not what the package is designed to do, so many other packages have
+
+developed visualization methods for graph objects. We recommend the ggraph package (Pedersen 2017), because it
+
+implements these visualizations in terms of the grammar of graphics, which we are already familiar with from ggplot2.
+
+We can convert an igraph object into a ggraph with the ggraph  function, after which we add layers to it, much like layers
+
+are added in ggplot2. For example, for a basic graph we need to add three layers: nodes, edges, and text.
+
+
+
+library(igraph)
+
+# original counts
+
+bigram_counts
+
+#&gt; # A tibble: 28,974 × 3
+
+#&gt;    word1   word2         n
+
+#&gt;    &lt;chr&gt;   &lt;chr&gt;     &lt;int&gt;
+
+#&gt;  1 sir     thomas      266
+
+#&gt;  2 miss    crawford    196
+
+#&gt;  3 captain wentworth   143
+
+#&gt;  4 miss    woodhouse   143
+
+#&gt;  5 frank   churchill   114
+
+#&gt;  6 lady    russell     110
+
+#&gt;  7 sir     walter      108
+
+#&gt;  8 lady    bertram     101
+
+#&gt;  9 miss    fairfax      98
+
+#&gt; 10 colonel brandon      96
+
+#&gt; # … with 28,964 more rows
+
+# filter for only relatively common combinations
+
+bigram_graph &lt;- bigram_counts %&gt;%
+
+ filter(n &gt; 20) %&gt;%
+
+ graph_from_data_frame()
+
+bigram_graph
+
+#&gt; IGRAPH 012e055 DN-- 85 70 -- 
+
+#&gt; + attr: name (v/c), n (e/n)
+
+#&gt; + edges from 012e055 (vertex names):
+
+#&gt;  [1] sir     -&gt;thomas     miss    -&gt;crawford   captain -&gt;wentworth 
+
+#&gt;  [4] miss    -&gt;woodhouse  frank   -&gt;churchill  lady    -&gt;russell   
+
+#&gt;  [7] sir     -&gt;walter     lady    -&gt;bertram    miss    -&gt;fairfax   
+
+#&gt; [10] colonel -&gt;brandon    sir     -&gt;john       miss    -&gt;bates     
+
+#&gt; [13] jane    -&gt;fairfax    lady    -&gt;catherine  lady    -&gt;middleton 
+
+#&gt; [16] miss    -&gt;tilney     miss    -&gt;bingley    thousand-&gt;pounds    
+
+#&gt; [19] miss    -&gt;dashwood   dear    -&gt;miss       miss    -&gt;bennet    
+
+#&gt; [22] miss    -&gt;morland    captain -&gt;benwick    miss    -&gt;smith     
+
+#&gt; + ... omitted several edges
+
+
+
+library(ggraph)
+
+set.seed(2017)
+
+ggraph(bigram_graph, layout = "fr") +
+
+ geom_edge_link() +
+
+ geom_node_point() +
+
+ geom_node_text(aes(label = name), vjust = 1, hjust = 1)
+
+
+
+
+Figure 4.4: Common bigrams in Jane Austen’s novels, showing those that occurred more than 20 times and where neither word was
+
+a stop word
+
+In Figure 4.4, we can visualize some details of the text structure. For example, we see that salutations such as “miss”,
+
+“lady”, “sir”, and “colonel” form common centers of nodes, which are often followed by names. We also see pairs or triplets
+
+along the outside that form common short phrases (“half hour”, “thousand pounds”, or “short time/pause”).
+
+We conclude with a few polishing operations to make a better looking graph (Figure 4.5):
+
+We add the edge_alpha  aesthetic to the link layer to make links transparent based on how common or rare the bigram
+
+is
+
+We add directionality with an arrow, constructed using grid::arrow() , including an end_cap  option that tells the
+
+arrow to end before touching the node
+
+We tinker with the options to the node layer to make the nodes more attractive (larger, blue points)
+
+We add a theme that’s useful for plotting networks, theme_void()
+
+
+
+set.seed(2020)
+
+a &lt;- grid::arrow(type = "closed", length = unit(.15, "inches"))
+
+ggraph(bigram_graph, layout = "fr") +
+
+ geom_edge_link(aes(edge_alpha = n), show.legend = FALSE,
+
+                 arrow = a, end_cap = circle(.07, 'inches')) +
+
+ geom_node_point(color = "lightblue", size = 5) +
+
+ geom_node_text(aes(label = name), vjust = 1, hjust = 1) +
+
+ theme_void()
+
+
+
+
+Figure 4.5: Common bigrams in Jane Austen’s novels, with some polishing
+
+It may take some experimentation with ggraph to get your networks into a presentable format like this, but the network
+
+structure is useful and flexible way to visualize relational tidy data.
+
+Note that this is a visualization of a Markov chain
+
+Markov chain, a common model in text processing. In a Markov chain, each choice
+
+of word depends only on the previous word. In this case, a random generator following this model might spit out “dear”,
+
+then “sir”, then “william/walter/thomas/thomas’s”, by following each word to the most common words that follow it. To
+
+make the visualization interpretable, we chose to show only the most common word to word connections, but one could
+
+imagine an enormous graph representing all connections that occur in the text.
+
+4.1.5 Visualizing bigrams in other texts
+
+We went to a good amount of work in cleaning and visualizing bigrams on a text dataset, so let’s collect it into a function
+
+so that we easily perform it on other text datasets.
+
+To make it easy to use the count_bigrams()  and visualize_bigrams()  yourself, we’ve also reloaded the packages
+
+necessary for them.
+
+
+At this point, we could visualize bigrams in other works, such as the King James Version of the Bible:
+
+
+
+library(dplyr)
+
+library(tidyr)
+
+library(tidytext)
+
+library(ggplot2)
+
+library(igraph)
+
+library(ggraph)
+
+count_bigrams &lt;- function(dataset) {
+
+ dataset %&gt;%
+
+ unnest_tokens(bigram, text, token = "ngrams", n = 2) %&gt;%
+
+ separate(bigram, c("word1", "word2"), sep = " ") %&gt;%
+
+ filter(!word1 %in% stop_words$word,
+
+ !word2 %in% stop_words$word) %&gt;%
+
+ count(word1, word2, sort = TRUE)
+
+}
+
+visualize_bigrams &lt;- function(bigrams) {
+
+ set.seed(2016)
+
+ a &lt;- grid::arrow(type = "closed", length = unit(.15, "inches"))
+
+ 
+
+ bigrams %&gt;%
+
+ graph_from_data_frame() %&gt;%
+
+ ggraph(layout = "fr") +
+
+ geom_edge_link(aes(edge_alpha = n), show.legend = FALSE, arrow = a) +
+
+ geom_node_point(color = "lightblue", size = 5) +
+
+ geom_node_text(aes(label = name), vjust = 1, hjust = 1) +
+
+ theme_void()
+
+}
+
+
+
+# the King James version is book 10 on Project Gutenberg:
+
+library(gutenbergr)
+
+kjv &lt;- gutenberg_download(10)
+
+
+
+library(stringr)
+
+kjv_bigrams &lt;- kjv %&gt;%
+
+ count_bigrams()
+
+# filter out rare combinations, as well as digits
+
+kjv_bigrams %&gt;%
+
+ filter(n &gt; 40,
+
+ !str_detect(word1, "\\d"),
+
+ !str_detect(word2, "\\d")) %&gt;%
+
+ visualize_bigrams()
+
+
+
+
+Figure 4.6: Directed graph of common bigrams in the King James Bible, showing those that occurred more than 40 times
+
+Figure 4.6 thus lays out a common “blueprint” of language within the Bible, particularly focused around “thy” and “thou”
+
+(which could probably be considered stopwords!) You can use the gutenbergr package and these
+
+count_bigrams / visualize_bigrams  functions to visualize bigrams in other classic books you’re interested in.
+
+4.2 Counting and correlating pairs of words with the widyr package
+
+Tokenizing by n-gram is a useful way to explore pairs of adjacent words. However, we may also be interested in words that
+
+tend to co-occur within particular documents or particular chapters, even if they don’t occur next to each other.
+
+Tidy data is a useful structure for comparing between variables or grouping by rows, but it can be challenging to compare
+
+between rows: for example, to count the number of times that two words appear within the same document, or to see how
+
+correlated they are. Most operations for finding pairwise counts or correlations need to turn the data into a wide matrix first.
+
+
+
+
+Figure 4.7: The philosophy behind the widyr package, which can perform operations such as counting and correlating on pairs of
+
+values in a tidy dataset. The widyr package first ‘casts’ a tidy dataset into a wide matrix, performs an operation such as a correlation
+
+on it, then re-tidies the result.
+
+We’ll examine some of the ways tidy text can be turned into a wide matrix in Chapter 5, but in this case it isn’t necessary.
+
+The widyr package makes operations such as computing counts and correlations easy, by simplifying the pattern of “widen
+
+data, perform an operation, then re-tidy data” (Figure 4.7). We’ll focus on a set of functions that make pairwise
+
+comparisons between groups of observations (for example, between documents, or sections of text).
+
+4.2.1 Counting and correlating among sections
+
+Consider the book “Pride and Prejudice” divided into 10-line sections, as we did (with larger sections) for sentiment analysis
+
+in Chapter 2. We may be interested in what words tend to appear within the same section.
+
+
+One useful function from widyr is the pairwise_count()  function. The prefix pairwise_  means it will result in one row for
+
+each pair of words in the word  variable. This lets us count common pairs of words co-appearing within the same section:
+
+Notice that while the input had one row for each pair of a document (a 10-line section) and a word, the output has one row
+
+for each pair of words. This is also a tidy format, but of a very different structure that we can use to answer new questions.
+
+For example, we can see that the most common pair of words in a section is “Elizabeth” and “Darcy” (the two main
+
+characters). We can easily find the words that most often occur with Darcy:
+
+
+
+austen_section_words &lt;- austen_books() %&gt;%
+
+ filter(book == "Pride &amp; Prejudice") %&gt;%
+
+ mutate(section = row_number() %/% 10) %&gt;%
+
+ filter(section &gt; 0) %&gt;%
+
+ unnest_tokens(word, text) %&gt;%
+
+ filter(!word %in% stop_words$word)
+
+austen_section_words
+
+#&gt; # A tibble: 37,240 × 3
+
+#&gt;    book              section word        
+
+#&gt;    &lt;fct&gt;               &lt;dbl&gt; &lt;chr&gt;       
+
+#&gt;  1 Pride &amp; Prejudice       1 truth       
+
+#&gt;  2 Pride &amp; Prejudice       1 universally 
+
+#&gt;  3 Pride &amp; Prejudice       1 acknowledged
+
+#&gt;  4 Pride &amp; Prejudice       1 single      
+
+#&gt;  5 Pride &amp; Prejudice       1 possession  
+
+#&gt;  6 Pride &amp; Prejudice       1 fortune     
+
+#&gt;  7 Pride &amp; Prejudice       1 wife        
+
+#&gt;  8 Pride &amp; Prejudice       1 feelings    
+
+#&gt;  9 Pride &amp; Prejudice       1 views       
+
+#&gt; 10 Pride &amp; Prejudice       1 entering    
+
+#&gt; # … with 37,230 more rows
+
+
+
+library(widyr)
+
+# count words co-occuring within sections
+
+word_pairs &lt;- austen_section_words %&gt;%
+
+ pairwise_count(word, section, sort = TRUE)
+
+word_pairs
+
+#&gt; # A tibble: 796,008 × 3
+
+#&gt;    item1     item2         n
+
+#&gt;    &lt;chr&gt;     &lt;chr&gt;     &lt;dbl&gt;
+
+#&gt;  1 darcy     elizabeth   144
+
+#&gt;  2 elizabeth darcy       144
+
+#&gt;  3 miss      elizabeth   110
+
+#&gt;  4 elizabeth miss        110
+
+#&gt;  5 elizabeth jane        106
+
+#&gt;  6 jane      elizabeth   106
+
+#&gt;  7 miss      darcy        92
+
+#&gt;  8 darcy     miss         92
+
+#&gt;  9 elizabeth bingley      91
+
+#&gt; 10 bingley   elizabeth    91
+
+#&gt; # … with 795,998 more rows
+
+
+4.2.2 Pairwise correlation
+
+Pairs like “Elizabeth” and “Darcy” are the most common co-occurring words, but that’s not particularly meaningful since
+
+they’re also the most common individual words. We may instead want to examine correlation
+
+correlation among words, which
+
+indicates how often they appear together relative to how often they appear separately.
+
+In particular, here we’ll focus on the phi coefficient, a common measure for binary correlation. The focus of the phi
+
+coefficient is how much more likely it is that either both
+
+both word X and Y appear, or neither
+
+neither do, than that one appears without
+
+the other.
+
+Consider the following table:
+
+Has word Y
+
+Has word Y
+
+No word Y
+
+No word Y
+
+Total
+
+Total
+
+Has word X
+
+\(n_{11}\)
+
+\(n_{10}\)
+
+\(n_{1\cdot}\)
+
+No word X
+
+\(n_{01}\)
+
+\(n_{00}\)
+
+\(n_{0\cdot}\)
+
+Total
+
+\(n_{\cdot 1}\)
+
+\(n_{\cdot 0}\)
+
+n
+
+For example, that \(n_{11}\) represents the number of documents where both word X and word Y appear, \(n_{00}\) the
+
+number where neither appears, and \(n_{10}\) and \(n_{01}\) the cases where one appears without the other. In terms of
+
+this table, the phi coefficient is:
+
+\[\phi=\frac{n_{11}n_{00}-n_{10}n_{01}}{\sqrt{n_{1\cdot}n_{0\cdot}n_{\cdot0}n_{\cdot1}}}\]
+
+The phi coefficient is equivalent to the Pearson correlation, which you may have heard of elsewhere when it is applied to
+
+binary data.
+
+The pairwise_cor()  function in widyr lets us find the phi coefficient between words based on how often they appear in
+
+the same section. Its syntax is similar to pairwise_count() .
+
+
+
+word_pairs %&gt;%
+
+ filter(item1 == "darcy")
+
+#&gt; # A tibble: 2,930 × 3
+
+#&gt;    item1 item2         n
+
+#&gt;    &lt;chr&gt; &lt;chr&gt;     &lt;dbl&gt;
+
+#&gt;  1 darcy elizabeth   144
+
+#&gt;  2 darcy miss         92
+
+#&gt;  3 darcy bingley      86
+
+#&gt;  4 darcy jane         46
+
+#&gt;  5 darcy bennet       45
+
+#&gt;  6 darcy sister       45
+
+#&gt;  7 darcy time         41
+
+#&gt;  8 darcy lady         38
+
+#&gt;  9 darcy friend       37
+
+#&gt; 10 darcy wickham      37
+
+#&gt; # … with 2,920 more rows
+
+
+This output format is helpful for exploration. For example, we could find the words most correlated with a word like
+
+“pounds” using a filter  operation.
+
+This lets us pick particular interesting words and find the other words most associated with them (Figure 4.8).
+
+
+
+# we need to filter for at least relatively common words first
+
+word_cors &lt;- austen_section_words %&gt;%
+
+ group_by(word) %&gt;%
+
+ filter(n() &gt;= 20) %&gt;%
+
+ pairwise_cor(word, section, sort = TRUE)
+
+word_cors
+
+#&gt; # A tibble: 154,842 × 3
+
+#&gt;    item1     item2     correlation
+
+#&gt;    &lt;chr&gt;     &lt;chr&gt;           &lt;dbl&gt;
+
+#&gt;  1 bourgh    de              0.951
+
+#&gt;  2 de        bourgh          0.951
+
+#&gt;  3 pounds    thousand        0.701
+
+#&gt;  4 thousand  pounds          0.701
+
+#&gt;  5 william   sir             0.664
+
+#&gt;  6 sir       william         0.664
+
+#&gt;  7 catherine lady            0.663
+
+#&gt;  8 lady      catherine       0.663
+
+#&gt;  9 forster   colonel         0.622
+
+#&gt; 10 colonel   forster         0.622
+
+#&gt; # … with 154,832 more rows
+
+
+
+word_cors %&gt;%
+
+ filter(item1 == "pounds")
+
+#&gt; # A tibble: 393 × 3
+
+#&gt;    item1  item2     correlation
+
+#&gt;    &lt;chr&gt;  &lt;chr&gt;           &lt;dbl&gt;
+
+#&gt;  1 pounds thousand       0.701 
+
+#&gt;  2 pounds ten            0.231 
+
+#&gt;  3 pounds fortune        0.164 
+
+#&gt;  4 pounds settled        0.149 
+
+#&gt;  5 pounds wickham's      0.142 
+
+#&gt;  6 pounds children       0.129 
+
+#&gt;  7 pounds mother's       0.119 
+
+#&gt;  8 pounds believed       0.0932
+
+#&gt;  9 pounds estate         0.0890
+
+#&gt; 10 pounds ready          0.0860
+
+#&gt; # … with 383 more rows
+
+
+
+word_cors %&gt;%
+
+ filter(item1 %in% c("elizabeth", "pounds", "married", "pride")) %&gt;%
+
+ group_by(item1) %&gt;%
+
+ slice_max(correlation, n = 6) %&gt;%
+
+ ungroup() %&gt;%
+
+ mutate(item2 = reorder(item2, correlation)) %&gt;%
+
+ ggplot(aes(item2, correlation)) +
+
+ geom_bar(stat = "identity") +
+
+ facet_wrap(~ item1, scales = "free") +
+
+ coord_flip()
+
+
+
+
+Figure 4.8: Words from Pride and Prejudice that were most correlated with ‘elizabeth’, ‘pounds’, ‘married’, and ‘pride’
+
+Just as we used ggraph to visualize bigrams, we can use it to visualize the correlations and clusters of words that were
+
+found by the widyr package (Figure 4.9).
+
+
+
+set.seed(2016)
+
+word_cors %&gt;%
+
+ filter(correlation &gt; .15) %&gt;%
+
+ graph_from_data_frame() %&gt;%
+
+ ggraph(layout = "fr") +
+
+ geom_edge_link(aes(edge_alpha = correlation), show.legend = FALSE) +
+
+ geom_node_point(color = "lightblue", size = 5) +
+
+ geom_node_text(aes(label = name), repel = TRUE) +
+
+ theme_void()
+
+
+
+
+
+
+
+
+Figure 4.9: Pairs of words in Pride and Prejudice that show at least a .15 correlation of appearing within the same 10-line section
+
+Note that unlike the bigram analysis, the relationships here are symmetrical, rather than directional (there are no arrows).
+
+We can also see that while pairings of names and titles that dominated bigram pairings are common, such as
+
+“colonel/fitzwilliam”, we can also see pairings of words that appear close to each other, such as “walk” and “park”, or
+
+“dance” and “ball”.
+
+4.3 Summary
+
+This chapter showed how the tidy text approach is useful not only for analyzing individual words, but also for exploring the
+
+relationships and connections between words. Such relationships can involve n-grams, which enable us to see what words
+
+tend to appear after others, or co-occurences and correlations, for words that appear in proximity to each other. This
+
+chapter also demonstrated the ggraph package for visualizing both of these types of relationships as networks. These
+
+network visualizations are a flexible tool for exploring relationships, and will play an important role in the case studies in
+
+later chapters.
+
+« 3 Analyzing word and document frequency: tf-idf
+
+5 Converting to and from non-tidy formats »
+
+"Text Mining with R
+
+Text Mining with R: A Tidy Approach" was written by Julia Silge and David Robinson. It was last built on 2022-11-02.
+
+
+This book was built by the bookdown R package.
+

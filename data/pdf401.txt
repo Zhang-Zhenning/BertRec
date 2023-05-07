@@ -1,0 +1,833 @@
+
+Hidden Markov Models
+
+Phil Blunsom
+
+pcbl@cs.mu.oz.au
+
+August 19, 2004
+
+Abstract
+
+The Hidden Markov Model (HMM) is a popular statistical tool for modelling a wide
+
+range of time series data. In the context of natural language processing(NLP), HMMs have
+
+been applied with great success to problems such as part-of-speech tagging and noun-phrase
+
+chunking.
+
+1
+
+Introduction
+
+The Hidden Markov Model(HMM) is a powerful statistical tool for modeling generative se-
+
+quences that can be characterised by an underlying process generating an observable sequence.
+
+HMMs have found application in many areas interested in signal processing, and in particular
+
+speech processing, but have also been applied with success to low level NLP tasks such as
+
+part-of-speech tagging, phrase chunking, and extracting target information from documents.
+
+Andrei Markov gave his name to the mathematical theory of Markov processes in the early
+
+twentieth century[3], but it was Baum and his colleagues that developed the theory of HMMs
+
+in the 1960s[2].
+
+Markov Processes
+
+Diagram 1 depicts an example of a Markov process.
+
+The model
+
+presented describes a simple model for a stock market index. The model has three states, Bull,
+
+Bear and Even, and three index observations up, down, unchanged. The model is a ﬁnite state
+
+automaton, with probabilistic transitions between states. Given a sequence of observations,
+
+example: up-down-down we can easily verify that the state sequence that produced those
+
+observations was: Bull-Bear-Bear, and the probability of the sequence is simply the product
+
+of the transitions, in this case 0.2 × 0.3 × 0.3.
+
+Hidden Markov Models
+
+Diagram 2 shows an example of how the previous model can
+
+be extended into a HMM. The new model now allows all observation symbols to be emitted
+
+from each state with a ﬁnite probability. This change makes the model much more expressive
+
+Bull
+
+Even
+
+Bear
+
+0.2
+
+0.5
+
+0.3
+
+0.6
+
+0.1
+
+0.2
+
+0.4
+
+0.2
+
+0.5
+
+up
+
+down
+
+unchanged
+
+Figure 1: Markov process example[1]
+
+1
+
+
+Bull
+
+Even
+
+Bear
+
+0.2
+
+0.5
+
+0.3
+
+0.6
+
+0.1
+
+0.2
+
+0.4
+
+0.2
+
+0.5
+
+up
+
+down
+
+unchanged
+
+up
+
+up
+
+down
+
+down
+
+unchanged
+
+unchanged
+
+0.1
+
+0.6
+
+0.3
+
+0.3
+
+0.3
+
+0.4
+
+0.7
+
+0.1
+
+0.2
+
+Figure 2: Hidden Markov model example[1]
+
+and able to better represent our intuition, in this case, that a bull market would have both
+
+good days and bad days, but there would be more good ones. The key diﬀerence is that
+
+now if we have the observation sequence up-down-down then we cannot say exactly what
+
+state sequence produced these observations and thus the state sequence is ‘hidden’. We can
+
+however calculate the probability that the model produced the sequence, as well as which
+
+state sequence was most likely to have produced the observations. The next three sections
+
+describe the common calculations that we would like to be able to perform on a HMM.
+
+The formal deﬁnition of a HMM is as follows:
+
+λ = (A, B, π)
+
+(1)
+
+S is our state alphabet set, and V is the observation alphabet set:
+
+S = (s1, s2, · · · , sN)
+
+(2)
+
+V = (v1, v2, · · · , vM)
+
+(3)
+
+We deﬁne Q to be a ﬁxed state sequence of length T, and corresponding observations O:
+
+Q = q1, q2, · · · , qT
+
+(4)
+
+O = o1, o2, · · · , oT
+
+(5)
+
+A is a transition array, storing the probability of state j following state i . Note the state
+
+transition probabilities are independent of time:
+
+A = [aij] , aij = P(qt = sj|qt−1 = si) .
+
+(6)
+
+B is the observation array, storing the probability of observation k being produced from
+
+the state j, independent of t:
+
+B = [bi(k)] , bi(k) = P(xt = vk|qt = si) .
+
+(7)
+
+π is the initial probability array:
+
+π = [πi] , πi = P(q1 = si) .
+
+(8)
+
+Two assumptions are made by the model. The ﬁrst, called the Markov assumption, states
+
+that the current state is dependent only on the previous state, this represents the memory of
+
+the model:
+
+P(qt|qt−1
+
+1
+
+) = P(qt|qt−1)
+
+(9)
+
+The independence assumption states that the output observation at time t is dependent
+
+only on the current state, it is independent of previous observations and states:
+
+P(ot|ot−1
+
+1
+
+, qt
+
+1) = P(ot|qt)
+
+(10)
+
+2
+
+
+1
+
+4
+
+3
+
+2
+
+1
+
+4
+
+3
+
+2
+
+1
+
+4
+
+3
+
+2
+
+1
+
+4
+
+3
+
+2
+
+t=1
+
+t=2
+
+t=4
+
+t=3
+
+Figure 3: A trellis algorithm
+
+2
+
+Evaluation
+
+Given a HMM, and a sequence of observations, we’d like to be able to compute P(O|λ), the
+
+probability of the observation sequence given a model. This problem could be viewed as one
+
+of evaluating how well a model predicts a given observation sequence, and thus allow us to
+
+choose the most appropriate model from a set.
+
+The probability of the observations O for a speciﬁc state sequence Q is:
+
+P(O|Q, λ) =
+
+T
+
+�
+
+t=1
+
+P(ot|qt, λ) = bq1(o1) × bq2(o2) · · · bqT (oT )
+
+(11)
+
+and the probability of the state sequence is:
+
+P(Q|λ) = πq1aq1q2aq2q3 · · · aqT −1qT
+
+(12)
+
+so we can calculate the probability of the observations given the model as:
+
+P(O|λ) =
+
+�
+
+Q
+
+P(O|Q, λ)P(Q|λ) =
+
+�
+
+q1···qT
+
+πq1bq1(o1)aq1q2bq2(o2) · · · aqT −1qT bqT (oT )
+
+(13)
+
+This result allows the evaluation of the probability of O, but to evaluate it directly would be
+
+exponential in T.
+
+A better approach is to recognise that many redundant calculations would be made by
+
+directly evaluating equation 13, and therefore caching calculations can lead to reduced com-
+
+plexity. We implement the cache as a trellis of states at each time step, calculating the cached
+
+valued (called α) for each state as a sum over all states at the previous time step. α is the
+
+probability of the partial observation sequence o1, o2 · · · ot and state si at time t. This can be
+
+visualised as in ﬁgure 3. We deﬁne the forward probability variable:
+
+αt(i) = P(o1o2 · · · ot, qt = si|λ)
+
+(14)
+
+so if we work through the trellis ﬁlling in the values of α the sum of the ﬁnal column of the
+
+trellis will equal the probability of the observation sequence. The algorithm for this process
+
+is called the forward algorithm and is as follows:
+
+1. Initialisation:
+
+α1(i) = πibi(o1), 1 ≤ i ≤ N.
+
+(15)
+
+2. Induction:
+
+αt+1(j) = [
+
+N
+
+�
+
+i=1
+
+αt(i)aij]bj(ot+1), 1 ≤ t ≤ T − 1, 1 ≤ j ≤ N.
+
+(16)
+
+3
+
+
+S1
+
+α1(t)
+
+S2
+
+α2(t)
+
+S3
+
+α3(t)
+
+SN
+
+αN(t)
+
+Sj
+
+αj(t+1)
+
+a1j
+
+a2j
+
+a3j
+
+aNj
+
+t
+
+t+1
+
+S1
+
+SN
+
+Figure 4: The induction step of the forward algorithm
+
+3. Termination:
+
+P(O|λ) =
+
+N
+
+�
+
+i=1
+
+αT (i).
+
+(17)
+
+The induction step is the key to the forward algorithm and is depicted in ﬁgure 4. For each
+
+state sj, αj(t) stores the probability of arriving in that state having observed the observation
+
+sequence up until time t.
+
+It is apparent that by caching α values the forward algorithm reduces the complexity of
+
+calculations involved to N 2T rather than 2TN T . We can also deﬁne an analogous backwards
+
+algorithm which is the exact reverse of the forwards algorithm with the backwards variable:
+
+βt(i) = P(ot+1ot+2 · · · oT |qt = si, λ)
+
+(18)
+
+as the probability of the partial observation sequence from t + 1 to T, starting in state si.
+
+3
+
+Decoding
+
+The aim of decoding is to discover the hidden state sequence that was most likely to have
+
+produced a given observation sequence. One solution to this problem is to use the Viterbi
+
+algorithm to ﬁnd the single best state sequence for an observation sequence. The Viterbi
+
+algorithm is another trellis algorithm which is very similar to the forward algorithm, except
+
+that the transition probabilities are maximised at each step, instead of summed. First we
+
+deﬁne:
+
+δt(i) =
+
+max
+
+q1,q2,···,qt−1
+
+P(q1q2 · · · qt = si, o1, o2 · · · ot|λ)
+
+(19)
+
+as the probability of the most probable state path for the partial observation sequence.
+
+The Viterbi algorithm and is as follows:
+
+1. Initialisation:
+
+δ1(i) = πibi(o1), 1 ≤ i ≤ N, ψ1(i) = 0.
+
+(20)
+
+2. Recursion:
+
+δt(j) = max
+
+1≤i≤N[δt−1(i)aij]bj(ot), 2 ≤ t ≤ T, 1 ≤ j ≤ N,
+
+(21)
+
+ψt(j) = arg max
+
+1≤i≤N[δt−1(i)aij], 2 ≤ t ≤ T, 1 ≤ j ≤ N.
+
+(22)
+
+4
+
+
+S1
+
+δt(1)
+
+S2
+
+δt(2)
+
+S3
+
+δt(3)
+
+SN
+
+δt(N)
+
+Sj
+
+δt+1(j) = 
+
+δt(2)bj(ot+1)
+
+ψt+1(j) = 2
+
+a1j
+
+a2j
+
+a3j
+
+aNj
+
+t
+
+t+1
+
+S1
+
+SN
+
+Figure 5: The recursion step of the viterbi algorithm
+
+1
+
+4
+
+3
+
+2
+
+1
+
+4
+
+3
+
+2
+
+1
+
+4
+
+3
+
+2
+
+1
+
+4
+
+3
+
+2
+
+4
+
+3
+
+3
+
+3
+
+Figure 6: The backtracing step of the viterbi algorithm
+
+3. Termination:
+
+P ∗ = max
+
+1≤i≤N[δT (i)]
+
+(23)
+
+q∗
+
+T = arg max
+
+1≤i≤N[δT (i)].
+
+(24)
+
+4. Optimal state sequence backtracking:
+
+q∗
+
+t = ψt+1(q∗
+
+t+1), t = T − 1, T − 2, · · · , 1.
+
+(25)
+
+The recursion step is illustrated in ﬁgure 5. The main diﬀerence with the forward algorithm
+
+in the recursions step is that we are maximising, rather than summing, and storing the state
+
+that was chosen as the maximum for use as a backpointer. The backtracking step is shown in
+
+6. The backtracking allows the best state sequence to be found from the back pointers stored
+
+in the recursion step, but it should be noted that there is no easy way to ﬁnd the second best
+
+state sequence.
+
+5
+
+
+4
+
+Learning
+
+Given a set of examples from a process, we would like to be able to estimate the model pa-
+
+rameters λ = (A, B, π) that best describe that process. There are two standard approaches to
+
+this task, dependent on the form of the examples, which will be referred to here as supervised
+
+and unsupervised training. If the training examples contain both the inputs and outputs of a
+
+process, we can perform supervised training by equating inputs to observations, and outputs
+
+to states, but if only the inputs are provided in the training data then we must used unsuper-
+
+vised training to guess a model that may have produced those observations. In this section we
+
+will discuss the supervised approach to training, for a discussion of the Baum-Welch algorithm
+
+for unsupervised training see [5].
+
+The easiest solution for creating a model λ is to have a large corpus of training examples,
+
+each annotated with the correct classiﬁcation. The classic example for this approach is PoS
+
+tagging. We deﬁne two sets:
+
+• t1 · · · tN is the set of tags, which we equate to the HMM state set s1 · · · sN
+
+• w1 · · · wM is the set of words, which we equate to the HMM observation set v1 · · · vM
+
+so with this model we frame part-of-speech tagging as decoding the most probable hidden
+
+state sequence of PoS tags given an observation sequence of words. To determine the model
+
+parameters λ, we can use maximum likelihood estimates(MLE) from a corpus containing
+
+sentences tagged with their correct PoS tags. For the transition matrix we use:
+
+aij = P(ti|tj) = Count(ti, tj)
+
+Count(ti)
+
+(26)
+
+where Count(ti, tj) is the number of times tj followed ti in the training data. For the obser-
+
+vation matrix:
+
+bj(k) = P(wk|tj) = Count(wk, tj)
+
+Count(tj)
+
+(27)
+
+where Count(wk, tj) is the number of times wk was tagged tj in the training data. And lastly
+
+the initial probability distribution:
+
+πi = P(q1 = ti) = Count(q1 = ti)
+
+Count(q1)
+
+(28)
+
+In practice when estimating a HMM from counts it is normally necessary to apply smoothing
+
+in order to avoid zero counts and improve the performance of the model on data not appearing
+
+in the training set.
+
+5
+
+Multi-Dimensional Feature Space
+
+A limitation of the model described is that observations are assumed to be single dimensional
+
+features, but many tasks are most naturally modelled using a multi-dimensional feature space.
+
+One solution to this problem is to use a multinomial model that assumes the features of the
+
+observations are independent [4]:
+
+vk = (f1, · · · , fN)
+
+(29)
+
+P(vk|sj) =
+
+N
+
+�
+
+j=1
+
+P(fj|sj)
+
+(30)
+
+This model is easy to implement and computationally simple, but obviously many features
+
+one might want to use are not independent. For many NLP systems it has been found that
+
+ﬂawed Baysian independence assumptions can still be very eﬀective.
+
+6
+
+
+6
+
+Implementing HMMs
+
+When implementing a HMM, ﬂoating-point underﬂow is a signiﬁcant problem. It is apparent
+
+that when applying the Viterbi or forward algorithms to long sequences the extremely small
+
+probability values that would result could underﬂow on most machines. We solve this problem
+
+diﬀerently for each algorithm:
+
+Viterbi underﬂow As the Viterbi algorithms only multiplies probabilities, a simple solution
+
+to underﬂow is to log all the probability values and then add values instead of multiply.
+
+In fact if all the values in the model matrices (A, B, π) are stored logged, then at runtime
+
+only addition operations are needed.
+
+forward algorithm underﬂow The forward algorithm sums probability values, so it is
+
+not a viable solution to log the values in order to avoid underﬂow. The most common
+
+solution to this problem is to use scaling coeﬃcients that keep the probability values in
+
+the dynamic range of the machine, and that are dependent only on t. The coeﬃcient ct
+
+is deﬁned as:
+
+ct =
+
+1
+
+�N
+
+i=1 αt(i)
+
+(31)
+
+and thus the new scaled value for α becomes:
+
+ˆαt(i) = ct × αt(i) =
+
+αt(i)
+
+�N
+
+i=1 αt(i)
+
+(32)
+
+a similar coeﬃcient can be computed for ˆβt(i).
+
+References
+
+[1] Huang et. al. Spoken Language Processing. Prentice Hall PTR.
+
+[2] L. Baum et. al. A maximization technique occuring in the statistical analysis of probab-
+
+listic functions of markov chains. Annals of Mathematical Statistics, 41:164–171, 1970.
+
+[3] A. Markov. An example of statistical investigation in the text of eugene onyegin, illustrat-
+
+ing coupling of tests in chains. Proceedings of the Academy of Sciences of St. Petersburg,
+
+1913.
+
+[4] A. McCallum and K. Nigram. A comparison of event models for naive bayes classiﬁcation.
+
+In AAAI-98 Workshop on Learning for Text Categorization, 1998.
+
+[5] L. Rabiner.
+
+A tutorial on hidden markov models and selected applications in speech
+
+recognition. Proceedings of IEEE, 1989.
+
+7
+

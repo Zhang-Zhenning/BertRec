@@ -1,0 +1,2945 @@
+
+TWO DECADES OF STATISTICAL LANGUAGE MODELING:
+
+WHERE DO WE GO FROM HERE?
+
+Ronald Rosenfeld
+
+School of Computer Science
+
+Carnegie Mellon University
+
+Pittsburgh, PA 15213
+
+USA
+
+roni@cs.cmu.edu
+
+ABSTRACT
+
+Statistical Language Models estimate the distribution of
+
+various natural language phenomena for the purpose of speech
+
+recognition and other language technologies. Since the ﬁrst
+
+signiﬁcant model was proposed in 1980, many attempts have
+
+been made to improve the state of the art. We review them
+
+here, point to a few promising directions, and argue for a
+
+Bayesian approach to integration of linguistic theories with
+
+data.
+
+1. OUTLINE
+
+Statistical language modeling (SLM) is the attempt to cap-
+
+ture regularities of natural language for the purpose of im-
+
+proving the performance of various natural language appli-
+
+cations. By and large, statistical language modeling amounts
+
+to estimating the probability distribution of various linguis-
+
+tic units, such as words, sentences, and whole documents.
+
+Statistical language modeling is crucial for a large va-
+
+riety of language technology applications. These include
+
+speech recognition (where SLM got its start), machine trans-
+
+lation, document classiﬁcation and routing, optical charac-
+
+ter recognition, information retrieval, handwriting recogni-
+
+tion, spelling correction, and many more.
+
+In machine translation, for example, purely statistical
+
+approaches have been introduced in [1]. But even researchers
+
+using rule-based approaches have found it beneﬁcial to in-
+
+troduce some elements of SLM and statistical estimation
+
+[2]. In information retrieval, a language modeling approach
+
+was recently proposed by [3], and a statistical/information
+
+theoretical approach was developed by [4].
+
+SLM employs statistical estimation techniques using lan-
+
+guage training data, that is, text. Because of the categorical
+
+nature of language, and the large vocabularies people natu-
+
+rally use, statistical techniques must estimate a large num-
+
+ber of parameters, and consequently depend critically on the
+
+availability of large amounts of training data.
+
+Over the past twenty years, successively larger amounts
+
+of text of various types have become available online. As
+
+a result, in domains where such data became available, the
+
+quality of language models has increased dramatically. How-
+
+ever, this improvement is now beginning to asymptote. Even
+
+if online text continues to accumulate at an exponential rate
+
+(which it no doubt will, given the growth rate of the web),
+
+the quality of currently used statistical language models is
+
+not likely to improve by a signiﬁcant factor. One informal
+
+estimate from IBM shows that bigram models effectively
+
+saturate within several hundred million words, and trigram
+
+models are likely to saturate within a few billion words. In
+
+several domains we already have this much data.
+
+Ironically, the most successful SLM techniques use very
+
+little knowledge of what language really is. The most pop-
+
+ular language models (
+
+� -grams) take no advantage of the
+
+fact that what is being modeled is language – it may as well
+
+be a sequence of arbitrary symbols, with no deep structure,
+
+intention or thought behind them.
+
+A possible reason for this situation is that the knowl-
+
+edge impoverished but data optimal techniques of
+
+� -grams
+
+succeeded too well, and thus stymied work on knowledge
+
+based approaches.
+
+But one can only go so far without knowledge. In the
+
+words of the premier proponent of the statistical approach
+
+to language modeling, Fred Jelinek, we must ‘put language
+
+back into language modeling’ [5]. Unfortunately, only a
+
+handful of attempts have been made to date to incorporate
+
+linguistic structure, theories or knowledge into statistical
+
+language models, and most such attempts have been only
+
+modestly successful.
+
+In what follows, section 2 introduces statistical language
+
+modeling in more detail, and discusses the potential for im-
+
+provement in this area. Section 3 overviews major estab-
+
+lished SLM techniques. Section 4 lists promising current
+
+research directions. Finally, section 5 suggests both an in-
+
+teractive approach and a Bayesian approach to the integra-
+
+
+tion of linguistic knowledge into the model, and points to
+
+the encoding of such knowledge as a main challenge facing
+
+the ﬁeld.
+
+2. STATISTICAL LANGUAGE MODELING
+
+2.1. Deﬁnition and use
+
+A statistical language model is simply a probability distri-
+
+bution
+
+���� over all possible sentences
+
+� .1
+
+It is instructive to compare statistical language model-
+
+ing to computational linguistics. Admittedly, the two ﬁelds
+
+(and communities) have fuzzy boundaries, and a great deal
+
+of overlap. Nonetheless, one way to characterize the differ-
+
+ence is as follows. Let
+
+�
+
+be the word sequence of a given
+
+sentence, i.e. its surface form, and let
+
+�
+
+be some hidden
+
+structure associated with it (i.e. its parse tree, word senses,
+
+etc.). Statistical language modeling is mostly about esti-
+
+mating Pr
+
+�
+
+�
+
+� , whereas computational linguistics is mostly
+
+about estimating Pr
+
+�
+
+
+
+�
+
+� . Of course, if one could estimate
+
+well the joint Pr
+
+�
+
+��
+
+� , both Pr
+
+�
+
+�
+
+� and Pr
+
+�
+
+
+
+�
+
+� could be
+
+derived from it. In practice, this is usually not feasible.
+
+Statistical language models are usually used in the con-
+
+text of a Bayes classiﬁer, where they can play the role of
+
+either the prior or the likelihood function. For example, in
+
+automatic speech recognition, given an acoustic signal
+
+ ,
+
+the goal is to ﬁnd the sentence
+
+� that is most likely to have
+
+been spoken. Using a Bayesian framework, the solution is:
+
+��
+
+
+
+���
+
+
+
+
+
+� !"
+
+
+
+��
+
+
+
+�$�%�&amp;�'�$�
+
+(1)
+
+where the language model
+
+���� plays the role of the prior.
+
+In contrast, in document classiﬁcation, given a document
+
+( , the goal is to ﬁnd the class
+
+) to which it belongs. Typi-
+
+cally, examples of documents from each of the (say)
+
+* classes
+
+are given, from which
+
+* different language models
+
++
+
+�,$�
+
+(
+
+� ,
+
+�-�
+
+(
+
+� ,
+
+.$.$.,
+
+�0/1�
+
+(
+
+�32 are constructed. Using a Bayes classi-
+
+ﬁer, the solution
+
+)
+
+ is:
+
+)
+
+
+
+45"
+
+6
+
+��
+
+
+
+(
+
+�8
+
+6
+
+��
+
+(
+
+
+
+)
+
+�8%��
+
+)
+
+�
+
+(2)
+
+where the language model
+
+�
+
+6
+
+�
+
+(
+
+� plays the role of the like-
+
+lihood. In a similar fashion, one can derive the role of lan-
+
+guage models in Bayesian classiﬁers for the other language
+
+technologies listed above.
+
+2.2. Measures of progress
+
+To assess the quality of a given language modeling tech-
+
+nique, the likelihood of new data is most commonly used.
+
+The average log likelihood of a new random sample is given
+
+
+
+1Or spoken utterances, documents, or any other linguistic unit.
+
+by:
+
+Average-Log-Likelihood
+
+��9
+
+
+
+:
+
+�&lt;;
+
+
+
+�&gt;=1?A@CB
+
+D�8EF��9
+
+?
+
+�
+
+(3)
+
+where
+
+9G
+
++
+
+9�,
+
+ 
+
+9H-
+
+�.$.$.
+
+9JI#2 is the new data sample, and
+
+M is the given language model. This latter quantity can also
+
+be viewed as an empirical estimate of the cross entropy of
+
+the true (but unknown) data distribution
+
+�
+
+with regard to
+
+the model distribution
+
+�0E
+
+:
+
+cross-entropy
+
+���K3�
+
+E
+
+�LNM
+
+=PO
+
+��'9�%RQ'SRTU�
+
+E
+
+�'9�
+
+(4)
+
+Actual performance of language models is often reported
+
+in terms of perplexity [6]:
+
+VXW
+
+
+
+V
+
+@
+
+W
+
+ZY\[P]0���K3�
+
+E
+
+�^_ cross-entropy
+
+`bac
+
+aedgf
+
+(5)
+
+Perplexity can be interpreted as the (geometric) average
+
+branching factor of the language according to the model. It
+
+is a function of both the language and the model. When
+
+considered a function of the model, it measures how good
+
+the model is (the better the model, the lower the perplexity).
+
+When considered a function of the language, it estimates the
+
+entropy, or complexity, of that language.
+
+Ultimately, the quality of a language model must be
+
+measured by its effect on the speciﬁc application for which
+
+it was designed, namely by its effect on the error rate of that
+
+application. However, error rates are typically non-linear
+
+and poorly understood functions of the language model. Lower
+
+perplexity usually result in lower error rates, but there are
+
+plenty of counterexamples in the literature. As a rough rule
+
+of thumb, reduction of 5% in perplexity is usually not prac-
+
+tically signiﬁcant; a 10%–20% reduction is noteworthy, and
+
+usually (but not always) translates into some improvement
+
+in application performance; a perplexity improvement of
+
+30% or more over a good baseline is quite signiﬁcant (and
+
+rare!).
+
+Several attempts have been made to devise metrics that
+
+are better correlated with application error rate than perplex-
+
+ity, yet are easier to optimize than the error rate itself. These
+
+attempts have met with limited success. For now, perplexity
+
+continues to be the preferred metric for practical language
+
+model construction. For more details, see [7].
+
+2.3. Known weaknesses in current models
+
+Even the simplest language model has a drastic effect on the
+
+application in which it is used (this can be observed by, say,
+
+removing the language model from a speech recognition
+
+system). However, current language modeling techniques
+
+are far from optimal. Evidence for this comes from several
+
+sources:
+
+
+Brittleness across domains: Current language mod-
+
+els are extremely sensitive to changes in the style, topic or
+
+genre of the text on which they are trained. For example,
+
+to model casual phone conversations, one is much better off
+
+using 2 million words of transcripts from such conversa-
+
+tions than using 140 million words of transcripts from TV
+
+and radio news broadcasts. This effect is quite strong even
+
+for changes that seem trivial to a human: a language model
+
+trained on Dow-Jones newswire text will see its perplexity
+
+doubled when applied to the very similar Associated Press
+
+newswire text from the same time period ([8, p. 220]).
+
+False independence assumption: In order to remain
+
+tractable, virtually all existing language modeling techniques
+
+assume some form of independence among different por-
+
+tions of the same document. For example, the most com-
+
+monly used model, the
+
+� -gram, assumes that the probabil-
+
+ity of the next word in a sentence depends only on the iden-
+
+tity of the last
+
+� -1 words. Yet even a cursory look at any
+
+natural text proves this assumption patently false. False in-
+
+dependence assumptions in statistical models usually lead
+
+to overly sharp distributions. This is precisely what is hap-
+
+pening in language modeling, as can be seen for example in
+
+document classiﬁcation: the posterior computed by equa-
+
+tion 2 is usually extremely sharp, reaching virtually one for
+
+one of the classes and virtually zero for all others. This of
+
+course cannot be the true posterior, since the average classi-
+
+ﬁcation error rate is typically much greater than zero.
+
+Shannon-style experiments: Claude Shannon pioneered
+
+the technique of eliciting human knowledge of language by
+
+asking human subjects to predict the next element of text
+
+[9, 10]. Shannon used this technique to bound the entropy
+
+of English. [11] formulated a gambling setup and used it
+
+to derive its own estimate of the entropy of English. In
+
+the 1980s, the speech and language research group at IBM
+
+performed ‘Shannon-style’ experiments, in which potential
+
+sources for language modeling improvement were identiﬁed
+
+by observing and analyzing the performance of human sub-
+
+jects in predicting or correcting text. Since then, Shannon-
+
+style experiments have been performed by several other re-
+
+searchers. For example, [12] performed experiments aimed
+
+at establishing the potential for language modeling improve-
+
+ments in speciﬁc linguistic areas. A common observation
+
+during all these experiments is that people improve on the
+
+performance of a language model easily, routinely and sub-
+
+stantially. They apparently do so by using reasoning at the
+
+linguistic, common sense, and domain levels.
+
+3. SURVEY OF MAJOR SLM TECHNIQUES
+
+This section brieﬂy reviews major established SLM tech-
+
+niques. For a more detailed technical treatment, see [13].
+
+Almost all language models to date decompose the prob-
+
+ability of a sentence into a product of conditional probabil-
+
+ities:
+
+Pr
+
+�'�$� def
+
+
+
+Pr
+
+�'h,
+
+.$.$.
+
+h!I1�
+
+I
+
+i
+
+?kj
+
+, Pr
+
+��h
+
+?
+
+
+
+l
+
+?
+
+�
+
+(6)
+
+where
+
+h
+
+? is the
+
+m th word in the sentence, and
+
+l
+
+? def
+
+
+
++
+
+h
+
+, ,
+
+hn- ,
+
+.�.$.
+
+h
+
+?�o
+
+,p2 is called the history.
+
+3.1.
+
+� -grams
+
+� -grams are the staple of current speech recognition tech-
+
+nology. Virtually all commercial speech recognition prod-
+
+ucts use some form of an
+
+� -gram. An
+
+� -gram reduces the
+
+dimensionality of the estimation problem by modeling lan-
+
+guage as a Markov source of order
+
+� -1:
+
+��'h
+
+?
+
+
+
+l
+
+?
+
+�q4��'h
+
+?
+
+
+
+h
+
+?�o
+
+IZr8,
+
+$.�.$.3
+
+h
+
+?�o
+
+,
+
+�
+
+(7)
+
+The value of
+
+�
+
+trades off the stability of the estimate
+
+(i.e. its variance) against its appropriateness (i.e. bias). A
+
+trigram (
+
+� =3) is a common choice with large training cor-
+
+pora (millions of words), whereas a bigram (
+
+� =2) is often
+
+used with smaller ones.
+
+Deriving trigram and even bigram probabilities is still
+
+a sparse estimation problem, even with very large corpora.
+
+For example, after observing all trigrams (i.e., consecutive
+
+word triplets) in 38 million words’ worth of newspaper ar-
+
+ticles, a full third of trigrams in new articles from the same
+
+source are novel [8, p. 8]. Furthermore, even among the ob-
+
+served trigrams, the vast majority occurred only once, and
+
+the majority of the rest had similarly low counts. Therefore,
+
+straightforward maximum likelihood (ML) estimation of
+
+� -
+
+gram probabilities from counts is not advisable. Instead,
+
+various smoothing techniques have been developed. These
+
+include discounting the ML estimates [14, 15], recursively
+
+backing off to lower order
+
+� -grams [16, 17, 18], and linearly
+
+interpolating
+
+� -grams of different order [19].
+
+Other ap-
+
+proaches include variable-length
+
+� -gram [20, 21, 22, 23, 24]
+
+as well as a lattice approach [25]. Much work has been done
+
+to compare and perfect smoothing techniques under various
+
+conditions. A good recent analysis can be found in [26]. In
+
+addition, toolkits implementing the various techniques have
+
+been disseminated [27, 28, 29, 30].
+
+Yet another way to battle sparseness is via vocabulary
+
+clustering. Let
+
+s
+
+? be the class word
+
+h
+
+? was assigned to.
+
+Then any of several model structures could be used. For
+
+example, for a trigram:
+
+Pr
+
+�'h!t
+
+
+
+h,
+
+ 
+
+hn-3�u
+
+Pr
+
+�'h!t
+
+
+
+s
+
+t�% Pr
+
+�
+
+s
+
+t
+
+
+
+h,
+
+ 
+
+hn-p�
+
+(8)
+
+Pr
+
+�'h!t
+
+
+
+h,
+
+ 
+
+hn-3�u
+
+Pr
+
+�'h!t
+
+
+
+s
+
+t�% Pr
+
+�
+
+s
+
+t
+
+
+
+h,
+
+3s
+
+-p�
+
+(9)
+
+Pr
+
+�'h!t
+
+
+
+h,
+
+ 
+
+hn-3�u
+
+Pr
+
+�'h!t
+
+
+
+s
+
+t�% Pr
+
+�
+
+s
+
+t
+
+
+
+s
+
+,
+
+3s
+
+-p�
+
+(10)
+
+Pr
+
+�'h!t
+
+
+
+h,
+
+ 
+
+hn-3�u
+
+Pr
+
+�'h!t
+
+
+
+s
+
+,
+
+3s
+
+-p�
+
+(11)
+
+
+The quality of the resulting model depends of course
+
+on the clustering
+
+s
+
+�� . In narrow discourse domains (e.g.
+
+ATIS, [31]), good results are often achieved by manual clus-
+
+tering of semantic categories (e.g. [32]). But in less con-
+
+strained domains, manual clustering by linguistic categories
+
+(e.g. parts of speech) does not usually improve on the word-
+
+based model. Automatic, iterative clustering using informa-
+
+tion theoretic criteria [33, 34] applied to large corpora can
+
+sometimes reduce perplexity by 10% or so, but only after
+
+the model is interpolated with its word-based counterpart.
+
+3.2. Decision tree models
+
+Decision trees and CART-style [35] algorithms were ﬁrst
+
+applied to language modeling by [36]. A decision tree can
+
+arbitrarily partition the space of histories by asking arbitrary
+
+binary questions about the history
+
+l
+
+at each of the internal
+
+nodes. The training data at each leaf is then used to con-
+
+struct a probability distribution Pr
+
+��h
+
+
+
+l
+
+� over the next word.
+
+To reduce the variance of the estimate, this leaf distribution
+
+is interpolated with internal-node distributions found along
+
+the path to the root.
+
+As usual, trees are grown by greedily selecting, at each
+
+node, the most informative question (as judged by reduction
+
+in entropy). Pruning and cross validation are also used.
+
+Applying CART technology to language modeling is
+
+quite a challenge: The space of histories is very large (
+
+;�v
+
+,ww
+
+for a 20 word sequence over a 100,000 word vocabulary),
+
+and the space of possible questions is even larger (
+
+_
+
+,wRxzy�y
+
+).
+
+Even if questions are restricted to individual words in the
+
+history, there are still
+
+_
+
+v
+
+%�_
+
+,w3{
+
+such questions. Very strong
+
+bias must be introduced, by restricting the class of ques-
+
+tions to be considered and using greedy search algorithms.
+
+To support optimal single-word questions at a given node,
+
+algorithms were developed for rapid optimal binary parti-
+
+tioning of the vocabulary (e.g. [37]).
+
+The ﬁrst attempt at CART-style LM [36] used a history
+
+window of 20 words and restricted questions to individual
+
+words, though it allowed more complicated questions con-
+
+sisting of composites of simple questions. It took many
+
+months to train, and the result fell short of expectations:
+
+a 4% reduction in perplexity over the baseline trigram, and
+
+a further 9% reduction when interpolated with the latter. In
+
+the second attempt [38], much stronger bias was introduced:
+
+ﬁrst, the vocabulary was clustered into a binary hierarchy as
+
+in [33], and each word was assigned a bit-string represent-
+
+ing the path leading to it from the root. Then, tree questions
+
+were restricted to the identity of the most signiﬁcant as-yet-
+
+unknown bit in each word in the history. This reduced the
+
+candidate set to a handful of questions at each node. Unfor-
+
+tunately, results here were also disappointing, and the ap-
+
+proach was largely abandoned.
+
+Theoretically, decision trees represent the ultimate in
+
+partition based models. It is likely that trees exist which
+
+signiﬁcantly outperform ngrams. But ﬁnding them seems
+
+difﬁcult, for both computational and data sparseness rea-
+
+sons.
+
+3.3. Linguistically motivated models
+
+While all SLMs get some inspiration from an intuitive view
+
+of language, in most models actual linguistic content is quite
+
+negligible. Several SLM techniques, however, are directly
+
+derived from grammars commonly uses by linguists.
+
+Context free grammar (CFG) is a crude yet well un-
+
+derstood model of natural language. A CFG is deﬁned by a
+
+vocabulary, a set of non-terminal symbols and a set of pro-
+
+duction or transition rules. Sentences are generated, starting
+
+with an initial non-terminal, by repeated application of the
+
+transition rules, each transforming a non-terminal into a se-
+
+quence of terminals (i.e. words) and non-terminals, until a
+
+terminals-only sequence is achieved. Speciﬁc CFGs have
+
+been created based on parsed and annotated corpora such as
+
+[39], with good, though still incomplete, coverage of new
+
+data.
+
+A probabilistic (or stochastic) context free grammar puts
+
+a probability distribution on the transitions emanating from
+
+each non-terminal, thereby inducing a distribution over the
+
+set of all sentences. These transition probabilities can be es-
+
+timated from annotated corpora using the Inside-Outside al-
+
+gorithm [40], an Estimation-Maximization (EM) algorithm
+
+(see [41]). However, the likelihood surfaces of these models
+
+tend to contain many local maxima, and the locally maximal
+
+likelihood points found by the algorithm usually fall short of
+
+the global maximum. Furthermore, even if global ML esti-
+
+mation were feasible, it is generally believed that context
+
+sensitive transition probabilities are needed to adequately
+
+account for actual behavior of language. Unfortunately, no
+
+efﬁcient training algorithm is known for this situation.
+
+In spite of this, [42] successfully incorporated CFG knowl-
+
+edge sources into a SLM to achieve a 15% reduction in a
+
+speech recognition error rate in the ATIS domain. They
+
+did so by parsing the utterances with a CFG to produce a
+
+sequence of grammatical fragments of various types, then
+
+constructing a trigram of fragment types to supplant the
+
+standard ngram.
+
+Link grammar is a lexicalized grammar proposed by
+
+[43]. Each word is associated with one or more ordered
+
+sets of typed links; each such link must be connected to a
+
+similarly typed link of another word in the sentence. A legal
+
+parse consists of satisfying all links in the sentence via a
+
+planar graph. Link grammar has the same expressive power
+
+as a CFG, but arguably conforms better to human linguistic
+
+intuition. A link grammar for English has been constructed
+
+manually with good coverage. Probabilistic forms of link
+
+grammar have also been attempted [44]. Link grammar is
+
+
+related to dependency grammar, which will be discussed in
+
+section 4.
+
+3.4. Exponential models
+
+All models discussed so far suffer from data fragmentation,
+
+in that more detailed modeling necessarily results in each
+
+new parameter being estimated with less and less data. This
+
+is very apparent in decision trees, where, as the tree grows,
+
+leaves contain fewer and fewer data points.
+
+Fragmentation can be avoided by using an exponential
+
+model of the form:
+
+���h
+
+
+
+l
+
+�0
+
+;
+
+
+
+|J�
+
+l
+
+�
+
+%
+
+W
+
+
+
+V}
+
+=1? ~
+
+?€$?
+
+�
+
+l8
+
+h��‚
+
+(12)
+
+where
+
+~
+
+? are the parameters,
+
+|J�
+
+l
+
+� is a normalizing term,
+
+and the features
+
+
+
+?
+
+�
+
+l8
+
+h� are arbitrary functions of the word-
+
+history pair. Given a training corpus, the ML estimate can
+
+be shown to satisfy the constraints:
+
+=„ƒ†…
+
+��
+
+l
+
+�%
+
+=5‡
+
+���h
+
+
+
+l
+
+�8%
+
+$?
+
+�
+
+l8
+
+h�ˆŠ‰L‹
+
+a
+
+$?
+
+�
+
+l0
+
+h�
+
+(13)
+
+where
+
+…
+
+�
+
+is the empirical distribution of the training corpus.
+
+The ML estimate can also be shown to coincide with
+
+the Maximum Entropy (ME) distribution [45], namely the
+
+one with highest entropy among all distributions satisfying
+
+equation 13. This unique ML/ME solution can be found by
+
+an iterative procedure [46, 47].
+
+The ME paradigm, and the more general MDI frame-
+
+work, were ﬁrst suggested for language modeling by [48],
+
+and have since seen considerable success (e.g. [49, 50, 8]).
+
+Its strength lies in principly incorporating arbitrary knowl-
+
+edge sources while avoiding fragmentation. For example,
+
+in [8], conventional ngrams, distance-2 ngrams, and long
+
+distance word pairs (“triggers”) were encoded as features,
+
+and resulted in up to 39% perplexity reduction and up to
+
+14% speech recognition word error rate reduction over the
+
+trigram baseline.
+
+While ME modeling is elegant and general, it is not
+
+without its weaknesses. Training a ME model is compu-
+
+tationally challenging, and sometimes altogether infeasible.
+
+Using a ME model is also CPU intensive, because of the
+
+need for explicit normalization. Unnormalized ME model-
+
+ing is attempted in [51]. ME smoothing is analyzed in [52].
+
+The relative success of ME modeling focused attention
+
+on the remaining problem of feature induction, namely, se-
+
+lection of useful features to be included in the model. An
+
+automatic iterative procedure for selecting features from a
+
+given candidate set is described in [47]. An interactive pro-
+
+cedure for eliciting candidate sets is described in [53].
+
+ME language modeling remains the subject of intensive
+
+research; see for example [54, 55, 56, 57, 58].
+
+3.5. Adaptive models
+
+So far we have treated language as a homogeneous source.
+
+But in fact natural language is highly heterogeneous, with
+
+varying topics, genres and styles.
+
+In cross-domain adaptation, test data comes from a
+
+source to which the language model has not been exposed
+
+during training. The only useful adaptation information is
+
+in the current document itself. A common and quite effec-
+
+tive technique for exploiting this information is the cache:
+
+the (continuously developing) history is used to create, at
+
+runtime, a dynamic
+
+� -gram
+
+�8Œ5Œ�Žp��h
+
+
+
+l
+
+� , which in turn is
+
+interpolated with the static model:
+
+�
+
+5�5‘p’k“
+
+”
+
+�'h
+
+
+
+l
+
+�
+
+~
+
+�8•
+
+’'5’k“
+
+Œ
+
+�'h
+
+
+
+l
+
+�#– �
+
+;
+
+M
+
+~
+
+��
+
+Œ5Œ�Žp
+
+��h
+
+
+
+l
+
+�
+
+(14)
+
+with the weight
+
+~
+
+optimized on held-out data. Cache
+
+LMs were ﬁrst introduced by [59] and [60]. [61, 62] report
+
+reduction in perplexity, and [63] also reports reduction in
+
+recognition error rate. [64] introduced yet another adapta-
+
+tion scheme.
+
+In within-domain adaptation, test data comes from the
+
+same source as the training data, but the latter is hetero-
+
+geneous, consisting of many subsets with varying topics,
+
+styles, or both. Adaptation then proceeds in the following
+
+steps:
+
+1. Clustering the training corpus along the dimension of
+
+variability, say, topic (e.g. [65]).
+
+2. At runtime, identifying the topic or set of topics ([66,
+
+67]) of the test data.
+
+3. Locating appropriate subsets of the training corpus,
+
+and using them to build a speciﬁc model.
+
+4. Combining the speciﬁc model with a corpus-wide model
+
+(in statistical terminology, shrinking the speciﬁc model
+
+towards the general one, to trade off the former’s vari-
+
+ance against the latter’s bias). This is usually done
+
+via linear interpolation, at either the word probability
+
+level or the sentence probability level [65].
+
+A special (and very common) case is when one has only
+
+small amounts of data in the target domain and large amounts
+
+in other domains. In this case, the only relevant step is the
+
+last one: combining models from the two domains. The
+
+outcome here is often disappointing, though: training data
+
+outside the domain has surprisingly little beneﬁt. For ex-
+
+ample, when modeling the Switchboard domain (conversa-
+
+tional speech, [68]), the 40 million words of the WSJ corpus
+
+(newspaper articles, [69]) and even the 140 million words
+
+of the BN corpus (broadcast news transcriptions, [70]) im-
+
+prove by only a few percentage points the application per-
+
+formance of the in-domain model trained on a paltry 2.5
+
+
+million words. Although this is a signiﬁcant improvement
+
+on such a difﬁcult corpus, it is nonetheless disappointing
+
+considering the amount of data involved. By some esti-
+
+mates [71], another 1 million words of Switchboard data
+
+would help the model more than 30 million words of out-
+
+of-domain data. This suggest that our adaptation techniques
+
+are too crude.
+
+4. PROMISING CURRENT DIRECTIONS
+
+This section discusses current research directions that, in
+
+this author’s subjective opinion, show signiﬁcant promise.
+
+4.1. Dependency models
+
+Dependency grammars (DG) describe sentences in terms of
+
+asymmetric pairwise relationships among words. With a
+
+single exception, each word in the sentence is dependent
+
+upon one other word, called its head or parent. The single
+
+exception is the root, which serves as the head of the en-
+
+tire sentence. For more about DGs, see [72]. Probabilistic
+
+DGs have also been developed, together with algorithms for
+
+learning them from corpora (e.g. [73]).
+
+Probabilistic dependency grammars are particularly suited
+
+to
+
+� -gram style modeling, where each word is predicted
+
+based on a small number of other words. The main dif-
+
+ference is that in a conventional
+
+� -gram, the structure of
+
+the model is predetermined: each word is predicted from
+
+a few words that immediately preceded it. In DG, which
+
+words serve as predictors depends on the dependency graph,
+
+which is a hidden variable. A typical implementation will
+
+parse a sentence
+
+� to generate the most likely dependency
+
+graphs
+
+—
+
+? (with attendant probabilities
+
+�&amp;�
+
+—
+
+?
+
+� ), compute
+
+for each of them a generation probability
+
+�&amp;�'�
+
+
+
+—
+
+?
+
+� (either
+
+� -
+
+gram style or perhaps as an ME model), and ﬁnally estimate
+
+the complete sentence probability as
+
+�����q™˜
+
+?
+
+��
+
+—
+
+?
+
+�n%
+
+��'�
+
+
+
+—
+
+?
+
+� (this is only approximate because the
+
+�&amp;�
+
+—
+
+?
+
+� them-
+
+selves were derived from the sentence
+
+� .) Sometime
+
+��'�$�
+
+is further approximated as
+
+��'�
+
+
+
+—
+
+
+
+� , where
+
+—
+
+ is the single
+
+best scoring parse.
+
+An example of such a model is [74], which uses the
+
+parser of [75] to generate the candidate parses, and trains the
+
+parameters using maximum entropy. The probabilistic link
+
+grammar [44] mentioned in section 3.3 also falls roughly
+
+in this category. Most recently, [76] employed a parser with
+
+probabilistic parameterization of a pushdown automata, and
+
+used an EM-type algorithm for training, with encouraging
+
+results (1% recognition word error rate reduction on the no-
+
+toriously difﬁcult Switchboard corpus). In all, this method
+
+of combining hidden linguistic structure with chain-rule pa-
+
+rameterization can yield a linguistically grounded yet com-
+
+putationally tractable model.
+
+4.2. Dimensionality reduction
+
+One of the reasons language is so hard to model statistically
+
+is that it is ostensibly categorical, with an extremely large
+
+number of categories, or dimensions. A prime example is
+
+the vocabulary. To most language models, the vocabulary is
+
+but a very large set of unrelated entries. BANK is no closer
+
+to LOAN or to BANKS than it is to, say, BRAZIL. This
+
+results in a large number of parameters. Yet our linguistic
+
+intuition is that there is a great deal of structure in the rela-
+
+tionship among words. We feel that the “true” dimension of
+
+the vocabulary is actually quite lower.
+
+Similarly, for other phenomena in language, the under-
+
+lying space may be of moderate or even low dimensional-
+
+ity. Consider topic adaptation. As the topic changes, the
+
+probabilities of almost all words in the vocabulary change.
+
+Since no two documents are exactly about the same thing, a
+
+straightforward approach would require an inordinate num-
+
+ber of parameters. Yet the underlying topic space can be
+
+reasonably modeled in much fewer dimensions.
+
+This is the motivation behind [77], which uses the tech-
+
+nique of Latent Semantic Analysis ([78]) to simultaneously
+
+reduce the dimensionality of the vocabulary and that of the
+
+topic space. First, the occurrence of each vocabulary word
+
+in each document is tabulated. This very large matrix is
+
+then reduced via Singular Value Decomposition to a much
+
+lower dimension (typically 100–150). The new, smaller ma-
+
+trix captures the most salient correlations between speciﬁc
+
+combinations of words on one hand and clusters of docu-
+
+ments on the other. The decomposition also yields matrices
+
+that project from document-space and word-space into the
+
+new, combined space. Consequently, any new document
+
+can be projected into the combined space, effectively be-
+
+ing classiﬁed as a combination of the fundamental under-
+
+lying topics, and adapted to accordingly. In [77], this type
+
+of adaptation is combined with an
+
+� -gram, and a perplex-
+
+ity reduction of 30% over a trigram baseline is reported. In
+
+[79], the technique is further developed and is found to also
+
+reduce recognition errors by 16% over a trigram baseline.
+
+4.3. Whole sentence models
+
+All language models described so far use the chain rule
+
+to decompose the probability of a sentence into a product
+
+of conditional probabilities of the type Pr
+
+��h
+
+
+
+l
+
+� . Histori-
+
+cally, this has been done to facilitate estimation by relative
+
+counts. The decomposition is ostensibly harmless: after all,
+
+it is not an approximation but an exact equality. However,
+
+as a result, language modeling by and large has been re-
+
+duced to modeling the distribution of a single word. This
+
+in turn may be a signiﬁcant hindrance to modeling linguis-
+
+tic structure: some linguistic phenomena are impossible or
+
+at best awkward to think about, let alone encode, in a con-
+
+ditional framework. These include sentence-level features
+
+
+such as person and number agreement, semantic coherence,
+
+parsability, and even length. Furthermore, external inﬂu-
+
+ences on the sentence (e.g. previous sentences, topic) must
+
+be factored into the prediction of every word, which can
+
+cause small biases to compound.
+
+To address these issues, [53] proposed a whole sentence
+
+exponential model:
+
+����š;
+
+
+
+|
+
+%p�
+
+w
+
+���^%
+
+W
+
+
+
+V›}
+
+=œ?
+
+~
+
+?
+
+
+
+?
+
+�'�$�‚
+
+(15)
+
+Compared with the conditional exponential model of equa-
+
+tion 12,
+
+|
+
+is now a true constant, which eliminates the seri-
+
+ous burden of normalization. Most importantly, the features
+
+$?
+
+��� can capture arbitrary properties of the entire sentence.
+
+Training this model requires sampling from an exponen-
+
+tial distribution, a non-trivial task. The use of Monte Carlo
+
+Markov Chain and other sampling methods for language
+
+is studied in [80]. Sampling efﬁciency is crucial. Conse-
+
+quently, the bottleneck in this model is not the number of
+
+features or amount of data, but rather how rare the features
+
+are, and how accurately they need to be modeled. Inter-
+
+estingly, it has been shown [81] that most of the beneﬁt is
+
+likely to come from the more common features.
+
+Parse-based features have been tried in [81], and seman-
+
+tic features are discussed in [53]. An interactive methodol-
+
+ogy for feature induction was also proposed in [53]. This
+
+methodology leads to a formulation of the training problem
+
+as logistic regression, with signiﬁcant practical beneﬁts over
+
+ML training.
+
+5. CHALLENGES
+
+Perhaps the most frustrating aspect of statistical language
+
+modeling is the contrast between our intuition as speakers of
+
+natural language and the over-simplistic nature of our most
+
+successful models.
+
+As native speakers, we feel strongly that language has
+
+a deep structure. Yet we are not sure how to articulate that
+
+structure, let alone encode it, in a probabilistic framework.
+
+Established linguistic theories have been of surprisingly lit-
+
+tle help here, probably because their goal is to draw a line
+
+between what is properly in the language and what isn’t,
+
+whereas SLM’s goals are quite different.
+
+As an example, consider the problem of clustering the
+
+vocabulary words which was discussed in section 3.1. As
+
+mentioned there, several automatic iterative methods have
+
+been proposed (e.g. [33, 34]). Table 1 lists example word
+
+classes derived by such a method [82]. While most words’
+
+placement appear satisfactory, a few of the words seem out
+
+of place.
+
+Not surprisingly, these are often words whose
+
+count in the corpus was insufﬁcient for reliable assignment.
+
+Ironically, it is exactly these words which stood to beneﬁt
+
+the most from clustering. In general, the more reliably a
+
+Table 1: Data driven word classes.
+
+
+
+
+
+COMMITTEE COMMISSION PANEL SUBCOMMITTEE WONK
+
+
+
+
+
+THEMSELVES MYSELF YOURSELF UNBECOMING ...
+
+
+
+
+
+ATTORNEY SURGEON RUKEYSER CONSUL RICKEY ...
+
+
+
+
+
+ACTION ACTIVITY INTERVENTION ATTACHE WARFARE ...
+
+
+
+
+
+CENTER ASSOCIATION FACETED INSTITUTE GUILD ...
+
+
+
+
+
+PARTICULAR YEAR’S NIGHT’S MORNING’S FATEFUL ...
+
+
+
+
+
+word can be assigned to a class, the less it will beneﬁt from
+
+that assignment. How then is vocabulary clustering to be-
+
+come effective?
+
+I believe that the solution to this problem, and others
+
+like it, is to inject human knowledge of language into the
+
+process. This can take the following forms:
+
+Interactive modeling. Data-driven optimization and hu-
+
+man knowledge and decision making can play complemen-
+
+tary roles in an intertwined iterative process. For the vocab-
+
+ulary clustering problem, this means that a human is put in
+
+the loop, to arbitrate some borderline decisions and override
+
+others. For example, a human can decide that ’TUESDAY’
+
+belongs in the same cluster as ’MONDAY’, ’WEDNES-
+
+DAY’, ’THURSDAY’ and ’FRIDAY’, even if it did not oc-
+
+cur enough times to be placed there automatically, and even
+
+if it did not occur at all. Another example of this approach
+
+is the interactive feature induction methodology described
+
+in [53].
+
+Encoding knowledge as priors. One of the perils of
+
+using human knowledge is that it is often overstated, and
+
+sometimes wrong. Thus a better solution might be to encode
+
+such knowledge as a prior in a Bayesian updating scheme.
+
+After training, whatever phenomena are not sufﬁciently rep-
+
+resented in the training corpus will continue to be captured
+
+thanks to the prior. Whenever enough data exist, however,
+
+they will override the prior. For the vocabulary clustering
+
+problem, experts’ beliefs about the relationships between
+
+vocabulary entries must be suitably encoded, and the clus-
+
+tering paradigm must be changed to optimize an appropri-
+
+ate posterior measure. Thus, in the example above, enough
+
+data may exist to separate out ’FRIDAY’ because of its use
+
+in phrases like “Thank God It’s Friday”.
+
+Encoding linguistic knowledge as a prior is an exciting
+
+challenge which has yet to be seriously attempted. This
+
+will likely include deﬁning a distance metric over words
+
+and phrases, and a stochastic version of structured word on-
+
+tologies like WordNet [83]. At the syntactic level, it could
+
+include Bayesian versions of manually created lexicalized
+
+grammars. In practice, the Bayesian framework and the in-
+
+teractive process may be combined, taking advantage of the
+
+superior theoretical foundation of the former and the com-
+
+putational advantages of the latter.
+
+
+Acknowledgements
+
+I am grateful to Stanly Chen, Sanjeev Khudanpur, John Laf-
+
+ferty and Bob Moore for helpful comments.
+
+6. REFERENCES
+
+[1] Peter F. Brown, John Cocke, Stephen A. Della Pietra,
+
+Vincent J. Della Pietra, Frederick Jelinek, John D. Laf-
+
+ferty, Robert L. Mercer, and Paul S. Roossin. A statis-
+
+tical approach to machine translation. Computational
+
+Linguistics, 16(2):79–85, June 1990.
+
+[2] Ralf brown and Robert &amp; Frederking. Applying sta-
+
+tistical English language modeling to symbolic ma-
+
+chine translation. In Proceedings of the 6th Interna-
+
+tional Conference on Theoretical and Methodological
+
+Issues in Machine Translation (TMI’95), pages 221–
+
+239, July 1995.
+
+[3] J. Ponte and W. Bruce. Croft. A language modeling
+
+approach to information retrieval. In Proceedings of
+
+the 21st international conference on research and de-
+
+velopment in information retrieval (SIGIR’98), pages
+
+275–281, 1998.
+
+[4] Adam Berger and John Lafferty. Information retrieval
+
+as statistical translation. In Proceedings of the 22nd
+
+annual conference on research and development in in-
+
+formation retrieval (SIGIR’99), pages 222–229, 1999.
+
+[5] Fred Jelinek. The 1995 language modeling summer
+
+workshop at Johns Hopkins University. Closing re-
+
+marks.
+
+[6] Lalit R. Bahl, Jim K. Baker, Frederick Jelinek, and
+
+Robert L. Mercer. Perplexity - a measure of the dif-
+
+ﬁculty of speech recognition tasks. Program of the
+
+94th Meeting of the Acoustical Society of America J.
+
+Acoust. Soc. Am., 62:S63, 1977. Suppl. no. 1.
+
+[7] Stanley F. Chen, Douglas Beeferman, and Ronald
+
+Rosenfeld. Evaluation metrics for language models.
+
+In Proceedings of the DARPA Broadcast News Tran-
+
+scription and Understanding Workshop, pages 275–
+
+280, 1998.
+
+[8] Ronald Rosenfeld.
+
+A maximum entropy approach
+
+to adaptive statistical language modeling. Computer
+
+Speech and Language, 10:187–228, 1996.
+
+longer
+
+version published as “Adaptive Statistical Language
+
+Modeling: A Maximum Entropy Approach,” Ph.D.
+
+thesis, Computer Science Department, Carnegie Mel-
+
+lon University, TR CMU-CS-94-138, April 1994.
+
+[9] C.E. Shannon.
+
+A mathematical theory of commu-
+
+nication.
+
+Bell Systems Technical Journal, 27:379–
+
+423,623–656, 1948.
+
+[10] C.E. Shannon. Prediction and entropy of printed En-
+
+glish. Bell Systems Technical Journal, 30:50–64, Jan-
+
+uary 1951.
+
+[11] T.M. Cover and R.C. King. A convergent gambling
+
+estimate of the entropy of English. IEEE Transactions
+
+on Information Theory, 24(4):413–421, 1978.
+
+[12] E. Brill, R. Florian, C. Henderson, and L. Mangu. Be-
+
+yond n-grams: Can linguistic sophistication improve
+
+language modeling? In Proceedings of the 36th An-
+
+nual Meeting of the ACL, 1998.
+
+[13] Frederick Jelinek.
+
+Statistical Methods for Speech
+
+Recognition. MIT Press, Cambridge, Massachusetts,
+
+1997.
+
+[14] I.J. Good. The population frequencies of species and
+
+the estimation of population parameters. Biometrika,
+
+40(3 and 4):237–264, 1953.
+
+[15] Ian H. Witten and Timothy C. Bell.
+
+The zero-
+
+frequency problem: Estimating the probabilities of
+
+novel events in adaptive text compression.
+
+IEEE
+
+Transactions on Information Theory, 37(4):1085–
+
+1094, July 1991.
+
+[16] Slava M. Katz. Estimation of probabilities from sparse
+
+data for the language model component of a speech
+
+recognizer. IEEE Transactions on Acoustics, Speech
+
+and Signal Processing, 35(3):400–401, March 1987.
+
+[17] Hermann Ney, Ute Essen, and Reinhard Kneser. On
+
+structuring probabilistic dependences in stochastic
+
+language modeling. Computer Speech and Language,
+
+8:1–38, 1994.
+
+[18] Reinhard Kneser and Hermann Ney.
+
+Improved
+
+backing-off for m-gram language modeling. In Pro-
+
+ceedings of the IEEE International Conference on
+
+Acoustics, Speech and Signal Processing, volume I,
+
+pages 181–184, Detroit, Michigan, May 1995.
+
+[19] Frederick Jelinek and Robert L. Mercer. Interpolated
+
+estimation of Markov source parameters from sparse
+
+data.
+
+In Proceedings of the Workshop on Pattern
+
+Recognition in Practice, pages 381–397, Amsterdam,
+
+The Netherlands: North-Holland, May 1980.
+
+[20] D. Ron, Y. Singer, and N. Tishby. The power of amne-
+
+sia. In J. Cowan, G. Tesauro, and J. Alspector, editors,
+
+Advances in Neural Information Processing Systems
+
+6, pages 176–183. Morgam Kaufmann, San Mateo,
+
+CA, 1994.
+
+
+[21] I. Guyon and F. Pereira. Design of a linguistic post-
+
+processor using variable memory length Markov mod-
+
+els. In Proceedings of the 3rd ICDAR, pages 454–457,
+
+1995.
+
+[22] Reinhard Kneser.
+
+Statistical language modeling us-
+
+ing a variable context length. In Proceedings of IC-
+
+SLP, volume 1, pages 494–497, Philadelphia, October
+
+1996.
+
+[23] Thomas Niesler and Philip Woodland. Variable-length
+
+category n-gram language models. Computer Speech
+
+and Language, 21:1–26, 1999.
+
+[24] Man-Hung Siu and Mari Ostendorf. Variable n-gram
+
+and extensions for conversational speech language
+
+modeling. IEEE Transactions on Speech and Audio
+
+Processing, 8(1):63–75, 2000.
+
+[25] Pierre Dupont and Ronald Rosenfeld. Lattice based
+
+language models. Technical Report CMU-CS-97-173,
+
+Carnegie Mellon University, Department of Computer
+
+Science, September 1997.
+
+[26] Stanley F. Chen and Joshua Goodman. An empirical
+
+study of smoothing techniques for language modeling.
+
+In Proceedings of the 34th Annual Meeting of the ACL,
+
+pages 310–318, Santa Cruz, California, June 1996.
+
+[27] Ronald Rosenfeld.
+
+The CMU statistical language
+
+modeling toolkit and its use in the 1994 ARPA CSR
+
+evaluation. In Proceedings of the Spoken Language
+
+Systems Technology Workshop, pages 47–50, Austin,
+
+Texas, January 1995.
+
+[28] Philip Clarkson and Ronald Rosenfeld. Statistical lan-
+
+guage modeling using the CMU-Cambridge toolkit. In
+
+Proceedings of the European Conference on Speech
+
+Communication and Technology (Eurospeech), 1997.
+
+[29] Andreas Stolcke. SRILM—the SRI language model-
+
+ing toolkit. http://www.speech.sri.com/projects/srilm/,
+
+1999.
+
+[30] Stanley F. Chen. Language model tools (v0.1) user’s
+
+guide. http://www.cs.cmu.edu/ sfc/manuals/h015c.ps,
+
+December 1998.
+
+[31] Patti J. Price. Evaluation of spoken language systems:
+
+the atis domain. In Proceedings of the DARPA Speech
+
+and Natural Language Workshop, June 1990.
+
+[32] Wayne H. Ward. The cmu air travel information ser-
+
+vice: understanding spontaneous speech.
+
+In Pro-
+
+ceedings of the DARPA Speech and Natural Language
+
+Workshop, pages 127–129, June 1990.
+
+[33] Peter F. Brown, Vincent J. Della Pietra, Peter V. deS-
+
+ouza, Jennifer C. Lai, and Robert L. Mercer. Class-
+
+based n-gram models of natural language. Computa-
+
+tional Linguistics, 18(4):467–479, December 1992.
+
+[34] Reinhard Kneser and Hermann Ney. Improved clus-
+
+tering techniques for class-based statistical language
+
+modeling. In Proceedings of the European Confer-
+
+ence on Speech Communication and Technology (Eu-
+
+rospeech), 1993.
+
+[35] Leo Breiman, Jerome H. Friedman, Richard A. Ol-
+
+shen, and Charles J. Stone.
+
+Classiﬁcation and Re-
+
+gression Trees. Wadsworth &amp; Brooks/Cole Advanced
+
+Books &amp; Software, Monterey, California, 1984.
+
+[36] Lalit R. Bahl, Peter F. Brown, Peter V. de Souza, and
+
+Robert L. Mercer.
+
+A tree-based statistical language
+
+model for natural language speech recognition. IEEE
+
+Transactions on Acoustics, Speech and Signal Pro-
+
+cessing, 37:1001–1008, July 1989.
+
+[37] Arthur N´adas, David Nahamoo, Michael A. Picheny,
+
+and Jeffrey Powell. An iterative “ﬂip-ﬂop” approxima-
+
+tion of the most informative split in the construction
+
+of decision trees. In Proceedings of the IEEE Inter-
+
+national Conference on Acoustics, Speech and Signal
+
+Processing, Toronto, Canada, May 1991.
+
+[38] Peter F. Brown, Steven A. Della Pietra, Vincent J.
+
+Della Pietra, Robert L. Mercer, and Philip S. Resnik.
+
+Language modeling using decision trees. research re-
+
+port, I.B.M. Research, Yorktown Heights, NY, 1991.
+
+[39] M. Marcus, B. Santorini, and M. Marcinkiewicz.
+
+Building a large annotated corpus of English: the Penn
+
+Treeback. Computational Linguistics, 19(2), 1993.
+
+[40] James K. Baker.
+
+Trainable grammars for speech
+
+recognition. In Proceedings of the Spring Conference
+
+of the Acoustical Society of America, pages 547–550,
+
+Boston, MA, June 1979.
+
+[41] Frederick Jelinek, John D. Lafferty, and Robert L.
+
+Mercer.
+
+Basic methods of probabilistic context-
+
+free grammars.
+
+In P. Laface and R. De Mori, edi-
+
+tors, Speech Recognition and Understanding: Recent
+
+Advances, Trends, and Applications, volume 75 of
+
+F: Computer and Systems Sciences, pages 345–360.
+
+Springer Verlag, 1992.
+
+[42] R. Moore, D. Appelt, J. Dowding, J. M. Gawron, and
+
+D. Moran. Combining linguistic and statistical knowl-
+
+edge sources in natural-language processing for atis.
+
+In Spoken Language Systems Technology Workshop,
+
+pages 261–264, Austin, Texas, February 1995. Mor-
+
+gan Kaufmann Publishers, Inc.
+
+
+[43] Danny Sleator and Davy Temperley. Parsing English
+
+with a link grammar. Technical Report CMU-CS-91-
+
+196, Computer Science Department, Carnegie Mellon
+
+University, Pittsburgh, PA, October 1991.
+
+[44] John D. Lafferty, Danny Sleator, and Davy Temper-
+
+ley. Grammatical trigrams: a probabilistic model of
+
+link grammar. In Proceedings of the AAAI Fall Sym-
+
+posium on Probabilistic Approaches to Natural lan-
+
+guage, Cambridge, MA, October 1992.
+
+[45] E.T. Jaynes.
+
+Information theory and statistical me-
+
+chanics. Physics Reviews, 106:620–630, 1957.
+
+[46] J.N. Darroch and D. Ratcliff.
+
+Generalized iterative
+
+scaling for log-linear models. The Annals of Mathe-
+
+matical Statistics, 43:1470–1480, 1972.
+
+[47] S. Della Pietra, V. Della Pietra, and J. Lafferty. In-
+
+ducing features of random ﬁelds.
+
+IEEE Transac-
+
+tions on Pattern Analysis and Machine Intelligence,
+
+19(4):380–393, April 1997.
+
+[48] S. Della Pietra, V. Della Pietra, R.L. Mercer, and
+
+S. Roukos. Adaptive language modeling using min-
+
+imum discriminant estimation.
+
+In Proceedings of
+
+the Speech and Natural Language DARPA Workshop,
+
+February 1992.
+
+[49] Raymond Lau, Ronald Rosenfeld, and Salim Roukos.
+
+Trigger-based language models: A maximum entropy
+
+approach. In Proceedings of ICASSP-93, pages II–45
+
+– II–48, April 1993.
+
+[50] Adam Berger, Stephen Della Pietra, and Vincent
+
+Della Pietra. A maximum entropy approach to nat-
+
+ural language processing. Computational Linguistics,
+
+22(1):39–71, 1996.
+
+[51] Stanley F. Chen, Kristie Seymore, and Ronald Rosen-
+
+feld.
+
+Topic adaptation for language modeling us-
+
+ing unnormalized exponential models. In ICASSP-98,
+
+Seattle, Washington, 1998.
+
+[52] Stan F. Chen and Ronald Rosenfeld.
+
+A survey of
+
+smoothing techniques for me models. IEEE Trans-
+
+actions on Speech and Audio Processing, 8(1):37–50,
+
+2000.
+
+[53] Ronald Rosenfeld, Larry Wasserman, Can Cai, and
+
+Xiaojin Zhu. Interactive feature induction and logis-
+
+tic regression for whole sentence exponential language
+
+models. In Proceedings of the IEEE Workshop on Au-
+
+tomatic Speech Recognition and Understanding, Key-
+
+stone, CO, December 1999.
+
+[54] Doug Beeferman, Adam Berger, and John Lafferty. A
+
+model of lexical attraction and repulsion. In Proceed-
+
+ings of the 35th Annual Meeting of the Association for
+
+Computational Linguistics, pages 373–380, Madrid,
+
+Spain, 1997.
+
+[55] John D. Lafferty and Bernard Suhm. Cluster expan-
+
+sions and iterative scaling for maximum entropy lan-
+
+guage models. In K. Hanson and R. Silver, editors,
+
+Maximum Entropy and Bayesian Methods, pages 195–
+
+202. Kluwer Academic Publishers, 1995.
+
+[56] Jochen Peters and Dietrich Klakow. Compact maxi-
+
+mum entropy language models. In Proceedings of the
+
+IEEE Workshop on Automatic Speech Recognition and
+
+Understanding, Keystone, CO, December 1999.
+
+[57] Sanjeev Khudanpur and Jun Wu.
+
+A maximum en-
+
+tropy language model integrating n-grams and topic
+
+dependencies for conversational speech recognition.
+
+In Proceedings of the IEEE International Conference
+
+on Acoustics, Speech and Signal Processing, Phoenix,
+
+AZ, 1999.
+
+[58] Jun Wu and Sanjeev Khudanpur. Combining nonlocal,
+
+syntactic and n-gram dependencies in language mod-
+
+eling. In Proceedings of the European Conference on
+
+Speech Communication and Technology (Eurospeech),
+
+Budapest, Hungary, 1999.
+
+[59] Roland Kuhn. Speech recognition and the frequency
+
+of recently used words: A modiﬁed markov model for
+
+natural language. In 12th International Conference on
+
+Computational Linguistics, pages 348–350, Budapest,
+
+August 1988.
+
+[60] Julian Kupiec. Probabilistic models of short and long
+
+distance word dependencies in running text. In Pro-
+
+ceedings of the DARPA Workshop on Speech and Nat-
+
+ural Language, pages 290–295, February 1989.
+
+[61] Roland Kuhn and Renato De Mori. A cache-based nat-
+
+ural language model for speech reproduction. IEEE
+
+Transactions on Pattern Analysis and Machine Intelli-
+
+gence, PAMI-12(6):570–583, 1990.
+
+[62] Roland Kuhn and Renato De Mori.
+
+Correction to:
+
+A cache-based natural language model for speech re-
+
+production. IEEE Transactions on Pattern Analysis
+
+and Machine Intelligence, PAMI-14(6):691–692, June
+
+1992.
+
+[63] Fred Jelinek, Salim Roukos Bernard Merialdo, and
+
+M. Strauss. A dynamic language model for speech
+
+recognition. In Proceedings of the DARPA Workshop
+
+on Speech and Natural Language, pages 293–295,
+
+February 1991.
+
+
+[64] Reinhard Kneser and Volker Steinbiss.
+
+On the dy-
+
+namic adaptation of stochastic language models. In
+
+Proceedings of the IEEE conference on acoustics,
+
+speech and signal processing, pages 586–589, Min-
+
+neapolis, MN, 1993. volume II.
+
+[65] Rukmini Iyer and Mari Ostendorf. Modeling long dis-
+
+tance dependence in language: Topic mixture vs. dy-
+
+namic cache models. IEEE Transactions on Speech
+
+and Audio Processing IEEE-SAP, 7:30–39, 1999.
+
+[66] Kristie Seymore and Ronald Rosenfeld. Using story
+
+topics for language model adaptation. In Proceedings
+
+of the European Conference on Speech Communica-
+
+tion and Technology (Eurospeech), 1997.
+
+[67] Kristie Seymore, Stanley Chen, and Ronald Rosen-
+
+feld. Nonlinear interpolation of topic models for lan-
+
+guage model adaptation. In Proceedings of ICSLP-98,
+
+1998.
+
+[68] J.J. Godfrey,
+
+E.C. Holliman,
+
+and J. McDaniel.
+
+SWITCHBOARD: Telephone speech corpus for re-
+
+search and development. In Proceedings of the IEEE
+
+International Conference on Acoustics, Speech and
+
+Signal Processing, volume I, pages 517–520, March
+
+1992.
+
+[69] Douglas B. Paul and Janet M. Baker. The design for
+
+the Wall Street Journal-based CSR corpus. In Pro-
+
+ceedings of the DARPA Speech and Natural Language
+
+Workshop, pages 357–362, February 1992.
+
+[70] David Graff.
+
+The 1996 broadcast news speech and
+
+language model corpus. In Proceedings of the DARPA
+
+Workshop on Spoken Language technology, pages 11–
+
+14, 1997.
+
+[71] Ronald Rosenfeld, Rajeev Agarwal, Bill Byrne, Ruk-
+
+mini Iyer, Mark Liberman, Elizabeth Shriberg, Jack
+
+Unverferth, Dimitra Vergyri, and Enrique Vidal. Error
+
+analysis and disﬂuency modeling in the switchbboard
+
+domain. In Proceedings of the International Confer-
+
+ence on Speech and Language Processing, 1996.
+
+[72] http://ufal.mff.cuni.cz/dg-bib2.html.
+
+[73] Glenn Carrol and Eugene Charniak. Two experiments
+
+on learning probabilistic dependency grammars from
+
+corpora. Technical Report TR 92-16, Computer Sci-
+
+ence Department, Brown University, 1992.
+
+[74] Ciprian Chelba, David Engle, frederick Jelinek, Vic-
+
+tor Jimenaz, Sanjeev Khudanpur, Lidia Mangu, Harry
+
+Printz, Eric Ristad, Ronald Rosenfeld, Andreas Stol-
+
+cke, and Dekai Wu. Structure and performance of a
+
+dependency language model. In Proceedings of the
+
+European Conference on Speech Communication and
+
+Technology (Eurospeech), pages 2775–2778, 1997.
+
+volume 5.
+
+[75] Michael Collins. A new statistical parser based on bi-
+
+gram lexical dependencies. In Proceedings of the 34th
+
+annual meeting of the association for Computational
+
+Linguistics, pages 184–191, May 1996.
+
+[76] Ciprian Chelba and Fred Jelinek. Recognition perfor-
+
+mance of a structured language model. In Proceedings
+
+of the European Conference on Speech Communica-
+
+tion and Technology (Eurospeech), pages 1567–1570,
+
+1999. volume 4.
+
+[77] Jerome R. Bellegarda. A multi-span language mod-
+
+eling framework for large vocabulary speech recogni-
+
+tion. IEEE Transactions on Speech and Audio Pro-
+
+cessing, 6:456–467, 1998.
+
+[78] S. Deerwester, S. T. Dumais, G. W. Furnas, T. K. Lan-
+
+dauer, and R. Harshman. Indexing by latent semantic
+
+analysis.
+
+J. Am. Soc. Inform. Science, 41:391–407,
+
+1990.
+
+[79] Jerome R. Bellegarda. Large vocabulary speech recog-
+
+nition with multi-span statistical language models.
+
+IEEE Transactions on Speech and Audio Processing,
+
+8(1):76–84, 2000.
+
+[80] Stanley F. Chen and Ronald Rosenfeld.
+
+Efﬁcient
+
+sampling and feature selection in whole sentence
+
+maximum entropy language models. In ICASSP-99,
+
+Phoenix, Arizona, 1999.
+
+[81] Xiaojin Zhu, Stanley F. Chen, and Ronald Rosenfeld.
+
+Linguistic features for whole sentence maximum en-
+
+tropy language models. In Proceedings of the Euro-
+
+pean Conference on Speech Communication and Tech-
+
+nology (Eurospeech), Budapest, Hungary, 1999.
+
+[82] Stanley F. Chen. Unpublished work. 1998.
+
+[83] Christiane FellBaum, editor. WordNet: An Electronic
+
+Lexical Database. Language, Speech and Communi-
+
+cation. MIT Press, 1998.
+

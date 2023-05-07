@@ -1,0 +1,2148 @@
+
+Training Language Models with Language Feedback
+
+Jérémy Scheurer1
+
+Jon Ander Campos1 2 Jun Shern Chan1
+
+Angelica Chen1
+
+Kyunghyun Cho1 3 4
+
+Ethan Perez1
+
+1New York University, 2University of the Basque Country, 3Genentech, 4CIFAR LMB
+
+{jeremy.scheurer,perez}@nyu.edu
+
+Abstract
+
+Pretrained language models often do not per-
+
+form tasks in ways that are in line with our
+
+preferences, e.g., generating offensive text or
+
+factually incorrect summaries.
+
+Recent work
+
+approaches the above issue by learning from
+
+a simple form of human evaluation: compar-
+
+isons between pairs of model-generated task
+
+outputs.
+
+Comparison feedback conveys lim-
+
+ited information about human preferences per
+
+human evaluation. Here, we propose to learn
+
+from natural language feedback, which con-
+
+veys more information per human evaluation.
+
+We learn from language feedback on model
+
+outputs using a three-step learning algorithm.
+
+First, we condition the language model on the
+
+initial output and feedback to generate many
+
+reﬁnements.
+
+Second, we choose the reﬁne-
+
+ment with the highest similarity to the feed-
+
+back. Third, we ﬁnetune a language model to
+
+maximize the likelihood of the chosen reﬁne-
+
+ment given the input. In synthetic experiments,
+
+we ﬁrst evaluate whether language models ac-
+
+curately incorporate feedback to produce re-
+
+ﬁnements, ﬁnding that only large language
+
+models (175B parameters) do so. Using only
+
+100 samples of human-written feedback, our
+
+learning algorithm ﬁnetunes a GPT-3 model to
+
+roughly human-level summarization ability.
+
+1
+
+Introduction
+
+Language Models (LMs) achieve strong perfor-
+
+mance across diverse NLP tasks, from summariza-
+
+tion to question answering and conversational as-
+
+sistants (Radford and Narasimhan, 2018; Radford
+
+et al., 2019; Brown et al., 2020; Rae et al., 2021,
+
+interalia). A key problem with LMs is that they
+
+generate text that violates human preferences, such
+
+as LM-generated misinformation (Lin et al., 2021),
+
+offensive language (Gehman et al., 2020), and fac-
+
+tually incorrect outputs such as summaries (Stien-
+
+non et al., 2020). Current methods alleviate such
+
+issues by training LMs to generate text that scores
+
+     A language model generates an 
+
+. A human 
+
+writes 
+
+ on the output.
+
+output
+
+feedback
+
+0
+
+ Condition the language model on the input, output, 
+
+and feedback to generate multiple 
+
+.
+
+refinements
+
+1
+
+ Choose the refinement with the 
+
+ 
+
+with the feedback.
+
+highest similarity
+
+2
+
+Write a summary of 
+
+
+
+Once upon a time, ...
+
+To summarize, ...
+
+The summary should ...
+
+Write a summary of 
+
+
+
+Once upon a time, ...
+
+To summarize, ...
+
+The summary should ...
+
+In essence, ...
+
+In a nutshell, ...
+
+The gist of ...
+
+In essence, ...
+
+In a nutshell, ...
+
+The gist of ...
+
+The summary 
+
+should...
+
+In a nutshell, ... }
+
+ 
+
+ a language model on the improved 
+
+outputs.
+
+Finetune
+
+3
+
+Figure 1: An overview of our algorithm for learning
+
+from natural language feedback.
+
+highly according to human preferences, or a predic-
+
+tive model thereof (Ziegler et al., 2019; Stiennon
+
+et al., 2020; Nakano et al., 2021; Ouyang et al.,
+
+2022). In this line of work, human evaluators in-
+
+dicate their preferences by comparing text outputs.
+
+However, each comparison provides little informa-
+
+tion per evaluation about human preferences.
+
+We propose to use natural language feedback,
+
+which contains more information per evaluation.
+
+We introduce a three-step learning algorithm, as
+
+shown in Figure 1. First, we condition an LM
+
+on an input, model-generated output, and human-
+
+written feedback to sample many possible reﬁne-
+
+ments of the output. Second, we choose the re-
+
+arXiv:2204.14146v4  [cs.CL]  17 Nov 2022
+
+
+ﬁnement with the highest embedding-based sim-
+
+ilarity with the feedback. Third, we ﬁnetune an
+
+LM on the chosen reﬁnements. Our algorithm de-
+
+parts from prior work, which uses reinforcement
+
+learning methods (Ziegler et al., 2019, inter alia)
+
+or auxiliary losses (Stacey et al., 2021) that cannot
+
+be straightforwardly generalized to using natural
+
+language feedback.
+
+We validate our algorithm on a carefully-
+
+controlled synthetic task of removing offensive
+
+words from a sentence with GPT-3-based mod-
+
+els (Brown et al., 2020; Ouyang et al., 2022).
+
+We ﬁnd that only the largest GPT-3-based models
+
+(175B parameters) accurately reﬁne outputs. Using
+
+the above insight, we use the largest GPT-3 models
+
+to test our algorithm on text summarization, follow-
+
+ing Stiennon et al. (2020). A model trained with our
+
+algorithm generates summaries that human evalu-
+
+ators prefer to human reference summaries ∼51%
+
+of the time. We obtain these results when learn-
+
+ing from only 100 samples of natural language
+
+feedback. Our analysis shows that LM-generated
+
+reﬁnements typically incorporate the feedback, es-
+
+pecially when choosing the reﬁnement with the
+
+highest similarity with the feedback. Our results
+
+suggest that natural language feedback is a promis-
+
+ing avenue for learning from human preferences.
+
+2
+
+Method
+
+Here, we deﬁne our problem formulation more
+
+formally. Given an input x, we seek to generate an
+
+output y that is high quality according to human
+
+preference judgments. We assume access to natural
+
+language feedback f on an initial model-generated
+
+output y given the input x.
+
+To tackle the above problem, we leverage
+
+the ability of pretrained LMs to follow instruc-
+
+tions (Radford et al., 2019; Sanh et al., 2021; Wei
+
+et al., 2022; Ouyang et al., 2022). We assume
+
+access to an LM that takes an input (e.g., a task
+
+instruction) and produces a distribution over text
+
+completions (e.g., a task output). We instruct the
+
+LM to reﬁne the initial output y given the input x
+
+and feedback f. We then sample N reﬁnements
+
+y′
+
+1, . . . , y′
+
+N from the LM. Reﬁnements may vary in
+
+quality, so we introduce a function S that scores
+
+reﬁnements for how effectively they incorporate
+
+feedback. We choose the reﬁnement with the high-
+
+est score from S and ﬁnetune a model on all chosen
+
+y′ given x. We use the resulting model to generate
+
+outputs at test time.
+
+Models
+
+Ada
+
+(∼ 350M)
+
+Babbage
+
+(∼ 1.3B)
+
+Curie
+
+(∼ 6.7B)
+
+Davinci
+
+(175B)
+
+GPT-3
+
+1.0 ± 0.3
+
+1.1 ± 0.3
+
+8.7 ± 0.8
+
+38.5 ± 1.3
+
+InstructGPT
+
+1.6 ± 0.3
+
+2.5 ± 0.4
+
+5.4 ± 0.6
+
+35.6 ± 1.3
+
+Table 1: We report the accuracy in % with the standard
+
+error. On the task of removing offensive words from a
+
+sentence, only large LMs incorporate feedback.
+
+3
+
+Experiments
+
+3.1
+
+Can Language Models Use Feedback?
+
+For our algorithm to work, LMs must be able to
+
+accurately incorporate feedback to generate reﬁne-
+
+ments. Thus, we ﬁrst validate our algorithm on
+
+a carefully-controlled synthetic task of removing
+
+speciﬁc offensive words from a given sentence. We
+
+examine how effective various models are at incor-
+
+porating feedback, to determine what model to use
+
+for reﬁning outputs.
+
+Experimental Setup
+
+We instruct an LM to re-
+
+ﬁne an automatically-generated sentence with ≤ 10
+
+offensive words by removing ≤ 3 speciﬁc words
+
+(see Appendix B for a detailed explanation and
+
+examples).
+
+We evaluate how often the gener-
+
+ated reﬁnement exactly matches the target sen-
+
+tence, which we also automatically generate. For
+
+our LMs, we use differently-sized GPT-3 mod-
+
+els (Brown et al., 2020) and their ﬁnetuned, In-
+
+structGPT counterparts (Ouyang et al., 2022).1 We
+
+report all hyperparameters used in Appendix E. We
+
+report mean and std. error for all results in our
+
+work.
+
+Results
+
+Table 1 shows the results. We observe
+
+that only the largest GPT-3 and InstructGPT mod-
+
+els (175B parameters) incorporate feedback a non-
+
+negligible amount of time. Using this insight, we
+
+only use the 175B parameter (Davinci) models in
+
+the rest of our experiments.
+
+3.2
+
+Text Summarization
+
+3.2.1
+
+Experimental Setup
+
+Generating Reﬁnements
+
+We now evaluate our
+
+algorithm on the real-world task of text summariza-
+
+tion. We follow prior work on learning from hu-
+
+man preferences (Stiennon et al., 2020) and learn to
+
+summarize Reddit posts from Völske et al. (2017).
+
+We take 100 samples from the Reddit data subset
+
+used in Stiennon et al. (2020). We use InstructGPT
+
+1Via the OpenAI API. OpenAI does not disclose the size
+
+of the provided models, so we use estimates from Eleuther.
+
+
+(175B) to generate initial summaries and reﬁne-
+
+ments, using the instructions in Appendix F. We
+
+then write feedback f on the initial summary y
+
+given the Reddit post x, and we generate possible
+
+reﬁnements y′
+
+1, . . . , y′
+
+20.
+
+Scoring Reﬁnements
+
+We choose a reﬁnement
+
+with a scoring function S that scores reﬁnements
+
+for how effectively they incorporate feedback. For
+
+S, we use contrastive pre-trained text embedding
+
+function E (Neelakantan et al., 2022) to embed
+
+the feedback f and reﬁnements y′
+
+1, . . . , y′
+
+20
+
+2. We
+
+then choose the reﬁnement with the highest cosine
+
+similarity score with the feedback. We opted for
+
+high similarity with the feedback because feedback
+
+often describes what the ideal or improved text
+
+would look like. We refer to reﬁnements generated
+
+with the above algorithm as REFINEMENT WITH
+
+FEEDBACK + BEST OF N.
+
+Finetuning
+
+We ﬁnetune GPT-3 (175B; Brown
+
+et al., 2020)3 on reﬁnements generated by REFINE-
+
+MENT WITH FEEDBACK + BEST OF N. We com-
+
+pare against ﬁnetuning on INITIAL SUMMARIES
+
+generated with InstructGPT. We also compare
+
+against summaries generated directly by Instruct-
+
+GPT and GPT-3 (175B). We use the same instruc-
+
+tions as for INITIAL SUMMARIES (in Appendix F)
+
+and provide the post and its title.
+
+Evaluation
+
+We test on 100 unseen Reddit posts
+
+from the same dataset and conduct human evalu-
+
+ations for all experiments.4 Evaluators rank the
+
+summaries according to the rubric in Appendix
+
+C, with ties allowed. We show the win rate of an
+
+algorithm, counting ties as a half win, similar to
+
+Kendall rank correlation.5. We refer to Appendix
+
+C for a description of all human evaluation and
+
+feedback annotation procedures and Appendix D
+
+for more details about the ranking scheme.
+
+3.2.2
+
+Main Results
+
+Fig. 2 reports the win rate of our learning algorithm
+
+over HUMAN SUMMARIES and Appendix Fig. 5
+
+reports the win rate over InstructGPT. Finetuning
+
+on REFINEMENT WITH FEEDBACK + BEST OF
+
+N generates summaries on par with human sum-
+
+maries, with a win rate of 51.0 ± 5.0% over human
+
+summaries. In contrast, all baselines underperform
+
+2We use OpenAI’s API to access the embeddings.
+
+3InstructGPT cannot yet be ﬁnetuning via OpenAI’s API.
+
+4We plan to conduct larger-scale human evaluations in the
+
+future, to conﬁrm our initial ﬁndings.
+
+5Kendall Rank correlation
+
+ GPT-3
+
+ Finetuned
+
+ on Refine
+
+ w/ Feedback
+
+ + Best of N
+
+ GPT-3
+
+ Finetuned
+
+ on Initial
+
+ Summaries
+
+ InstructGPT
+
+ GPT-3
+
+0
+
+10
+
+20
+
+30
+
+40
+
+50
+
+Win Rate vs. 
+
+ Human Summaries (%)
+
+Human Summaries
+
+Figure 2: How often human evaluators prefer sum-
+
+maries from our learning algorithm and baselines to
+
+HUMAN SUMMARIES. Our proposed algorithm (left-
+
+most bar) generates summaries of a similar quality to
+
+human summaries.
+
+human summaries, with win rates of 19.0 ± 3.9%
+
+(GPT-3), 35.0 ± 4.8% (InstructGPT), 44.0 ± 5.0%
+
+(ﬁnetuning on INITIAL SUMMARIES)). In particu-
+
+lar, our approach achieves a win rate of 57.0±5.0%
+
+over the strongest baseline, ﬁnetuning on INITIAL
+
+SUMMARIES. Our result suggests that our learn-
+
+ing algorithm produces higher-quality summaries
+
+by ﬁnetuning on the higher-quality targets (our re-
+
+ﬁnements). Overall, we achieve strong results on
+
+summarization while learning from only 100 sam-
+
+ples of human-written feedback.
+
+3.2.3
+
+Analysis
+
+We now aim to examine the importance of vari-
+
+ous aspects of our algorithm for generating high-
+
+quality reﬁnements (before ﬁnetuning). We eval-
+
+uate REFINEMENT WITH FEEDBACK, which ran-
+
+domly chooses a reﬁnement ∈ y′
+
+1, . . . , y′
+
+20. This
+
+ablation helps to evaluate the importance of choos-
+
+ing a reﬁnement with our scoring function S. We
+
+also evaluate REFINEMENT WITHOUT FEEDBACK,
+
+which instructs the LM to reﬁne the initial summary
+
+but without feedback. This ablation helps to eval-
+
+uate the importance of using the feedback. Lastly,
+
+we evaluate HUMAN SUMMARIES, i.e., summaries
+
+written by Reddit users on their own posts, and
+
+INITIAL SUMMARIES, i.e., the initial summary y
+
+generated by the LM. See Appendix F for concrete
+
+examples of the instructions that we use.
+
+Fig. 3 (left) shows the win rates of reﬁne-
+
+ments from various methods against INITIAL SUM-
+
+MARIES. REFINEMENT WITH FEEDBACK + BEST
+
+OF N improves over the INITIAL SUMMARIES,
+
+with our algorithm being preferred 67.0 ± 3.1% of
+
+
+ Refine w/
+
+ Feedback +
+
+ Best of N
+
+ Refine w/
+
+ Feedback
+
+ Refine w/o
+
+ Feedback
+
+ Human
+
+ Summaries
+
+0
+
+10
+
+20
+
+30
+
+40
+
+50
+
+60
+
+70
+
+Win Rate vs. 
+
+ Initial Summaries (%)
+
+Initial Summaries
+
+ &gt;=1
+
+ &gt;1
+
+ All
+
+No. of feedback points incorporated
+
+0
+
+20
+
+40
+
+60
+
+80
+
+% of summaries 
+
+ incorporating feedback
+
+Refine w/ Feedback + Best of N
+
+Refine w/ Feedback
+
+Refine w/o Feedback
+
+Figure 3: Left: How often human evaluators prefer summaries from each reﬁnement method to the INITIAL SUM-
+
+MARIES (from InstructGPT). REFINEMENT WITH FEEDBACK improves on the INITIAL SUMMARIES and outper-
+
+forms human summaries with BEST OF N sampling. Right: Reﬁning with feedback generally does incorporate
+
+speciﬁc point(s) mentioned in the feedback.
+
+the time. Our algorithm is preferred 54.0±3.5% of
+
+the time to human summaries, while INITIAL SUM-
+
+MARIES are signiﬁcantly worse than human sum-
+
+maries, preferred only 39.3±3.4% of the time. Ap-
+
+pendix Fig. 4 shows win rates of reﬁnements gen-
+
+erated with various methods against HUMAN SUM-
+
+MARIES and Appendix Fig. 6 shows that reﬁne-
+
+ments are more helpful when the initial summary
+
+is of lower quality. We also refer to Appendix G
+
+for 10 random examples of INITIAL SUMMARIES,
+
+feedback, and reﬁnements from various methods.
+
+Overall, using feedback and scoring reﬁnements
+
+are both important steps for generating high-quality
+
+reﬁnements of the initial output.
+
+Here, we examine whether reﬁnements are of
+
+higher quality because they incorporate the feed-
+
+back, rather than by improving the summary in
+
+other ways. To do so, we evaluate how often the re-
+
+ﬁnements incorporate the human-written feedback.
+
+We evaluate (1) how often ≥ 1 point mentioned in
+
+the feedback is incorporated in the reﬁnement, (2)
+
+how often &gt; 1 point is incorporated, and (3) how
+
+often all of the feedback is incorporated. In Fig. 3
+
+(right), we see that our algorithm incorporates ≥ 1
+
+feedback point 72.0 ± 4.5% of the time, showing
+
+that LMs are able to incorporate feedback with
+
+high accuracy. REFINEMENTS WITHOUT FEED-
+
+BACK only incorporates at least one feedback point
+
+15.0 ± 3.6% of the time. Our results suggest that
+
+reﬁnements are high-quality because they incorpo-
+
+rate speciﬁc points in the feedback.
+
+4
+
+Additional Related Work
+
+Existing work in NLP primarily investigates using
+
+explanations for labeled outputs to classiﬁcation
+
+tasks. In contrast, we do not assume access to gold-
+
+labeled outputs, and we study the more general
+
+text generation setting, which classiﬁcation tasks
+
+can be formulated as (Radford et al., 2019; Raf-
+
+fel et al., 2020; Brown et al., 2020). Explanations
+
+describe why a labeled output is correct, while feed-
+
+back describes how to improve a candidate output.
+
+Prior work explores ways of using explanations
+
+to train text classiﬁcation models, with mixed re-
+
+sults (Camburu et al., 2018; Stacey et al., 2021;
+
+Pruthi et al., 2021; Wiegreffe et al., 2021; Hase and
+
+Bansal, 2021; Lampinen et al., 2022, inter alia).
+
+A few prior works also learn from language feed-
+
+back, for the purpose of ranking candidate outputs
+
+rather than generating outputs (Weston, 2016; Li
+
+et al., 2016; Hancock et al., 2019; Li et al., 2022).
+
+Matiana et al. (2021) learn text embeddings of lan-
+
+guage feedback, where improvements could beneﬁt
+
+the reﬁnement-scoring step of our algorithm.
+
+Outside of text domains, there is abundant work
+
+in reinforcement learning that leverages language
+
+in various ways (see Luketina et al., 2019, for an
+
+overview). Prior work uses language to specify the
+
+task (“instruction following” Chaplot et al., 2017;
+
+Mahmoudieh et al., 2022; Ouyang et al., 2022, in-
+
+ter alia), drive exploration (Tam et al., 2022), infer
+
+reward functions (Lin et al., 2022; Sumers et al.,
+
+2021; Fidler et al., 2017, inter alia), and train the
+
+model via strong supervision (Andreas et al., 2017;
+
+Kaplan et al., 2017), reward shaping (Goyal et al.,
+
+2019), or purely with language by providing de-
+
+scriptions of trajectories (Nguyen et al., 2021). In
+
+contrast, we use language to correct faulty behav-
+
+ior. Other work uses language feedback at test
+
+time to correct mistakes in a model’s behavior, for
+
+
+e.g. image segmentation (Rupprecht et al., 2018)
+
+or code generation (Elgohary et al., 2020; Austin
+
+et al., 2021). In contrast, we use feedback to train
+
+models, and our approach does not require human
+
+intervention at test time.
+
+5
+
+Conclusion
+
+In this work, we proposed an algorithm for train-
+
+ing LMs to behave in line with human preferences,
+
+by learning from natural language feedback. We
+
+validated our approach on a carefully-controlled
+
+word-removal task, showing that only large LMs
+
+(175B parameters) accurately incorporate feedback.
+
+Using this insight, we then tested our algorithm on
+
+the real-world task of text summarization. Our
+
+ﬁnetuning algorithm brought a GPT-3 model to
+
+roughly human-level summarization ability, using
+
+only 100 samples of human feedback. Language
+
+feedback is a natural form of communicating with
+
+models which may make it easier for many peo-
+
+ple to provide informative, high-quality feedback.
+
+In the long run, our work suggests many exciting
+
+avenues for future work, e.g., in guiding models
+
+with language feedback in other domains from code
+
+generation to conversational assistance.
+
+6
+
+Acknowledgements
+
+We are grateful to Nat McAleese, Geoffrey Irving,
+
+Jeff Wu, Sam Bowman, Daniel Ziegler, Seraphina
+
+Nix, and Lennart Heim for helpful conversations
+
+and feedback. Jérémy Scheurer and Jun Shern
+
+Chan thank Open Philanthropy for funding that
+
+enabled this research. Ethan Perez thanks the Na-
+
+tional Science Foundation and Open Philanthropy
+
+for fellowship support. Jon Ander Campos is sup-
+
+ported by a doctoral grant from the Spanish MECD.
+
+Angelica Chen and Kyunghyun Cho are supported
+
+by the NYU Center for Data Science National Sci-
+
+ence Foundation (Award 1922658). Kyunghyun
+
+Cho is also supported by Samsung Advanced Insti-
+
+tute of Technology (Next Generation Deep Learn-
+
+ing: from pattern recognition to AI). We also thank
+
+OpenAI for providing access and credits to their
+
+models via the API Academic Access Program.
+
+References
+
+Jacob Andreas, Dan Klein, and Sergey Levine. 2017.
+
+Modular multitask reinforcement learning with pol-
+
+icy sketches.
+
+In Proceedings of the 34th Inter-
+
+national Conference on Machine Learning, vol-
+
+ume 70 of Proceedings of Machine Learning Re-
+
+search, pages 166–175. PMLR.
+
+Jacob Austin, Augustus Odena, Maxwell I. Nye,
+
+Maarten Bosma, Henryk Michalewski, David Do-
+
+han, Ellen Jiang, Carrie J. Cai, Michael Terry,
+
+Quoc V. Le, and Charles Sutton. 2021.
+
+Pro-
+
+gram synthesis with large language models. CoRR,
+
+abs/2108.07732.
+
+Tom Brown, Benjamin Mann, Nick Ryder, Melanie
+
+Subbiah, Jared D Kaplan, Prafulla Dhariwal, Arvind
+
+Neelakantan, Pranav Shyam, Girish Sastry, Amanda
+
+Askell, et al. 2020. Language models are few-shot
+
+learners. Advances in neural information processing
+
+systems, 33:1877–1901.
+
+Oana-Maria Camburu,
+
+Tim Rocktäschel,
+
+Thomas
+
+Lukasiewicz, and Phil Blunsom. 2018. e-snli: Nat-
+
+ural language inference with natural language expla-
+
+nations. Advances in Neural Information Process-
+
+ing Systems, 31.
+
+Devendra
+
+Singh
+
+Chaplot,
+
+Kanthashree
+
+Mysore
+
+Sathyendra,
+
+Rama Kumar Pasumarthi,
+
+Dheeraj
+
+Rajagopal, and Ruslan Salakhutdinov. 2017. Gated-
+
+Attention Architectures for Task-Oriented Language
+
+Grounding. arXiv preprint arXiv:1706.07230.
+
+Ahmed Elgohary, Saghar Hosseini, and Ahmed Has-
+
+san Awadallah. 2020. Speak to your parser: Interac-
+
+tive text-to-SQL with natural language feedback. In
+
+Proceedings of the 58th Annual Meeting of the Asso-
+
+ciation for Computational Linguistics, pages 2065–
+
+2077, Online. Association for Computational Lin-
+
+guistics.
+
+Sanja Fidler et al. 2017. Teaching machines to describe
+
+images with natural language feedback. Advances in
+
+Neural Information Processing Systems, 30.
+
+Samuel Gehman, Suchin Gururangan, Maarten Sap,
+
+Yejin Choi, and Noah A Smith. 2020. Realtoxici-
+
+typrompts: Evaluating neural toxic degeneration in
+
+language models. arXiv preprint arXiv:2009.11462.
+
+Prasoon Goyal,
+
+Scott Niekum,
+
+and Raymond J.
+
+Mooney. 2019. Using Natural Language for Reward
+
+Shaping in Reinforcement Learning.
+
+Braden Hancock, Antoine Bordes, Pierre-Emmanuel
+
+Mazare, and Jason Weston. 2019.
+
+Learning from
+
+dialogue after deployment: Feed yourself, chatbot!
+
+arXiv preprint arXiv:1901.05415.
+
+Peter Hase and Mohit Bansal. 2021. When can mod-
+
+els learn from explanations? a formal framework for
+
+understanding the roles of explanation data. arXiv
+
+preprint arXiv:2102.02201.
+
+
+Ari Holtzman, Jan Buys, Li Du, Maxwell Forbes, and
+
+Yejin Choi. 2019. The curious case of neural text
+
+degeneration. arXiv preprint arXiv:1904.09751.
+
+Russell Kaplan, Christopher Sauer, and Alexander
+
+Sosa. 2017. Beating Atari with Natural Language
+
+Guided Reinforcement Learning.
+
+Andrew K Lampinen, Ishita Dasgupta, Stephanie CY
+
+Chan, Kory Matthewson, Michael Henry Tessler,
+
+Antonia Creswell, James L McClelland, Jane X
+
+Wang, and Felix Hill. 2022. Can language models
+
+learn from explanations in context? arXiv preprint
+
+arXiv:2204.02329.
+
+Jiwei
+
+Li,
+
+Alexander
+
+H
+
+Miller,
+
+Sumit
+
+Chopra,
+
+Marc’Aurelio Ranzato, and Jason Weston. 2016.
+
+Dialogue learning with human-in-the-loop.
+
+arXiv
+
+preprint arXiv:1611.09823.
+
+Zichao Li, Prakhar Sharma, Xing Han Lu, Jackie CK
+
+Cheung, and Siva Reddy. 2022. Using interactive
+
+feedback to improve the accuracy and explainabil-
+
+ity of question answering systems post-deployment.
+
+arXiv preprint arXiv:2204.03025.
+
+Chin-Yew Lin. 2004.
+
+ROUGE: A package for auto-
+
+matic evaluation of summaries. In Text Summariza-
+
+tion Branches Out, pages 74–81, Barcelona, Spain.
+
+Association for Computational Linguistics.
+
+Jessy Lin, Daniel Fried, Dan Klein, and Anca Dragan.
+
+2022. Inferring rewards from language in context.
+
+arXiv preprint arXiv:2204.02515.
+
+Stephanie Lin, Jacob Hilton, and Owain Evans. 2021.
+
+TruthfulQA: Measuring How Models Mimic Human
+
+Falsehoods.
+
+Jelena Luketina, Nantas Nardelli, Gregory Farquhar,
+
+Jakob Foerster, Jacob Andreas, Edward Grefenstette,
+
+Shimon Whiteson, and Tim Rocktäschel. 2019. A
+
+survey of reinforcement learning informed by natu-
+
+ral language. In Proceedings of the Twenty-Eighth
+
+International Joint Conference on Artiﬁcial Intel-
+
+ligence, IJCAI-19, pages 6309–6317. International
+
+Joint Conferences on Artiﬁcial Intelligence Organi-
+
+zation.
+
+Parsa Mahmoudieh, Sayna Ebrahimi, Deepak Pathak,
+
+and Trevor Darrell. 2022. Zero-Shot Reward Speci-
+
+ﬁcation via Grounded Natural Language.
+
+Shahbuland Matiana, JR Smith, Ryan Teehan, Louis
+
+Castricato, Stella Biderman, Leo Gao, and Spencer
+
+Frazier. 2021. Cut the carp: Fishing for zero-shot
+
+story evaluation. arXiv preprint arXiv:2110.03111.
+
+Reiichiro Nakano, Jacob Hilton, Suchir Balaji, Jeff Wu,
+
+Long Ouyang, Christina Kim, Christopher Hesse,
+
+Shantanu Jain, Vineet Kosaraju, William Saunders,
+
+et al. 2021.
+
+WebGPT: Browser-assisted question-
+
+answering with human feedback.
+
+arXiv preprint
+
+arXiv:2112.09332.
+
+Arvind Neelakantan, Tao Xu, Raul Puri, Alec Radford,
+
+Jesse Michael Han, Jerry Tworek, Qiming Yuan,
+
+Nikolas Tezak, Jong Wook Kim, Chris Hallacy,
+
+Johannes Heidecke, Pranav Shyam, Boris Power,
+
+Tyna Eloundou Nekoul, Girish Sastry, Gretchen
+
+Krueger, David Schnurr, Felipe Petroski Such,
+
+Kenny Hsu, Madeleine Thompson, Tabarak Khan,
+
+Toki Sherbakov, Joanne Jang, Peter Welinder, and
+
+Lilian Weng. 2022. Text and Code Embeddings by
+
+Contrastive Pre-Training.
+
+Khanh X Nguyen, Dipendra Misra, Robert Schapire,
+
+Miroslav Dudík, and Patrick Shafto. 2021.
+
+Inter-
+
+active learning from activity description. In Inter-
+
+national Conference on Machine Learning, pages
+
+8096–8108. PMLR.
+
+Long Ouyang, Jeff Wu, Xu Jiang, Diogo Almeida, Car-
+
+roll L Wainwright, Pamela Mishkin, Chong Zhang,
+
+Sandhini Agarwal, Katarina Slama, Alex Ray, et al.
+
+2022. Training language models to follow instruc-
+
+tions with human feedback. Preprint.
+
+Romain Paulus, Caiming Xiong, and Richard Socher.
+
+2018.
+
+A Deep Reinforced Model for Abstractive
+
+Summarization.
+
+In International Conference on
+
+Learning Representations.
+
+Danish Pruthi,
+
+Rachit Bansal,
+
+Bhuwan Dhingra,
+
+Livio Baldini Soares, Michael Collins, Zachary C.
+
+Lipton, Graham Neubig, and William W. Cohen.
+
+2021. Evaluating Explanations: How much do ex-
+
+planations from the teacher aid students?
+
+Alec Radford and Karthik Narasimhan. 2018.
+
+Im-
+
+proving Language Understanding by Generative Pre-
+
+Training.
+
+Alec Radford, Jeff Wu, Rewon Child, David Luan,
+
+Dario Amodei, and Ilya Sutskever. 2019. Language
+
+Models are Unsupervised Multitask Learners.
+
+Jack W Rae, Sebastian Borgeaud, Trevor Cai, Katie
+
+Millican, Jordan Hoffmann, Francis Song, John
+
+Aslanides, Sarah Henderson, Roman Ring, Susan-
+
+nah Young, et al. 2021. Scaling language models:
+
+Methods, analysis &amp; insights from training gopher.
+
+arXiv preprint arXiv:2112.11446.
+
+Colin Raffel, Noam Shazeer, Adam Roberts, Katherine
+
+Lee, Sharan Narang, Michael Matena, Yanqi Zhou,
+
+Wei Li, and Peter J. Liu. 2020. Exploring the Lim-
+
+its of Transfer Learning with a Uniﬁed Text-to-Text
+
+Transformer.
+
+Christian Rupprecht, Iro Laina, Nassir Navab, Gre-
+
+gory D Hager, and Federico Tombari. 2018. Guide
+
+me: Interacting with deep networks. In Proceedings
+
+of the IEEE Conference on Computer Vision and Pat-
+
+tern Recognition, pages 8551–8561.
+
+Victor Sanh, Albert Webson, Colin Raffel, Stephen H
+
+Bach, Lintang Sutawika, Zaid Alyafeai, Antoine
+
+Chafﬁn, Arnaud Stiegler, Teven Le Scao, Arun
+
+Raja, et al. 2021. Multitask prompted training en-
+
+ables zero-shot task generalization. arXiv preprint
+
+arXiv:2110.08207.
+
+
+Joe Stacey, Yonatan Belinkov, and Marek Rei. 2021.
+
+Supervising Model Attention with Human Explana-
+
+tions for Robust Natural Language Inference. arXiv
+
+preprint arXiv:2104.08142.
+
+Nisan Stiennon, Long Ouyang, Jeffrey Wu, Daniel
+
+Ziegler, Ryan Lowe, Chelsea Voss, Alec Radford,
+
+Dario Amodei, and Paul F Christiano. 2020. Learn-
+
+ing to summarize with human feedback. Advances
+
+in Neural Information Processing Systems, 33:3008–
+
+3021.
+
+Theodore R Sumers, Mark K Ho, Robert D Hawkins,
+
+Karthik Narasimhan, and Thomas L Grifﬁths. 2021.
+
+Learning rewards from linguistic feedback.
+
+feed-
+
+back, 1(2):3.
+
+Allison C Tam,
+
+Neil C Rabinowitz,
+
+Andrew K
+
+Lampinen, Nicholas A Roy, Stephanie CY Chan,
+
+DJ Strouse, Jane X Wang, Andrea Banino, and Fe-
+
+lix Hill. 2022. Semantic exploration from language
+
+abstractions and pretrained representations.
+
+arXiv
+
+preprint arXiv:2204.05080.
+
+Michael Völske, Martin Potthast, Shahbaz Syed, and
+
+Benno Stein. 2017.
+
+TL;DR: Mining Reddit to
+
+learn automatic summarization. In Proceedings of
+
+the Workshop on New Frontiers in Summarization,
+
+pages 59–63, Copenhagen, Denmark. Association
+
+for Computational Linguistics.
+
+Jason Wei, Maarten Bosma, Vincent Zhao, Kelvin Guu,
+
+Adams Wei Yu, Brian Lester, Nan Du, Andrew M.
+
+Dai, and Quoc V Le. 2022.
+
+Finetuned Language
+
+Models are Zero-Shot Learners.
+
+In International
+
+Conference on Learning Representations.
+
+Jason E Weston. 2016. Dialog-based language learn-
+
+ing.
+
+Advances in Neural Information Processing
+
+Systems, 29.
+
+Sarah Wiegreffe, Ana Marasovi´c, and Noah A. Smith.
+
+2021.
+
+Measuring association between labels and
+
+free-text rationales. In Proceedings of the 2021 Con-
+
+ference on Empirical Methods in Natural Language
+
+Processing, pages 10266–10284, Online and Punta
+
+Cana, Dominican Republic. Association for Compu-
+
+tational Linguistics.
+
+Daniel M Ziegler, Nisan Stiennon, Jeffrey Wu, Tom B
+
+Brown, Alec Radford, Dario Amodei, Paul Chris-
+
+tiano, and Geoffrey Irving. 2019. Fine-tuning lan-
+
+guage models from human preferences.
+
+arXiv
+
+preprint arXiv:1909.08593.
+
+
+ Refine w/
+
+ Feedback +
+
+ Best of N
+
+ Refine w/
+
+ Feedback
+
+ Refine w/o
+
+ Feedback
+
+ Initial
+
+ Summaries
+
+0
+
+10
+
+20
+
+30
+
+40
+
+50
+
+60
+
+Win Rate vs. 
+
+ Human Summaries (%)
+
+Human Summaries
+
+Figure 4: Win rate of various reﬁnement methods.
+
+ GPT-3
+
+ Finetuned
+
+ on Refine
+
+ w/ Feedback
+
+ + Best of N
+
+ GPT-3
+
+ Finetuned
+
+ on Initial
+
+ Summaries
+
+ GPT-3
+
+ Human
+
+ Summaries
+
+0
+
+20
+
+40
+
+60
+
+Win Rate vs. 
+
+ Initial Summaries (%)
+
+InstructGPT Summaries
+
+Figure 5: Win rate of our learning algorithm over In-
+
+structGPT (used to generate INITIAL SUMMARIES)
+
+.
+
+A
+
+Additional Results
+
+Here, we report additional results. In Fig. 4, we re-
+
+port the win rate of our various reﬁnement methods
+
+over HUMAN SUMMARIES. In Fig. 5, we report the
+
+win rate of our learning algorithm over InstructGPT
+
+(used to generate the INITIAL SUMMARIES).
+
+Fig. 6 shows the win rate of various reﬁnement
+
+methods by the rank of the INITIAL SUMMARIES
+
+relative to summaries from other methods. RE-
+
+FINEMENT WITH FEEDBACK (+ BEST OF N) have
+
+high win rates relative to other methods when
+
+theINITIAL SUMMARY is poorly ranked. When
+
+the INITIAL SUMMARY rank is 4, REFINEMENT
+
+WITH FEEDBACK has a win rate of 83.0±3.9% vs.
+
+49.0 ± 5.4% for REFINEMENT WITHOUT FEED-
+
+BACK. On the other hand, when the INITIAL SUM-
+
+MARY is higher quality (rank 2), the win rate of
+
+REFINEMENT WITH FEEDBACK is only 7.8±4.0%
+
+vs. 31.25 ± 5.8% for REFINEMENTS WITHOUT
+
+FEEDBACK. The result is intuitive, as feedback on
+
+a bad summary should be more helpful than feed-
+
+back on a good summary since there is more room
+
+for improvement on a bad summary.
+
+1
+
+2
+
+3
+
+4
+
+5
+
+Ranking of Initial Summary
+
+0
+
+20
+
+40
+
+60
+
+80
+
+100
+
+Win Rate vs. 
+
+ Initial Summaries (%)
+
+Refine w/ Feedback + Best of N
+
+Refine w/ Feedback
+
+Refine w/o Feedback
+
+Human Summaries
+
+Figure 6: This plot shows the win rate of various meth-
+
+ods against the INITIAL SUMMARIES (y-axis) given
+
+various rankings of the initial summaries (x-axis). We
+
+observe that the worse the initial summaries, the better
+
+the reﬁnements are.
+
+B
+
+Targeted Word Removal Details
+
+Below is an example of how we instruct or “prompt”
+
+an LM to remove speciﬁc, offensive words from a
+
+sentence.
+
+“In this text, many toxic and offensive
+
+words are used: You are such a jerk, and
+
+a nice person, and an idiot. The ideal
+
+text should remove the word jerk, but oth-
+
+erwise be unchanged: You are”
+
+Here, the target completion is “ such a nice per-
+
+son and an idiot.”
+
+More formally, we sample
+
+offensive sentences by using k offensive words
+
+from a ﬁxed set of 25 offensive words, drawn uni-
+
+formly at random (without replacement). Each
+
+offensive sentence also includes the words "nice
+
+person" in addition to all the offensive words. For
+
+each k ∈ {1, . . . , 10}, we sample 50 offensive sen-
+
+tences. The task is then to remove l ∈ [1, 2, 3]
+
+offensive words from a given sentence, with k ≥ l.
+
+Since we include the words "nice person" in the
+
+offensive sentence, we can remove l = k offensive
+
+words and still have a target sentence that intu-
+
+itively makes sense.
+
+C
+
+Human Feedback and Evaluation
+
+Automated metrics such as ROUGE (Lin, 2004)
+
+do not correlate well with human preferences for
+
+summarization (Paulus et al., 2018; Stiennon et al.,
+
+2020), so we conduct human evaluations to eval-
+
+uate various methods. We show all instructions
+
+given to annotators and evaluators here. Two of
+
+
+our authors wrote feedback on the INITIAL SUM-
+
+MARIES. To annotate feedback, they had access to
+
+the title, post, and the INITIAL SUMMARY. One
+
+author conducted the human evaluation for how of-
+
+ten reﬁnement incorporates feedback (Fig. 3; right).
+
+For this evaluation, we provided the title, post, INI-
+
+TIAL SUMMARY, feedback, and summaries gener-
+
+ated by various methods. Lastly, two authors not
+
+involved in feedback annotation conducted the hu-
+
+man evaluation of generated reﬁnements (Fig. 3
+
+left, Fig. 4, and Fig. 6). The annotators had access
+
+to title, post, and summaries generated with various
+
+methods. See Appendix D for more detail about
+
+our ranking procedure. One author conducted the
+
+human evaluation for Figs. 2 and 5.
+
+D
+
+Details about Ranking Procedure
+
+We use a standard ranking scheme where each of 5
+
+summaries is given a rank between 1 and 5 (inclu-
+
+sive). The method REFINEMENT WITHOUT FEED-
+
+BACK often generates reﬁnements that are exact
+
+copies of the INITIAL SUMMARIES, so we allow
+
+for ties in our ranking scheme. We assign the rank
+
+r′ to all summaries ranked in a tie, where r′ =
+
+r+(r+n−1)
+
+2
+
+, r is the rank of the tied elements, and n
+
+is the number of ties at the rank. For example, we
+
+map a ranking of (1, 2, 2, 4, 5) → (1, 2.5, 2.5, 4, 5)
+
+and a ranking of (1, 2, 3, 3, 3) → (1, 2, 4, 4, 4).
+
+E
+
+Hyperparameters
+
+E.1
+
+Generating Reﬁnements
+
+For the targeted word removal experiments (§3.1),
+
+we use greedy decoding until 200 tokens or / n
+
+is generated. For all summarization experiments
+
+(§3.2), we sample up to 48 tokens (as in Stien-
+
+non et al., 2020) with nucleus sampling (Holtz-
+
+man et al., 2019) with p = 0.9. We strip non-
+
+alphanumeric characters (e.g., newlines) from the
+
+beginning of sampled summaries. Due to the maxi-
+
+mum token length, sampled summaries sometimes
+
+end with an incomplete sentence. Thus, we remove
+
+ending sentences that do not end in “.”, “!”, or “?”.
+
+E.2
+
+Finetuning
+
+We ﬁnetune GPT-3 with 175B parameters on RE-
+
+FINEMENTS WITH FEEDBACK + BEST OF N and
+
+INITIAL SUMMARIES. We use a batch size of 1
+
+and the default of 4 epochs, as recommended by the
+
+OpenAI API. For other hyperparameters, we con-
+
+duct a hyperparameter search using 5-fold cross-
+
+validation on our train dataset of 100 examples. We
+
+use OpenAI’s default hyperparameter settings from
+
+the OpenAI API and search over the learning rate
+
+multiplier, the multiplier on the pretraining learn-
+
+ing rate used to obtain the ﬁne-tuning learning rate.
+
+We sweep over [0.005, 0.01, 0.025, 0.05, 0.1, 0.2]
+
+and choose 0.05. We also use OpenAI’s default hy-
+
+perparameter settings and sweep over the prompt
+
+loss weight or the weight used for language model-
+
+ing loss on the prompt (Radford and Narasimhan,
+
+2018). We sweep over [0.01, 0.025, 0.05, 0.1, 0.2]
+
+and choose 0.01. We then ﬁnetune a new model
+
+on the full 100 examples with the chosen hyper-
+
+parameters. We refer to the API documentation
+
+for a more detailed description of the adjustable
+
+hyperparameters provided by OpenAI.
+
+F
+
+Prompt Templates
+
+Table 2 shows the prompts used in our experiments.
+
+G
+
+Examples
+
+Table 3 shows summaries of 10 random Red-
+
+dit posts from various methods: initial model-
+
+generated summaries and reﬁnement methods.
+
+
+Methods
+
+Format
+
+INITIAL SUMMARY
+
+Write an excellent summary of a given text. An
+
+excellent summary is coherent, accurate, concise,
+
+and detailed, and it follows human preferences about
+
+summaries.
+
+TITLE: {title}
+
+Text: {text}
+
+TL;DR:
+
+REFINEMENT
+
+WITH
+
+FEEDBACK
+
+Given a text, an initial summary, and feedback on
+
+the initial summary, write an improved summary that
+
+incorporates the feedback on the initial summary and
+
+is better than the initial summary. The improved sum-
+
+mary is coherent, accurate, concise, and detailed, and
+
+it follows human preferences about summaries. Most
+
+importantly, the improved summary incorporates the
+
+feedback.
+
+TITLE: {title}
+
+Text: {text}
+
+Summary: {summary}
+
+Feedback: {feedback}
+
+TL;DR:
+
+REFINEMENT WITHOUT
+
+FEEDBACK
+
+Given a text and an initial summary, write an im-
+
+proved summary that is better than the initial sum-
+
+mary. The improved summary is coherent, accurate,
+
+concise, and detailed, and it follows human prefer-
+
+ences about summaries.
+
+TITLE: {title}
+
+Text: {text}
+
+Summary: {summary}
+
+TL;DR:
+
+Table 2: Prompt templates used for various methods.
+
+
+Example 1
+
+Initial Summary
+
+Should the author ask her committed boyfriend if he lied about visiting an old ﬂame?
+
+Feedback
+
+The summary is good but should mention more details. Concretely, it should remove
+
+the word "committed", since that isn’t emphasized in the text. The summary should also
+
+mention that the author believes her boyfriend visited an old ﬂame very early on in their
+
+relationship, i.e. after 4 months. Further the summary should mention that her boyfriend
+
+has already denied that this happened when the author asked him when they were both
+
+drunk. It should also convey that the boyfriend has lied before. The author is asking if she
+
+should mention this issue or not, since it would bring peace but she already had brougth
+
+it up once.
+
+Reﬁnement with Feedback + Best of N
+
+The author is considering asking her boyfriend if he lied about visiting an old ﬂame early
+
+on in their relationship, as this has been bothering her. He already denied it when asked
+
+drunk, and he has lied to her before.
+
+Reﬁnement with Feedback
+
+The author is considering asking her boyfriend if he lied about visiting an old ﬂame early
+
+on in their relationship, after he denied it when asked while drunk. She is worried about
+
+how this would add to the list of his past lies.
+
+Reﬁnement without Feedback
+
+The author is considering asking her committed boyfriend if he lied about visiting an old
+
+ﬂame, and she is torn about whether or not to do so.
+
+Human Summary
+
+Asked my bf once if he went to go meet a girl, but i think he lied. Should I ask if he lied?
+
+Example 2
+
+Initial Summary
+
+my boyfriend invited me to spend Mother’s Day with his parents but I feel weird about it
+
+because I don’t want to imply that I will become their daughter one day. Is this too soon
+
+or am I overthinking it?
+
+Feedback
+
+The summary is mostly correct but it should mention that one of the reason why the
+
+original poster feels weird about all this situation is because their relationship is just
+
+starting and they haven’t talked about a future together yet. It is also important that the
+
+original poster can’t spend they Mother’s day with her mom and this is one of the reasons
+
+why her boyfriend has invited her.
+
+Reﬁnement with Feedback + Best of N
+
+
+The original poster is feeling weird about spending Mother’s Day with their boyfriend’s
+
+parents because they haven’t talked about a future together yet. They also can’t spend
+
+Mother’s Day with their own mom.
+
+Reﬁnement with Feedback
+
+The original poster feels weird about spending Mother’s day with their boyfriend’s parents
+
+because they haven’t talked about their relationship yet, but they should go because it will
+
+be a good opportunity to get to know them better.
+
+Reﬁnement without Feedback
+
+My boyfriend invited me to spend Mother’s Day with his parents, but I feel weird about it
+
+because I don’t want to imply that I will become their daughter one day. Is this too soon
+
+or am I overthinking it?
+
+Human Summary
+
+my boyfriend and I have been together 8 months and he invited me to spend Mother’s
+
+Day with his mom and dad, but I feel uncomfortable too soon?
+
+Example 3
+
+Initial Summary
+
+Girl (F/19) doesn’t know what to do with guy (M/21) who is good and polite, but not
+
+romantic and doesn’t want anything serious.
+
+Feedback
+
+The summary should make clear that the girl is already together with the guy for 7 months.
+
+The summary should also point out that the guy is not passionate and doesn’t want sex.
+
+Lastly the summary should convey that the author is frustrated by the fact that the guy
+
+doesn’t want anything serious and says he doesn’t want to go fast, but that she also thinks
+
+she’s in love.
+
+Reﬁnement with Feedback + Best of N
+
+Girl (F/19) is dating guy (M/21) who is good and polite but not romantic and doesn’t
+
+want anything serious. Girl is frustrated because she wants more than what the guy is
+
+willing to give.
+
+Reﬁnement with Feedback
+
+Girl (F/19) is frustrated with guy (M/21) because he is good and polite, but not romantic
+
+and doesn’t want anything serious.
+
+Reﬁnement without Feedback
+
+Girl (F/19) doesn’t know what to do with guy (M/21) who is good and polite, but not
+
+romantic and doesn’t want anything serious.
+
+Human Summary
+
+He (21) is a good guy, but I’m afraid he doesn’t want anything serious with me (19). How
+
+should I react?
+
+Table 3: Examples of summaries, human-written feedback, and generated reﬁnements.
+
